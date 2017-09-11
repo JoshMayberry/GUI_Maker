@@ -1,9 +1,11 @@
 #coding: utf-8
 #Use a 32 bit python version, not a 64 bit
-#Version 1.0.0
+#Version 1.0.1
 
 import ctypes
 import atexit
+import os
+import re
 
 class ErrorHandler():
 	"""Takes care of errors.
@@ -296,12 +298,31 @@ class BCS_IO(ErrorHandler, Utilities):
 	def __init__(self, dll_path):
 		"""Sets up the connection to the RP2005 dll."""
 
+		self.installError = None #(str) If not None: The user has not correctly set up the BCS board and/or its dll. This will tell the user how to fix it
+
 		#Initialize Inherited classes
 		ErrorHandler.__init__(self)
 		Utilities.__init__(self)
 
 		#Initialize the dll
-		lib = ctypes.WinDLL(dll_path)
+		try:
+			lib = ctypes.WinDLL(dll_path)
+
+		#Tell the user how to correctly install the program
+		except:
+			instructions_dll_install =   """(1) Find the folder that contains "RP2005_Install_0411"\n(2) Run the file "Setup.exe" """
+			instructions_dll_upgrade =   """(1) Find the folder that contains "RP2005_Install_0411/DLL_201"\n(2) Copy and paste it into the folder "C:/Program Files (x86)/BCS_Ideas/RP2005/Software" """
+			instructions_board_install = """(1) Follow the instructions for option 1 on https://www.raymond.cc/blog/loading-unsigned-drivers-in-windows-7-and-vista-64-bit-x64/\nNote: The BCS board must be plugged in for the rest of these steps(2) Open the device manager\n(3) Under "Other Devices", right click on the "RP00001616S" driver\n(4) Click "Update driver Software"\n(5) Click "Browse my computer for driver software"\n(6) Find the folder that contains "RP2005_Install_0411/USB_Driver" into the input box and click [Next]\n(7) Click "Install this driver software anyway"\n(8) After the driver finishes installing, click [Close]"""
+
+			if (os.path.exists("C:/Program Files (x86)/BCS_Ideas/RP2005/Software")):
+				if (os.path.exists("C:/Program Files (x86)/BCS_Ideas/RP2005/Software/DLL_201")):
+					self.installError = "You have installed the BCS dll and upgraded it.\nMake sure the BCS board's driver is correctly updated.\n" + instructions_board_install
+				else:
+					self.installError = "You have installed the BCS dll.\nMake sure you have upgraded it correctly.\n" + instructions_dll_upgrade + "\n\nAfterwards, make sure your BCS board's driver is correctly installed."
+			else:
+				self.installError = "You need to install the BCS board dll first." + instructions_dll_install + "\nAfterwards, make sure you upgrade the dll.\n" + instructions_dll_upgrade +  "\nFinally, make sure that your BCS board's driver is correctly installed.\n" + instructions_board_install
+				
+			return None
 
 		#Connect to the dll functions
 		self.dll_RP_ListDIO      = lib['RP_ListDIO']
@@ -357,6 +378,11 @@ class BCS_IO(ErrorHandler, Utilities):
 		#Initialize internal variables
 		self.BCS_Opened = {} #{SN: True if it is open False if it is closed}
 
+	def getInstallError(self):
+		"""Tells the user what the install errors are. If there are no errors, it will return None."""
+
+		return self.installError
+
 	def RP_ListDIO(self, iNumDev):
 		"""Gets information concerning the devices currently connected. 
 		This function returns the number of devices connected, 
@@ -374,6 +400,11 @@ class BCS_IO(ErrorHandler, Utilities):
 
 		Example Input: RP_ListDIO()
 		"""
+
+		#Account for incorrect BCS setup
+		if (self.installError != None):
+			print("ERROR:", self.installError)
+			return None, None
 
 		#Ensure ctype format
 		if (type(iNumDev) == int):
@@ -404,6 +435,11 @@ class BCS_IO(ErrorHandler, Utilities):
 
 		Example Input: RP_OpenDIO("RP0002D1")
 		"""
+
+		#Account for incorrect BCS setup
+		if (self.installError != None):
+			print("ERROR:", self.installError)
+			return None
 
 		#Check if it is already opened
 		if (SN in self.BCS_Opened):
@@ -440,6 +476,11 @@ class BCS_IO(ErrorHandler, Utilities):
 		Example Input: RP_CloseDIO(hDIO)
 		"""
 
+		#Account for incorrect BCS setup
+		if (self.installError != None):
+			print("ERROR:", self.installError)
+			return None
+
 		#Interact with the dll
 		ulErrCode = self.dll_RP_CloseDIO(hDIO)
 		#Check for errors
@@ -462,6 +503,11 @@ class BCS_IO(ErrorHandler, Utilities):
 
 		Example Input: RP_GetVer(hDIO)
 		"""
+
+		#Account for incorrect BCS setup
+		if (self.installError != None):
+			print("ERROR:", self.installError)
+			return None
 
 		#Initialize c++ reference variables
 		SWVer = ctypes.create_string_buffer(255) #Create a 255 byte buffer, initialized to NUL bytes
@@ -494,6 +540,11 @@ class BCS_IO(ErrorHandler, Utilities):
 		Example Input: RP_GetVer_SN("RP0002D1")
 		"""
 
+		#Account for incorrect BCS setup
+		if (self.installError != None):
+			print("ERROR:", self.installError)
+			return None
+
 		#Initialize c++ reference variables
 		SWVer = ctypes.create_string_buffer(255) #Create a 255 byte buffer, initialized to NUL bytes
 		ErrMsg = ctypes.create_string_buffer(255) #Create a 255 byte buffer, initialized to NUL bytes
@@ -509,7 +560,7 @@ class BCS_IO(ErrorHandler, Utilities):
 		else:
 			return -1
 
-	def RP_ReadPort(self, hDIO, ucPort, binary = True):
+	def RP_ReadPort(self, hDIO, ucPort, binary = True, flipBit = False):
 		"""Read data from the device.
 
 		The function does not return until the requested port has been 
@@ -528,6 +579,8 @@ class BCS_IO(ErrorHandler, Utilities):
 			~ Any other value will return an error
 		binary (bool) - If True: A string of binary output will be returned
 						If False: A string of integer output will be returned
+		flipBit (bool) - If True: Will change all 0 to 1 and all 1 to 0
+						 If False: Will not change 0 or 1
 		ucPVal (str)  - The value of the requested port
 			~ Example: "0": all 8 bits are active (binary: 00000000)
 			~ Example: "255": all 8 bits are inactive (binary: 11111111)
@@ -536,6 +589,11 @@ class BCS_IO(ErrorHandler, Utilities):
 		Example Input: RP_ReadPort(hDIO, 0)
 		Example Input: RP_ReadPort(hDIO, 0, binary = False)
 		"""
+
+		#Account for incorrect BCS setup
+		if (self.installError != None):
+			print("ERROR:", self.installError)
+			return None
 
 		#Initialize c++ reference variables
 		ucPVal = ctypes.c_ubyte()
@@ -549,6 +607,9 @@ class BCS_IO(ErrorHandler, Utilities):
 		if (noError):
 			#Take appropriate action
 			ucPVal = self.int2bin(ucPVal.value)
+			
+			if (flipBit):
+				ucPVal = self.bitFlip(ucPVal)
 			if (not binary):
 				ucPVal = self.bitFlip(ucPVal)
 				ucPVal = self.bin2int(ucPVal)
@@ -557,7 +618,7 @@ class BCS_IO(ErrorHandler, Utilities):
 		else:
 			return -1
 
-	def RP_ReadPort_SN(self, SN, ucPort, binary = True):
+	def RP_ReadPort_SN(self, SN, ucPort, binary = True, flipBit = False):
 		"""Read data from the device.
 		The function will open the device, perform the function,
 		and then close the device. 
@@ -566,8 +627,8 @@ class BCS_IO(ErrorHandler, Utilities):
 		The function does not return until the requested port has been 
 		read or read timeout occurs. The read timeout is set to 1 second.
 
-		SN (str)      - Serial number of the board
-		ucPort (str)  - The number of the port to be read
+		SN (str)       - Serial number of the board
+		ucPort (str)   - The number of the port to be read
 							~ "0": Input port 0 (bits 24 - 31)
 							~ "1": Input port 1 (bits 16 - 23)
 							~ "2": Input port 2 (bits 8 - 15)
@@ -577,16 +638,23 @@ class BCS_IO(ErrorHandler, Utilities):
 							~ "18": Output port 2 (bits 8 - 15)
 							~ "19": Output port 3 (bits 0 - 7)
 							~ Any other value will return an error
-		binary (bool) - If True: A string of binary output will be returned
-						If False: A string of integer output will be returned
-		ucPVal (str)  - The value of the requested port
+		binary (bool)  - If True: A string of binary output will be returned
+						 If False: A string of integer output will be returned
+		flipBit (bool) - If True: Will change all 0 to 1 and all 1 to 0
+						 If False: Will not change 0 or 1
+		ucPVal (str)   - The value of the requested port
 							~ Example: "0": all 8 bits are active (binary: 00000000)
 							~ Example: "255": all 8 bits are inactive (binary: 11111111)
-		ErrMsg (str)  - String containing any error messages
+		ErrMsg (str)   - String containing any error messages
 
 		Example Input: RP_ReadPort_SN("RP0002D1", 0)
 		Example Input: RP_ReadPort_SN("RP0002D1", 0, binary = False)
 		"""
+
+		#Account for incorrect BCS setup
+		if (self.installError != None):
+			print("ERROR:", self.installError)
+			return None
 
 		#Initialize c++ reference variables
 		ucPVal = ctypes.c_ubyte()
@@ -600,15 +668,18 @@ class BCS_IO(ErrorHandler, Utilities):
 		if (noError):
 			#Take appropriate action
 			ucPVal = self.int2bin(ucPVal.value)
+
+			if (flipBit):
+				ucPVal = self.bitFlip(ucPVal)
 			if (not binary):
 				ucPVal = self.bitFlip(ucPVal)
 				ucPVal = self.bin2int(ucPVal)
-
+					
 			return ucPVal
 		else:
 			return -1
 
-	def RP_ReadAll(self, hDIO, binary = True):
+	def RP_ReadAll(self, hDIO, binary = True, flipBit = False):
 		"""Read all 8 ports of data from the device.
 
 		The function does not return until the requested port has been 
@@ -620,12 +691,19 @@ class BCS_IO(ErrorHandler, Utilities):
 		hDIO (long)    - Handle of the device to read
 		binary (bool)  - If True: A string of binary output will be returned
 						 If False: A string of integer output will be returned
+		flipBit (bool) - If True: Will change all 0 to 1 and all 1 to 0
+						 If False: Will not change 0 or 1
 		ucLPort (long) - The value of the four input ports
 		ucHPort (long) - The value of the four output ports
 		ErrMsg (str)   - String containing any error messages
 
 		Example Input: RP_ReadAll(hDIO)
 		"""
+
+		#Account for incorrect BCS setup
+		if (self.installError != None):
+			print("ERROR:", self.installError)
+			return None, None
 
 		#Initialize c++ reference variables
 		ucLPort = ucPVal = ctypes.c_ulong()
@@ -641,6 +719,10 @@ class BCS_IO(ErrorHandler, Utilities):
 			#Take appropriate action
 			ucLPort = self.int2bin(ucLPort.value)
 			ucHPort = self.int2bin(ucHPort.value)
+			
+			if (flipBit):
+				ucLPort = self.bitFlip(ucLPort)
+				ucHPort = self.bitFlip(ucHPort)
 			if (not binary):
 				ucLPort = self.bitFlip(ucLPort)
 				ucHPort = self.bitFlip(ucHPort)
@@ -652,7 +734,7 @@ class BCS_IO(ErrorHandler, Utilities):
 		else:
 			return -1, -1
 
-	def RP_ReadAll_SN(self, SN, binary = True):
+	def RP_ReadAll_SN(self, SN, binary = True, flipBit = False):
 		"""Read all 8 ports of data from the device.
 		The function will open the device, perform the function, 
 		and then close the device. 
@@ -667,12 +749,19 @@ class BCS_IO(ErrorHandler, Utilities):
 		SN (str)       - Serial number of the board
 		binary (bool)  - If True: A string of binary output will be returned
 						 If False: A string of integer output will be returned
+		flipBit (bool) - If True: Will change all 0 to 1 and all 1 to 0
+						 If False: Will not change 0 or 1
 		ucLPort (long) - The value of the four input ports
 		ucHPort (long) - The value of the four output ports
 		ErrMsg (str)   - String containing any error messages
 
 		Example Input: RP_ReadAll_SN("RP0002D1")
 		"""
+
+		#Account for incorrect BCS setup
+		if (self.installError != None):
+			print("ERROR:", self.installError)
+			return None
 
 		#Initialize c++ reference variables
 		ucLPort = ucPVal = ctypes.c_ulong()
@@ -688,6 +777,10 @@ class BCS_IO(ErrorHandler, Utilities):
 			#Take appropriate action
 			ucLPort = self.int2bin(ucLPort.value)
 			ucHPort = self.int2bin(ucHPort.value)
+			
+			if (flipBit):
+				ucLPort = self.bitFlip(ucLPort)
+				ucHPort = self.bitFlip(ucHPort)
 			if (not binary):
 				ucLPort = self.bitFlip(ucLPort)
 				ucHPort = self.bitFlip(ucHPort)
@@ -723,6 +816,11 @@ class BCS_IO(ErrorHandler, Utilities):
 
 		Example Input: RP_WritePort(hDIO, 16, "11110111")
 		"""
+
+		#Account for incorrect BCS setup
+		if (self.installError != None):
+			print("ERROR:", self.installError)
+			return None
 
 		#Initialize c++ reference variables
 		ErrMsg = ctypes.create_string_buffer(255) #Create a 255 byte buffer, initialized to NUL bytes
@@ -769,6 +867,11 @@ class BCS_IO(ErrorHandler, Utilities):
 		Example Input: RP_WritePort_SN("RP0002D1", 0, "11110111")
 		"""
 
+		#Account for incorrect BCS setup
+		if (self.installError != None):
+			print("ERROR:", self.installError)
+			return None
+
 		#Initialize c++ reference variables
 		ErrMsg = ctypes.create_string_buffer(255) #Create a 255 byte buffer, initialized to NUL bytes
 
@@ -810,6 +913,11 @@ class BCS_IO(ErrorHandler, Utilities):
 
 		Example Input: RP_WriteAll(hDIO, "11111111111111110000000000000000", "11111111111111111111111111111111")
 		"""
+
+		#Account for incorrect BCS setup
+		if (self.installError != None):
+			print("ERROR:", self.installError)
+			return None
 
 		#Initialize c++ reference variables
 		ErrMsg = ctypes.create_string_buffer(255) #Create a 255 byte buffer, initialized to NUL bytes
@@ -856,6 +964,11 @@ class BCS_IO(ErrorHandler, Utilities):
 
 		Example Input: RP_WriteAll_SN("RP0002D1", "11111111111111110000000000000000", "11111111111111111111111111111111")
 		"""
+
+		#Account for incorrect BCS setup
+		if (self.installError != None):
+			print("ERROR:", self.installError)
+			return None
 
 		#Initialize c++ reference variables
 		ErrMsg = ctypes.create_string_buffer(255) #Create a 255 byte buffer, initialized to NUL bytes
