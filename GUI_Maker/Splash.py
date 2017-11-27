@@ -1,4 +1,4 @@
-#Version: 1.0
+__version__ = "1.0.0"
 
 import os
 import sys
@@ -304,6 +304,15 @@ class SplashScreen(Utitlities):
 	"""Shows a splash screen before running your code.
 	This shows the user things are happening while your program loads.
 	Modified code from: https://wiki.wxpython.org/SplashScreen%20While%20Loading
+	_________________________________________________________________________
+
+	EAMPLE USAGE
+	from modules.GUI_Maker.Splash import SplashScreen
+	splashScreen = SplashScreen()
+	splashScreen.setTimeout(1500)
+	imagePath = "resources/valeoSplashScreen.bmp"
+	splashScreen.setImage(imagePath)
+	splashScreen.finish()
 	"""
 
 	def __init__(self, parent = None, exeOnly = True):
