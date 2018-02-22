@@ -1,0 +1,3011 @@
+__version__ = "4.1.0"
+
+#TO DO
+# - Add File Drop: https://www.blog.pythonlibrary.org/2012/06/20/wxpython-introduction-to-drag-and-drop/
+# - Add Wrap Sizer: https://www.blog.pythonlibrary.org/2014/01/22/wxpython-wrap-widgets-with-wrapsizer/
+# - Look through these demos for more things: https://github.com/wxWidgets/Phoenix/tree/master/demo
+# - Look through the menu examples: https://www.programcreek.com/python/example/44403/wx.EVT_FIND
+
+# - Add handler indexing
+#		~ See Operation Table on: https://docs.python.org/3/library/stdtypes.html#typeiter
+
+#IMPORT CONTROLS
+##Here the user can turn on and off specific parts of the module, 
+##which will reduce the overall size of a generated .exe.
+##To do so, comment out the block of import statements
+##WARNING: If you turn off a feature, make sure you dont try to use it.
+
+#Import standard elements to interact with the computer
+import os
+import sys
+import time
+# import ctypes
+# import string
+# import builtins
+import inspect
+import functools
+
+
+#Import wxPython elements to create GUI
+import wx
+# import wx.adv
+# import wx.grid
+# import wx.lib.masked
+# import wx.lib.newevent
+# import wx.lib.splitter
+# import wx.lib.agw.floatspin
+# import wx.lib.mixins.listctrl
+# import wx.lib.agw.fourwaysplitter
+
+#Import matplotlib elements to add plots to the GUI
+# import matplotlib
+# matplotlib.use('WXAgg')
+# matplotlib.get_py2exe_datafiles()
+# import matplotlib.pyplot as plt
+# from matplotlib.backends.backend_wxagg import FigureCanvas
+
+
+#Import py2exe elements for creating a .exe of the GUI
+# import sys; sys.argv.append('py2exe')
+# from distutils.core import setup
+# import py2exe
+
+
+#Import cryptodome to encrypt and decrypt files
+# import Cryptodome.Random
+# import Cryptodome.Cipher.AES
+# import Cryptodome.PublicKey.RSA
+# import Cryptodome.Cipher.PKCS1_OAEP
+
+
+#Import communication elements for talking to other devices such as printers, the internet, a raspberry pi, etc.
+# import serial
+# import socket
+
+
+#Import barcode software for drawing and decoding barcodes
+# import elaphe
+
+
+#Import multi-threading to run functions as background processes
+# import queue
+import threading
+# import subprocess
+
+
+#Import needed support modules
+# import re
+# import atexit
+# import netaddr
+# import PIL.Image
+
+
+#Import user-defined modules
+# from .ExcelManipulator_6 import Excel #Used to make wxGrid objects interactable with excel
+
+
+#Database Interaction
+# from .DatabaseAPI_12 import Database
+
+
+#Required Modules
+##py -m pip install
+	# wxPython
+	# openpyxl
+	# numpy
+	# matplotlib
+	# py2exe
+	# pillow
+	# pycryptodomex
+	# atexit
+	# netaddr
+	# elaphe
+	# python3-ghostscript "https://pypi.python.org/pypi/python3-ghostscript/0.5.0#downloads"
+	# sqlite3
+
+##User Created
+	#ExcelManipulator
+
+##Module Patches (Replace the following files with these from my computer)
+	#C:\Python34\Lib\site-packages\wx\lib\masked\maskededit.py
+
+##Module dependancies (Install the following .exe files)
+	#"Ghostscript AGPL Release" on "https://ghostscript.com/download/gsdnld.html"
+		#Make sure you install the 32 bit version if you are using 32 bit python
+		#Add the .dll location to your PATH enviroment variable. Mine was at "C:\Program Files (x86)\gs\gs9.20\bin"
+
+#_________________________________________________________________________#
+#                                                                         #
+#            !!!    Do not change code below this point    !!!            #
+#_________________________________________________________________________#
+#                                                                         #
+
+#Global Variables
+# idGen = 2000 #Used to generate individual identifyers
+# idCatalogue = {} #Used to keep track of important IDs
+valueQueue = {} #Used to keep track of values the user wants to have
+shownWindowsList = [] #Used to keep track of which windows are being shown
+dragDropDestination = None #Used to help a source know if a destination is itself
+nestingCatalogue = {} #Used to keep track of what is nested in what
+
+#Controllers
+def build(*args, **kwargs):
+	"""Starts the GUI making process."""
+
+	return Controller(*args, **kwargs)
+
+#Decorators
+def wrap_makeWidget():
+	def decorator(function):
+		@functools.wraps(function)
+		def wrapper(self, *args, **kwargs):
+			"""Makes a widget object"""
+
+			handle = handle_Widget()
+			function(self, *args, handle = handle, **kwargs)
+
+			return handle
+		return wrapper
+	return decorator
+
+def wrap_makeSizer():
+	def decorator(function):
+		@functools.wraps(function)
+		def wrapper(self, *args, **kwargs):
+			"""Makes a sizer object"""
+
+			handle = handle_Sizer()
+			handle.myWindow = self
+
+			if (len(self.getAddressValue(self.nestingAddress + [id(self)])) <= 1):
+				#The first sizer added to a window is automatically nested
+				handle.nested = True
+
+			function(self, *args, handle = handle, **kwargs)
+
+			return handle
+		return wrapper
+	return decorator
+
+def wrap_makePanel():
+	def decorator(function):
+		@functools.wraps(function)
+		def wrapper(self, *args, **kwargs):
+			"""Makes a panel object"""
+
+			handle = handle_Panel()
+			handle.nested = True
+			function(self, *args, handle = handle, **kwargs)
+
+			return handle
+		return wrapper
+	return decorator
+
+def wrap_makeWindow():
+	def decorator(function):
+		@functools.wraps(function)
+		def wrapper(self, *args, **kwargs):
+			"""Makes a window object"""
+
+			handle = handle_Window()
+			handle.nested = True
+			function(self, *args, handle = handle, **kwargs)
+
+			return handle
+		return wrapper
+	return decorator
+
+def wrap_makeSplitter():
+	def decorator(function):
+		@functools.wraps(function)
+		def wrapper(self, *args, **kwargs):
+			"""Makes a window object"""
+
+			handle = handle_Splitter()
+			function(self, *args, handle = handle, **kwargs)
+
+			return handle
+		return wrapper
+	return decorator
+
+def wrap_nestingAddress():
+	def decorator(function):
+		@functools.wraps(function)
+		def wrapper(self, *args, **kwargs):
+			"""Makes a window object"""
+
+			#Unpack arguments
+			arguments = self.getArguments(function, args, kwargs, "handle", {"handle": None})
+			handle = arguments["handle"]
+
+			function(self, *args, **kwargs)
+
+			handle.nestingAddress = self.nestingAddress + [id(self)]
+			self.setAddressValue(handle.nestingAddress + [id(handle)], {None: handle})
+
+			if (not isinstance(self, Controller)):
+				self.allowBuildErrors = nestingCatalogue[self.nestingAddress[0]][None]
+
+
+			return handle
+		return wrapper
+	return decorator
+
+def wrap_addLabel():
+	def decorator(function):
+		@functools.wraps(function)
+		def wrapper(self, *args, **kwargs):
+			"""Makes objects callable from a label."""
+
+			#Unpack arguments
+			arguments = self.getArguments(function, args, kwargs, ["handle", "myLabel"], {"handle": None, "myLabel": None})
+			handle = arguments["handle"]
+			myLabel = arguments["myLabel"]
+
+			#Store data
+			handle.myLabel = myLabel
+
+			#Run function
+			function(self, *args, **kwargs)
+
+			#Add object to internal catalogue
+			if (myLabel != None):
+				if (myLabel in self.labelCatalogue):
+					warningMessage = "Overwriting label association for {} in ".format(myLabel)
+					raise Warning(warningMessage)
+
+				self.labelCatalogue[handle.myLabel] = handle
+				self.labelCatalogueOrder.append(handle.myLabel)
+			elif (isinstance(self, Controller)):
+				self.unnamedWindowList.append(handle)
+
+			return handle
+		return wrapper
+	return decorator
+
+def wrap_setParent():
+	def decorator(function):
+		@functools.wraps(function)
+		def wrapper(self, *args, **kwargs):
+			"""Determines where to put the object."""
+
+			#Unpack arguments
+			arguments = self.getArguments(function, args, kwargs, ["handle", "parent"], {"handle": None, "parent": None})
+			handle = arguments["handle"]
+			parent = arguments["parent"]
+
+			#Determine parent
+			if (parent != None):
+				handle.parent = parent
+			else:
+				if (isinstance(self, handle_Window)):
+					if (self.mainPanel != None):
+						handle.parent = self.mainPanel
+					else:
+						handle.parent = self
+
+				elif (isinstance(self, handle_Sizer)):
+					if (self.myWindow.mainPanel != None):
+						handle.parent = self.myWindow.mainPanel
+					else:
+						handle.parent = self.myWindow
+			
+			#Run Function
+			function(self, *args, **kwargs)
+
+			return handle
+		return wrapper
+	return decorator
+
+def wrap_setLocation(default_flags = "c1"):
+	def decorator(function):
+		@functools.wraps(function)
+		def wrapper(self, *args, **kwargs):
+			"""Determines where to put the object."""
+
+			#Unpack arguments
+			arguments = self.getArguments(function, args, kwargs, ["handle", "flags", "flex"], {"handle": None, "flags": default_flags, "flex": 0})
+			handle = arguments["handle"]
+			flags = arguments["flags"]
+			flex = arguments["flex"]
+
+			#Which sizer is being used?
+			handle.sizer = self
+
+			#Run Function
+			function(self, *args, **kwargs)
+
+			#Add it to the sizer
+			handle.sizer.nest(handle, flex = flex, flags = flags)
+
+			return handle
+		return wrapper
+	return decorator
+
+def wrap_setSelection():
+	def decorator(function):
+		@functools.wraps(function)
+		def wrapper(self, *args, **kwargs):
+			"""Determines if the object is selected by default."""
+
+			#Unpack arguments
+			arguments = self.getArguments(function, args, kwargs, ["handle", "selected"], {"handle": None, "selected": None})
+			handle = arguments["handle"]
+			selected = arguments["selected"]
+
+			function(self, *args, **kwargs)
+
+			#Determine if it is selected by default
+			if (selected):
+				handle.thing.SetDefault() 
+
+			return handle
+		return wrapper
+	return decorator
+
+def wrap_setDirection():
+	def decorator(function):
+		@functools.wraps(function)
+		def wrapper(self, *args, **kwargs):
+			"""Controls which direction things go in a sizer."""
+
+			#Unpack arguments
+			arguments = self.getArguments(function, args, kwargs, ["handle", "veritcal"], {"handle": None, "veritcal": None})
+			handle = arguments["handle"]
+			veritcal = arguments["veritcal"]
+
+			if (vertical == None):
+				handle.direction = wx.BOTH
+			elif (vertical):
+				handle.direction = wx.VERTICAL
+			else:
+				handle.direction = wx.HORIZONTAL
+
+			#Run function
+			function(self, *args, **kwargs)
+
+			return handle
+		return wrapper
+	return decorator
+
+def wrap_setState_hidden():
+	def decorator(function):
+		@functools.wraps(function)
+		def wrapper(self, *args, **kwargs):
+			"""Determines if the object is hidden."""
+
+			#Unpack arguments
+			arguments = self.getArguments(function, args, kwargs, ["handle", "hidden"], {"handle": None, "hidden": None})
+			handle = arguments["handle"]
+			hidden = arguments["hidden"]
+
+			function(self, *args, **kwargs)
+			
+			#Determine visibility
+			if (hidden):
+				if (isinstance(self, handle_Sizer)):
+					self.addFinalFunction(handle.thing.ShowItems, False)
+				else:
+					handle.thing.Hide()
+
+			return handle
+		return wrapper
+	return decorator
+
+def wrap_setState_disabled():
+	def decorator(function):
+		@functools.wraps(function)
+		def wrapper(self, *args, **kwargs):
+			"""Determines if the object is enabled."""
+
+			#Unpack arguments
+			arguments = self.getArguments(function, args, kwargs, ["handle", "enabled"], {"handle": None, "enabled": None})
+			handle = arguments["handle"]
+			enabled = arguments["enabled"]
+
+			function(self, *args, **kwargs)
+			
+			#Determine if it is enabled
+			if (not enabled):
+				handle.thing.Disable()
+
+			return handle
+		return wrapper
+	return decorator
+
+def wrap_checkType(typeNeeded = []):
+	def decorator(function):
+		@functools.wraps(function)
+		def wrapper(self, *args, **kwargs):
+			"""Makes sure an object is of a specific type"""
+
+			#Unpack arguments
+			arguments = self.getArguments(function, args, kwargs, ["handle"], {"handle": None})
+			handle = arguments["handle"]
+
+			#Ensure correct format
+			if ((not isinstance(typeNeeded, list)) and (not isinstance(typeNeeded, tuple))):
+				typeNeeded = [typeNeeded]
+
+			#Error check
+			if (handle.type not in typeNeeded):
+				errorMessage = "Cannot use type {} with the function {}".format(handle.type, type(function).__name__)
+				raise TypeError(errorMessage)
+
+			#Run function
+			function(self, *args, **kwargs)
+
+			return handle
+		return wrapper
+	return decorator
+
+#Iterators
+class Iterator(object):
+	"""Used by handle objects to iterate over their nested objects."""
+
+	def __init__(self, data):
+		self.data = data
+
+	def __iter__(self):
+		return self
+
+	def __next__(self):
+		if not self.data:
+			raise StopIteration
+		return self.data.pop()
+
+#Global Inheritance Classes
+class Utilities():
+	"""Contains common functions needed for various other functions.
+	This is here for convenience in programming.
+	"""
+
+	def __init__(self):
+		"""Defines the internal variables needed to run.
+
+		Example Input: Meant to be inherited by Controller().
+		"""
+
+		self.keyOptions = {
+			"0": 48, "1": 49, "2": 50, "3": 51, "4": 52, "5": 53, "6": 54,  "7": 55, "8": 56, "9": 57,
+			"numpad+0": 324, "numpad+1": 325, "numpad+2": 326, "numpad+3": 327, "numpad+4": 328, 
+			"numpad+5": 329, "numpad+6": 330, "numpad+7": 331, "numpad+8": 332, "numpad+9": 333, 
+
+			#For some reason lower case letters are being read as upper case. To Do: Investigate why and fix it
+			# "A": 65, "B": 66, "C": 67, "D": 68, "E": 69, "F": 70, "G": 71, "H": 72, "I": 73, "J": 74,
+			# "K": 75, "L": 76, "M": 77, "N": 78, "O": 79, "P": 80, "Q": 81, "R": 82, "S": 83, "T": 84,
+			# "U": 85, "V": 86, "W": 87, "X": 88, "Y": 89, "Z": 90,
+
+			"a": 65, "b": 66, "c": 67, "d": 68, "e": 69, "f": 70, "g": 71, "h": 72, "i": 73, "j": 74,
+			"k": 75, "l": 76, "m": 77, "n": 78, "o": 79, "p": 80, "q": 81, "r": 82, "s": 83, "t": 84,
+			"u": 85, "v": 86, "w": 87, "x": 88, "y": 89, "z": 90,
+
+			# "a": 97, "b": 98, "c": 99, "d": 100, "e": 101, "f": 102, "g": 103,  "h": 104, "i": 105,
+			# "j": 106, "k": 107, "l": 108, "m": 109, "n": 110, "o": 111, "p": 112,  "q": 113,
+			# "r": 114, "s": 115, "t": 116, "u": 117, "v": 118, "w": 119, "x": 120, "y": 121, "z": 122,
+			
+			"ctrl+a": 1, "ctrl+b": 2, "ctrl+c": 3, "ctrl+d": 4, "ctrl+e": 5, "ctrl+f": 6, "ctrl+g": 7,
+			"ctrl+h": 8, "ctrl+i": 9, "ctrl+j": 10, "ctrl+k": 11, "ctrl+l": 12, "ctrl+m": 13, "ctrl+n": 14, 
+			"ctrl+o": 15, "ctrl+p": 16, "ctrl+q": 17, "ctrl+r": 18, "ctrl+s": 19, "ctrl+t": 20,
+			"ctrl+u": 21, "ctrl+v": 22, "ctrl+w": 23, "ctrl+x": 24, "ctrl+y": 25, "ctrl+z": 26,
+
+			"!": 33, "\"": 34, "#": 35, "$": 36, "%": 37, "&": 38, "'": 39, "(": 40, ")": 41, 
+			"*": 42, "+": 43, ",": 44, "-": 45, ".": 46, "/": 47, ":": 58, ";": 59, "<": 60, 
+			"=": 61, ">": 62, "?": 63, "@": 64, "[": 91, "\\": 92, "]": 93, "^": 94, "_": 95, 
+			"`": 96, "{": 123, "|": 124, "}": 125, "~": 126,
+
+			"start": 300, "buttonL": 301, "buttonR": 302, "cancel": 303, "buttonM": 304, 
+			"left": 314, "up": 315, "right": 316, "down": 317, "windows+left": 393, "windows+right": 394,
+			"numpad+left": 376, "numpad+up": 377, "numpad+right": 378, "numpad+down": 379, 
+
+			"none":  0, "null": 0, "backspace": 8, "tab": 9, "tab_hor": 9, "tab_vert": 11, "enter": 13, 
+			"return": 13, "\n": 13, "esc": 27, "escape": 27, "space": 32, " ": 32,  "del": 127, 
+			"delete": 127, "clear": 305, "shift": 306, "alt": 307, "control": 308, "ctrl": 308, 
+			"crtlRaw": 308, "menu": 309, "pause": 310, "capital": 311, "end": 312, "home": 313, 
+			"select": 318, "print": 319, "execute": 320, "snapshot": 321, "insert": 322, "help": 323,
+			"multiply": 334, "add": 335, "separate": 336, "subtract": 337, "decimal": 338, "divide": 339,
+			"numlock": 364, "scroll": 365, "pageup": 366, "pagedown": 367,
+			
+			"f1": 340, "f2": 341, "f3": 342, "f4": 343, "f5": 344, "f6": 345, "f7": 346, "f8": 347, "f9": 348,
+			"f10": 349, "f11": 350, "f12": 351, "f13": 352, "f14": 353, "f15": 354, "f16": 355, "f17": 356,
+			"f18": 357, "f19": 358, "f20": 359, "f21": 360, "f22": 361, "f23": 362, "f24": 363,
+			"numpad+f1": 371, "numpad+f2": 372,  "numpad+f3": 373, "numpad+f4": 374, 
+
+			"numpad+enter": 370, "numpad+equal": 386, "numpad+=": 386, "numpad+multiply": 387, 
+			"numpad+*": 387, "numpad+add": 388, "numpad++": 388, "numpad+subtract": 390, "numpad+-": 390,
+			"numpad+decimal": 391, "numpad+divide": 392, "numpad+/": 392, "numpad+\\": 392,
+
+			"numpad+space": 368, "numpad+ ": 368, "numpad+tab": 369, "numpad+end": 382, "numpad+begin": 383, 
+			"numpad+insert": 384, "numpad+delete": 385, "numpad+home": 375, "numpad+separate": 389,
+			"numpad+pageup": 380, "numpad+pagedown": 381, "windows+menu": 395, "command": 308, "cmd": 308,
+
+			"special+1": 193, "special+2": 194, "special+3": 195, "special+4": 196, "special+5": 197,
+			"special+6": 198, "special+7": 199, "special+8": 200, "special+9": 201, "special+10": 202,
+			"special+11": 203, "special+12": 204, "special+13": 205, "special+14": 206, "special+15": 207,
+			"special+16": 208, "special+17": 209, "special+18": 210, "special+19": 211, "special+20": 212}
+
+	#Binding Functions
+	def formatFunctionInputList(self, myFunctionList, myFunctionArgsList, myFunctionKwargsList):
+		"""Formats the args and kwargs for various internal functions."""
+
+		#Ensure that multiple function capability is given
+		##Functions
+		if (myFunctionList != None):
+			#Compensate for the user not making it a list
+			if (type(myFunctionList) != list):
+				if (type(myFunctionList) == tuple):
+					myFunctionList = list(myFunctionList)
+				else:
+					myFunctionList = [myFunctionList]
+
+			#Fix list order so it is more intuitive
+			if (len(myFunctionList) > 1):
+				myFunctionList.reverse()
+
+		##args
+		if (myFunctionArgsList != None):
+			#Compensate for the user not making it a list
+			if (type(myFunctionArgsList) != list):
+				if (type(myFunctionArgsList) == tuple):
+					myFunctionArgsList = list(myFunctionArgsList)
+				else:
+					myFunctionArgsList = [myFunctionArgsList]
+
+			#Fix list order so it is more intuitive
+			if (len(myFunctionList) > 1):
+				myFunctionArgsList.reverse()
+
+			if (len(myFunctionList) == 1):
+				myFunctionArgsList = [myFunctionArgsList]
+
+		##kwargs
+		if (myFunctionKwargsList != None):
+			#Compensate for the user not making it a list
+			if (type(myFunctionKwargsList) != list):
+				if (type(myFunctionKwargsList) == tuple):
+					myFunctionKwargsList = list(myFunctionKwargsList)
+				else:
+					myFunctionKwargsList = [myFunctionKwargsList]
+
+			#Fix list order so it is more intuitive
+			if (len(myFunctionList) > 1):
+				myFunctionKwargsList.reverse()
+
+		return myFunctionList, myFunctionArgsList, myFunctionKwargsList
+
+	def formatFunctionInput(self, i, myFunctionList, myFunctionArgsList, myFunctionKwargsList):
+		"""Formats the args and kwargs for various internal functions."""
+
+		myFunction = myFunctionList[i]
+
+		#Skip empty functions
+		if (myFunction != None):
+			#Use the correct args and kwargs
+			if (myFunctionArgsList != None):
+				myFunctionArgs = myFunctionArgsList[i]
+			else:
+				myFunctionArgs = myFunctionArgsList
+
+			if (myFunctionKwargsList != None):
+				myFunctionKwargs = myFunctionKwargsList[i]
+				
+			else:
+				myFunctionKwargs = myFunctionKwargsList
+
+			#Check for User-defined function
+			if (type(myFunction) != str):
+				#The address is already given
+				myFunctionEvaluated = myFunction
+			else:
+				#Get the address of myFunction
+				myFunctionEvaluated = eval(myFunction)
+
+			#Ensure the *args and **kwargs are formatted correctly 
+			if (myFunctionArgs != None):
+				#Check for single argument cases
+				if ((type(myFunctionArgs) != list)):
+					#The user passed one argument that was not a list
+					myFunctionArgs = [myFunctionArgs]
+				# else:
+				# 	if (len(myFunctionArgs) == 1):
+				# 		#The user passed one argument that is a list
+				# 		myFunctionArgs = [myFunctionArgs]
+
+			#Check for user error
+			if ((type(myFunctionKwargs) != dict) and (myFunctionKwargs != None)):
+				errorMessage = "myFunctionKwargs must be a dictionary for function {}".format(myFunctionEvaluated.__repr__())
+				raise ValueError(errorMessage)
+
+		return myFunctionEvaluated, myFunctionArgs, myFunctionKwargs
+
+	def betterBind(self, eventType, thing, myFunctionList, myFunctionArgsList = None, myFunctionKwargsList = None, myId = None, mode = 1):
+		"""Binds wxObjects in a better way.
+		Inspired by: "Florian Bosch" on http://stackoverflow.com/questions/173687/is-it-possible-to-pass-arguments-into-event-bindings
+		Special thanks for help on mult-functions to "Mike Driscoll" on http://stackoverflow.com/questions/11621833/how-to-bind-2-functions-to-a-single-event
+
+		eventType (CommandEvent) - The wxPython event to be bound
+		thing (wxObject)         - What is being bound to
+		myFunctionList (str)     - The function that will be ran when the event occurs
+		myFunctionArgs (list)    - Any input arguments for myFunction. A list of multiple functions can be given
+		myFunctionKwargs (dict)  - Any input keyword arguments for myFunction. A dictionary of variables for each function can be given as a list. The index of the variables must be the same as the index for the functions 
+		mode (int)               - Dictates how things are bound. Used for special cases
+		_________________________________________________________________________
+
+		MULTIPLE FUNCTION ORDER
+		The functions are ran in the order given; from left to right.
+
+		MULTIPLE FUNCTION FAILURE
+		Make it a habbit to end all bound functions with 'event.Skip()'. 
+		If the bound function does not end with 'event.Skip()', then it will overwrite a previously bound function.
+		This will result in the new function being ran in place of both functions.
+		_________________________________________________________________________
+
+		Example Input: betterBind(wx.EVT_BUTTON, menuItem, "self.onExit", "Extra Information")
+		Example Input: betterBind(wx.EVT_BUTTON, menuItem, ["self.toggleObjectWithLabel", "self.onQueueValue", ], [["myCheckBox", True], None])
+		"""
+
+		#Create the sub-function that does the binding
+		def bind(self, eventType, thing, myFunctionEvaluated, myFunctionArgs, myFunctionKwargs, myId, mode):
+			"""This sub-function is needed to make the multiple functions work properly."""
+
+			#Get the class type in order to bind the object to the correct thing
+			thingClass = thing.GetClassName()
+
+			##Determine how to bind the object
+			if (thingClass == "wxWindow"):
+				if (mode == 2):
+					bindObject = thing
+				else:
+					bindObject = self
+
+			elif (thingClass == "wxMenuItem"):
+				bindObject = self
+			else:
+				bindObject = thing
+
+			#Check for no provided id
+			if (myId == None):
+				myId = wx.ID_ANY
+
+			#Typical binding mode
+			if (mode == 1):
+				#Has both args and kwargs
+				if ((myFunctionKwargs != None) and (myFunctionArgs != None)):
+					bindObject.Bind(eventType, lambda event: myFunctionEvaluated(event, *myFunctionArgs, **myFunctionKwargs), thing, id = myId)
+
+				#Has args, but not kwargs
+				elif (myFunctionArgs != None):
+					bindObject.Bind(eventType, lambda event: myFunctionEvaluated(event, *myFunctionArgs), thing, id = myId)
+
+				#Has kwargs, but not args
+				elif (myFunctionKwargs != None):
+					bindObject.Bind(eventType, lambda event: myFunctionEvaluated(event, **myFunctionKwargs), thing, id = myId)
+
+				#Has neither args nor kwargs
+				else:
+					bindObject.Bind(eventType, lambda event: myFunctionEvaluated(event), thing, id = myId)
+
+			#Binding mode for window key bindings
+			elif (mode == 2):
+				#Has both args and kwargs
+				if ((myFunctionKwargs != None) and (myFunctionArgs != None)):
+					bindObject.Bind(eventType, lambda event: myFunctionEvaluated(event, *myFunctionArgs, **myFunctionKwargs), id = myId)
+
+				#Has args, but not kwargs
+				elif (myFunctionArgs != None):
+					bindObject.Bind(eventType, lambda event: myFunctionEvaluated(event, *myFunctionArgs), id = myId)
+
+				#Has kwargs, but not args
+				elif (myFunctionKwargs != None):
+					bindObject.Bind(eventType, lambda event: myFunctionEvaluated(event, **myFunctionKwargs), id = myId)
+
+				#Has neither args nor kwargs
+				else:
+					bindObject.Bind(eventType, lambda event: myFunctionEvaluated(event), id = myId)
+
+			else:
+				errorMessage = "Unknown mode {} for betterBind()".format(mode)
+				raise TypeError(errorMessage)
+
+		#Skip empty functions
+		if (myFunctionList != None):
+			myFunctionList, myFunctionArgsList, myFunctionKwargsList = self.formatFunctionInputList(myFunctionList, myFunctionArgsList, myFunctionKwargsList)
+			#Run each function
+			for i, myFunction in enumerate(myFunctionList):
+				#Skip empty functions
+				if (myFunction != None):
+					myFunctionEvaluated, myFunctionArgs, myFunctionKwargs = self.formatFunctionInput(i, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
+					bind(self, eventType, thing, myFunctionEvaluated, myFunctionArgs, myFunctionKwargs, myId, mode)
+
+	def getAddressValue(self, address):
+		"""Returns the value of a given address for a dictionary of dictionaries.
+		Special thanks to DomTomCat for how to get a value from a dictionary of dictionaries of n depth on https://stackoverflow.com/questions/14692690/access-nested-dictionary-items-via-a-list-of-keys
+		"""
+		global nestingCatalogue
+
+		catalogue = nestingCatalogue
+		for key in address: 
+			catalogue = catalogue[key]
+		return catalogue
+
+	def setAddressValue(self, address, value):
+		"""Returns the value of a given address for a dictionary of dictionaries.
+		Special thanks to eafit for how to set a value of a dictionary of dictionaries of n depth on https://stackoverflow.com/questions/14692690/access-nested-dictionary-items-via-a-list-of-keys
+		"""
+		global nestingCatalogue
+
+		catalogue = nestingCatalogue
+		for key in address[:-1]:
+			catalogue = catalogue.setdefault(key, {})
+		catalogue[address[-1]] = value
+
+	#Settings
+	def getItemMod(self, flags = None, stretchable = True, border = 5):
+		"""Returns modable item attributes, stretchability, and border.
+
+		flags (list) - Which flag to add to the sizer
+			How the sizer item is aligned in its cell.
+			"ac" (str) - Align the item to the center
+			"av" (str) - Align the item to the vertical center only
+			"ah" (str) - Align the item to the horizontal center only
+			"at" (str) - Align the item to the top
+			"ab" (str) - Align the item to the bottom
+			"al" (str) - Align the item to the left
+			"ar" (str) - Align the item to the right
+
+			Which side(s) the border width applies to.
+			"ba" (str) - Border the item on all sides
+			"bt" (str) - Border the item to the top
+			"bb" (str) - Border the item to the bottom
+			"bl" (str) - Border the item to the left
+			"br" (str) - Border the item to the right
+
+			Whether the sizer item will expand or change shape.
+			"ex" (str) - Item expands to fill as much space as it can
+			"ea" (str) - Item expands, but maintain aspect ratio
+			"fx" (str) - Item will not change size when the window is resized
+			"fh" (str) - Item will still take up space, even if hidden
+
+			These are some common combinations of flags.
+			"c1" (str) - "ac", "ba", and "ex"
+			"c2" (str) - "ba" and "ex"
+			"c3" (str) - "ba" and "ea"
+			"c4" (str) - "al", "bl", "br"
+
+		stretchable (bool) - Whether or not the item will grow and shrink with respect to a parent sizer
+		border (int)       - The width of the item's border
+
+		Example Input: getItemMod("ac")
+		Example Input: getItemMod("ac", border = 10)
+		Example Input: getItemMod("c1")
+		"""
+
+		#Determine the flag types
+		fixedFlags = ""
+		if (flags != None):
+			#Ensure that 'flags' is a list
+			if (type(flags) != list):
+				flags = [flags]
+
+			#Evaluate each flag
+			for flag in flags:
+				flag = flag.lower()
+				##Typical combinations
+				if (flag[0] == "c"):
+					#Align to center, Border all sides, expand to fill space
+					if (flag[1] == "1"):
+						if (fixedFlags != ""):
+							fixedFlags += "|"
+						fixedFlags += "wx.ALIGN_CENTER|wx.ALL|wx.EXPAND"
+
+					#Border all sides, expand to fill space
+					elif (flag[1] == "2"):
+						if (fixedFlags != ""):
+							fixedFlags += "|"
+						fixedFlags += "wx.ALL|wx.EXPAND"
+
+					#Border all sides, expand to fill space while maintaining aspect ratio
+					elif (flag[1] == "3"):
+						if (fixedFlags != ""):
+							fixedFlags += "|"
+						fixedFlags += "wx.ALL|wx.SHAPED"
+
+					#Align to left, Border left and right side
+					elif (flag[1] == "4"):
+						if (fixedFlags != ""):
+							fixedFlags += "|"
+						fixedFlags += "wx.ALIGN_LEFT|wx.LEFT|wx.RIGHT"
+
+					#Unknown Action
+					else:
+						errorMessage = "Unknown combination flag {}".format(flag)
+						raise ValueError(errorMessage)
+
+				##Align the Item
+				elif (flag[0] == "a"):
+					#Center 
+					if (flag[1] == "c"):
+						if (fixedFlags != ""):
+							fixedFlags += "|"
+						fixedFlags += "wx.ALIGN_CENTER"
+
+					#Center Vertical
+					elif (flag[1] == "v"):
+						if (fixedFlags != ""):
+							fixedFlags += "|"
+						fixedFlags += "wx.ALIGN_CENTER_VERTICAL"
+
+					#Center Horizontal
+					elif (flag[1] == "h"):
+						fixedFlags += "wx.ALIGN_CENTER_HORIZONTAL"
+						
+					#Top
+					elif (flag[1] == "t"):
+						if (fixedFlags != ""):
+							fixedFlags += "|"
+						fixedFlags += "wx.ALIGN_TOP"
+						
+					#Bottom
+					elif (flag[1] == "b"):
+						if (fixedFlags != ""):
+							fixedFlags += "|"
+						fixedFlags += "wx.ALIGN_BOTTOM"
+						
+					#Left
+					elif (flag[1] == "l"):
+						if (fixedFlags != ""):
+							fixedFlags += "|"
+						fixedFlags += "wx.ALIGN_LEFT"
+						
+					#Right
+					elif (flag[1] == "r"):
+						if (fixedFlags != ""):
+							fixedFlags += "|"
+						fixedFlags += "wx.ALIGN_RIGHT"
+
+					#Unknown Action
+					else:
+						errorMessage = "Unknown alignment flag {}".format(flag)
+						raise ValueError(errorMessage)
+
+				##Border the Item
+				elif (flag[0] == "b"):
+					#All
+					if (flag[1] == "a"):
+						if (fixedFlags != ""):
+							fixedFlags += "|"
+						fixedFlags += "wx.ALL"
+						
+					#Top
+					elif (flag[1] == "t"):
+						if (fixedFlags != ""):
+							fixedFlags += "|"
+						fixedFlags += "wx.TOP"
+						
+					#Bottom
+					elif (flag[1] == "b"):
+						if (fixedFlags != ""):
+							fixedFlags += "|"
+						fixedFlags += "wx.BOTTOM"
+						
+					#Left
+					elif (flag[1] == "l"):
+						if (fixedFlags != ""):
+							fixedFlags += "|"
+						fixedFlags += "wx.LEFT"
+						
+					#Right
+					elif (flag[1] == "r"):
+						if (fixedFlags != ""):
+							fixedFlags += "|"
+						fixedFlags += "wx.RIGHT"
+
+					#Unknown Action
+					else:
+						errorMessage = "Unknown border flag {}".format(flag)
+						raise ValueError(errorMessage)
+
+				##Expand the Item
+				elif (flag[0] == "e"):
+					#Expand
+					if (flag[1] == "x"):
+						if (fixedFlags != ""):
+							fixedFlags += "|"
+						fixedFlags += "wx.EXPAND"
+						
+					#Expand with Aspect Ratio
+					elif (flag[1] == "a"):
+						if (fixedFlags != ""):
+							fixedFlags += "|"
+						fixedFlags += "wx.SHAPED"
+
+					#Unknown Action
+					else:
+						errorMessage = "Unknown expand flag {}".format(flag)
+						raise ValueError(errorMessage)
+
+				##Fixture the Item
+				elif (flag[0] == "f"):
+					#Fixed Size
+					if (flag[1] == "x"):
+						fixedFlags += "wx.FIXED_MINSIZE"
+						
+					#Fixed Space when hidden
+					elif (flag[1] == "h"):
+						fixedFlags += "wx.RESERVE_SPACE_EVEN_IF_HIDDEN"
+
+					#Unknown Action
+					else:
+						errorMessage = "Unknown fixture flag {}".format(flag)
+						raise ValueError(errorMessage)
+
+				##Unknown Action
+				else:
+					errorMessage = "Unknown flag {}".format(flag)
+					raise ValueError(errorMessage)
+		else:
+			fixedFlags = "0"
+
+		#Determine stretchability
+		if (stretchable):
+			position = 1
+		else:
+			position = 0
+
+		return fixedFlags, position, border
+
+	#Etc
+	def getArguments(self, function, argList, kwargDict, desiredArgs = None, notFound = {}):
+		"""Returns a dictionary of the args and kwargs for a function.
+
+		function (function) - The function to inspect
+		argList (list)      - The *args of 'function'
+		kwargDict (dict)    - The **kwargs of 'function'
+		desiredArgs (str)   - Determines what is returned to the user. Can be a list of strings
+			- If None: A dictionary of all args and kwargs will be returned
+			- If not None: A dictionary of the provided args and kwargs will be returned if they exist
+		notFound (dict)     - Allows the user to define what an argument should be if it is not in the function's argument list. {kwarg (str): default (any)}
+
+		Example Input: getArguments(myFunction, args, kwargs)
+		Example Input: getArguments(myFunction, args, kwargs, desiredArgs = "handler")
+		Example Input: getArguments(myFunction, args, kwargs, desiredArgs = "handler")
+		Example Input: getArguments(myFunction, args, kwargs, desiredArgs = ["handler", "flex", "flags"])
+		Example Input: getArguments(myFunction, args, kwargs, desiredArgs = ["handler", "flex", "flags"], notFound = {"flex": 0, "flags" = "c1"})
+		"""
+
+		#Ensure correct format
+		if (desiredArgs != None):
+			if ((not isinstance(desiredArgs, list)) and (not isinstance(desiredArgs, tuple))):
+				desiredArgs = [desiredArgs]
+
+		arguments = {}
+		arg_indexList = []
+		containsSelf = False
+		for i, item in enumerate(inspect.signature(function).parameters.values()):
+			#Skip inherited parameter 'self'
+			if (item.name == "self"):
+				containsSelf = True
+				continue
+
+			#Collect desired arguments
+			if ((desiredArgs == None) or (item.name in desiredArgs)):
+				if (i <= len(argList)):
+					#Account for kwarg being passed in as an arg
+					arguments[item.name] = argList[i - 1 * containsSelf]
+				else:
+					#Place defaults from function in catalogue
+					arguments[item.name] = item.default
+
+			#Track arg index positions
+			if (item.default == item.empty):
+				arg_indexList.append(item.name)
+
+		#Account for returning all arguments
+		if (desiredArgs == None):
+			desiredArgs = [item.name for item in inspect.signature(function).parameters.values()]
+
+		for item in desiredArgs:
+			#Place kwargs in catalogue
+			if (item in kwargDict):
+				arguments[item] = kwargDict[item]
+
+			#Account for requested arguments that were not found
+			elif (item not in arguments):
+				if (item in notFound):
+					arguments[item] = notFound[item]
+
+			elif (item in arg_indexList):
+				i = arg_indexList.index(item)
+				arguments[item] = argList[i]
+
+		# 	print(item, arg_indexList, item in arg_indexList, item in kwargDict)
+
+		# print("@0", arg_indexList)
+		# print("@1", [(item.name, item.default) for item in inspect.signature(function).parameters.values()])
+		# print("@2", argList)
+		# print("@3", kwargDict)
+		# print("@4", desiredArgs)
+		# print("@5", arguments, "\n")
+
+		return arguments
+
+#handles
+class handle_Base(Utilities):
+	"""The base handler for all GUI handlers.
+	Meant to be inherited.
+	"""
+
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize Inherited Classes
+		Utilities.__init__(self)
+
+		#Defaults
+		self.myId = -1
+		self.type = None
+		self.thing = None
+		self.parent = None
+		self.nested = False
+		self.myLabel = None
+		self.labelCatalogue = {}
+		self.labelCatalogueOrder = []
+		self.nestingAddress = None
+		self.allowBuildErrors = False
+
+	def __repr__(self):
+		representation = "{}(id = {})".format(type(self).__name__, id(self))
+		return representation
+
+	def __str__(self):
+		"""Gives diagnostic information on the Widget when it is printed out."""
+
+		output = "{}()\n-- id: {}\n".format(type(self).__name__, id(self))
+		if (self.parent != None):
+			output += "-- parent id: {}\n".format(id(self.parent))
+		if (self.nestingAddress != None):
+			output += "-- nesting address: {}\n".format(self.nestingAddress)
+		if (self.myLabel != None):
+			output += "-- myLabel: {}\n".format(self.myLabel)
+		if (self.type != None):
+			output += "-- type: {}\n".format(self.type)
+		if (self.thing != None):
+			output += "-- wxObject: {}\n".format(type(self.thing).__name__)
+		if (self.nested):
+			output += "-- nested: True\n"
+		return output
+
+	def __add__(self, other):
+		"""If two sizers are added together, then they are nested."""
+
+		self.nest(other)
+
+	def __enter__(self):
+		"""Allows the user to use a with statement to build the GUI."""
+
+		return self
+
+	def __exit__(self, exc_type, exc_value, traceback):
+		"""Allows the user to use a with statement to build the GUI."""
+
+		#Error handling
+		if (traceback != None):
+			print(exc_type, exc_value)
+
+			if (self.allowBuildErrors == None):
+				return False
+			elif (not self.allowBuildErrors):
+				return True
+
+	def __len__(self):
+		"""Returns the number of immediate nested elements.
+		Does not include elements that those nested elements may have nested.
+		"""
+
+		catalogue = self.getAddressValue(self.nestingAddress + [id(self)])
+		return len(catalogue) - 1
+
+	def __iter__(self):
+		"""Returns an iterator object that provides the nested objects."""
+		
+		catalogue = self.getAddressValue(self.nestingAddress + [id(self)])
+		nestList = [value[None] for key, value in catalogue.items() if (key != None)]
+		return Iterator(nestList)
+
+	def __getitem__(self, key):
+		"""Allows the user to index the handle to get nested elements with labels."""
+
+		return self.get(key)
+
+	def __setitem__(self, key, value):
+		"""Allows the user to index the handle to get nested elements with labels."""
+
+		self.labelCatalogue[key] = value
+
+	def __delitem__(self, key):
+		"""Allows the user to index the handle to get nested elements with labels."""
+
+		del self.labelCatalogue[key]
+
+	def get(self, itemLabel):
+		"""Searches the label catalogue for the requested object.
+
+		itemLabel (any) - What the object is labled as in the catalogue
+			- If slice: objects will be returned from between the given spots 
+
+		Example Input: get(0)
+		Example Input: get(1.1)
+		Example Input: get("myText")
+		Example Input: get(slice(None, None, None))
+		Example Input: get(slice(2, "myText", None))
+		"""
+
+		#Account for indexing
+		if (isinstance(itemLabel, slice)):
+			if (itemLabel.step != None):
+				raise FutureWarning("Add slice steps to get() for indexing {}".format(self.__repr__()))
+			
+			elif ((itemLabel.start != None) and (itemLabel.start not in self.labelCatalogue)):
+				errorMessage = "There is no item labled {} in the label catalogue for {}".format(itemLabel.start, self.__repr__())
+				raise KeyError(errorMessage)
+			
+			elif ((itemLabel.stop != None) and (itemLabel.stop not in self.labelCatalogue)):
+				errorMessage = "There is no item labled {} in the label catalogue for {}".format(itemLabel.stop, self.__repr__())
+				raise KeyError(errorMessage)
+
+			handleList = []
+			begin = False
+			for item in self.labelCatalogueOrder:
+				#Allow for slicing with non-integers
+				if ((not begin) and ((itemLabel.start == None) or (self.labelCatalogue[item].myLabel == itemLabel.start))):
+					begin = True
+				elif ((itemLabel.stop != None) and (self.labelCatalogue[item].myLabel == itemLabel.stop)):
+					break
+
+				#Slice catalogue via creation date
+				if (begin):
+					handleList.append(self.labelCatalogue[item])
+			return handleList
+
+		elif (itemLabel not in self.labelCatalogue):
+			errorMessage = "There is no item labled {} in the label catalogue for {}".format(itemLabel, self.__repr__())
+			raise KeyError(errorMessage)
+
+		else:
+			return self.labelCatalogue[itemLabel]
+
+class handle_Widget(handle_Base):
+	"""A handle for working with a wxWidget."""
+
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize inherited classes
+		handle_Base.__init__(self)
+
+	def __str__(self):
+		"""Gives diagnostic information on the Widget when it is printed out."""
+
+		output = handle_Base.__str__(self)
+		
+		if (self.nestingAddress != None):
+			sizer = self.getAddressValue(self.nestingAddress)[None]
+			output += "-- sizer id: {}\n".format(id(sizer))
+		return output
+
+	#Change Settings
+	@wrap_checkType(typeNeeded = "Text")
+	def wrapText(self, wrap):
+		"""Wraps the text to a specific point.
+
+		wrap (int)      - How many pixels wide the line will be before it wraps. If negative: no wrapping is done
+
+		Example Text: wrapText(250)
+		"""
+
+		if (wrap != None):
+			self.thing.Wrap(wrap)
+
+class handle_Sizer(handle_Base):
+	"""A handle for working with a wxSizer."""
+
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize inherited classes
+		handle_Base.__init__(self)
+
+		#Defaults
+		self.myWindow = None
+
+	def __str__(self):
+		"""Gives diagnostic information on the Sizer when it is printed out."""
+
+		output = handle_Base.__str__(self)
+		
+		if (self.myWindow != None):
+			output += "-- window id: {}\n".format(id(self.myWindow))
+		return output
+
+	def __enter__(self):
+		"""Allows the user to use a with statement to build the GUI."""
+
+		#Error handling
+		if (self in self.myWindow.sizersIterating):
+			errorMessage = "Only use {} in a while loop once".format(self.__repr__())
+			raise SyntaxError(errorMessage)
+
+		#Allow nested while loops to nest their objects
+		self.myWindow.sizersIterating[self] = [True, len(self.myWindow.sizersIterating)]
+
+		handle = handle_Base.__enter__(self)
+
+		return handle
+
+	def __exit__(self, exc_type, exc_value, traceback):
+		"""Allows the user to use a with statement to build the GUI."""
+		
+		#Allow nested while loops to nest their objects
+		self.myWindow.sizersIterating[self][0] = False
+
+		state = handle_Base.__exit__(self, exc_type, exc_value, traceback)
+		if (state != None):
+			return state
+
+		#Check for auto-nesting conditions
+		myOrder = self.myWindow.sizersIterating[self][1]
+		leftOpen = {value[1]: key for key, value in self.myWindow.sizersIterating.items() if (value[0])}
+
+		if (myOrder - 1 in leftOpen):
+			if (not self.nested):
+				leftOpen[myOrder - 1].nest(self)
+
+	#Change Settings
+	@wrap_checkType(typeNeeded = "Flex")
+	def growFlexColumn(self, column, proportion = 0):
+		"""Allows the column to grow as much as it can.
+
+		column (int)      - The column that will expand
+		proportion (int)  - How this column will grow compared to other growable columns
+							If all are zero, they will grow equally
+
+		Example Input: growFlexColumn(0)
+		"""
+
+		#Check growability
+		if (handle.thing.IsColGrowable(column)):
+			#The column must be growable. To change the proportion, it's growability must first be removed
+			handle.thing.RemoveGrowableCol(column)
+
+		#Add attribute
+		handle.thing.AddGrowableCol(column, proportion)
+
+	@wrap_checkType(typeNeeded = "Flex")
+	def growFlexRow(self, row, proportion = 0):
+		"""Allows the row to grow as much as it can.
+
+		row (int)      - The row that will expand
+		proportion (int)  - How this row will grow compared to other growable rows
+							If all are zero, they will grow equally
+
+		Example Input: growFlexRow(1)
+		"""
+
+		#Check growability
+		if (handle.thing.IsRowGrowable(row)):
+			#The row must be growable. To change the proportion, it's growability must first be removed
+			handle.thing.RemoveGrowableRow(row)
+
+		#Add attribute
+		handle.thing.AddGrowableRow(row, proportion)
+
+	@wrap_checkType(typeNeeded = "Flex")
+	def growFlexColumnAll(self, proportion = 0):
+		"""Allows all the columns to grow as much as they can.
+
+		column (int)      - The column that will expand
+		proportion (int)  - How this column will grow compared to other growable columns
+							If all are zero, they will grow equally
+
+		Example Input: growFlexColumnAll()
+		"""
+
+		for column in range(handle.thing.GetCols()):
+			self.growFlexColumn(column, proportion = proportion)
+
+	@wrap_checkType(typeNeeded = "Flex")
+	def growFlexRowAll(self, proportion = 0):
+		"""Allows all the rows to grow as much as they can.
+
+		row (int)      - The row that will expand
+		proportion (int)  - How this row will grow compared to other growable rows
+							If all are zero, they will grow equally
+
+		Example Input: growFlexRowAll()
+		"""
+
+		for row in range(handle.thing.GetCols()):
+			self.growFlexRow(row, proportion = proportion)
+	
+	#Etc
+	def nest(self, handle = None, flex = 0, flags = None):
+		"""Nests an object inside of this Sizer.
+
+		handle (handle) - What to place in this object
+
+		Example Input: nest(myText)
+		"""
+
+		#Do not nest already nested objects
+		if (handle.nested):
+			errorMessage = "Cannot nest objects twice"
+			raise SyntaxError(errorMessage)
+
+		#Configure Flags
+		flags, position, border = self.getItemMod(flags)
+
+		#Perform Nesting
+		if (isinstance(handle, handle_Widget)):
+			self.thing.Add(handle.thing, int(flex), eval(flags), border)
+		
+		elif (isinstance(handle, handle_Sizer)):
+			self.thing.Add(handle.thing, int(flex), eval(flags), border)
+		
+		else:
+			print("Add", handle.__class__, "to handle_Sizer.nestObject()")
+			return
+
+		handle.nested = True
+		handle.nestingAddress = self.nestingAddress + [id(self)]
+		self.setAddressValue(handle.nestingAddress + [id(handle)], {None: handle})
+
+	#Add Widgets
+	@wrap_makeWidget()
+	@wrap_addLabel()
+	@wrap_setParent()
+	@wrap_setLocation(default_flags = "c1")
+	@wrap_setSelection()
+	@wrap_setState_hidden()
+	@wrap_nestingAddress()
+	def addText(self, myText = "", wrap = None, 
+		size = None, bold = False, italic = False, family = None, 
+
+		myLabel = None, hidden = False, enabled = True, selected = False, 
+		flex = 0, flags = "c1", parent = None, handle = None):
+		"""Adds text to the grid.
+		If you want to update this text, you will need to run the function setObjectValue() or setObjectValueWithLabel().
+		If you provide a variable to this function and that variable changes- the text on the GUI will not update.
+		It must be told to do so explicitly by using one of the functions mentioned above.
+		Note: If you change the text, any word wrap will be removed. To wrap it again, call the function textWrap().
+
+		myText (str)    - The text that will be added to the next cell on the grid.
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		myLabel (any)   - What this is catalogued as
+		selected (bool) - If True: This is the default thing selected
+		hidden (bool)   - If True: The widget is hidden from the user, but it is still created
+		wrap (int)      - How many pixels wide the line will be before it wraps. If negative: no wrapping is done
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
+		
+		size (int)    - The font size of the text  
+		bold (bool)   - If True: the font will be bold
+		italic (bool) - If True: the font will be italicized
+		color (str)   - The color of the text. Can be an RGB tuple (r, g, b) or hex value
+		family (str)  - What font family it is.
+			~ "times new roman"         
+
+		Example Input: addText()
+		Example Input: addText(myText = "Lorem Ipsum")
+		Example Input: addText(myText = "Change Me", myLabel = "changableText")
+		Example Input: addText(myText = "Part Type", flags = "c2")
+		Example Input: addText(myText = "Part Type", flags = ["at", "c2"])
+		Example Input: addText(myText = "This line will wrap", wrap = 10)
+		Example Input: addText(myText = "BIG TEXT", bold = True, size = 72, color = "red")
+		"""
+
+		handle.type = "Text"
+
+		#Ensure correct format
+		if (not isinstance(myText, str)):
+			myText = str(myText)
+
+		#Create the thing to put in the grid
+		handle.thing = wx.StaticText(handle.parent.thing, wx.ID_ANY, myText, wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_CENTRE)
+
+		#Configure the font object
+		if (italic != None):
+			if (italic):
+				italic = wx.ITALIC
+			else:
+				italic = wx.NORMAL
+		else:
+			italic = wx.SLANT
+
+		if (bold != None):
+			if (bold):
+				bold = wx.BOLD
+			else:
+				bold = wx.NORMAL
+		else:
+			bold = wx.LIGHT
+
+		if (family == "TimesNewRoman"):
+			family = wx.ROMAN
+		else:
+			family = wx.DEFAULT
+
+		if (size == None):
+			size = wx.DEFAULT
+
+		font = wx.Font(size, family, italic, bold)
+		handle.thing.SetFont(font)
+
+		if (wrap != None):
+			if (wrap > 0):
+				handle.thing.wrapText(wrap)
+
+		return handle
+
+	#Overloads
+	def addSizerBox(self, *args, **kwargs):
+		"""Overload for addSizerBox in handle_Window().
+		Adds the created sizer to this sizer.
+		"""
+
+		myFrame = self.myWindow
+		handle = myFrame.addSizerBox(*args, **kwargs)
+		self.nest(handle)
+
+		return handle
+
+	def addSizerBoxStatic(self, *args, **kwargs):
+		"""Overload for addSizerBoxStatic in handle_Window().
+		Adds the created sizer to this sizer.
+		"""
+
+		myFrame = self.myWindow
+		handle = myFrame.addSizerBoxStatic(*args, **kwargs)
+		self.nest(handle)
+
+		return handle
+
+	def addSizerGrid(self, *args, **kwargs):
+		"""Overload for addSizerGrid in handle_Window().
+		Adds the created sizer to this sizer.
+		"""
+
+		myFrame = self.myWindow
+		handle = myFrame.addSizerGrid(*args, **kwargs)
+		self.nest(handle)
+
+		return handle
+
+	def addSizerGridFlex(self, *args, **kwargs):
+		"""Overload for addSizerGridFlex in handle_Window().
+		Adds the created sizer to this sizer.
+		"""
+
+		myFrame = self.myWindow
+		handle = myFrame.addSizerGridFlex(*args, **kwargs)
+		self.nest(handle)
+
+		return handle
+
+	def addSizerGridBag(self, *args, **kwargs):
+		"""Overload for addSizerGridBag in handle_Window().
+		Adds the created sizer to this sizer.
+		"""
+
+		myFrame = self.myWindow
+		handle = myFrame.addSizerGridBag(*args, **kwargs)
+		self.nest(handle)
+
+		return handle
+
+	def addSizerWrap(self, *args, **kwargs):
+		"""Overload for addSizerWrap in handle_Window().
+		Adds the created sizer to this sizer.
+		"""
+
+		myFrame = self.myWindow
+		handle = myFrame.addSizerWrap(*args, **kwargs)
+		self.nest(handle)
+
+		return handle
+
+class handle_Window(handle_Base):
+	"""A handle for working with a wxWindow."""
+
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize inherited classes
+		handle_Base.__init__(self)
+
+		#Defaults
+		self.mainPanel = None
+		self.thing = None
+		self.visible = False
+
+		self.statusBarOn = True
+		self.toolBarOn = True
+		self.autoSize = True
+
+		self.finalFunctionList = []
+		self.sizersIterating = {} #Keeps track of which sizers have been used in a while loop, as well as if they are still in the while loop {sizer (handle): [currently in a while loop (bool), order entered (int)]}
+
+	def __str__(self):
+		"""Gives diagnostic information on the Window when it is printed out."""
+
+		output = handle_Base.__str__(self)
+		
+		if (self.mainPanel != None):
+			output += "-- main panel id: {}\n".format(id(self.mainPanel))
+		return output
+
+	#Change Settings
+	def setWindowSize(self, x, y):
+		"""Re-defines the size of the window.
+
+		x (int)     - The width of the window
+		y (int)     - The height of the window
+
+		Example Input: setWindowSize(350, 250)
+		"""
+
+		#Change the frame size
+		self.thing.SetSize((x, y))
+
+	def setMinimumFrameSize(self, size = (100, 100)):
+		"""Sets the minimum window size for the user
+		Note: the program can still explicity change the size to be smaller by using setWindowSize().
+
+		size (int tuple) - The size of the window. (length, width)
+
+		Example Input: setMinimumFrameSize()
+		Example Input: setMinimumFrameSize((200, 100))
+		"""
+
+		#Set the size property
+		self.thing.SetMinSize(size)
+
+	def setMaximumFrameSize(self, size = (900, 700)):
+		"""Sets the maximum window size for the user
+		Note: the program can still explicity change the size to be smaller by using setWindowSize().
+
+		size (int tuple) - The size of the window. (length, width)
+
+		Example Input: setMaximumFrameSize()
+		Example Input: setMaximumFrameSize((700, 300))
+		"""
+
+		#Set the size property
+		self.thing.SetMaxSize(size)
+
+	def setAutoWindowSize(self, minimum = None):
+		"""Re-defines the size of the window.
+
+		minimum (bool) - Whether the window will be sized to the minimum best size or the maximum 
+			- If None: The auto size will not be set as a minimum or maximum.
+
+		Example Input: setAutoWindowSize()
+		Example Input: setAutoWindowSize(True)
+		Example Input: setAutoWindowSize(False)
+		"""
+
+		#Determine best size
+		size = self.thing.GetBestSize()
+
+		#Set the size
+		if (minimum != None):
+			if (minimum):
+				self.thing.SetMinSize(size)
+			else:
+				self.thing.SetMaxSize(size)
+
+	def setWindowTitle(self, title):
+		"""Re-defines the title of the window.
+
+		title (str) - What the new title is
+
+		Example Input: setWindowTitle(0, "test")
+		"""
+
+		#Set the title
+		self.thing.SetTitle(title)
+
+	#Visibility
+	def showWindow(self):
+		"""Shows a specific window to the user.
+		If the window is already shown, it will bring it to the front
+
+		Example Input: showWindow()
+		"""
+
+		self.thing.Show()
+
+		if (not self.visible):
+			self.visible = True
+		else:
+			if (self.thing.IsIconized()):
+				self.thing.Iconize(False)
+			else:
+				self.thing.Raise()
+
+	def showWindowCheck(self, notShown = False):
+		"""Checks if a window is currently being shown to the user.
+
+		notShown (bool) - If True: checks if the window is NOT shown instead
+
+		Example Input: showWindowCheck()
+		"""
+
+		if (self.visible * notShown):
+			return False
+		return True
+
+	def onShowWindow(self, event, *args, **kwargs):
+		"""Event function for showWindow()"""
+
+		self.showWindow(*args, **kwargs)
+		event.Skip()
+
+	def hideWindow(self):
+		"""Hides the window from view, but does not close it.
+		Note: This window continues to run and take up memmory. Local variables are still active.
+
+		Example Input: hideWindow()
+		"""
+
+		if (self.visible):
+			self.thing.Hide()
+			self.visible = False
+			shownWindowsList.remove(self)
+		else:
+			warningMessage = "Window {} is already hidden.".format(self.myLabel)
+			raise Warning(warningMessage)
+
+	def onHideWindow(self, event, *args, **kwargs):
+		"""Event function for hideWindow()"""
+		
+		self.hideWindow(*args, **kwargs)
+		event.Skip()
+
+	#Sizers
+	def getSizer(self, sizerLabel = None, returnAny = False):
+		"""Returns a sizer when given the sizer's index number.
+
+		sizerLabel (int)  - The index number of the sizer. 
+			-If None: The whole sizer list is returned
+		returnAny (bool)   - If True: Any sizer will be returned.
+
+		Example Input: getSizer()
+		Example Input: getSizer(0)
+		Example Input: getSizer(returnAny = False)
+		"""
+
+		catalogue = self.getAddressValue(self.nestingAddress + [id(self)])
+
+		#Account for no sizers available
+		if (len(catalogue) <= 1):
+			print("ERROR: {} has no sizers".format(self.__repr__()))
+			return None
+
+		sizerList = [value[None] for key, value in catalogue.items() if ((key != None) and (isinstance(value[None], handle_Sizer)))]
+
+		#Account for random sizer request
+		if (returnAny):
+			return sizerList[0]
+
+		#Account for whole list request
+		elif (sizerLabel == None):
+			return sizerList
+
+		#Search for requested sizer
+		for sizer in sizerList:
+			if (sizerLabel == sizer.myLabel):
+				return sizer
+
+		#No sizer found
+		print("ERROR: {} has no sizer '{}'".format(self.__repr__()), sizerLabel)
+		return None
+
+	@wrap_makeSizer()
+	@wrap_addLabel()
+	@wrap_setParent()
+	@wrap_nestingAddress()
+	@wrap_setState_hidden()
+	def addSizerGrid(self, myLabel = None, rows = 1, columns = 1, 
+		rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1, 
+
+		parent = None, hidden = False, handle = None):
+		"""Creates a grid sizer to the specified size.
+
+		myLabel (any)     - What this is catalogued as
+		rows (int)        - The number of rows that the grid has
+		columns (int)     - The number of columns that the grid has
+		hidden (bool)     - If True: All items in the sizer are hidden from the user, but they are still created
+		rowGap (int)      - Empty space between each row
+		colGap (int)      - Empty space between each column
+		minWidth (int)    - The minimum width of a box. -1 means automatic
+		minHeight (int)   - The minimum height of a box. -1 means automatic
+
+		Example Input: addSizerGrid()
+		Example Input: addSizerGrid(0)
+		Example Input: addSizerGrid(rows = 4, columns = 3)
+		Example Input: addSizerGrid(0, rows = 4, columns = 3)
+		"""
+
+		#Create Sizer
+		handle.thing = wx.GridSizer(rows, columns, rowGap, colGap)
+
+		return handle
+
+	@wrap_makeSizer()
+	@wrap_addLabel()
+	@wrap_setParent()
+	@wrap_setDirection()
+	@wrap_setState_hidden()
+	@wrap_nestingAddress()
+	def addSizerGridFlex(self, myLabel = None, rows = 1, columns = 1, rowGap = 0, colGap = 0, 
+		minWidth = -1, minHeight = -1, flexGrid = True, 
+
+		parent = None, hidden = False, vertical = None, handle = None):
+		"""Creates a flex grid sizer.
+		############## NEEDS TO BE FIXED #################
+
+		myLabel (any)     - What this is catalogued as
+		rows (int)        - The number of rows that the grid has
+		columns (int)     - The number of columns that the grid has
+		rowGap (int)      - Empyt space between each row
+		colGap (int)      - Empty space between each column
+		hidden (bool)     - If True: All items in the sizer are hidden from the user, but they are still created
+		minWidth (int)    - The minimum width of a box. -1 means automatic
+		minHeight (int)   - The minimum height of a box. -1 means automatic
+		flexGrid (bool)   - True if the grid will be flexable. If False, this is like a normal grid sizer.
+		vertical (bool)   - Determines what direction cells are flexibally (unequally) sized
+			- If True: Rows are sized
+			- If False: Columns are sized
+			- If None: Both are sized
+
+		Example Input: addSizerGridFlex()
+		Example Input: addSizerGridFlex(0)
+		Example Input: addSizerGridFlex(rows = 4, columns = 3)
+		Example Input: addSizerGridFlex(0, rows = 4, columns = 3)
+		"""
+
+		#Create Sizer
+		handle.thing = wx.FlexGridSizer(rows, columns, rowGap, colGap)
+		handle.thing.SetFlexibleDirection(handle.direction)
+
+		#Determine if flexability specifications
+		# if (flexGrid):
+		# 	handle.thing.SetNonFlexibleGrowMode(wx.FLEX_GROWMODE_SPECIFIED)
+		# else:
+		# 	handle.thing.SetNonFlexibleGrowMode(wx.FLEX_GROWMODE_NONE)
+
+		return handle
+
+	@wrap_makeSizer()
+	@wrap_addLabel()
+	@wrap_setParent()
+	@wrap_setDirection()
+	@wrap_setState_hidden()
+	@wrap_nestingAddress()
+	def addSizerGridBag(self, myLabel = None, rows = 1, columns = 1, rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1, 
+		emptySpace = None, flexGrid = True, 
+
+		parent = None, hidden = False, vertical = None, handle = None):
+		"""Creates a bag grid sizer.
+
+		myLabel (any)      - What this is catalogued as
+		rows (int)         - The number of rows that the grid has
+		columns (int)      - The number of columns that the grid has
+		rowGap (int)       - Empyt space between each row
+		colGap (int)       - Empty space between each column
+		minWidth (int)     - The minimum width of a box. -1 means automatic
+		minHeight (int)    - The minimum height of a box. -1 means automatic
+		hidden (bool)      - If True: All items in the sizer are hidden from the user, but they are still created
+		emptySpace (tuple) - The space taken up by cells that are empty or hidden; (row width, column width)
+		flexGrid (bool)    - True if the grid will be flexable. If False, this is like a normal grid sizer.
+		vertical (bool)    - Determines what direction cells are flexibally (unequally) sized
+			- If True: Rows are sized
+			- If False: Columns are sized
+			- If None: Both are sized
+
+		Example Input: addSizerGridBag()
+		Example Input: addSizerGridBag(0)
+		Example Input: addSizerGridBag(0, rows = 4, columns = 3)
+		Example Input: addSizerGridBag(0, rows = 4, columns = 3, emptySpace = (0, 0))
+		"""
+
+		#Create Sizer
+		handle.thing = wx.GridBagSizer(rows, columns, rowGap, colGap)
+		
+		handle.thing.SetFlexibleDirection(handle.direction)
+
+		if (flexGrid):
+			handle.thing.SetNonFlexibleGrowMode(wx.FLEX_GROWMODE_SPECIFIED)
+		else:
+			handle.thing.SetNonFlexibleGrowMode(wx.FLEX_GROWMODE_NONE)
+
+		if (emptySpace != None):
+			handle.thing.SetEmptyCellSize(emptySpace)
+
+		return handle
+
+	@wrap_makeSizer()
+	@wrap_addLabel()
+	@wrap_setParent()
+	@wrap_setDirection()
+	@wrap_setState_hidden()
+	@wrap_nestingAddress()
+	def addSizerBox(self, myLabel = None, minWidth = -1, minHeight = -1, 
+
+		parent = None, hidden = False, vertical = True, handle = None):
+		"""Creates a box sizer.
+
+		myLabel (any)     - What this is catalogued as
+		minWidth (int)    - The minimum width of a box. -1 means automatic
+		minHeight (int)   - The minimum height of a box. -1 means automatic
+		horizontal (bool) - True to align items horizontally. False to align items vertically
+		hidden (bool)     - If True: All items in the sizer are hidden from the user, but they are still created
+
+		Example Input: addSizerBox()
+		Example Input: addSizerBox(0)
+		Example Input: addSizerBox(vertical = False)
+		Example Input: addSizerBox(0, vertical = False)
+		"""
+
+		handle.thing = wx.BoxSizer(handle.direction)
+
+		return handle
+
+	@wrap_makeSizer()
+	@wrap_addLabel()
+	@wrap_setParent()
+	@wrap_setDirection()
+	@wrap_setState_hidden()
+	@wrap_nestingAddress()
+	def addSizerBoxStatic(self, myLabel = None, myText = "", minWidth = -1, minHeight = -1, 
+
+		parent = None, hidden = False, vertical = True, handle = None):
+		"""Creates a static box sizer.
+		This is a sizer surrounded by a box with a title, much like a wxRadioBox.
+
+		myLabel (any)     - What this is catalogued as
+		myText (str)      - The text that appears above the static box
+		minWidth (int)    - The minimum width of a box. -1 means automatic
+		minHeight (int)   - The minimum height of a box. -1 means automatic
+		horizontal (bool) - True to align items horizontally. False to align items vertically
+		hidden (bool)     - If True: All items in the sizer are hidden from the user, but they are still created
+
+		Example Input: addSizerBoxStatic()
+		Example Input: addSizerBoxStatic(0)
+		Example Input: addSizerBoxStatic(myText = "Lorem")
+		Example Input: addSizerBoxStatic(0, myText = "Lorem")
+		"""
+
+		handle.thing = wx.StaticBoxSizer(wx.StaticBox(handle.parent.thing, wx.ID_ANY, myText), handle.direction)
+
+		return handle
+
+	@wrap_makeSizer()
+	@wrap_addLabel()
+	@wrap_setParent()
+	@wrap_setDirection()
+	@wrap_setState_hidden()
+	@wrap_nestingAddress()
+	def addSizerWrap(self, myLabel = None, minWidth = -1, minHeight = -1, 
+		extendLast = False, 
+
+		parent = None, hidden = False, vertical = True, handle = None):
+		"""Creates a wrap sizer.
+		The widgets will arrange themselves into rows and columns on their own, starting in the top-left corner.
+
+		myLabel (any)     - What this is catalogued as
+		myText (str)      - The text that appears above the static box
+		minWidth (int)    - The minimum width of a box. -1 means automatic
+		minHeight (int)   - The minimum height of a box. -1 means automatic
+		horizontal (bool) - Determines the primary direction to fill widgets in
+			- If True: Align items horizontally first
+			- If False: Align items vertically first
+		hidden (bool)     - If True: All items in the sizer are hidden from the user, but they are still created
+		extendLast (bool) - If True: The last widget will extend to fill empty space
+
+		Example Input: addSizerWrap()
+		Example Input: addSizerWrap(0)
+		"""
+
+		#Setup flags
+		if (extendLast):
+			flags = "wx.EXTEND_LAST_ON_EACH_LINE"
+		else:
+			flags = "wx.WRAPSIZER_DEFAULT_FLAGS"
+
+		#Create Sizer
+		handle.thing = wx.WrapSizer(handle.direction, eval(flags))
+
+		return handle
+
+	#Etc
+	def closeWindow(self):
+		"""Closes the window. This frees up the memmory. Local variables will be lost.
+
+		Example Input: closeWindow()
+		"""
+
+		self.thing.Destroy()
+
+		if (self.visible):
+			self.visible = False
+		else:
+			print("ERROR: Window {} is already closed.".format(self.myLabel))
+
+	def onCloseWindow(self, event, *args, **kwargs):
+		"""Event function for closeWindow()."""
+		
+		self.closeWindow(*args, **kwargs)
+		event.Skip()
+
+	def typicalWindowSetup(self, skipMenu = False, skipStatus = False, skipPopup = False, skipMenuExit = False):
+		"""Adds the things a window typically needs. Uses sizer "-1".
+			- Menu Bar with exit button
+			- Status Bar
+			- Popup Menu
+			- Border
+
+		which (int)       - The index number of the window. Can be the title of the window
+		skipMenu (bool)   - If True: No top bar menu will be added
+		skipStatus (bool) - If True: No status bar will be added
+		skipPopup (bool)  - If True: No popup menu will be added
+
+		Example Input: typicalWindowSetup()
+		"""
+
+		pass
+
+		# #Add Menu Bar
+		# if (not skipMenu):
+		# 	self.addMenuBar()
+		# 	if (not skipMenuExit):
+		# 		self.addMenu(0, "&File")
+		# 		self.addMenuItem(0, "&Exit", myFunction = "self.onExit", icon = "quit", internal = True, toolTip = "Closes this program", myLabel = "Frame{}_typicalWindowSetup_fileExit".format(self.windowLabel))
+
+		# #Add Status Bar
+		# if (not skipStatus):
+		# 	self.addStatusBar()
+		# 	self.setStatusText("Ready")
+
+		# #Add Popup Menu
+		# if (not skipPopup):
+		# 	self.createPopupMenu("-1")
+		# 	self.addPopupMenuItem("-1", "&Minimize", "self.onMinimize")
+		# 	self.addPopupMenuItem("-1", "Maximize", "self.onMaximize")
+		# 	self.addPopupMenuItem("-1", "Close", "self.onExit")
+
+	def updateWindow(self, autoSize = None):
+		"""Refreshes what the window looks like when things on the top-level sizer are changed.
+
+		autoSize (bool) - Determines how the autosizing behavior is applied
+			- If True: The window size will be changed to fit the sizers within
+			- If False: The window size will be what was defined when it was initially created
+			- If None: The internal autosize state will be used
+
+		Example Input: updateWindow()
+		Example Input: updateWindow(autoSize = False)
+		"""
+
+		catalogue = self.getAddressValue(self.nestingAddress + [id(self)])
+
+		#Skip empty windows
+		if (len(catalogue) > 1):
+			#Refresh the window
+			if (autoSize == None):
+				autoSize = self.autoSize
+
+			#Get random sizer
+			# sizerList = [key for key, value in catalogue.items() if (key != None)]
+			# sizer = catalogue[sizerList[0]][None]
+
+			sizer = self.getSizer(returnAny = True)
+
+			if (self.mainPanel != None):
+				# self.thing.SetSizerAndFit(sizer.thing)
+				self.mainPanel.thing.SetSizerAndFit(sizer.thing)
+
+			else:
+				self.thing.SetSizerAndFit(sizer.thing)
+
+			#Auto-size the window
+			if (autoSize):
+				##Toggle the window size before setting to best size
+				bestSize = self.thing.GetBestSize()
+				modifiedSize = (bestSize[0] + 1, bestSize[1] + 1)
+				self.thing.SetSize(modifiedSize)
+				self.thing.SetSize(bestSize)
+
+			else:
+				#Fix Panel Patch
+				currentSize = self.thing.GetSize()
+				modifiedSize = (currentSize[0] + 1, currentSize[1] + 1)
+				self.thing.SetSize(modifiedSize)
+				self.thing.SetSize(currentSize)
+
+	def nest(self, inside, outside):
+		"""Nests an object in another object.
+
+		inside (handle) - What is being nested
+		outside (handle) - What is being nested in
+
+		Example Input: nest(mySizer_2, mySizer_1)
+		"""
+
+		outside.nest(inside)
+
+	def nestSizerInSizer(self, insideNumber, outsideNumber, *args, **kwargs):
+		"""Allows you to use labels for nesting a sizer in a sizer"""
+
+		inside = self.getSizer(insideNumber)
+		outside = self.getSizer(outsideNumber)
+		self.nest(inside, outside, *args, **kwargs)
+
+	#Overloads
+	def growFlexColumn(self, sizerLabel, *args, **kwargs):
+		"""Overload for growFlexColumn in handle_Sizer()."""
+
+		mySizer = self.getSizer(sizerLabel)
+		mySizer.growFlexColumn(*args, **kwargs)
+
+	def growFlexRow(self, sizerLabel, *args, **kwargs):
+		"""Overload for growFlexRow in handle_Sizer()."""
+
+		mySizer = self.getSizer(sizerLabel)
+		mySizer.growFlexRow(*args, **kwargs)
+
+	def growFlexColumnAll(self, sizerLabel, *args, **kwargs):
+		"""Overload for growFlexColumnAll in handle_Sizer()."""
+
+		mySizer = self.getSizer(sizerLabel)
+		mySizer.growFlexColumnAll(*args, **kwargs)
+
+	def growFlexRowAll(self, sizerLabel, *args, **kwargs):
+		"""Overload for growFlexRowAll in handle_Sizer()."""
+
+		mySizer = self.getSizer(sizerLabel)
+		mySizer.growFlexRowAll(*args, **kwargs)
+
+	def addText(self, sizerLabel, *args, **kwargs):
+		"""Overload for growFlexRowAll in handle_Sizer()."""
+
+		mySizer = self.getSizer(sizerLabel)
+		mySizer.addText(*args, **kwargs)
+
+class handle_Panel(handle_Base):
+	"""A handle for working with a wxPanel."""
+
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize inherited classes
+		handle_Base.__init__(self)
+
+	def __str__(self):
+		"""Gives diagnostic information on the Panel when it is printed out."""
+
+		output = handle_Base.__str__(self)
+		return output
+
+class handle_Splitter(handle_Base):
+	"""A handle for working with a wxSplitter."""
+
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize inherited classes
+		handle_Base.__init__(self)
+
+	def __str__(self):
+		"""Gives diagnostic information on the Splitter when it is printed out."""
+
+		output = handle_Base.__str__(self)
+		return output
+
+class handle_Notebook(handle_Base):
+	"""A handle for working with a wxNotebook."""
+
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize inherited classes
+		handle_Base.__init__(self)
+
+	def __str__(self):
+		"""Gives diagnostic information on the Notebook when it is printed out."""
+
+		output = handle_Base.__str__(self)
+		return output
+
+#Classes
+class CommonEventFunctions():
+	"""Contains common functions used for events bound to wxObjects.
+	This is here for convenience in programming.
+	_________________________________________________________________________
+
+	HOW TO CREATE YOUR OWN FUNCTION
+	These functions are a function within a function.
+	This is so that *args and **kwargs can be passed to the function,
+	and it is still able to be bound to a wxObject.
+
+	The 'myFunction' must be a string if it is a non-user defined function. User-defined functions should not be a string.
+	Function inputs are passed to the GUI object creator as kwargs. 
+	The kwarg for the creator has the same name as the variable used to pass in the respective function;
+	The args for the respective function have the phrase 'Args' after that variable name (example: myFunctionArgs);
+	The kwargs for the respective function have the phrase 'Kwargs' after that variable name (example: myFunctionKwargs);
+	Here are some example 'myFunction' variables that can be used when creating a new wxObject.
+		myFunction = "onExit"
+		myFunction = "onDebugShowFile", myFunctionArgs = "openFile"
+		myFunction = myOwnUserDefinedFunction
+
+	Here is a template for writing a function. Be sure to include the event argument!
+	The args and kwargs are optional for if inputs are required.
+	Replace things that are in ALL CAPS.
+		def FUNCTIONNAME_nested(event, *args, *kwargs)
+			INSERT DOCSTRING AND CODE HERE
+	_________________________________________________________________________
+	"""
+
+	def __init__(self):     
+		"""Defines the internal variables needed to run.
+
+		Example Input: Meant to be inherited by GUI().
+		"""
+
+		pass
+
+	#Windows
+	def onHide(self, event):
+		"""Hides the window. Default of a hide (h) menu item."""
+
+		self.Hide()
+		#There is no event.Skip() because if not, then the window will destroy itself
+
+	def onQuit(self, event):
+		"""Closes the window. Default of a close (c) menu item."""
+
+		self.Destroy()
+		event.Skip()
+
+	def onExit(self, event):
+		"""Closes all windows. Default of a quit (q) or exit (e) menu item."""
+
+		#Make sure sub threads are closed
+		if (threading.active_count() > 1):
+			for thread in threading.enumerate():
+				#Close the threads that are not the main thread
+				if (thread != threading.main_thread()):
+					thread.stop()
+
+		#Exit the main thread
+		sys.exit()
+		event.Skip()
+
+	def onMinimize(self, event):
+		"""Minimizes the window. Default of a minimize (mi) menu item."""
+
+		self.Iconize()
+		event.Skip()
+
+	def onMaximize(self, event):
+		"""Maximizes the window. Default of a maximize (ma) menu item."""
+
+		self.Maximize()
+		event.Skip()
+
+	#Etc
+	def onDoNothing(self, event):
+		"""Does nothing."""
+
+		print("onDoNothing()")
+		pass
+		
+		#There is no event.Skip() here to prevent the event from propigating forward
+
+	def onIdle(self, event):
+		"""Runs functions only while the GUI is idle. It will pause running the functions if the GUI becomes active.
+		WARNING: This is not working yet.
+		"""
+
+		print("onIdle()")
+		pass
+
+class MyApp(wx.App):
+	"""Needed to make the GUI work."""
+
+	def __init__(self, redirect=False, filename=None, useBestVisual=False, clearSigInt=True, parent = None):
+		"""Needed to make the GUI work."""
+
+		self.parent = parent
+		wx.App.__init__(self, redirect=redirect, filename = filename, useBestVisual = useBestVisual, clearSigInt = clearSigInt)
+
+	def OnInit(self):
+		"""Needed to make the GUI work.
+		Single instance code modified from: https://wxpython.org/Phoenix/docs/html/wx.SingleInstanceChecker.html
+		"""
+
+		#Account for multiple instances of the same app
+		if (self.parent != None):
+			if (self.parent.oneInstance):
+				#Ensure only one instance per user runs
+				self.parent.oneInstance_name = "SingleApp-{}".format(wx.GetUserId())
+				self.parent.oneInstance_instance = wx.SingleInstanceChecker(self.parent.oneInstance_name)
+
+				if self.parent.oneInstance_instance.IsAnotherRunning():
+					wx.MessageBox("Cannot run multiple instances of this program", "Runtime Error")
+					return False
+
+		#Allow the app to progress
+		return True
+
+class Window_Functions():
+	def __init__(self):
+		pass
+
+	def getWindow(self, windowLabel):
+		"""Returns a window object when given the corresponding frame number.
+
+		windowLabel (any) - The label for the desired window
+			- If None: Returns whole window list
+
+		Example Input: getWindow(0)
+		Example Input: getWindow("test")
+		"""
+
+		if (windowLabel != None):
+			if (windowLabel not in self.labelCatalogue):
+				errorMessage = "There is no window labeled {} for {}".format(windowLabel, self.__repr__())
+				raise KeyError(errorMessage)
+
+			myFrame = self.labelCatalogue[windowLabel]
+		else:
+			myFrame = list(self.labelCatalogue.values()) + self.unnamedWindowList
+
+		return myFrame
+
+	#Logistic
+	def switchWindow(self, whichFrom, whichTo, hideFrom = True):
+		"""Switches to another window.
+
+		whichFrom (int) - The index number of the current window
+		whichTo (int)   - The index number of the next window
+		autoSize (bool) - If True: the window size will be changed to fit the sizers within
+						  If False: the window size will be what was defined when it was initially created
+						  If None: the internal autosize state will be used
+		hideFrom (bool) - Whether to hide the current window or close it
+
+		Example Input: switchWindow(0, 1)
+		Example Input: switchWindow(0, 1, hideFrom = False)
+		"""
+
+		frameFrom = self.getWindow(whichFrom)
+		frameTo = self.getWindow(whichTo)
+
+		#Show next window
+		frameTo.showWindow()
+
+		#Hide or close current window
+		if (hideFrom):
+			frameFrom.hideWindow()
+		else:
+			frameFrom.closeWindow()
+
+	def onSwitchWindow(self, event, *args, **kwargs):
+		"""Event function for switchWindow()."""
+
+		self.switchWindow(*args, **kwargs)			
+		event.Skip()
+
+	#Overloads
+	def setWindowSize(self, windowLabel, *args, **kwargs):
+		"""Overload for setWindowSize in handle_Window()."""
+
+		myFrame = self.getWindow(windowLabel)
+		myFrame.setWindowSize(*args, **kwargs)
+
+	def setMinimumFrameSize(self, windowLabel, *args, **kwargs):
+		"""Overload for setMinimumFrameSize in handle_Window()."""
+
+		myFrame = self.getWindow(windowLabel)
+		myFrame.setMinimumFrameSize(*args, **kwargs)
+
+	def setMaximumFrameSize(self, windowLabel, *args, **kwargs):
+		"""Overload for setMaximumFrameSize in handle_Window()."""
+
+		myFrame = self.getWindow(windowLabel)
+		myFrame.setMaximumFrameSize(*args, **kwargs)
+
+	def setAutoWindowSize(self, windowLabel, *args, **kwargs):
+		"""Overload for setAutoWindowSize in handle_Window()."""
+
+		myFrame = self.getWindow(windowLabel)
+		myFrame.setAutoWindowSize(*args, **kwargs)
+
+	def setWindowTitle(self, windowLabel, title, *args, **kwargs):
+		"""Overload for setWindowTitle in handle_Window()."""
+
+		myFrame = self.getWindow(windowLabel)
+		myFrame.setWindowTitle(*args, **kwargs)
+
+	def showWindow(self, windowLabel, *args, **kwargs):
+		"""Overload for showWindow in handle_Window()."""
+
+		myFrame = self.getWindow(windowLabel)
+		myFrame.showWindow(*args, **kwargs)
+
+	def onShowWindow(self, event, windowLabel, *args, **kwargs):
+		"""Overload for onShowWindow in handle_Window()."""
+
+		myFrame = self.getWindow(windowLabel)
+		myFrame.onShowWindow(event, *args, **kwargs)
+
+	def showWindowCheck(self, windowLabel, *args, **kwargs):
+		"""Overload for showWindowCheck in handle_Window()."""
+
+		myFrame = self.getWindow(windowLabel)
+		shown = myFrame.showWindowCheck(*args, **kwargs)
+		return shown
+
+	def hideWindow(self, windowLabel, *args, **kwargs):
+		"""Overload for hideWindow in handle_Window()."""
+
+		myFrame = self.getWindow(windowLabel)
+		myFrame.hideWindow(*args, **kwargs)
+
+	def onHideWindow(self, event, windowLabel, *args, **kwargs):
+		"""Overload for onHideWindow in handle_Window()."""
+
+		myFrame = self.getWindow(windowLabel)
+		myFrame.onHideWindow(event, *args, **kwargs)
+
+	def typicalWindowSetup(self, windowLabel, *args, **kwargs):
+		"""Overload for typicalWindowSetup in handle_Window()."""
+
+		myFrame = self.getWindow(windowLabel)
+		myFrame.typicalWindowSetup(*args, **kwargs)
+		
+	def closeWindow(self, windowLabel, *args, **kwargs):
+		"""Overload for closeWindow in handle_Window()."""
+
+		myFrame = self.getWindow(windowLabel)
+		myFrame.closeWindow(*args, **kwargs)
+
+	def onCloseWindow(self, event, windowLabel, *args, **kwargs):
+		"""Overload for onCloseWindow in handle_Window()."""
+
+		myFrame = self.getWindow(windowLabel)
+		myFrame.onCloseWindow(event, *args, **kwargs)
+
+class Sizer_Functions():
+	def __init__(self):
+		pass
+
+	#Overloads
+	def addSizerBox(self, windowLabel, *args, **kwargs):
+		"""Overload for addSizerBox in handle_Window()."""
+
+		myFrame = self.getWindow(windowLabel)
+		handle = myFrame.addSizerBox(*args, **kwargs)
+
+		return handle
+
+	def addSizerBoxStatic(self, windowLabel, *args, **kwargs):
+		"""Overload for addSizerBoxStatic in handle_Window()."""
+
+		myFrame = self.getWindow(windowLabel)
+		handle = myFrame.addSizerBoxStatic(*args, **kwargs)
+
+		return handle
+
+	def addSizerGrid(self, windowLabel, *args, **kwargs):
+		"""Overload for addSizerGrid in handle_Window()."""
+
+		myFrame = self.getWindow(windowLabel)
+		handle = myFrame.addSizerGrid(*args, **kwargs)
+
+		return handle
+
+	def addSizerGridFlex(self, windowLabel, *args, **kwargs):
+		"""Overload for addSizerGridFlex in handle_Window()."""
+
+		myFrame = self.getWindow(windowLabel)
+		handle = myFrame.addSizerGridFlex(*args, **kwargs)
+
+		return handle
+
+	def addSizerGridBag(self, windowLabel, *args, **kwargs):
+		"""Overload for addSizerGridBag in handle_Window()."""
+
+		myFrame = self.getWindow(windowLabel)
+		handle = myFrame.addSizerGridBag(*args, **kwargs)
+
+		return handle
+
+	def addSizerWrap(self, windowLabel, *args, **kwargs):
+		"""Overload for addSizerWrap in handle_Window()."""
+
+		myFrame = self.getWindow(windowLabel)
+		handle = myFrame.addSizerWrap(*args, **kwargs)
+
+		return handle
+
+class Controller(Utilities, CommonEventFunctions, Window_Functions, Sizer_Functions):
+	"""This module will help to create a simple GUI using wxPython without 
+	having to learn how to use the complicated program.
+	"""
+
+	def __init__(self, debugging = False, best = False, oneInstance = False, allowBuildErrors = None):
+		"""Defines the internal variables needed to run.
+
+		debugging (bool) - Determiens if debugging information is given to the user
+			- If True: The cmd window will appear and show debugging information. Also closes with [ctrl]+[c]
+			- If False: No cmd or logfile will be used.
+			- If string: The pathway to a log file that will record debugging information
+
+		best (bool) - Determiens how much work is put into visuals (NOT WORKING YET)
+			- If True: The app will try to use the best visual system if more than one is available
+
+		oneInstance (bool) - Determines if the user can run more than one instance at a time of this gui or not
+			- If True: Only one instance can be ran at a time
+			- If True: Multiple instances can be ran at the same time
+
+		allowBuildErrors (bool) - Determines if, when using a with statement, errors created during build-time are acceptable
+			- If True: Build-time errors will not prevent the GUI from finishing the build process
+			- If False: Build-time errors will end the with statement, and the program will continue past it
+			- If None: Build-time errors will end the program
+
+		Example Input: Controller()
+		Example Input: Controller(debugging = True)
+		Example Input: Controller(debugging = "log.txt")  
+		Example Input: Controller(oneInstance = True)
+		"""
+		super(Controller, self).__init__()
+
+		#Initialize Inherited classes
+		Utilities.__init__(self)
+		CommonEventFunctions.__init__(self)
+		Window_Functions.__init__(self)
+		Sizer_Functions.__init__(self)
+
+		#Setup Internal Variables
+		self.labelCatalogue = {} #A dictionary that contains all the windows made for the gui. {windowLabel: myFrame}
+		self.labelCatalogueOrder = [] #A list of what order things were added to teh label catalogue. [windowLabel 1, windowLabel 2]
+		self.unnamedWindowList = [] #A list of the windows created without labels
+		self.oneInstance = oneInstance #Allows the user to run only one instance of this gui at a time
+		self.allowBuildErrors = allowBuildErrors
+		self.nestingAddress = []
+		self.nested = True
+
+		#Record Address
+		self.setAddressValue([id(self)], {None: self})
+
+		#Create the wx app object
+		self.app = MyApp(parent = self)
+
+	def __str__(self):
+		"""Gives diagnostic information on the GUI when it is printed out."""
+		global nestingCatalogue
+
+		output = "Controller()\n-- id: {}\n".format(id(self))
+		windowsList = [item for item in self.labelCatalogue.values() if isinstance(item, handle_Window)]
+		if (len(windowsList) + len(self.unnamedWindowList) != 0):
+			output += "-- windows: {}\n".format(len(windowsList) + len(self.unnamedWindowList))
+		if (len(nestingCatalogue) != 0):
+			output += "-- nesting catalogue: {}\n".format(nestingCatalogue)
+
+		return output
+
+	def __repr__(self):
+		representation = "Controller(id = {})".format(id(self))
+		return representation
+
+	def __enter__(self):
+		"""Allows the user to use a with statement to build the GUI."""
+
+		return self
+
+	def __exit__(self, exc_type, exc_value, traceback):
+		"""Allows the user to use a with statement to build the GUI."""
+
+		#Error handling
+		if (traceback != None):
+			print(exc_type, exc_value)
+
+			if (self.allowBuildErrors == None):
+				return False
+			elif (not self.allowBuildErrors):
+				return True
+
+		self.finish()
+
+	def __len__(self):
+		"""Returns the number of immediate nested elements.
+		Does not include elements that those nested elements may have nested.
+		"""
+
+		catalogue = self.getAddressValue(self.nestingAddress + [id(self)])
+		return len(catalogue) - 1
+
+	def __iter__(self):
+		"""Returns an iterator object that provides the nested objects."""
+		
+		catalogue = self.getAddressValue(self.nestingAddress + [id(self)])
+		nestList = [value[None] for key, value in catalogue.items() if (key != None)]
+		return Iterator(nestList)
+	
+	#Main Objects
+	@wrap_makeWindow()
+	@wrap_addLabel()
+	@wrap_setParent()
+	@wrap_nestingAddress()
+	def addWindow(self, myLabel = None, title = "", xSize = 500, ySize = 300, panel = True, 
+		tabTraversal = True, stayOnTop = False, floatOnParent = False, endProgram = True,
+		resize = True, minimize = True, maximize = True, close = True, icon = None, internal = False, topBar = True,
+
+		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None, 
+		delFunction = None, delFunctionArgs = None, delFunctionKwargs = None, 
+		idleFunction = None, idleFunctionArgs = None, idleFunctionKwargs = None, 
+
+		parent = None, handle = None):
+		"""Creates a new window.
+		Returns the index number of the created window.
+
+		myLabel (any) - What this is catalogued as
+		title (str)   - The text that appears on top of the window
+		xSize (int)   - The width of the window
+		ySize (int)   - The height of the window
+		
+		initFunction (str)       - The function that is ran when the panel first appears
+		initFunctionArgs (any)   - The arguments for 'initFunction'
+		initFunctionKwargs (any) - The keyword arguments for 'initFunction'function
+
+		delFunction (str)       - The function that is ran when the user tries to close the panel. Can be used to interrup closing
+		delFunctionArgs (any)   - The arguments for 'delFunction'
+		delFunctionKwargs (any) - The keyword arguments for 'delFunction'function
+
+		idleFunction (str)       - The function that is ran when the window is idle
+		idleFunctionArgs (any)   - The arguments for 'idleFunction'
+		idleFunctionKwargs (any) - The keyword arguments for 'idleFunction'function
+		
+		tabTraversal (bool) - If True: Hitting the Tab key will move the selected widget to the next one
+		topBar (bool)       - An override for 'minimize', 'maximize', and 'close'.
+			- If None: Will not override 'minimize', 'maximize', and 'close'.
+			- If True: The top of the window will have a minimize, maximize, and close button.
+			- If False: The top of the window will not have a minimize, maximize, and close button.
+		panel (bool)        - If True: All content within the window will be nested inside a main panel
+		autoSize (bool)     - If True: The window will determine the best size for itself
+		icon (str)          - The file path to the icon for the window
+			If None: No icon will be shown
+		internal (bool)     - If True: The icon provided is an internal icon, not an external file
+		
+		Example Input: addWindow()
+		Example Input: addWindow(0)
+		Example Input: addWindow(0, title = "Example")
+		"""
+
+		#Determine window style
+		flags = "wx.CLIP_CHILDREN|wx.SYSTEM_MENU"
+		if (tabTraversal):
+			flags += "|wx.TAB_TRAVERSAL"
+
+		if (stayOnTop):
+			flags += "|wx.STAY_ON_TOP"
+
+		if (floatOnParent):
+			flags += "|wx.FRAME_FLOAT_ON_PARENT"
+
+		if (resize):
+			flags += "|wx.RESIZE_BORDER"
+
+		if (topBar != None):
+			if (topBar):
+				flags += "|wx.MINIMIZE_BOX|wx.MAXIMIZE_BOX|wx.CLOSE_BOX"
+
+		else:
+			if (minimize):
+				flags += "|wx.MINIMIZE_BOX"
+
+			if (maximize):
+				flags += "|wx.MAXIMIZE_BOX"
+
+			if (close):
+				flags += "|wx.CLOSE_BOX"
+
+		if (title != None):
+			flags += "|wx.CAPTION"
+		else:
+			title = ""
+
+		#Make the frame
+		handle.thing = wx.Frame(None, id = wx.ID_ANY, title = title, pos = wx.DefaultPosition, size = (xSize, ySize), style = eval(flags))
+		
+		#Add Properties
+		if (icon != None):
+			self.setIcon(icon, internal)
+
+		#Bind functions
+		if (initFunction != None):
+			self.betterBind(wx.EVT_ACTIVATE, handle.thing, initFunction, initFunctionArgs, initFunctionKwargs)
+
+		if (delFunction != None):
+			self.betterBind(wx.EVT_CLOSE, handle.thing, delFunction, delFunctionArgs, delFunctionKwargs)
+		else:
+			if (endProgram != None):
+				if (endProgram):
+					delFunction = self.onExit
+				else:
+					delFunction = self.onQuit
+			else:
+				delFunction = self.onHide
+
+			self.betterBind(wx.EVT_CLOSE, handle.thing, delFunction)
+
+		if (idleFunction != None):
+			self.idleQueue = None
+			self.betterBind(wx.EVT_IDLE, handle.thing, idleFunction, idleFunctionArgs, idleFunctionKwargs)
+		else:
+			self.betterBind(wx.EVT_IDLE, handle.thing, self.onIdle)
+
+		#Make the main panel
+		if (panel):
+			handle.mainPanel = self.addPanel("-1", parent = handle, size = (10, 10), tabTraversal = tabTraversal, useDefaultSize = False)
+
+		return handle
+
+	@wrap_makePanel()
+	@wrap_addLabel()
+	@wrap_setParent()
+	def addPanel(self, myLabel = None, size = wx.DefaultSize, border = wx.NO_BORDER, myId = wx.ID_ANY, position = wx.DefaultPosition, parent = None,
+		tabTraversal = True, useDefaultSize = False, autoSize = True, flags = "c1", 
+
+		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
+
+		handle = None):
+		"""Creates a blank panel window.
+
+		myLabel (any)     - What this is catalogued as
+		size (int tuple)  - The size of the panel. (length, width)
+		border (str)      - What style the border has. "simple", "raised", "sunken" or "none". Only the first two letters are necissary
+		parent (wxObject) - If None: The parent will be 'self'.
+		
+		tabTraversal (bool)   - If True: Pressing [tab] will move the cursor to the next widget
+		useDefaultSize (bool) - If True: The xSize and ySize will be overridden to fit as much of the widgets as it can. Will lock the panel size from re-sizing
+
+		initFunction (str)       - The function that is ran when the panel first appears
+		initFunctionArgs (any)   - The arguments for 'initFunction'
+		initFunctionKwargs (any) - The keyword arguments for 'initFunction'function
+
+		Example Input: addPanel(0)
+		Example Input: addPanel(0, size = (200, 300))
+		Example Input: addPanel(0, border = "raised")
+		Example Input: addPanel(0, useDefaultSize = True)
+		Example Input: addPanel(0, tabTraversal = False)
+		"""
+
+		#Determine border
+		if (type(border) == str):
+
+			#Ensure correct caseing
+			border = border.lower()
+
+			if (border[0:2] == "si"):
+				border = "wx.SIMPLE_BORDER"
+
+			elif (border[0] == "r"):
+				border = "wx.RAISED_BORDER"
+
+			elif (border[0:2] == "su"):
+				border = "wx.SUNKEN_BORDER"
+
+			elif (border[0] == "n"):
+				border = "wx.NO_BORDER"
+
+			else:
+				errorMessage = "border {} does not exist".format(border)
+				raise NameError(errorMessage)
+		else:
+			border = "wx.NO_BORDER"
+
+		#Determine size
+		if (useDefaultSize):
+			size = wx.DefaultSize
+
+		#Get Attributes
+		flags = self.getItemMod(flags, False, None)[0]
+
+		if (tabTraversal):
+			flags += "|wx.TAB_TRAVERSAL"
+
+		#Create the panel
+		handle.thing = wx.Panel(handle.parent.thing, id = wx.ID_ANY, pos = position, size = size, style = eval(border + "|" + flags))
+
+		handle.autoSize = autoSize
+
+		#Bind Functions
+		if (initFunction != None):
+			self.betterBind(wx.EVT_INIT_DIALOG, handle.thing, initFunction, initFunctionArgs, initFunctionKwargs)
+
+		return handle
+
+	#Logistic Functions
+	def finish(self):
+		"""Run this when the GUI is finished."""
+		global nestingCatalogue
+
+		def nestCheck(catalogue):
+			"""Makes sure everything is nested."""
+
+			valueList = [item for item in catalogue.values() if isinstance(item, dict)]
+			
+			for item in catalogue.values():
+				if (isinstance(item, dict)):
+					nestCheck(item)
+				else:
+					if (not item.nested):
+						warningMessage = "{} not nested".format(item.__repr__())
+						raise Warning(warningMessage)
+
+		#Make sure all things are nested
+		nestCheck(nestingCatalogue)
+		
+		#Take care of last minute things
+		windowsList = [item for item in self.labelCatalogue.values() if isinstance(item, handle_Window)]
+		for myFrame in windowsList + self.unnamedWindowList:
+			# #Check for any window key bindings that need to happen
+			# if (len(myFrame.keyPressQueue) > 0):
+			# 	#Bind each key event to the window
+			# 	acceleratorTableQueue = []
+			# 	### To Do: This does not currently work with more than 1 key. Find out what is wrong. ###
+			# 	for thing, queue in myFrame.keyPressQueue.items():
+			# 		for key, contents in queue.items():
+
+			# 			#Bind the keys to the window
+			# 			### This is likely the issue. The event seems to be 'overwritten' by the next key ###
+			# 			myId = myFrame.newId()
+			# 			# myId = thing.GetId()
+			# 			# myFrame.Bind(wx.EVT_MENU, contents[0], id=myId)
+			# 			# myFrame.Bind(type, lambda event: handler(event, *args, **kwargs), instance)
+			# 			# print(contents[0])
+			# 			# myFrame.Bind(wx.EVT_MENU, lambda event: contents[0](event), id=eventId)
+			# 			# myFrame.Bind(wx.EVT_MENU, lambda event: contents[0](event), id = myId)
+			# 			myFrame.betterBind(wx.EVT_MENU, myFrame, contents[0], contents[1], contents[2], myId = myId, mode = 2)
+			# 			# asciiValue = myFrame.keyBind(key, thing, contents[0], myFunctionArgsList = contents[1], myFunctionKwargsList = contents[2], event = wx.EVT_MENU, myId = myId)
+
+			# 			#Add to accelerator Table
+			# 			acceleratorTableQueue.append((wx.ACCEL_CTRL, 83, myId))
+
+			# 	acceleratorTable = wx.AcceleratorTable(acceleratorTableQueue)
+			# 	myFrame.SetAcceleratorTable(acceleratorTable)
+
+			#Run any final functions
+			for item in myFrame.finalFunctionList:
+				myFunctionList, myFunctionArgsList, myFunctionKwargsList = item
+
+				if (item[0] != None):
+					myFunctionList, myFunctionArgsList, myFunctionKwargsList = self.formatFunctionInputList(item[0], item[1], item[2])
+					
+					#Run each function
+					for i, myFunction in enumerate(myFunctionList):
+						#Skip empty functions
+						if (myFunction != None):
+							myFunctionEvaluated, myFunctionArgs, myFunctionKwargs = self.formatFunctionInput(i, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
+							
+							#Has both args and kwargs
+							if ((myFunctionKwargs != None) and (myFunctionArgs != None)):
+								myFunctionEvaluated(*myFunctionArgs, **myFunctionKwargs)
+
+							#Has args, but not kwargs
+							elif (myFunctionArgs != None):
+								myFunctionEvaluated(*myFunctionArgs)
+
+							#Has kwargs, but not args
+							elif (myFunctionKwargs != None):
+								myFunctionEvaluated(**myFunctionKwargs)
+
+							#Has neither args nor kwargs
+							else:
+								myFunctionEvaluated()
+
+			#Make sure that the window is up to date
+			myFrame.updateWindow()
+
+		#Start the GUI
+		self.app.MainLoop()
+
+	def exit(self):
+		"""Close the GUI and clean up allocated resources.
+
+		Example Input: exit()
+		"""
+
+		self.onExit(None)
+
+def main_1():
+	"""The program controller. """
+
+	gui = build()
+	myFrame = gui.addWindow(title = "created")#, panel = None)
+	mySizer_1 = myFrame.addSizerGrid(rows = 3, columns = 2)
+	mySizer_1.addText("Lorem")
+	mySizer_1.addText("Ipsum")
+	mySizer_1.addText("Dolor")
+	mySizer_1.addText("Sit")
+
+	mySizer_2 = myFrame.addSizerGrid(rows = 3, columns = 2)
+	mySizer_2.addText("Amet")
+	mySizer_1.nest(mySizer_2) #Nest sizers with handler function
+
+	myFrame.showWindow()
+
+	print(gui)
+	print("GUI Finished")
+	gui.finish()
+
+def main_2():
+	"""The program controller. """
+
+	gui = build()
+	myFrame = gui.addWindow(0, title = "created")#, panel = None)
+	mySizer_1 = myFrame.addSizerGrid(0, rows = 3, columns = 2)
+	mySizer_1.addText("Lorem")
+	mySizer_1.addText("Ipsum")
+	mySizer_1.addText("Dolor")
+	mySizer_1.addText("Sit")
+
+	mySizer_2 = myFrame.addSizerGrid(1, rows = 3, columns = 2)
+	myWidget = mySizer_2.addText("Amet")
+	mySizer_1 + mySizer_2 #Nest sizers with handler addition
+
+	print(len(gui))
+	print(len(myFrame))
+	print(len(mySizer_1))
+	print(len(myWidget))
+
+	gui.showWindow(0)
+
+	print(gui)
+	print("GUI Finished")
+	gui.finish()
+
+def main_3():
+	"""The program controller. """
+
+	gui = build()
+	myFrame = gui.addWindow(0, title = "created")#, panel = None)
+	mySizer_1 = myFrame.addSizerGrid(0, rows = 3, columns = 2)
+	mySizer_1.addText("Lorem")
+	mySizer_1.addText("Ipsum")
+	mySizer_1.addText("Dolor")
+	mySizer_1.addText("Sit")
+
+	mySizer_2 = mySizer_1.addSizerGrid(1, rows = 3, columns = 2) #Nest sizers here
+	myWidget = mySizer_2.addText("Amet")
+
+	for item in myFrame:
+		print("@1", item)
+
+	for item in mySizer_1:
+		print("@2", item)
+
+	for item in myWidget:
+		print("@3", item)
+
+	for item in gui:
+		print("@4", item)
+
+	gui.showWindow(0)
+
+	print(gui)
+	print("GUI Finished")
+	gui.finish()
+
+def main_4():
+	"""The program controller. """
+
+	gui = build()
+	myFrame = gui.addWindow(0, title = "created")#, panel = None)
+	myFrame.addSizerGrid(0, rows = 3, columns = 2)
+	myFrame.addText(0, "Lorem")
+	myFrame.addText(0, "Ipsum")
+	myFrame.addText(0, "Dolor")
+	myFrame.addText(0, "Sit")
+
+	mySizer = myFrame.addSizerGrid(1, rows = 3, columns = 2)
+	myWidget = myFrame.addText(1, myLabel = "myText", myText = "Amet")
+	myFrame.nestSizerInSizer(1, 0) #Nest sizers with labels
+
+	print("@1", myWidget in myFrame)
+	print("@2", mySizer in myFrame)
+	print("@3", mySizer not in myFrame)
+
+	print("@4", myFrame[0])
+	try: 
+		myFrame[2]
+		print("@5 Wrong index did NOT work")
+	except: 
+		print("@5 Wrong index worked too")
+
+	print("@6", myFrame[:])
+	print("@7", myFrame[:1])
+	print("@8", mySizer["myText":])
+	try:
+		myFrame[:2]
+		print("@9 Wrong index slice did NOT work")
+	except: 
+		print("@9 Wrong index slice worked too")
+
+	gui.showWindow(0)
+
+	print(gui)
+	print("GUI Finished")
+	gui.finish()
+
+def main_5():
+	"""The program controller. """
+
+	gui = build()
+	myFrame = gui.addWindow(0, title = "created")#, panel = None)
+	mySizer_1 = myFrame.addSizerGrid(0, rows = 3, columns = 2)
+	myFrame.addText(0, "Lorem")
+	myFrame.addText(0, "Ipsum")
+	myFrame.addText(0, "Dolor")
+	myFrame.addText(0, "Sit")
+
+	mySizer_2 = myFrame.addSizerGrid(1, rows = 3, columns = 2)
+	myFrame.addText(1, "Amet")
+	myFrame.nest(mySizer_2, mySizer_1) #Nest sizers with two handles and a function
+
+	gui.showWindow(0)
+
+	print(gui)
+	print("GUI Finished")
+	gui.finish()
+
+def main_6():
+	"""The program controller. """
+
+	with build() as gui:
+		with gui.addWindow(0, title = "created") as myFrame:
+			with myFrame.addSizerGrid(0, rows = 3, columns = 2) as mySizer_1:
+				mySizer_1.addText("Lorem")
+				mySizer_1.addText("Ipsum")
+				mySizer_1.addText("Dolor")
+				mySizer_1.addText("Sit")
+				with mySizer_1.addSizerGrid(1, rows = 3, columns = 2) as mySizer_2: #Nest sizers here
+					mySizer_2.addText("Amet")
+
+		gui.showWindow(0)
+
+		print(gui)
+		print("GUI Finished")
+
+def main_7():
+	"""The program controller. """
+
+	with build() as gui:
+		with gui.addWindow(0, title = "created") as myFrame:
+			with myFrame.addSizerGrid(0, rows = 3, columns = 2) as mySizer_1:
+				mySizer_1.addText("Lorem")
+				mySizer_1.addText("Ipsum")
+				mySizer_1.addText("Dolor")
+				mySizer_1.addText("Sit")
+				with myFrame.addSizerGrid(1, rows = 3, columns = 2) as mySizer_2: #Nest sizers automatically
+					mySizer_2.addText("Amet")
+
+		gui.showWindow(0)
+
+		print(gui)
+		print("GUI Finished")
+
+if __name__ == '__main__':
+	main_4()
