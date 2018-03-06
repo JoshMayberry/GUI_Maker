@@ -97,10 +97,13 @@ import re
 #Required Modules
 ##py -m pip install
 	# wxPython
+	# py2exe
+	# pyserial
+
+#Maybe Required Modules?
 	# openpyxl
 	# numpy
 	# matplotlib
-	# py2exe
 	# pillow
 	# pycryptodomex
 	# atexit
@@ -108,7 +111,6 @@ import re
 	# elaphe
 	# python3-ghostscript "https://pypi.python.org/pypi/python3-ghostscript/0.5.0#downloads"
 	# sqlite3
-	# pyserial
 
 ##User Created
 	#ExcelManipulator
@@ -704,14 +706,14 @@ class Utilities():
 		#Account for indexing
 		elif (isinstance(itemLabel, slice)):
 			if (itemLabel.step != None):
-				raise FutureWarning("Add slice steps to get() for indexing {}".format(self.__repr__()))
+				raise FutureWarning(f"Add slice steps to get() for indexing {self.__repr__()}")
 			
 			elif ((itemLabel.start != None) and (itemLabel.start not in self.labelCatalogue)):
-				errorMessage = "There is no item labled {} in the label catalogue for {}".format(itemLabel.start, self.__repr__())
+				errorMessage = f"There is no item labled {itemLabel.start} in the label catalogue for {self.__repr__()}"
 				raise KeyError(errorMessage)
 			
 			elif ((itemLabel.stop != None) and (itemLabel.stop not in self.labelCatalogue)):
-				errorMessage = "There is no item labled {} in the label catalogue for {}".format(itemLabel.stop, self.__repr__())
+				errorMessage = f"There is no item labled {itemLabel.stop} in the label catalogue for {self.__repr__()}"
 				raise KeyError(errorMessage)
 
 			handleList = []
@@ -751,14 +753,14 @@ class Utilities():
 			return answer
 
 		if (isinstance(itemLabel, wx.Event)):
-			errorMessage = "There is no item associated with the event {} in the label catalogue for {}".format(itemLabel, self.__repr__())
+			errorMessage = f"There is no item associated with the event {itemLabel} in the label catalogue for {self.__repr__()}"
 		elif (typeList != None):
 			if (isinstance(answer, list) or isinstance(answer, tuple)):
-				errorMessage = "There is no item labled {} in the label catalogue for {} that is a {}".format(itemLabel, self.__repr__(), [item.__name__ for item in typeList])
+				errorMessage = f"There is no item labled {itemLabel} in the label catalogue for {self.__repr__()} that is a {[item.__name__ for item in typeList]}"
 			else:
-				errorMessage = "There is no item labled {} in the label catalogue for {} that is a {}".format(itemLabel, self.__repr__(), typeList.__name__)
+				errorMessage = f"There is no item labled {itemLabel} in the label catalogue for {self.__repr__()} that is a {typeList.__name__}"
 		else:
-			errorMessage = "There is no item labled {} in the label catalogue for {}".format(itemLabel, self.__repr__())
+			errorMessage = f"There is no item labled {itemLabel} in the label catalogue for {self.__repr__()}"
 		raise KeyError(errorMessage)
 
 	#Binding Functions
@@ -850,7 +852,7 @@ class Utilities():
 
 			#Check for user error
 			if ((type(myFunctionKwargs) != dict) and (myFunctionKwargs != None)):
-				errorMessage = "myFunctionKwargs must be a dictionary for function {}".format(myFunctionEvaluated.__repr__())
+				errorMessage = f"myFunctionKwargs must be a dictionary for function {myFunctionEvaluated.__repr__()}"
 				raise ValueError(errorMessage)
 
 		return myFunctionEvaluated, myFunctionArgs, myFunctionKwargs
@@ -937,7 +939,7 @@ class Utilities():
 					bindObject.Bind(eventType, lambda event: myFunctionEvaluated(event))
 
 			else:
-				errorMessage = "Unknown mode {} for betterBind()".format(mode)
+				errorMessage = f"Unknown mode {mode} for betterBind()"
 				raise TypeError(errorMessage)
 
 		#Skip empty functions
@@ -1022,14 +1024,14 @@ class Utilities():
 
 		if (numpad):
 			if ("numpad" not in key):
-				key = "numpad+" + key
+				key = f"numpad+{key}"
 		# elif (ctrl):
 		#   if ("ctrl" not in key):
-		#       key = "ctrl+" + key
+		#       key = f"ctrl+{key}"
 
 		#Error Check
 		if (key not in self.keyOptions):
-			print("ERROR:", key, "is not a known key binding")
+			warnings.warn(f"{key} is not a known key binding", Warning, stacklevel = 2)
 			return None
 
 		#Get the corresponding key address
@@ -1257,7 +1259,7 @@ class Utilities():
 				self.threadQueue.from_dummy_thread(myFunction, myFunctionArgs, myFunctionKwargs)
 
 			else:
-				print("ERROR: Cannot pass from the main thread to the main thread")
+				warnings.warn(f"Cannot pass from the main thread to the main thread for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def recieveFunction(self):
 		"""Passes a function from one thread to another. Used to recieve the function.
@@ -1313,11 +1315,11 @@ class Utilities():
 						if (self.idleQueue != None):
 							self.idleQueue.append([myFunctionEvaluated, myFunctionArgs, myFunctionKwargs, shown])
 						else:
-							print("ERROR: The window", self, "was given it's own idle function by the user")
+							warnings.warn(f"The window {self} was given it's own idle function by the user for {self.__repr__()}", Warning, stacklevel = 2)
 				else:
-					print("ERROR: function", i, "in myFunctionList == None for backgroundRun()")
+					warnings.warn(f"function {i} in myFunctionList == None for backgroundRun() for {self.__repr__()}", Warning, stacklevel = 2)
 		else:
-			print("ERROR: myFunctionList == None for backgroundRun()")
+			warnings.warn(f"myFunctionList == None for backgroundRun() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		return None
 
@@ -1375,7 +1377,7 @@ class Utilities():
 					myFunctionEvaluated, myFunctionArgs, myFunctionKwargs = self.formatFunctionInput(i, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
 					runFunction(after, myFunctionEvaluated, myFunctionArgs, myFunctionKwargs)
 		else:
-			print("ERROR: myFunctionList == None for autoRun()")
+			warnings.warn(f"myFunctionList == None for autoRun() in {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Nesting Catalogue
 	def getAddressValue(self, address):
@@ -1502,7 +1504,7 @@ class Utilities():
 						handle_source.labelCatalogueOrder.pop(i)
 						break
 				else:
-					warnings.warn("Could not find {} in labelCatalogueOrder for {}".format(label, handle_source.__repr__()), Warning, stacklevel = 2)
+					warnings.warn(f"Could not find {label} in labelCatalogueOrder for {handle_source.__repr__()}", Warning, stacklevel = 2)
 				break
 		else:
 			for i, handle in enumerate(handle_source.unnamedList):
@@ -1510,7 +1512,7 @@ class Utilities():
 					handle_source.unnamedList.pop(i)
 					break
 			else:
-				warnings.warn(" Could not find {} in labelCatalogue or unnamedList for {}".format(handle_remove.__repr__(), handle_source.__repr__()), Warning, stacklevel = 2)
+				warnings.warn(f"Could not find {handle_remove.__repr__()} in labelCatalogue or unnamedList for {handle_source.__repr__()}", Warning, stacklevel = 2)
 
 	#Settings
 	def getItemMod(self, flags = None, stretchable = True, border = 5):
@@ -1591,7 +1593,7 @@ class Utilities():
 
 					#Unknown Action
 					else:
-						errorMessage = "Unknown combination flag {}".format(flag)
+						errorMessage = f"Unknown combination flag {flag}"
 						raise ValueError(errorMessage)
 
 				##Align the Item
@@ -1638,7 +1640,7 @@ class Utilities():
 
 					#Unknown Action
 					else:
-						errorMessage = "Unknown alignment flag {}".format(flag)
+						errorMessage = f"Unknown alignment flag {flag}"
 						raise ValueError(errorMessage)
 
 				##Border the Item
@@ -1675,7 +1677,7 @@ class Utilities():
 
 					#Unknown Action
 					else:
-						errorMessage = "Unknown border flag {}".format(flag)
+						errorMessage = f"Unknown border flag {flag}"
 						raise ValueError(errorMessage)
 
 				##Expand the Item
@@ -1694,7 +1696,7 @@ class Utilities():
 
 					#Unknown Action
 					else:
-						errorMessage = "Unknown expand flag {}".format(flag)
+						errorMessage = f"Unknown expand flag {flag}"
 						raise ValueError(errorMessage)
 
 				##Fixture the Item
@@ -1709,12 +1711,12 @@ class Utilities():
 
 					#Unknown Action
 					else:
-						errorMessage = "Unknown fixture flag {}".format(flag)
+						errorMessage = f"Unknown fixture flag {flag}"
 						raise ValueError(errorMessage)
 
 				##Unknown Action
 				else:
-					errorMessage = "Unknown flag {}".format(flag)
+					errorMessage = f"Unknown flag {flag}"
 					raise ValueError(errorMessage)
 		else:
 			fixedFlags = "0"
@@ -1954,7 +1956,7 @@ class Utilities():
 						image = wx.ArtProvider.GetBitmap(wx.ART_LIST_VIEW)
 						
 					else:
-						errorMessage = "The icon {} cannot be found".format(imagePath)
+						errorMessage = f"The icon {imagePath} cannot be found"
 						raise KeyError(errorMessage)
 				else:
 					try:
@@ -2074,7 +2076,7 @@ class Utilities():
 		with open(fileName, "a") as fileHandle:
 
 			if (timestamp):
-				content = "{} --- ".format(time.strftime("%Y/%m/%d %H:%M:%S", time.localtime()))
+				content = f"{time.strftime('%Y/%m/%d %H:%M:%S', time.localtime())} --- "
 			else:
 				content = ""
 
@@ -2108,7 +2110,7 @@ class Utilities():
 		argList = []
 		for arg in desiredArgs:
 			if (arg not in argument_catalogue):
-				errorMessage = "Must provide the argument {} to {}".format(arg, self.__repr__())
+				errorMessage = f"Must provide the argument {arg} to {self.__repr__()}"
 				raise KeyError(errorMessage)
 
 			argList.append(argument_catalogue[arg])
@@ -2191,7 +2193,7 @@ class Utilities():
 
 		#Error check
 		if (self.type.lower() not in [str(item).lower() for item in typeNeeded]):
-			errorMessage = "Cannot use type {} with the function {}".format(self.type, function.__name__)
+			errorMessage = f"Cannot use type {self.type} with the function {function.__name__}"
 			raise TypeError(errorMessage)
 
 	def getArgument_event(self, arguments, args, kwargs):
@@ -2476,23 +2478,23 @@ class handle_Base(Utilities, CommonEventFunctions):
 		self.allowBuildErrors = None
 
 	def __repr__(self):
-		representation = "{}(id = {})".format(type(self).__name__, id(self))
+		representation = f"{type(self).__name__}(id = {id(self)})"
 		return representation
 
 	def __str__(self):
 		"""Gives diagnostic information on the Widget when it is printed out."""
 
-		output = "{}()\n-- id: {}\n".format(type(self).__name__, id(self))
+		output = f"{type(self).__name__}()\n-- id: {id(self)}\n"
 		if (self.parent != None):
-			output += "-- parent id: {}\n".format(id(self.parent))
+			output += f"-- parent id: {id(self.parent)}\n"
 		if (self.nestingAddress != None):
-			output += "-- nesting address: {}\n".format(self.nestingAddress)
+			output += f"-- nesting address: {self.nestingAddress}\n"
 		if (self.label != None):
-			output += "-- label: {}\n".format(self.label)
+			output += f"-- label: {self.label}\n"
 		if (self.type != None):
-			output += "-- type: {}\n".format(self.type)
+			output += f"-- type: {self.type}\n"
 		if (self.thing != None):
-			output += "-- wxObject: {}\n".format(type(self.thing).__name__)
+			output += f"-- wxObject: {type(self.thing).__name__}\n"
 		if (self.nested):
 			output += "-- nested: True\n"
 		return output
@@ -2540,9 +2542,9 @@ class handle_Container_Base(handle_Base):
 
 		output = handle_Base.__str__(self)
 		if (self.unnamedList != None):
-			output += "-- unnamed items: {}\n".format(len(self.unnamedList))
+			output += f"-- unnamed items: {len(self.unnamedList)}\n"
 		if (self.labelCatalogue != None):
-			output += "-- labeled items: {}\n".format(len(self.labelCatalogue))
+			output += f"-- labeled items: {len(self.labelCatalogue)}\n"
 
 		return output
 
@@ -2603,7 +2605,7 @@ class handle_Container_Base(handle_Base):
 		#Add object to internal catalogue
 		if (label != None):
 			if (label in buildSelf.labelCatalogue):
-				warnings.warn("Overwriting label association for {} in ".format(label), Warning, stacklevel = 2)
+				warnings.warn(f"Overwriting label association for {label} in ", Warning, stacklevel = 2)
 
 			buildSelf.labelCatalogue[self.label] = self
 			buildSelf.labelCatalogueOrder.append(self.label)
@@ -2903,7 +2905,7 @@ class handle_Widget_Base(handle_Base):
 			value = self.thing.GetRange()
 
 		else:
-			warnings.warn("Add {} to __len__() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = 0
 
 		return value
@@ -2915,7 +2917,7 @@ class handle_Widget_Base(handle_Base):
 		
 		if (self.nestingAddress != None):
 			sizer = self.getAddressValue(self.nestingAddress)[None]
-			output += "-- sizer id: {}\n".format(id(sizer))
+			output += f"-- sizer id: {id(sizer)}\n"
 		return output
 
 	def preBuild(self, argument_catalogue):
@@ -2931,7 +2933,7 @@ class handle_Widget_Base(handle_Base):
 		#Add object to internal catalogue
 		if (label != None):
 			if (label in buildSelf.labelCatalogue):
-				warnings.warn("Overwriting label association for {} in ".format(label), Warning, stacklevel = 2)
+				warnings.warn(f"Overwriting label association for {label} in ", Warning, stacklevel = 2)
 
 			buildSelf.labelCatalogue[self.label] = self
 			buildSelf.labelCatalogueOrder.append(self.label)
@@ -3026,7 +3028,7 @@ class handle_Widget_Base(handle_Base):
 		elif (self.type.lower() == "progressbar"):
 			build_progressBar()
 		else:
-			warnings.warn("Add {} to build() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self.postBuild(argument_catalogue)
 
@@ -3038,7 +3040,7 @@ class handle_Widget_Base(handle_Base):
 			value = self.thing.GetValue() #(int) - Where the progress bar currently is
 
 		else:
-			warnings.warn("Add {} to getValue() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -3049,7 +3051,7 @@ class handle_Widget_Base(handle_Base):
 		if (False):
 			pass
 		else:
-			warnings.warn("Add {} to getIndex() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to getIndex() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -3061,7 +3063,7 @@ class handle_Widget_Base(handle_Base):
 			value = self.thing.GetRange()
 
 		else:
-			warnings.warn("Add {} to getAll() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to getAll() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -3074,7 +3076,7 @@ class handle_Widget_Base(handle_Base):
 			pass
 			
 		else:
-			warnings.warn("Add {} to setReadOnly() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Change State
 	##Enable / Disable
@@ -3280,7 +3282,7 @@ class handle_Widget_Base(handle_Base):
 			text = ""
 		else:
 			if (not isinstance(text, str)):
-				text = "{}".format(text)
+				text = f"{text}"
 
 		#Add the tool tip
 		toolTip = wx.ToolTip(text)
@@ -3324,7 +3326,7 @@ class handle_WidgetText(handle_Widget_Base):
 			value = len(self.getValue()) #(int) - How long the url link is
 
 		else:
-			warnings.warn("Add {} to __len__() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = 0
 
 		return value
@@ -3340,7 +3342,7 @@ class handle_WidgetText(handle_Widget_Base):
 
 			#Ensure correct format
 			if (not isinstance(text, str)):
-				text = "{}".format(text)
+				text = f"{text}"
 
 			#Apply Settings
 			if (alignment != None):
@@ -3425,7 +3427,7 @@ class handle_WidgetText(handle_Widget_Base):
 		elif (self.type.lower() == "empty"):
 			build_empty()
 		else:
-			warnings.warn("Add {} to build() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self.postBuild(argument_catalogue)
 
@@ -3440,7 +3442,7 @@ class handle_WidgetText(handle_Widget_Base):
 			value = self.thing.GetURL() #(str) - What the link is
 
 		else:
-			warnings.warn("Add {} to getValue() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -3451,18 +3453,18 @@ class handle_WidgetText(handle_Widget_Base):
 
 		if (self.type.lower() == "text"):
 			if (not isinstance(newValue, str)):
-				newValue = "{}".format(newValue)
+				newValue = f"{newValue}"
 
 			self.thing.SetLabel(newValue) #(str) - What the static text will now say
 
 		elif (self.type.lower() == "hyperlink"):
 			if (not isinstance(newValue, str)):
-				newValue = "{}".format(newValue)
+				newValue = f"{newValue}"
 
 			self.thing.SetURL(newValue) #(str) - What the hyperlink will now connect to
 
 		else:
-			warnings.warn("Add {} to setValue() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setReadOnly(self, state = True):
 		"""Sets the contextual readOnly for the object associated with this handle to what the user supplies."""
@@ -3471,7 +3473,7 @@ class handle_WidgetText(handle_Widget_Base):
 			pass
 			
 		else:
-			warnings.warn("Add {} to setReadOnly() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Change Settings
 	def wrapText(self, wrap = 1):
@@ -3489,7 +3491,7 @@ class handle_WidgetText(handle_Widget_Base):
 		if (self.type.lower() == "hyperlink"):
 			self.betterBind(wx.adv.EVT_HYPERLINK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn("Add {} to setFunction_click() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Create sub objects
 	def makeFont(self, size = None, bold = False, italic = False, color = None, family = None):
@@ -3581,7 +3583,7 @@ class handle_WidgetList(handle_Widget_Base):
 				value = self.thing.GetColumnCount()
 
 		else:
-			warnings.warn("Add {} to __len__() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = 0
 
 		return value
@@ -3616,7 +3618,7 @@ class handle_WidgetList(handle_Widget_Base):
 				if (default in choices):
 					default = choices.index(default)
 				else:
-					warnings.warn("the default {} was not provided in the list of choices".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+					warnings.warn(f"the default was not provided in the list of choices for a {self.type} in {self.__repr__()}", Warning, stacklevel = 3)
 					default = None
 
 			if (default == None):
@@ -3728,7 +3730,7 @@ class handle_WidgetList(handle_Widget_Base):
 		elif (self.type.lower() == "listfull"):
 			build_listFull()
 		else:
-			warnings.warn("Add {} to build() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self.postBuild(argument_catalogue)
 
@@ -3756,7 +3758,7 @@ class handle_WidgetList(handle_Widget_Base):
 					value.append(subValue)
 
 		else:
-			warnings.warn("Add {} to getValue() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -3783,7 +3785,7 @@ class handle_WidgetList(handle_Widget_Base):
 					value.append(subValue)
 
 		else:
-			warnings.warn("Add {} to getIndex() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to getIndex() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -3810,7 +3812,7 @@ class handle_WidgetList(handle_Widget_Base):
 				value.append(subValue)
 	
 		else:
-			warnings.warn("Add {} to getAll() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to getAll() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -3900,7 +3902,7 @@ class handle_WidgetList(handle_Widget_Base):
 
 			#       #   #Account for no column found
 			#       #   if (len(index) == 0):
-			#       #       print("ERROR: There is no column", column, "for the list", label, "in the column names", columnNames, "\nAdding value to the first column instead")
+			#       #       warnings.warn(f"There is no column {column} for the list {label} in the column names {columnNames}\nAdding value to the first column instead", Warning, stacklevel = 2)
 			#       #       column = 0
 			#       #   else:
 			#       #       #Choose the first instance of it
@@ -3925,7 +3927,7 @@ class handle_WidgetList(handle_Widget_Base):
 			#       self.thing.InsertItem(0, text)
 
 		else:
-			warnings.warn("Add {} to setValue() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setSelection(self, newValue, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
@@ -3935,13 +3937,13 @@ class handle_WidgetList(handle_Widget_Base):
 				newValue = self.thing.FindString(newValue)
 
 			if (newValue == None):
-				errorMessage = "Invalid drop list selection in setSelection() for {}".format(self.__repr__())
+				errorMessage = f"Invalid drop list selection in setSelection() for {self.__repr__()}"
 				raise ValueError(errorMessage)
 				
 			self.thing.SetSelection(newValue) #(int) - What the choice options will now be
 
 		else:
-			warnings.warn("Add {} to setSelection() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Change Settings
 	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
@@ -3951,74 +3953,74 @@ class handle_WidgetList(handle_Widget_Base):
 		elif (self.type.lower() == "listfull"):
 			self.betterBind(wx.EVT_LIST_ITEM_SELECTED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn("Add {} to setFunction_click() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
 			
 	def setFunction_preEdit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
 			self.betterBind(wx.EVT_LIST_BEGIN_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn("Add {} to EVT_LIST_BEGIN_LABEL_EDIT() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to EVT_LIST_BEGIN_LABEL_EDIT() for {self.__repr__()}", Warning, stacklevel = 2)
 			
 	def setFunction_postEdit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
 			self.betterBind(wx.EVT_LIST_END_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn("Add {} to setFunction_postEdit() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_postEdit() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_preDrag(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
 			if (not self.dragable):
-				warnings.warn("'drag' was not enabled for {} upon creation".format(self.__repr__()), Warning, stacklevel = 2)
+				warnings.warn(f"'drag' was not enabled for {self.__repr__()} upon creation", Warning, stacklevel = 2)
 			else:
 				self.preDragFunction = myFunction
 				self.preDragFunctionArgs = myFunctionArgs
 				self.preDragFunctionKwargs = myFunctionKwargs
 		else:
-			warnings.warn("Add {} to setFunction_preDrag() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_preDrag() for {self.__repr__()}", Warning, stacklevel = 2)
 			
 	def setFunction_postDrag(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
 			if (not self.dragable):
-				warnings.warn("'drag' was not enabled for {} upon creation".format(self.__repr__()), Warning, stacklevel = 2)
+				warnings.warn(f"'drag' was not enabled for {self.__repr__()} upon creation", Warning, stacklevel = 2)
 			else:
 				self.postDragFunction = myFunction
 				self.postDragFunctionArgs = myFunctionArgs
 				self.postDragFunctionKwargs = myFunctionKwargs
 		else:
-			warnings.warn("Add {} to setFunction_postDrag() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_postDrag() for {self.__repr__()}", Warning, stacklevel = 2)
 			
 	def setFunction_preDrop(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
 			if (self.myDropTarget == None):
-				warnings.warn("'drop' was not enabled for {} upon creation".format(self.__repr__()), Warning, stacklevel = 2)
+				warnings.warn(f"'drop' was not enabled for {self.__repr__()} upon creation", Warning, stacklevel = 2)
 			else:
 				self.myDropTarget.preDropFunction = myFunction
 				self.myDropTarget.preDropFunctionArgs = myFunctionArgs
 				self.myDropTarget.preDropFunctionKwargs = myFunctionKwargs
 		else:
-			warnings.warn("Add {} to setFunction_preDrop() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_preDrop() for {self.__repr__()}", Warning, stacklevel = 2)
 			
 	def setFunction_postDrop(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
 			if (self.myDropTarget == None):
-				warnings.warn("'drop' was not enabled for {} upon creation".format(self.__repr__()), Warning, stacklevel = 2)
+				warnings.warn(f"'drop' was not enabled for {self.__repr__()} upon creation", Warning, stacklevel = 2)
 			else:
 				self.myDropTarget.postDropFunction = myFunction
 				self.myDropTarget.postDropFunctionArgs = myFunctionArgs
 				self.myDropTarget.postDropFunctionKwargs = myFunctionKwargs
 		else:
-			warnings.warn("Add {} to setFunction_postDrop() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_postDrop() for {self.__repr__()}", Warning, stacklevel = 2)
 			
 	def setFunction_dragOver(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
 			if (self.myDropTarget == None):
-				warnings.warn("'drop' was not enabled for {} upon creation".format(self.__repr__()), Warning, stacklevel = 2)
+				warnings.warn(f"'drop' was not enabled for {self.__repr__()} upon creation", Warning, stacklevel = 2)
 			else:
 				self.myDropTarget.dragOverFunction = myFunction
 				self.myDropTarget.dragOverFunctionArgs = myFunctionArgs
 				self.myDropTarget.dragOverFunctionKwargs = myFunctionKwargs
 		else:
-			warnings.warn("Add {} to setFunction_dragOver() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_dragOver() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setReadOnly(self, state = True):
 		"""Sets the contextual readOnly for the object associated with this handle to what the user supplies."""
@@ -4026,7 +4028,7 @@ class handle_WidgetList(handle_Widget_Base):
 		if (self.type.lower() == "listdrop"):
 			self.setDisable(state)
 		else:
-			warnings.warn("Add {} to setReadOnly() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Event functions
 	def onDragList_beginDragAway(self, event, label = None,
@@ -4446,7 +4448,7 @@ class handle_WidgetInput(handle_Widget_Base):
 			value = len(self.getValue())
 
 		else:
-			warnings.warn("Add {} to __len__() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = 0
 
 		return value
@@ -4681,7 +4683,7 @@ class handle_WidgetInput(handle_Widget_Base):
 		elif (self.type.lower() == "inputsearch"):
 			build_inputSearch()
 		else:
-			warnings.warn("Add {} to build() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self.postBuild(argument_catalogue)
 
@@ -4702,7 +4704,7 @@ class handle_WidgetInput(handle_Widget_Base):
 			value = self.thing.GetValue() #(str) - What is in the search box
 
 		else:
-			warnings.warn("Add {} to getValue() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -4728,7 +4730,7 @@ class handle_WidgetInput(handle_Widget_Base):
 			self.thing.SetValue(newValue) #(str) - What will be shown in the search box
 
 		else:
-			warnings.warn("Add {} to setValue() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Change Settings
 	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
@@ -4738,19 +4740,19 @@ class handle_WidgetInput(handle_Widget_Base):
 		elif (self.type.lower() == "inputspinner"):
 			self.betterBind(wx.EVT_SPINCTRL, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)  
 		else:
-			warnings.warn("Add {} to setFunction_click() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_enter(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "inputbox"):
 			self.keyBind("enter", self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn("Add {} to setFunction_enter() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_enter() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_preEdit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "inputbox"):
 			self.betterBind(wx.EVT_SET_FOCUS, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn("Add {} to setFunction_preEdit() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_preEdit() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_postEdit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "inputbox"):
@@ -4760,19 +4762,19 @@ class handle_WidgetInput(handle_Widget_Base):
 		elif (self.type.lower() == "slider"):
 			self.betterBind(wx.EVT_SCROLL_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn("Add {} to setFunction_postEdit() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_postEdit() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_search(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "inputsearch"):
 			self.betterBind(wx.EVT_SEARCHCTRL_SEARCH_BTN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn("Add {} to setFunction_preEdit() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_preEdit() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_cancel(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "inputsearch"):
 			self.betterBind(wx.EVT_SEARCHCTRL_CANCEL_BTN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn("Add {} to setFunction_preEdit() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_preEdit() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setMin(self, newValue):
 		"""Sets the contextual minimum for the object associated with this handle to what the user supplies."""
@@ -4784,7 +4786,7 @@ class handle_WidgetInput(handle_Widget_Base):
 			self.thing.SetMin(newValue) #(int / float) - What the min slider position will be
 
 		else:
-			warnings.warn("Add {} to setMin() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setMin() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setMax(self, newValue):
 		"""Sets the contextual maximum for the object associated with this handle to what the user supplies."""
@@ -4796,7 +4798,7 @@ class handle_WidgetInput(handle_Widget_Base):
 			self.thing.SetMax(newValue) #(int / float) - What the max slider position will be
 
 		else:
-			warnings.warn("Add {} to setMax() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setMax() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setReadOnly(self, state = True):
 		"""Sets the contextual readOnly for the object associated with this handle to what the user supplies."""
@@ -4808,7 +4810,7 @@ class handle_WidgetInput(handle_Widget_Base):
 			self.thing.Enable(not state)
 
 		else:
-			warnings.warn("Add {} to setReadOnly() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 2)
 
 class handle_WidgetButton(handle_Widget_Base):
 	"""A handle for working with button widgets."""
@@ -4844,7 +4846,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			value = len(self.getValue()) #(int) - The length of the text in the image button
 
 		else:
-			warnings.warn("Add {} to __len__() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = 0
 
 		return value
@@ -5062,7 +5064,7 @@ class handle_WidgetButton(handle_Widget_Base):
 		elif (self.type.lower() == "buttonimage"):
 			build_buttonImage()
 		else:
-			warnings.warn("Add {} to build() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self.postBuild(argument_catalogue)
 
@@ -5096,7 +5098,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			value = self.thing.GetLabel() #(str) - What the button says
 
 		else:
-			warnings.warn("Add {} to getValue() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -5111,7 +5113,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			value = self.thing.GetCheckedItems() #(list) - Which checkboxes are selected as integers
 
 		else:
-			warnings.warn("Add {} to getIndex() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to getIndex() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -5132,7 +5134,7 @@ class handle_WidgetButton(handle_Widget_Base):
 				value.append(thing.GetString(i)) #(list) - What is in the full list as strings
 
 		else:
-			warnings.warn("Add {} to getAll() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to getAll() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -5156,7 +5158,7 @@ class handle_WidgetButton(handle_Widget_Base):
 					newValue = self.thing.FindString(newValue)
 
 			if (newValue == None):
-				errorMessage = "Invalid radio button selection in setValue() for {}".format(self.__repr__())
+				errorMessage = f"Invalid radio button selection in setValue() for {self.__repr__()}"
 				raise ValueError(errorMessage)
 
 			self.thing.SetSelection(int(newValue)) #(int / str) - Which radio button to select
@@ -5179,7 +5181,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			self.thing.SetLabel(newValue) #(str) - What the button will say on it
 
 		else:
-			warnings.warn("Add {} to setValue() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Change Settings
 	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
@@ -5207,7 +5209,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			self.betterBind(wx.EVT_CHECKLISTBOX, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
 		else:
-			warnings.warn("Add {} to setFunction_click() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setReadOnly(self, state = True, event = None):
 		"""Sets the contextual readOnly for the object associated with this handle to what the user supplies."""
@@ -5216,7 +5218,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			self.thing.SetReadOnly(state)
 
 		else:
-			warnings.warn("Add {} to setReadOnly() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 2)
 
 class handle_WidgetPicker(handle_Widget_Base):
 	"""A handle for working with picker widgets."""
@@ -5237,7 +5239,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			value = len(self.getValue()) #(int) - How long the file path selected is
 
 		else:
-			warnings.warn("Add {} to __len__() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = 0
 
 		return value
@@ -5577,7 +5579,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 		elif (self.type.lower() == "pickerfont"):
 			build_pickerFont()
 		else:
-			warnings.warn("Add {} to build() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self.postBuild(argument_catalogue)
 
@@ -5594,17 +5596,17 @@ class handle_WidgetPicker(handle_Widget_Base):
 		elif (self.type.lower() == "pickerdate"):
 			value = self.thing.GetValue() #(str) - What date is selected in the date picker
 			if (value != None):
-				value = str(value.GetMonth()) + "/"+ str(value.GetDay()) + "/" + str(value.GetYear())
+				value = f"{value.GetMonth()}/{value.GetDay()}/{value.GetYear()}"
 
 		elif (self.type.lower() == "pickerdatewindow"):
 			value = self.thing.GetDate() #(str) - What date is selected in the date picker
 			if (value != None):
-				value = str(value.GetMonth()) + "/"+ str(value.GetDay()) + "/" + str(value.GetYear())
+				value = f"{value.GetMonth()}/{value.GetDay()}/{value.GetYear()}"
 
 		elif (self.type.lower() == "pickertime"):
 			value = self.thing.GetTime() #(str) - What date is selected in the date picker
 			if (value != None):
-				value = str(value[0]) + ":"+ str(value[1]) + ":" + str(value[2])
+				value = f"{value[0]}:{value[1]}:{value[2]}"
 
 		elif (self.type.lower() == "pickercolor"):
 			value = self.thing.GetColour()
@@ -5613,7 +5615,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			value = self.thing.GetSelectedFont()
 
 		else:
-			warnings.warn("Add {} to getValue() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -5635,7 +5637,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 				else:
 					newValue = wx.DateTime().SetToCurrent()
 			except:
-				errorMessage = "Calandar dates must be formatted 'mm/dd/yy' for setValue() for {}".format(self.__repr__())
+				errorMessage = f"Calandar dates must be formatted 'mm/dd/yy' for setValue() for {self.__repr__()}"
 				raise SyntaxError(errorMessage)
 
 			self.thing.SetValue(newValue) #(str) - What date will be selected as 'mm/dd/yyyy'
@@ -5654,7 +5656,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 						hour, minute, second = time
 
 					else:
-						errorMessage = "Time must be formatted 'hh:mm:ss' or 'hh:mm' for setValue() for {}".format(self.__repr__())
+						errorMessage = f"Time must be formatted 'hh:mm:ss' or 'hh:mm' for setValue() for {self.__repr__()}"
 						raise SyntaxError(errorMessage)
 
 				else:
@@ -5663,13 +5665,13 @@ class handle_WidgetPicker(handle_Widget_Base):
 
 				hour, minute, second = int(hour), int(minute), int(second)
 			except:
-				errorMessage = "Time must be formatted 'hh:mm:ss' or 'hh:mm' for setValue() for {}".format(self.__repr__())
+				errorMessage = f"Time must be formatted 'hh:mm:ss' or 'hh:mm' for setValue() for {self.__repr__()}"
 				raise SyntaxError(errorMessage)
 
 			self.thing.SetTime(hour, minute, second) #(str) - What time will be selected as 'hour:minute:second'
 
 		else:
-			warnings.warn("Add {} to setValue() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 
 	#Change Settings
@@ -5694,7 +5696,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 		elif (self.type.lower() == "pickerfont"):
 			self.betterBind(wx.EVT_FONTPICKER_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn("Add {} to setFunction_click() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_editLabel(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when a label is modified."""
@@ -5702,7 +5704,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 		if (self.type.lower() == "pickerfilewindow"):
 			self.betterBind(wx.EVT_TREE_END_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn("Add {} to setFunction_editLabel() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_editLabel() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_rightClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the right mouse button is clicked in the widget."""
@@ -5710,7 +5712,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 		if (self.type.lower() == "pickerfilewindow"):
 			self.betterBind(wx.EVT_TREE_ITEM_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn("Add {} to setFunction_rightClick() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_rightClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_editDay(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the day is modified."""
@@ -5718,7 +5720,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 		if (self.type.lower() == "pickerdatewindow"):
 			self.betterBind(wx.adv.EVT_CALENDAR_DAY, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn("Add {} to setFunction_editDay() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_editDay() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_editMonth(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the month is modified."""
@@ -5726,7 +5728,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 		if (self.type.lower() == "pickerdatewindow"):
 			self.betterBind(wx.adv.EVT_CALENDAR_MONTH, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn("Add {} to setFunction_editMonth() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_editMonth() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_editYear(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the year is modified."""
@@ -5734,7 +5736,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 		if (self.type.lower() == "pickerdatewindow"):
 			self.betterBind(wx.adv.EVT_CALENDAR_YEAR, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn("Add {} to setFunction_editYear() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_editYear() for {self.__repr__()}", Warning, stacklevel = 2)
 
 class handle_WidgetImage(handle_Widget_Base):
 	"""A handle for working with image widgets."""
@@ -5761,7 +5763,7 @@ class handle_WidgetImage(handle_Widget_Base):
 				value = image.GetHeight()
 
 		else:
-			warnings.warn("Add {} to __len__() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = 0
 
 		return value
@@ -5788,7 +5790,7 @@ class handle_WidgetImage(handle_Widget_Base):
 		if (self.type.lower() == "image"):
 			build_image()
 		else:
-			warnings.warn("Add {} to build() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self.postBuild(argument_catalogue)
 
@@ -5800,7 +5802,7 @@ class handle_WidgetImage(handle_Widget_Base):
 			value = self.thing.GetBitmap() #(bitmap) - The image that is currently being shown
 
 		else:
-			warnings.warn("Add {} to getValue() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -5814,7 +5816,7 @@ class handle_WidgetImage(handle_Widget_Base):
 			self.thing.SetBitmap(image) #(wxBitmap) - What the image will be now
 
 		else:
-			warnings.warn("Add {} to setValue() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 class handle_Menu(handle_Container_Base):
 	"""A handle for working with menus."""
@@ -5892,7 +5894,7 @@ class handle_Menu(handle_Container_Base):
 				value = item.GetLabel() #(str) - What the selected item says
 
 		else:
-			warnings.warn("Add {} to getValue() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -5914,11 +5916,11 @@ class handle_Menu(handle_Container_Base):
 			if ((item.GetKind() == wx.ITEM_CHECK) or (item.GetKind() == wx.ITEM_RADIO)):
 				item.Check(newValue) #(bool) - True: selected; False: un-selected
 			else:
-				errorMessage = "Only a menu 'Check Box' or 'Radio Button' can be set to a different value for setValue() for {}".format(self.__repr__())
+				errorMessage = f"Only a menu 'Check Box' or 'Radio Button' can be set to a different value for setValue() for {self.__repr__()}"
 				raise SyntaxError(errorMessage)
 
 		else:
-			warnings.warn("Add {} to setValue() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Change Settings
 	def addMenuItem(self, text = "", icon = None, internal = False, special = None, check = None, default = False, toolTip = "",
@@ -6040,7 +6042,7 @@ class handle_Menu(handle_Container_Base):
 				elif (special[0] == "t"):
 					self.betterBind(wx.EVT_MENU, handle.thing, "self.onToggleToolBar")
 				else:
-					errorMessage = "Unknown special function {} for {}".format(special, self.__repr__())
+					errorMessage = f"Unknown special function {special} for {self.__repr__()}"
 					raise KeyError(errorMessage)
 		else:
 			self.betterBind(wx.EVT_MENU, handle.thing, myFunction, myFunctionArgs, myFunctionKwargs)
@@ -6049,7 +6051,7 @@ class handle_Menu(handle_Container_Base):
 		if (toolTip != None):
 			#Ensure correct formatting
 			if (not isinstance(toolTip, str)):
-				toolTip = "{}".format(toolTip)
+				toolTip = f"{toolTip}"
 
 			#Do not add empty tool tips
 			if (len(toolTip) != 0):
@@ -6120,7 +6122,7 @@ class handle_MenuItem(handle_Widget_Base):
 			value = len(self.thing.GetLabel()) #(int) - How long the text inside the menu item is
 
 		else:
-			warnings.warn("Add {} to __len__() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = 0
 
 		return value
@@ -6138,7 +6140,7 @@ class handle_MenuItem(handle_Widget_Base):
 				value = self.thing.GetText() #(str) - What the selected item says
 
 		else:
-			warnings.warn("Add {} to getValue() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -6154,7 +6156,7 @@ class handle_MenuItem(handle_Widget_Base):
 				raise SyntaxError(errorMessage)
 
 		else:
-			warnings.warn("Add {} to getIndex() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to getIndex() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -6170,12 +6172,12 @@ class handle_MenuItem(handle_Widget_Base):
 		"""
 
 		if (self.parent.myWindow.statusBar == None):
-			warnings.warn("No status bar found for. Tool tips for menu items are displayed on a status bar".format(self.parent.myWindow.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"No status bar found for. Tool tips for menu items are displayed on a status bar for {self.parent.myWindow.__repr__()}", Warning, stacklevel = 2)
 
 		if (text != None):
 			#Ensure correct formatting
 			if (not isinstance(text, str)):
-				text = "{}".format(text)
+				text = f"{text}"
 
 			#Do not add empty tool tips
 			if (len(text) != 0):
@@ -6189,11 +6191,11 @@ class handle_MenuItem(handle_Widget_Base):
 			if ((self.thing.GetKind() == wx.ITEM_CHECK) or (self.thing.GetKind() == wx.ITEM_RADIO)):
 				self.thing.Check(newValue) #(bool) - True: selected; False: un-selected
 			else:
-				errorMessage = "Only a menu 'Check Box' or 'Radio Button' can be set to a different value for setValue() for {}".format(self.__repr__())
+				errorMessage = f"Only a menu 'Check Box' or 'Radio Button' can be set to a different value for setValue() for {self.__repr__()}"
 				raise SyntaxError(errorMessage)
 
 		else:
-			warnings.warn("Add {} to setValue() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when a menu item is selected."""
@@ -6253,7 +6255,7 @@ class handle_MenuPopup(handle_Container_Base):
 		if (self.popupMenu != None):
 			value = self.popupMenu.myMenu.getValue(event = event)
 		else:
-			warnings.warn("Popup Menu not shown for getValue() in {}".format(self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Popup Menu not shown for getValue() in {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -6264,7 +6266,7 @@ class handle_MenuPopup(handle_Container_Base):
 		if (self.popupMenu != None):
 			value = self.popupMenu.myMenu.getIndex(event = event)
 		else:
-			warnings.warn("Popup Menu not shown for getIndex() in {}".format(self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Popup Menu not shown for getIndex() in {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 	#Setters
@@ -6423,7 +6425,7 @@ class handle_MenuPopup(handle_Container_Base):
 
 		#Skip empty popup lists
 		if (len(self.contents) < 1):
-			warnings.warn("Popup Menu {} for {} has no contents".format(self.__repr__(), self.myWindow.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Popup Menu {self.__repr__()} for {self.myWindow.__repr__()} has no contents", Warning, stacklevel = 2)
 		else:
 			#Create temporary popup menu
 			self.popupMenu = self.MyPopupMenu(self, preFunction, postFunction)
@@ -6598,7 +6600,7 @@ class handle_MenuPopupItem(handle_Widget_Base):
 				if (special != None):
 					#Ensure correct format
 					if ((special != None) and (not isinstance(special, str))):
-						errorMessage = "'special' should be a string for addMenuItem() for {}".format(buildSelf.__repr__())
+						errorMessage = f"'special' should be a string for addMenuItem() for {buildSelf.__repr__()}"
 						raise ValueError(errorMessage)
 
 					special = special.lower()
@@ -6690,7 +6692,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		if (self.type.lower() == "canvas"):
 			build_canvas()
 		else:
-			warnings.warn("Add {} to build() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self.postBuild(argument_catalogue)
 
@@ -6700,13 +6702,13 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		if (self.type.lower() == "canvas"):
 			self.parent.betterBind(wx.EVT_INIT_DIALOG, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn("Add {} to setFunction_init() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_init() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def readBuildInstructions_panel(self, parent, instructions):
 		"""Interprets instructions given by the user for what panel to make and how to make it."""
 
 		if (not isinstance(instructions, dict)):
-			errorMessage = "panel must be a dictionary for {}".format(self.__repr__())
+			errorMessage = f"panel must be a dictionary for {self.__repr__()}"
 			raise ValueError(errorMessage)
 
 		#Overwrite default with user given data
@@ -7038,7 +7040,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 				else:
 					style = wx.BRUSHSTYLE_STIPPLE
 			else:
-				print("ERROR: Must supply an image path in getBrushStyle() to use the style", style)
+				warnings.warn(f"Must supply an image path in getBrushStyle() to use the style for {self.__repr__()}", Warning, stacklevel = 2)
 				style = wx.BRUSHSTYLE_TRANSPARENT
 
 		#Hatch
@@ -7065,7 +7067,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 			image = None
 
 		else:
-			print("ERROR: Unknown style", style, "in getBrushStyle()")
+			warnings.warn(f"Unknown style {style} in getBrushStyle() for {self.__repr__()}", Warning, stacklevel = 2)
 			style = wx.BRUSHSTYLE_TRANSPARENT
 			image = None
 
@@ -7931,7 +7933,7 @@ class handle_WidgetTable(handle_Widget_Base):
 				value = self.thing.GetNumberCols()
 
 		else:
-			warnings.warn("Add {} to __len__() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = 0
 
 		return value
@@ -8115,7 +8117,7 @@ class handle_WidgetTable(handle_Widget_Base):
 		if (self.type.lower() == "table"):
 			build_table()
 		else:
-			warnings.warn("Add {} to build() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self.postBuild(argument_catalogue)
 
@@ -8542,7 +8544,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 		#Ensure correct data type
 		if (not isinstance(text, str)):
-			text = "{}".format(text)
+			text = f"{text}"
 
 		#Set the cell value
 		self.thing.SetColLabelValue(column, text)
@@ -8558,7 +8560,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 		#Ensure correct data type
 		if (not isinstance(columnLabel, str)):
-			columnLabel = "{}".format(columnLabel)
+			columnLabel = f"{columnLabel}"
 
 		#Set the cell value
 		columnLabel = self.thing.GetColLabelValue(column)
@@ -8907,7 +8909,7 @@ class handle_WidgetTable(handle_Widget_Base):
 					value.append(self.thing.GetCellValue(row, column)) #(list) - What is in the selected cells
 
 		else:
-			warnings.warn("Add {} to getValue() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -8924,7 +8926,7 @@ class handle_WidgetTable(handle_Widget_Base):
 				value.append(row)
 
 		else:
-			warnings.warn("Add {} to getAll() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to getAll() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -9156,7 +9158,7 @@ class handle_WidgetTable(handle_Widget_Base):
 				rowstart = self.data4undo[0]
 				colstart = self.data4undo[1]
 			else:
-				wx.MessageBox("Paste method "+stage+" does not exist", "Error")
+				wx.MessageBox(f"Paste method {stage} does not exist", "Error")
 			text4undo = ''
 
 			#Convert text in a array of lines
@@ -9166,7 +9168,6 @@ class handle_WidgetTable(handle_Widget_Base):
 					if y + rowstart < self.NumberRows and x + colstart < self.NumberCols :
 						text4undo += str(self.GetCellValue(rowstart + y, colstart + x)) + '    '
 						
-						print("@2", self.parent.getTableReadOnly(rowstart + y, colstart + x))
 						if (not self.parent.getTableReadOnly(rowstart + y, colstart + x)):
 							self.setValue(rowstart + y, colstart + x, c)
 				text4undo = text4undo[:-1] + '\n'
@@ -9240,11 +9241,12 @@ class handle_WidgetTable(handle_Widget_Base):
 			self.parent = parent
 			self.downOnEnter = downOnEnter
 			self.debugging = debugging
+			self.patching = False
 			# self.debugging = True
 
 			#Write debug information
 			if (self.debugging):
-				print("TableCellEditor.__init__(downOnEnter = {}, debugging = {})".format(downOnEnter, debugging))
+				print(f"TableCellEditor.__init__(downOnEnter = {downOnEnter}, debugging = {debugging})")
 
 			# # event = wx.CommandEvent(wx.grid.EVT_GRID_CELL_CHANGING.typeId, self.parent.thing.GetId())
 			# event = wx.grid.GridEvent(self.parent.thing.GetId(), wx.grid.EVT_GRID_CELL_CHANGING.typeId, self.parent.thing, row = 2, col = 3)
@@ -9263,7 +9265,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 			#Write debug information
 			if (self.debugging):
-				print("TableCellEditor.Create(parent = {}, myId = {}, event = {})".format(parent, myId, event))
+				print(f"TableCellEditor.Create(parent = {parent}, myId = {myId}, event = {event})")
 
 			#Prepare text control
 			styles = ""
@@ -9300,7 +9302,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 			#Write debug information
 			if (self.debugging):
-				print("TableCellEditor.SetSize(rect = {})".format(rect))
+				print(f"TableCellEditor.SetSize(rect = {rect})")
 
 			self.myTextControl.SetSize(rect.x, rect.y, rect.width+2, rect.height+2, wx.SIZE_ALLOW_MINUS_ONE)
 
@@ -9311,7 +9313,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 			#Write debug information
 			if (self.debugging):
-				print("TableCellEditor.Show(show = {}, attr = {})".format(show, attr))
+				print(f"TableCellEditor.Show(show = {show}, attr = {attr})")
 
 			super(handle_WidgetTable.TableCellEditor, self).Show(show, attr)
 
@@ -9324,7 +9326,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 			#Write debug information
 			if (self.debugging):
-				print("TableCellEditor.PaintBackground(rect = {}, attr = {})".format(rect, attr))
+				print(f"TableCellEditor.PaintBackground(rect = {rect}, attr = {attr})")
 
 		def BeginEdit(self, row, column, grid):
 			"""Fetch the value from the table and prepare the edit control
@@ -9334,7 +9336,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 			#Write debug information
 			if (self.debugging):
-				print("TableCellEditor.BeginEdit(row = {}, column = {}, grid = {})".format(row, column, grid))
+				print(f"TableCellEditor.BeginEdit(row = {row}, column = {column}, grid = {grid})")
 
 			self.startValue = grid.GetTable().GetValue(row, column)
 			self.myTextControl.SetValue(self.startValue)
@@ -9356,34 +9358,40 @@ class handle_WidgetTable(handle_Widget_Base):
 			the value in its string form.
 			*Must Override*
 
-			If you return a non-none, things will enter an infinite loop for some reason.
+			If you return a non-none, things will enter an infinite loop, because it triggers the
+			event wx.grid.EVT_GRID_CELL_CHANGED, which causes this function to run again.
 			"""
 
 			#Write debug information
 			if (self.debugging):
-				print("TableCellEditor.EndEdit(row = {}, column = {}, grid = {}, oldValue = {})".format(row, column, grid, oldValue))
+				print(f"TableCellEditor.EndEdit(row = {row}, column = {column}, grid = {grid}, oldValue = {oldValue})")
 
 			#Check for read only condition
 			if (self.parent.readOnlyCatalogue[row][column]):
-				return None
+				return
+
+			#Check for patching in process
+			if (self.patching):
+				return
 
 			newValue = self.myTextControl.GetValue()
-			if newValue != oldValue:
+			if (newValue != oldValue):
 				#Fix loop problem
+				self.patching = True
+
 				event = wx.grid.GridEvent(grid.GetId(), wx.grid.EVT_GRID_CELL_CHANGING.typeId, grid, row = row, col = column)
 				self.parent.thing.GetEventHandler().ProcessEvent(event)
-				# wx.PostEvent(grid.GetEventHandler(), event)
 
 				self.ApplyEdit(row, column, grid)
 
 				event = wx.grid.GridEvent(grid.GetId(), wx.grid.EVT_GRID_CELL_CHANGED.typeId, grid, row = row, col = column)
 				self.parent.thing.GetEventHandler().ProcessEvent(event)
-				# wx.PostEvent(grid.GetEventHandler(), event)
 
-				return None
+				self.patching = False
+				return
 				# return newValue
 			else:
-				return None
+				return
 			
 		def ApplyEdit(self, row, column, grid):
 			"""This function should save the value of the control into the
@@ -9394,7 +9402,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 			#Write debug information
 			if (self.debugging):
-				print("TableCellEditor.ApplyEdit(row = {}, column = {}, grid = {})".format(row, column, grid))
+				print(f"TableCellEditor.ApplyEdit(row = {row}, column = {column}, grid = {grid})")
 
 			value = self.myTextControl.GetValue()
 			table = grid.GetTable()
@@ -9435,7 +9443,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 			#Write debug information
 			if (self.debugging):
-				print("TableCellEditor.IsAcceptedKey(event = {})".format(event))
+				print(f"TableCellEditor.IsAcceptedKey(event = {event})")
 
 			## We can ask the base class to do it
 			#return super(handle_WidgetTable.TableCellEditor, self).IsAcceptedKey(event)
@@ -9451,7 +9459,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 			#Write debug information
 			if (self.debugging):
-				print("TableCellEditor.StartingKey(event = {})".format(event))
+				print(f"TableCellEditor.StartingKey(event = {event})")
 
 			# if (not self.editing):
 				# self.editing = True
@@ -9505,7 +9513,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 			#Write debug information
 			if (self.debugging):
-				print("TableCellEditor.Clone(self = {})".format(self))
+				print("TableCellEditor.Clone()")
 
 			return TableCellEditor(downOnEnter = self.downOnEnter, debugging = self.debugging)
 
@@ -9532,7 +9540,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 			#Write debug information
 			if (self.debugging):
-				print("TableCellEditor.HandleReturn(event)")
+				print(f"TableCellEditor.HandleReturn({event})")
 
 			return super(handle_WidgetTable.TableCellEditor, self).HandleReturn(event)
 
@@ -9550,7 +9558,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 			#Write debug information
 			if (self.debugging):
-				print("TableCellEditor.SetControl(control)")
+				print(f"TableCellEditor.SetControl({control})")
 
 			return super(handle_WidgetTable.TableCellEditor, self).SetControl(control)
 
@@ -9568,6 +9576,8 @@ class handle_Sizer(handle_Container_Base):
 		#Defaults
 		self.myWindow = None
 		self.text = None
+		self.rows = None
+		self.columns = None
 
 	def __str__(self):
 		"""Gives diagnostic information on the Sizer when it is printed out."""
@@ -9575,7 +9585,11 @@ class handle_Sizer(handle_Container_Base):
 		output = handle_Container_Base.__str__(self)
 		
 		if (self.myWindow != None):
-			output += "-- window id: {}\n".format(id(self.myWindow))
+			output += f"-- Window id: {id(self.myWindow)}\n"
+		if (self.rows != None):
+			output += f"-- Rows: {self.rows}\n"
+		if (self.columns != None):
+			output += f"-- Columns: {self.columns}\n"
 		return output
 
 	def __enter__(self):
@@ -9583,7 +9597,7 @@ class handle_Sizer(handle_Container_Base):
 
 		#Error handling
 		if (self in self.myWindow.sizersIterating):
-			errorMessage = "Only use {} in a while loop once".format(self.__repr__())
+			errorMessage = f"Only use {self.__repr__()} in a while loop once"
 			raise SyntaxError(errorMessage)
 
 		#Allow nested while loops to nest their objects
@@ -9618,7 +9632,7 @@ class handle_Sizer(handle_Container_Base):
 
 		sizerType = self.type.lower()
 		if (sizerType not in ["grid", "flex", "bag", "box", "text", "wrap"]):
-			errorMessage = "There is no 'type' {}. The value should be be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'".format(self.type)
+			errorMessage = f"There is no 'type' {self.type}. The value should be be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
 			raise KeyError(errorMessage)
 
 		#Get Default build arguments
@@ -9700,7 +9714,7 @@ class handle_Sizer(handle_Container_Base):
 						self.thing.SetEmptyCellSize(emptySpace)
 
 				else:
-					errorMessage = "Unknown sizer type {} for {}".format(self.type, self.__repr__())
+					errorMessage = f"Unknown sizer type {self.type} for {self.__repr__()}"
 					raise KeyError(errorMessage)
 
 				flexGrid = self.getArguments(argument_catalogue, "flexGrid")
@@ -9710,6 +9724,11 @@ class handle_Sizer(handle_Container_Base):
 					self.thing.SetNonFlexibleGrowMode(wx.FLEX_GROWMODE_NONE)
 				
 				self.thing.SetFlexibleDirection(direction)
+
+		#Remember variables
+		if (sizerType not in ["box", "text", "wrap"]):
+			self.rows = rows
+			self.columns = columns
 
 		#Update catalogue
 		for key, value in locals().items():
@@ -9861,7 +9880,7 @@ class handle_Sizer(handle_Container_Base):
 			self.thing.Add(handle.thing, int(flex), eval(flags), border)
 
 		else:
-			warnings.warn("Add {} to nest() for {}".format(handle.__class__, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {handle.__class__} to nest() for {self.__repr__()}", Warning, stacklevel = 2)
 			return
 
 		
@@ -11271,7 +11290,7 @@ class handle_Dialog(handle_Base):
 
 			#Error Checking
 			if (addCancel and not (addYes or addOk)):
-				errorMessage = "'Cancel' must be acompanied with either a [Yes]/[No] and/or [Ok] for {}".format(self.__repr__())
+				errorMessage = f"'Cancel' must be acompanied with either a [Yes]/[No] and/or [Ok] for {self.__repr__()}"
 				raise ValueError(errorMessage)
 
 			#Prepare styles
@@ -11328,7 +11347,7 @@ class handle_Dialog(handle_Base):
 					else:
 						style += "|wx.ICON_EXCLAMATION"
 				else:
-					errorMessage = "Unknown Icon type '{}' for {}".format(icon, self.__repr__())
+					errorMessage = f"Unknown Icon type '{icon}' for {self.__repr__()}"
 					raise KeyError(errorMessage)
 			else:
 				style += "|wx.ICON_NONE"
@@ -11417,14 +11436,14 @@ class handle_Dialog(handle_Base):
 		elif (self.type.lower() == "print"):
 			build_print()
 		else:
-			warnings.warn("Add {} to build() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def show(self):
 		"""Shows the dialog box for this handle."""
 
 		#Error Check
 		if (self.thing == None):
-			warnings.warn("The {} dialogue box {} has already been shown".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"The {self.type} dialogue box {self.__repr__()} has already been shown", Warning, stacklevel = 2)
 			return
 
 		#Show dialogue
@@ -11462,7 +11481,7 @@ class handle_Dialog(handle_Base):
 			self.thing = None
 
 		else:
-			warnings.warn("Add {} to show() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to show() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def hide(self):
 		"""Hides the dialog box for this handle."""
@@ -11471,7 +11490,7 @@ class handle_Dialog(handle_Base):
 			del self.thing
 			self.thing = None
 		else:
-			warnings.warn("Add {} to hide() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to hide() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Getters
 	def getValue(self, event = None):
@@ -11488,7 +11507,7 @@ class handle_Dialog(handle_Base):
 			value = (color.Red(), color.Green(), color.Blue(), color.Alpha())
 
 		else:
-			warnings.warn("Add {} to getValue() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -11500,7 +11519,7 @@ class handle_Dialog(handle_Base):
 			value = self.data
 
 		else:
-			warnings.warn("Add {} to getValue() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -11566,7 +11585,7 @@ class handle_Window(handle_Container_Base):
 		output = handle_Container_Base.__str__(self)
 		
 		if (self.mainPanel != None):
-			output += "-- main panel id: {}\n".format(id(self.mainPanel))
+			output += f"-- main panel id: {id(self.mainPanel)}\n"
 		return output
 
 	def build(self, argument_catalogue):
@@ -11840,7 +11859,7 @@ class handle_Window(handle_Container_Base):
 			self.thing.Hide()
 			self.visible = False
 		else:
-			warnings.warn("Window {} is already hidden".format(self.label), Warning, stacklevel = 2)
+			warnings.warn(f"Window {self.label} is already hidden", Warning, stacklevel = 2)
 
 	def onHideWindow(self, event, *args, **kwargs):
 		"""Event function for hideWindow()"""
@@ -11898,7 +11917,7 @@ class handle_Window(handle_Container_Base):
 
 		#Account for no sizers available
 		if (len(sizerList) == 0):
-			errorMessage = "{} has no sizers".format(self.__repr__())
+			errorMessage = f"{self.__repr__()} has no sizers"
 			raise ValueError(errorMessage)
 
 		#Account for random sizer request
@@ -11915,7 +11934,7 @@ class handle_Window(handle_Container_Base):
 				return sizer
 
 		#No sizer found
-		errorMessage = "{} has no sizer '{}'".format(self.__repr__(), sizerLabel)
+		errorMessage = f"{self.__repr__()} has no sizer '{sizerLabel}'"
 		raise ValueError(errorMessage)
 
 	def addSizerGrid(self, rows = 1, columns = 1, rowGap = 0, colGap = 0, 
@@ -12118,7 +12137,7 @@ class handle_Window(handle_Container_Base):
 
 		#Account for no menus available
 		if (len(menuList) == 0):
-			errorMessage = "{} has no menus".format(self.__repr__())
+			errorMessage = f"{self.__repr__()} has no menus"
 			raise ValueError(errorMessage)
 
 		#Account for whole list request
@@ -12131,7 +12150,7 @@ class handle_Window(handle_Container_Base):
 				return menu
 
 		#No menu found
-		errorMessage = "{} has no menu '{}'".format(self.__repr__(), menuLabel)
+		errorMessage = f"{self.__repr__()} has no menu '{menuLabel}'"
 		raise ValueError(errorMessage)
 
 	def addMenuBar(self):
@@ -12220,7 +12239,7 @@ class handle_Window(handle_Container_Base):
 			if (autoAdd):
 				self.addStatusBar()
 			else:
-				warnings.warn("There is no status bar for {}".format(self.__repr__()), Warning, stacklevel = 2)
+				warnings.warn(f"There is no status bar for {self.__repr__()}", Warning, stacklevel = 2)
 				return
 
 		self.statusBar.SetStatusText(message)
@@ -12429,7 +12448,7 @@ class handle_Window(handle_Container_Base):
 		if (self.visible):
 			self.visible = False
 		else:
-			errorMessage = "Window {} is already closed.".format(self.label)
+			errorMessage = f"Window {self.label} is already closed."
 			raise ValueError(errorMessage)
 
 	def onCloseWindow(self, event, *args, **kwargs):
@@ -12460,7 +12479,7 @@ class handle_Window(handle_Container_Base):
 		#   self.addMenuBar()
 		#   if (not skipMenuExit):
 		#       self.addMenu(0, "&File")
-		#       self.addMenuItem(0, "&Exit", myFunction = "self.onExit", icon = "quit", internal = True, toolTip = "Closes this program", label = "Frame{}_typicalWindowSetup_fileExit".format(self.windowLabel))
+		#       self.addMenuItem(0, "&Exit", myFunction = "self.onExit", icon = "quit", internal = True, toolTip = "Closes this program", label = f"Frame{self.windowLabel}_typicalWindowSetup_fileExit")
 
 		# #Add Status Bar
 		# if (not skipStatus):
@@ -13242,7 +13261,7 @@ class handle_Panel(handle_Container_Base):
 
 		#Error Check
 		if (self.parent.thing == None):
-			errorMessage = "The object {} must be fully created for {}".format(self.parent.__repr__(), self.__repr__())
+			errorMessage = f"The object {self.parent.__repr__()} must be fully created for {self.__repr__()}"
 			raise RuntimeError(errorMessage)
 
 		#Add first panel
@@ -13272,7 +13291,7 @@ class handle_Panel(handle_Container_Base):
 				border = "wx.NO_BORDER"
 
 			else:
-				errorMessage = "border {} does not exist".format(border)
+				errorMessage = f"border {border} does not exist"
 				raise NameError(errorMessage)
 		else:
 			border = "wx.NO_BORDER"
@@ -13286,7 +13305,7 @@ class handle_Panel(handle_Container_Base):
 			flags += "|wx.TAB_TRAVERSAL"
 
 		#Create the panel
-		self.thing = wx.Panel(self.parent.thing, style = eval(border + "|" + flags))
+		self.thing = wx.Panel(self.parent.thing, style = eval(f"{border}|{flags}"))
 
 		autoSize = self.getArguments(argument_catalogue, "autoSize")
 		self.autoSize = autoSize
@@ -13332,7 +13351,7 @@ class handle_Panel(handle_Container_Base):
 			self.thing.SetSizer(handle.thing)
 
 		else:
-			warnings.warn("Add {} to nest() for {}".format(handle.__class__, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {handle.__class__} to nest() for {self.__repr__()}", Warning, stacklevel = 2)
 			return
 
 		handle.nested = True
@@ -13384,13 +13403,13 @@ class handle_Splitter(handle_Container_Base):
 			#Add panels and sizers to splitter
 			for i in range(2):
 				#Compile instructions
-				if ("panel_{}".format(i) in argument_catalogue):
-					panelInstructions = argument_catalogue[("panel_{}".format(i))]
+				if (f"panel_{i}" in argument_catalogue):
+					panelInstructions = argument_catalogue[(f"panel_{i}")]
 				else:
 					panelInstructions = {}
 
-				if ("sizer_{}".format(i) in argument_catalogue):
-					sizerInstructions = argument_catalogue[("sizer_{}".format(i))]
+				if (f"sizer_{i}" in argument_catalogue):
+					sizerInstructions = argument_catalogue[(f"sizer_{i}")]
 				else:
 					sizerInstructions = {}
 
@@ -13443,8 +13462,8 @@ class handle_Splitter(handle_Container_Base):
 				self.panelList[i].nested = True
 
 				#Add sizers to the panel
-				if ("sizer_{}".format(i) in argument_catalogue):
-					sizerInstructions = argument_catalogue[("sizer_{}".format(i))]
+				if (f"sizer_{i}" in argument_catalogue):
+					sizerInstructions = argument_catalogue[(f"sizer_{i}")]
 				else:
 					sizerInstructions = {}
 				sizer = self.readBuildInstructions(buildSelf, i, sizerInstructions)
@@ -13513,7 +13532,7 @@ class handle_Splitter(handle_Container_Base):
 		elif (self.type.lower() == "poly"):
 			build_poly()
 		else:
-			warnings.warn("Add {} to build() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self.postBuild(argument_catalogue)
 
@@ -13527,7 +13546,7 @@ class handle_Splitter(handle_Container_Base):
 		elif (self.type.lower() == "poly"):
 			self.parent.betterBind(wx.EVT_INIT_DIALOG, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn("Add {} to setFunction_init() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_init() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def getSizers(self):
 		"""Returns the internal sizer list."""
@@ -13538,7 +13557,7 @@ class handle_Splitter(handle_Container_Base):
 		"""Interprets instructions given by the user for what sizer to make and how to make it."""
 
 		if (not isinstance(instructions, dict)):
-			errorMessage = "sizer_{} must be a dictionary for {}".format(i, self.__repr__())
+			errorMessage = f"sizer_{i} must be a dictionary for {self.__repr__()}"
 			raise ValueError(errorMessage)
 
 		if (len(instructions) == 1):
@@ -13550,7 +13569,7 @@ class handle_Splitter(handle_Container_Base):
 
 		sizerType = instructions["type"].lower()
 		if (sizerType not in ["grid", "flex", "bag", "box", "text", "wrap"]):
-			errorMessage = "There is no 'type' {}. The value should be be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'".format(instructions["type"])
+			errorMessage = f"There is no 'type' {instructions['type']}. The value should be be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
 			raise KeyError(errorMessage)
 
 		#Get Default build arguments
@@ -13587,7 +13606,7 @@ class handle_Splitter(handle_Container_Base):
 		"""Interprets instructions given by the user for what panel to make and how to make it."""
 
 		if (not isinstance(instructions, dict)):
-			errorMessage = "panel_{} must be a dictionary for {}".format(i, self.__repr__())
+			errorMessage = f"panel_{i} must be a dictionary for {self.__repr__()}"
 			raise ValueError(errorMessage)
 
 		#Overwrite default with user given data
@@ -13707,7 +13726,7 @@ class handle_Notebook(handle_Container_Base):
 		if (self.type.lower() == "notebook"):
 			build_notebook()
 		else:
-			warnings.warn("Add {} to build() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self.postBuild(argument_catalogue)
 
@@ -13717,7 +13736,7 @@ class handle_Notebook(handle_Container_Base):
 		if (self.type.lower() == "notebook"):
 			self.changePage(newValue)
 		else:
-			warnings.warn("Add {} to setSelection() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Change Settings
 	def setFunction_init(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
@@ -13726,7 +13745,7 @@ class handle_Notebook(handle_Container_Base):
 		if (self.type.lower() == "notebook"):
 			self.parent.betterBind(wx.EVT_INIT_DIALOG, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn("Add {} to setFunction_init() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_init() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_prePageChange(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the page begins to change."""
@@ -13734,7 +13753,7 @@ class handle_Notebook(handle_Container_Base):
 		if (self.type.lower() == "notebook"):
 			self.parent.betterBind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn("Add {} to setFunction_prePageChange() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_prePageChange() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_postPageChange(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when a the page has finished changing."""
@@ -13742,7 +13761,7 @@ class handle_Notebook(handle_Container_Base):
 		if (self.type.lower() == "notebook"):
 			self.parent.betterBind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn("Add {} to setFunction_postPageChange() for {}".format(self.type, self.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_postPageChange() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def addPage(self, text = None, label = None, parent = None, panel = {}, sizer = {},
 		insert = None, default = False, icon_path = None, icon_internal = False):
@@ -13775,7 +13794,7 @@ class handle_Notebook(handle_Container_Base):
 		#Error Check
 		if ((isinstance(label, list) or isinstance(label, tuple)) and (isinstance(text, list) or isinstance(text, tuple))):
 			if (len(label) != len(text)):
-				errorMessage = "'label' and 'text' must be the same length for {}".format(self.__repr__())
+				errorMessage = f"'label' and 'text' must be the same length for {self.__repr__()}"
 				raise ValueError(errorMessage)
 
 		#Account for multiple objects
@@ -13943,7 +13962,7 @@ class handle_Notebook(handle_Container_Base):
 			if (item.label == pageLabel):
 				return item.index
 
-		errorMessage = "There is no page labled {} in {}".format(pageLabel, self.__repr__())
+		errorMessage = f"There is no page labled {pageLabel} in {self.__repr__()}"
 		raise KeyError(errorMessage)
 
 	def getPageText(self, pageIndex):
@@ -14024,11 +14043,11 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		output = handle_Container_Base.__str__(self)
 
 		if (self.index != None):
-			output += "-- index: {}\n".format(self.index)
+			output += f"-- index: {self.index}\n"
 		if (self.text != None):
-			output += "-- text: {}\n".format(self.text)
+			output += f"-- text: {self.text}\n"
 		if (self.icon != None):
-			output += "-- icon: {}\n".format(self.icon)
+			output += f"-- icon: {self.icon}\n"
 
 		return output
 
@@ -14109,7 +14128,7 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 			self.text = ""
 		else:
 			if (not isinstance(text, str)):
-				self.text = "{}".format(text)
+				self.text = f"{text}"
 			else:
 				self.text = text
 
@@ -14183,7 +14202,7 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		"""Interprets instructions given by the user for what sizer to make and how to make it."""
 
 		if (not isinstance(instructions, dict)):
-			errorMessage = "sizer must be a dictionary for {}".format(self.__repr__())
+			errorMessage = f"sizer must be a dictionary for {self.__repr__()}"
 			raise ValueError(errorMessage)
 
 		if (len(instructions) == 1):
@@ -14195,7 +14214,7 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 
 		sizerType = instructions["type"].lower()
 		if (sizerType not in ["grid", "flex", "bag", "box", "text", "wrap"]):
-			errorMessage = "There is no 'type' {}. The value should be be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'".format(instructions["type"])
+			errorMessage = f"There is no 'type' {instructions['type']}. The value should be be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
 			raise KeyError(errorMessage)
 
 		#Get Default build arguments
@@ -14232,7 +14251,7 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		"""Interprets instructions given by the user for what panel to make and how to make it."""
 
 		if (not isinstance(instructions, dict)):
-			errorMessage = "panel must be a dictionary for {}".format(self.__repr__())
+			errorMessage = f"panel must be a dictionary for {self.__repr__()}"
 			raise ValueError(errorMessage)
 
 		#Overwrite default with user given data
@@ -14268,7 +14287,7 @@ class MyApp(wx.App):
 		if (self.parent != None):
 			if (self.parent.oneInstance):
 				#Ensure only one instance per user runs
-				self.parent.oneInstance_name = "SingleApp-{}".format(wx.GetUserId())
+				self.parent.oneInstance_name = f"SingleApp-{wx.GetUserId()}"
 				self.parent.oneInstance_instance = wx.SingleInstanceChecker(self.parent.oneInstance_name)
 
 				if self.parent.oneInstance_instance.IsAnotherRunning():
@@ -14350,7 +14369,7 @@ class Communication():
 		if (which in self.comDict):
 			return self.comDict[which]
 		else:
-			print("ERROR: There is no COM port object {}".format(which))
+			warnings.warn(f"There is no COM port object {which}", Warning, stacklevel = 2)
 			return None
 
 	#Ethernet
@@ -14377,7 +14396,7 @@ class Communication():
 		if (which in self.socketDict):
 			return self.socketDict[which]
 		else:
-			print("ERROR: There is no Ethernet object {}".format(which))
+			warnings.warn(f"There is no Ethernet object {which}", Warning, stacklevel = 2)
 			return None
 
 	class Ethernet():
@@ -14430,7 +14449,7 @@ class Communication():
 				addressExists = self.ping(address)
 
 				if (not addressExists):
-					print("Cannot ping address {}".format(address))
+					print(f"Cannot ping address {address}")
 					self.mySocket = None
 					return False
 
@@ -14529,7 +14548,7 @@ class Communication():
 
 			#Checks buffer size
 			if (not (((bufferSize & (bufferSize - 1)) == 0) and (bufferSize > 0))):
-				print("ERROR: Buffer size must be a power of 2, not {}".format(bufferSize))
+				warnings.warn(f"Buffer size must be a power of 2, not {bufferSize}", Warning, stacklevel = 2)
 				return None
 
 			#Listen for data on a separate thread
@@ -14668,7 +14687,7 @@ class Communication():
 
 			#Checks buffer size
 			if (not (((bufferSize & (bufferSize - 1)) == 0) and (bufferSize > 0))):
-				print("ERROR: Buffer size must be a power of 2, not {}".format(bufferSize))
+				warnings.warn(f"Buffer size must be a power of 2, not {bufferSize}", Warning, stacklevel = 2)
 				return None
 
 			#Listen for data on a separate thread
@@ -14725,8 +14744,7 @@ class Communication():
 			"""
 
 			if (clientIp not in self.clientDict):
-				print("ERROR: There is no client {} for this server".format(clientIp))
-
+				warnings.warn(f"There is no client {clientIp} for this server", Warning, stacklevel = 2)
 			else:
 				client = self.clientDict[clientIp][0]
 				client.close()
@@ -14761,7 +14779,7 @@ class Communication():
 				self.mySocket.setblocking(False)
 
 			else:
-				print("ERROR: Unknown restiction flag", how)
+				warnings.warn(f"Unknown restiction flag {how}", Warning, stacklevel = 2)
 
 		def unrestrict(self, how = "rw"):
 			"""Un-Restricts the data flow between the ends of the socket.
@@ -14792,7 +14810,7 @@ class Communication():
 				self.mySocket.setblocking(True)
 
 			else:
-				print("ERROR: Unknown unrestiction flag", how)
+				warnings.warn(f"Unknown unrestiction flag {how}", Warning, stacklevel = 2)
 
 		def getTimeout(self):
 			"""Gets the tiemout for the socket.
@@ -14817,7 +14835,7 @@ class Communication():
 			#Ensure that there is no negative value
 			if (timeout != None):
 				if (timeout < 0):
-					print("ERROR: Timeout cannot be negative")
+					warnings.warn(f"Timeout cannot be negative for setTimeout() in {self.__repr__()}", Warning, stacklevel = 2)
 					return
 
 			self.mySocket.settimeout(timeout)
@@ -15193,11 +15211,11 @@ class Communication():
 						self.comParity = serial.PARITY_SPACE
 
 					else:
-						print("ERROR: There is no parity", value)
+						warnings.warn(f"There is no parity {value}", Warning, stacklevel = 2)
 						return False
 
 				else:
-					print("ERROR: There is no parity", value)
+					warnings.warn(f"There is no parity {value}", Warning, stacklevel = 2)
 					return False
 
 			else:
@@ -15230,7 +15248,7 @@ class Communication():
 				self.comStopBits = serial.STOPBITS_ONE_POINT_FIVE
 
 			else:
-				print("ERROR: There is no stop bit", value)
+				warnings.warn(f"There is no stop bit {value} for {self.__repr__()}", Warning, stacklevel = 2)
 
 		def setComTimeoutRead(self, value):
 			"""Changes the read timeout.
@@ -15333,15 +15351,15 @@ class Communication():
 			try:
 				self.serialPort.open()
 			except:
-				print("ERROR: Cannot find serial port", self.serialPort.port)
+				warnings.warn(f"Cannot find serial port {self.serialPort.port} for {self.__repr__()}", Warning, stacklevel = 2)
 				return False
 
 			#Check port status
 			if self.serialPort.isOpen():
-				print("Serial port", self.serialPort.port, "sucessfully opened")
+				# print(f"Serial port {self.serialPort.port} sucessfully opened")
 				return True
 			else:
-				print("ERROR: Cannot open serial port", self.serialPort.port)
+				warnings.warn(f"Cannot open serial port {self.serialPort.port} for {self.__repr__()}", Warning, stacklevel = 2)
 				return False
 
 		def isOpen(self):
@@ -15397,9 +15415,9 @@ class Communication():
 					self.serialPort.write(unicodeString)
 					print("Wrote:", message)
 				else:
-					print("ERROR: Serial port has not been opened yet. Make sure that ports are available and then launch this application again.")
+					warnings.warn(f"Serial port has not been opened yet for {self.__repr__()}\n Make sure that ports are available and then launch this application again", Warning, stacklevel = 2)
 			else:
-				print("ERROR: No message to send.")
+				warnings.warn(f"No message to send for comWrite() in {self.__repr__()}", Warning, stacklevel = 2)
 
 	class Barcodes():
 		"""Allows the user to create and read barcodes."""
@@ -15781,11 +15799,11 @@ class Security():
 
 		#Check for keys
 		if (self.missingPublicKey or self.missingPrivateKey):
-			print("ERROR: Cannot encrypt data without keys. Use 'loadKeys()' or 'loadPublicKey() and loadPrivateKey()'.")
+			warnings.warn(f"Cannot encrypt data without keys for {self.__repr__()}\n Use 'loadKeys()' or 'loadPublicKey() and loadPrivateKey()' first", Warning, stacklevel = 2)
 			return None
 
 		#Format the output path
-		outputName = directory + name + "." + extension
+		outputName = f"{directory}{name}.{extension}"
 
 		#Format the data
 		data = data.encode("utf-8")
@@ -15819,11 +15837,11 @@ class Security():
 
 		#Check for keys
 		if (self.missingPublicKey or self.missingPrivateKey):
-			print("ERROR: Cannot encrypt data without keys. Use 'loadKeys()' or 'loadPublicKey() and loadPrivateKey()'.")
+			warnings.warn(f"Cannot decrypt data without keys for {self.__repr__()}\n Use 'loadKeys()' or 'loadPublicKey() and loadPrivateKey()' first", Warning, stacklevel = 2)
 			return None
 
 		#Format the output path
-		inputName = directory + name + "." + extension
+		inputName = f"{directory}{name}.{extension}"
 
 		#Create the file
 		with open(inputName, "rb") as inputFile:
@@ -15902,18 +15920,18 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 		"""Gives diagnostic information on the GUI when it is printed out."""
 		global nestingCatalogue
 
-		output = "Controller()\n-- id: {}\n".format(id(self))
+		output = f"Controller()\n-- id: {id(self)}\n"
 		# windowsList = [item for item in self.labelCatalogue.values() if isinstance(item, handle_Window)]
 		windowsList = self.getNested(handle_Window)
 		if (len(windowsList) + len(self.unnamedList) != 0):
-			output += "-- windows: {}\n".format(len(windowsList) + len(self.unnamedList))
+			output += f"-- windows: {len(windowsList) + len(self.unnamedList)}\n"
 		if (len(nestingCatalogue) != 0):
-			output += "-- nesting catalogue: {}\n".format(nestingCatalogue)
+			output += f"-- nesting catalogue: {nestingCatalogue}\n"
 
 		return output
 
 	def __repr__(self):
-		representation = "Controller(id = {})".format(id(self))
+		representation = f"Controller(id = {id(self)})"
 		return representation
 
 	def __enter__(self):
@@ -16108,7 +16126,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 						nestCheck(item)
 					else:
 						if (not item.nested):
-							warnings.warn("{} not nested".format(item.__repr__()), Warning, stacklevel = 2)
+							warnings.warn(f"{item.__repr__()} not nested", Warning, stacklevel = 2)
 
 		#Make sure all things are nested
 		nestCheck(nestingCatalogue)
@@ -16120,7 +16138,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 			if (self.checkComplexity):
 				#Make sure GUI is not too complex
 				if (myFrame.complexity_total > myFrame.complexity_max):
-					errorMessage = "{} is too complex; {}/{}".format(myFrame.__repr__(), myFrame.complexity_total, myFrame.complexity_max)
+					errorMessage = f"{myFrame.__repr__()} is too complex; {myFrame.complexity_total}/{myFrame.complexity_max}"
 					raise RuntimeError(errorMessage)
 
 			#Check for any window key bindings that need to happen
@@ -16313,7 +16331,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 			sys.stdout.write = new_stdout
 			sys.stderr.write = new_stderr
 		else:
-			warnings.warn("Already logging cmd outputs for {}".format(item.__repr__()), Warning, stacklevel = 2)
+			warnings.warn(f"Already logging cmd outputs for {item.__repr__()}", Warning, stacklevel = 2)
 
 	#Overloads - handle_Window
 	def setWindowSize(self, windowLabel, *args, **kwargs):
@@ -16733,14 +16751,14 @@ class User_Utilities():
 		#Account for indexing
 		if (isinstance(itemLabel, slice)):
 			if (itemLabel.step != None):
-				raise FutureWarning("Add slice steps to get() for indexing {}".format(self.__repr__()))
+				raise FutureWarning(f"Add slice steps to get() for indexing {self.__repr__()}")
 			
 			elif ((itemLabel.start != None) and (itemLabel.start not in itemCatalogue)):
-				errorMessage = "There is no item labled {} in the row catalogue for {}".format(itemLabel.start, self.__repr__())
+				errorMessage = f"There is no item labled {itemLabel.start} in the row catalogue for {self.__repr__()}"
 				raise KeyError(errorMessage)
 			
 			elif ((itemLabel.stop != None) and (itemLabel.stop not in itemCatalogue)):
-				errorMessage = "There is no item labled {} in the row catalogue for {}".format(itemLabel.stop, self.__repr__())
+				errorMessage = f"There is no item labled {itemLabel.stop} in the row catalogue for {self.__repr__()}"
 				raise KeyError(errorMessage)
 
 			handleList = []
@@ -16768,7 +16786,7 @@ class User_Utilities():
 					answer = answer[0]
 			return answer
 
-		errorMessage = "There is no item labled {} in the row catalogue for {}".format(itemLabel, self.__repr__())
+		errorMessage = f"There is no item labled {itemLabel} in the row catalogue for {self.__repr__()}"
 		raise KeyError(errorMessage)
 
 	def getValue(self, variable, order = True):
