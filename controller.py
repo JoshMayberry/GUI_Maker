@@ -1,4 +1,4 @@
-__version__ = "4.2.0"
+__version__ = "4.2.1"
 
 #TO DO
 # - Add File Drop: https://www.blog.pythonlibrary.org/2012/06/20/wxpython-introduction-to-drag-and-drop/
@@ -97,7 +97,7 @@ import re
 #Required Modules
 ##py -m pip install
 	# wxPython
-	# py2exe
+	# cx_Freeze
 	# pyserial
 
 #Maybe Required Modules?
@@ -2478,7 +2478,13 @@ class handle_Base(Utilities, CommonEventFunctions):
 		self.allowBuildErrors = None
 
 	def __repr__(self):
-		representation = f"{type(self).__name__}(id = {id(self)})"
+		representation = f"{type(self).__name__}(id = {id(self)}"
+
+		if (hasattr(self, "label")):
+			representation += f", label = {self.label})"
+		else:
+			representation += ")"
+
 		return representation
 
 	def __str__(self):
@@ -3618,7 +3624,7 @@ class handle_WidgetList(handle_Widget_Base):
 				if (default in choices):
 					default = choices.index(default)
 				else:
-					warnings.warn(f"the default was not provided in the list of choices for a {self.type} in {self.__repr__()}", Warning, stacklevel = 3)
+					warnings.warn(f"the default was not in the provided list of choices for a {self.type} in {self.__repr__()}", Warning, stacklevel = 4)
 					default = None
 
 			if (default == None):
@@ -5154,8 +5160,8 @@ class handle_WidgetButton(handle_Widget_Base):
 
 		elif (self.type.lower() == "buttonradiobox"):
 			if (isinstance(newValue, str)):
-				if (not newValue.isdigit()):
-					newValue = self.thing.FindString(newValue)
+				# if (not newValue.isdigit()):
+				newValue = self.thing.FindString(newValue)
 
 			if (newValue == None):
 				errorMessage = f"Invalid radio button selection in setValue() for {self.__repr__()}"
@@ -5182,6 +5188,14 @@ class handle_WidgetButton(handle_Widget_Base):
 
 		else:
 			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setSelection(self, newValue, event = None):
+		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
+
+		if (self.type.lower() == "buttonradiobox"):
+			self.setValue(newValue, event)
+		else:
+			warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Change Settings
 	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
@@ -15931,7 +15945,13 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 		return output
 
 	def __repr__(self):
-		representation = f"Controller(id = {id(self)})"
+		representation = f"Controller(id = {id(self)}"
+
+		if (hasattr(self, "label")):
+			representation += f", label = {self.label})"
+		else:
+			representation += ")"
+
 		return representation
 
 	def __enter__(self):
