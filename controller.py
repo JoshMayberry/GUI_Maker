@@ -20,7 +20,7 @@ __version__ = "4.2.1"
 import sys
 import time
 import copy
-# import ctypes
+import ctypes
 import string
 # import builtins
 
@@ -598,7 +598,8 @@ class Utilities():
 			"crtlRaw": 308, "menu": 309, "pause": 310, "capital": 311, "end": 312, "home": 313, 
 			"select": 318, "print": 319, "execute": 320, "snapshot": 321, "insert": 322, "help": 323,
 			"multiply": 334, "add": 335, "separate": 336, "subtract": 337, "decimal": 338, "divide": 339,
-			"numlock": 364, "scroll": 365, "pageup": 366, "pagedown": 367,
+			"scroll": 365, "pageup": 366, "pagedown": 367, 
+			"cl": 311, "capslock": 311, "nl": 364, "numlock": 364, "sl": 365, "scrolllock": 365,
 			
 			"f1": 340, "f2": 341, "f3": 342, "f4": 343, "f5": 344, "f6": 345, "f7": 346, "f8": 347, "f9": 348,
 			"f10": 349, "f11": 350, "f12": 351, "f13": 352, "f14": 353, "f15": 354, "f16": 355, "f17": 356,
@@ -952,13 +953,14 @@ class Utilities():
 					myFunctionEvaluated, myFunctionArgs, myFunctionKwargs = self.formatFunctionInput(i, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
 					bind(self, eventType, thing, myFunctionEvaluated, myFunctionArgs, myFunctionKwargs, mode)
 
-	def keyBind(self, key, thing, myFunctionList, myFunctionArgsList = None, myFunctionKwargsList = None, includeEvent = True,
-		keyUp = True, numpad = False, ctrl = False, alt = False, shift = False, event = None):
+	def keyBind(self, key, myFunctionList, myFunctionArgsList = None, myFunctionKwargsList = None, includeEvent = True,
+		keyUp = True, numpad = False, ctrl = False, alt = False, shift = False, event = None, thing = None):
 		"""Binds wxObjects to key events.
 		Speed efficency help from Aya on http://stackoverflow.com/questions/17166074/most-efficient-way-of-making-an-if-elif-elif-else-statement-when-the-else-is-don
 
 		key (str)              - The keyboard key to bind the function(s) to
 		thing (wxObject)       - What is being bound to
+			- If None: Will bind to self.thing
 		myFunctionList (str)   - The function that will be ran when the event occurs
 		myFunctionArgs (any)   - Any input arguments for myFunction. A list of multiple functions can be given
 		myFunctionKwargs (any) - Any input keyword arguments for myFunction. A list of variables for each function can be given. The index of the variables must be the same as the index for the functions
@@ -973,9 +975,10 @@ class Utilities():
 
 		event (wxCommandEvent) - If not None: This will be the bound event instead of the ones provided below
 
-		Example Input: keyBind("enter", inputBox, "self.onExit", "Extra Information")
-		Example Input: keyBind("enter", inputBox, "self.onExit", "Extra Information", ctrl = True)
-		Example Input: keyBind("enter", inputBox, ["self.toggleObjectWithLabel", "self.onQueueValue", ], [["myInputBox", True], None])
+		Example Input: keyBind("enter", "self.onExit", "Extra Information")
+		Example Input: keyBind("enter", "self.onExit", "Extra Information", thing = myInputBox.thing)
+		Example Input: keyBind("enter", "self.onExit", "Extra Information", ctrl = True)
+		Example Input: keyBind("enter", ["self.toggleObjectWithLabel", "self.onQueueValue", ], [["myInputBox", True], None])
 		"""
 
 		#Check for key modifiers
@@ -1043,6 +1046,9 @@ class Utilities():
 				event = wx.EVT_KEY_UP
 			else:
 				event = wx.EVT_KEY_DOWN
+
+		if (thing == None):
+			thing = self.thing
 
 		#Bind the event
 		self.betterBind(event, thing, self.onKeyPress, [value, myFunctionList, myFunctionArgsList, myFunctionKwargsList, ctrl, alt, shift, includeEvent], mode = 2)
@@ -1239,6 +1245,42 @@ class Utilities():
 						runFunction(event, myFunctionEvaluated, myFunctionArgs, myFunctionKwargs, includeEvent)
 
 		event.Skip()
+
+	def getKeyState(self, key, event = None):
+		"""Returns the state of the requested key.
+		Returns True if the key is currently pressed, and false if it is not.
+		For Locks, returns True if the key is locked on, and false if it is not.
+		Special thanks to Abhijit for how to check keyboard lock states on https://stackoverflow.com/questions/21160100/python-3-x-getting-the-state-of-caps-lock-num-lock-scroll-lock-on-windows
+
+		key (str) - What key to check
+			"CL" - Caps Lock
+			"NL" - Num Lock
+			"SL" - Scroll Lock
+
+		Example Input: getKeyState("k")
+		Example Input: getKeyState("cl")
+		"""
+
+		#Error Check
+		if (not isinstance(key, str)):
+			key = str(key)
+
+		#Determine key
+		state = None
+		if (key == "cl"):
+			if ((event != None) and (event.GetKeyCode() != self.keyOptions["cl"])):
+				return
+
+			hllDll = ctypes.WinDLL ("User32.dll")
+			VK_CAPITAL = 0x14
+			state = hllDll.GetKeyState(VK_CAPITAL)
+
+			if ((state == 1) or (state == 65409)):
+				state = True
+			else:
+				state = False
+	
+		return state
 
 	#Background Processes
 	def passFunction(self, myFunction, myFunctionArgs = None, myFunctionKwargs = None, thread = None):
@@ -2645,7 +2687,7 @@ class handle_Container_Base(handle_Base):
 		
 		pass
 
-	def overloadHelp(self, myFunction, label, kwargs):
+	def overloadHelp(self, myFunction, label, kwargs, window = False):
 		"""Helps the overloaded functions to stay small.
 
 		Example Input: overloadHelp("toggleEnable")
@@ -2653,13 +2695,22 @@ class handle_Container_Base(handle_Base):
 
 		#Account for all nested
 		if (label == None):
-			answerList = []
-			for handle in self:
-				function = getattr(handle, myFunction)
-				answer = function(**kwargs)
-				answerList.append(answer)
+			if (window):
+				function = getattr(handle_Widget_Base, myFunction)
+				answer = function(self, **kwargs)
+				return answer
+			else:
+				answerList = []
+				for handle in self:
+					function = getattr(handle, myFunction)
+					answer = function(**kwargs)
 
-			return answerList
+					if (not isinstance(answer, list)):
+						answer = [answer]
+
+					answerList.extend(answer)
+
+				return answerList
 		else:
 			#Account for multiple objects
 			if ((not isinstance(label, list)) and (not isinstance(label, tuple))):
@@ -2673,7 +2724,11 @@ class handle_Container_Base(handle_Base):
 
 				function = getattr(handle, myFunction)
 				answer = function(**kwargs)
-				answerList.append(answer)
+
+				if (not isinstance(answer, list)):
+					answer = [answer]
+
+				answerList.extend(answer)
 
 			return answerList
 
@@ -2685,10 +2740,10 @@ class handle_Container_Base(handle_Base):
 		self.toggleEnable(*args, event = event, **kwargs)
 		event.Skip()
 
-	def toggleEnable(self, label = None, **kwargs):
+	def toggleEnable(self, label = None, window = False, **kwargs):
 		"""Overload for toggleEnable in handle_Widget_Base."""
 
-		self.overloadHelp("toggleEnable", label, kwargs)
+		self.overloadHelp("toggleEnable", label, kwargs, window = window)
 
 	def onSetEnable(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of setEnable."""
@@ -2696,10 +2751,10 @@ class handle_Container_Base(handle_Base):
 		self.setEnable(*args, event = event, **kwargs)
 		event.Skip()
 
-	def setEnable(self, label = None, **kwargs):
+	def setEnable(self, label = None, window = False, **kwargs):
 		"""Overload for setEnable in handle_Widget_Base."""
 
-		self.overloadHelp("setEnable", label, kwargs)
+		self.overloadHelp("setEnable", label, kwargs, window = window)
 
 	def onSetDisable(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of setDisable."""
@@ -2707,10 +2762,10 @@ class handle_Container_Base(handle_Base):
 		self.setDisable(*args, event = event, **kwargs)
 		event.Skip()
 
-	def setDisable(self, label = None, **kwargs):
+	def setDisable(self, label = None, window = False, **kwargs):
 		"""Overload for setDisable in handle_Widget_Base."""
 
-		self.overloadHelp("setDisable", label, kwargs)
+		self.overloadHelp("setDisable", label, kwargs, window = window)
 
 	def onEnable(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of enable."""
@@ -2718,10 +2773,10 @@ class handle_Container_Base(handle_Base):
 		self.enable(*args, event = event, **kwargs)
 		event.Skip()
 
-	def enable(self, label = None, **kwargs):
+	def enable(self, label = None, window = False, **kwargs):
 		"""Overload for enable in handle_Widget_Base."""
 
-		self.overloadHelp("enable", label, kwargs)
+		self.overloadHelp("enable", label, kwargs, window = window)
 
 	def onDisable(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of disable."""
@@ -2729,10 +2784,10 @@ class handle_Container_Base(handle_Base):
 		self.disable(*args, event = event, **kwargs)
 		event.Skip()
 
-	def disable(self, label = None, **kwargs):
+	def disable(self, label = None, window = False, **kwargs):
 		"""Overload for disable in handle_Widget_Base."""
 
-		self.overloadHelp("disable", label, kwargs)
+		self.overloadHelp("disable", label, kwargs, window = window)
 
 	def onCheckEnabled(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of checkEnabled."""
@@ -2740,10 +2795,10 @@ class handle_Container_Base(handle_Base):
 		self.checkEnabled(*args, event = event, **kwargs)
 		event.Skip()
 
-	def checkEnabled(self, label = None, **kwargs):
+	def checkEnabled(self, label = None, window = False, **kwargs):
 		"""Overload for checkEnabled in handle_Widget_Base."""
 
-		answer = self.overloadHelp("checkEnabled", label, kwargs)
+		answer = self.overloadHelp("checkEnabled", label, kwargs, window = window)
 		return answer
 
 	def onCheckDisabled(self, event, *args, **kwargs):
@@ -2752,10 +2807,10 @@ class handle_Container_Base(handle_Base):
 		self.checkDisabled(*args, event = event, **kwargs)
 		event.Skip()
 
-	def checkDisabled(self, label = None, **kwargs):
+	def checkDisabled(self, label = None, window = False, **kwargs):
 		"""Overload for checkDisabled in handle_Widget_Base."""
 
-		answer = self.overloadHelp("checkDisabled", label, kwargs)
+		answer = self.overloadHelp("checkDisabled", label, kwargs, window = window)
 		return answer
 
 	##Show / Hide
@@ -2765,10 +2820,10 @@ class handle_Container_Base(handle_Base):
 		self.toggleShow(*args, event = event, **kwargs)
 		event.Skip()
 
-	def toggleShow(self, label = None, **kwargs):
+	def toggleShow(self, label = None, window = False, **kwargs):
 		"""Overload for toggleShow in handle_Widget_Base."""
 
-		self.overloadHelp("toggleShow", label, kwargs)
+		self.overloadHelp("toggleShow", label, kwargs, window = window)
 
 	def onSetShow(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of setShow."""
@@ -2776,10 +2831,10 @@ class handle_Container_Base(handle_Base):
 		self.setShow(*args, event = event, **kwargs)
 		event.Skip()
 
-	def setShow(self, label = None, **kwargs):
+	def setShow(self, label = None, window = False, **kwargs):
 		"""Overload for setShow in handle_Widget_Base."""
 
-		self.overloadHelp("setShow", label, kwargs)
+		self.overloadHelp("setShow", label, kwargs, window = window)
 
 	def onSetHide(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of setHide."""
@@ -2787,10 +2842,10 @@ class handle_Container_Base(handle_Base):
 		self.setHide(*args, event = event, **kwargs)
 		event.Skip()
 
-	def setHide(self, label = None, **kwargs):
+	def setHide(self, label = None, window = False, **kwargs):
 		"""Overload for setHide in handle_Widget_Base."""
 
-		self.overloadHelp("setHide", label, kwargs)
+		self.overloadHelp("setHide", label, kwargs, window = window)
 
 	def onShow(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of show."""
@@ -2798,10 +2853,10 @@ class handle_Container_Base(handle_Base):
 		self.show(*args, event = event, **kwargs)
 		event.Skip()
 
-	def show(self, label = None, **kwargs):
+	def show(self, label = None, window = False, **kwargs):
 		"""Overload for show in handle_Widget_Base."""
 
-		self.overloadHelp("show", label, kwargs)
+		self.overloadHelp("show", label, kwargs, window = window)
 
 	def onHide(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of hide."""
@@ -2809,10 +2864,10 @@ class handle_Container_Base(handle_Base):
 		self.hide(*args, event = event, **kwargs)
 		event.Skip()
 
-	def hide(self, label = None, **kwargs):
+	def hide(self, label = None, window = False, **kwargs):
 		"""Overload for hide in handle_Widget_Base."""
 
-		self.overloadHelp("hide", label, kwargs)
+		self.overloadHelp("hide", label, kwargs, window = window)
 
 	def oncheckShown(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of checkShown."""
@@ -2820,10 +2875,10 @@ class handle_Container_Base(handle_Base):
 		self.checkShown(*args, event = event, **kwargs)
 		event.Skip()
 
-	def checkShown(self, label = None, **kwargs):
+	def checkShown(self, label = None, window = False, **kwargs):
 		"""Overload for checkShown in handle_Widget_Base."""
 
-		answer = self.overloadHelp("checkShown", label, kwargs)
+		answer = self.overloadHelp("checkShown", label, kwargs, window = window)
 		return answer
 
 	def onCheckHidden(self, event, *args, **kwargs):
@@ -2832,10 +2887,10 @@ class handle_Container_Base(handle_Base):
 		self.checkHidden(*args, event = event, **kwargs)
 		event.Skip()
 
-	def checkHidden(self, label = None, **kwargs):
+	def checkHidden(self, label = None, window = False, **kwargs):
 		"""Overload for checkHidden in handle_Widget_Base."""
 
-		answer = self.overloadHelp("checkHidden", label, kwargs)
+		answer = self.overloadHelp("checkHidden", label, kwargs, window = window)
 		return answer
 
 	##Modified
@@ -2845,10 +2900,10 @@ class handle_Container_Base(handle_Base):
 		self.modify(*args, event = event, **kwargs)
 		event.Skip()
 
-	def modify(self, label = None, **kwargs):
+	def modify(self, label = None, window = False, **kwargs):
 		"""Overload for modify in handle_Widget_Base."""
 
-		self.overloadHelp("modify", label, kwargs)
+		self.overloadHelp("modify", label, kwargs, window = window)
 
 	def onSetModified(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of setModified."""
@@ -2856,10 +2911,10 @@ class handle_Container_Base(handle_Base):
 		self.setModified(*args, event = event, **kwargs)
 		event.Skip()
 
-	def setModified(self, label = None, **kwargs):
+	def setModified(self, label = None, window = False, **kwargs):
 		"""Overload for setModified in handle_Widget_Base."""
 
-		self.overloadHelp("setModified", label, kwargs)
+		self.overloadHelp("setModified", label, kwargs, window = window)
 
 	def onCheckModified(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of checkModified."""
@@ -2867,10 +2922,10 @@ class handle_Container_Base(handle_Base):
 		self.checkModified(*args, event = event, **kwargs)
 		event.Skip()
 
-	def checkModified(self, label = None, **kwargs):
+	def checkModified(self, label = None, window = False, **kwargs):
 		"""Overload for checkModified in handle_Widget_Base."""
 
-		answer = self.overloadHelp("checkModified", label, kwargs)
+		answer = self.overloadHelp("checkModified", label, kwargs, window = window)
 		return answer
 
 	def onReadOnly(self, event, *args, **kwargs):
@@ -2879,10 +2934,10 @@ class handle_Container_Base(handle_Base):
 		self.readOnly(*args, event = event, **kwargs)
 		event.Skip()
 
-	def readOnly(self, label = None, **kwargs):
+	def readOnly(self, label = None, window = False, **kwargs):
 		"""Overload for readOnly in handle_Widget_Base."""
 
-		self.overloadHelp("readOnly", label, kwargs)
+		self.overloadHelp("readOnly", label, kwargs, window = window)
 
 	def onSetReadOnly(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of setReadOnly."""
@@ -2890,10 +2945,10 @@ class handle_Container_Base(handle_Base):
 		self.setReadOnly(*args, event = event, **kwargs)
 		event.Skip()
 
-	def setReadOnly(self, label = None, **kwargs):
+	def setReadOnly(self, label = None, window = False, **kwargs):
 		"""Overload for setReadOnly in handle_Widget_Base."""
 
-		self.overloadHelp("setReadOnly", label, kwargs)
+		self.overloadHelp("setReadOnly", label, kwargs, window = window)
 
 class handle_Widget_Base(handle_Base):
 	"""A handle for working with a wxWidget."""
@@ -4750,7 +4805,7 @@ class handle_WidgetInput(handle_Widget_Base):
 
 	def setFunction_enter(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "inputbox"):
-			self.keyBind("enter", self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			self.keyBind("enter", myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_enter() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -4963,7 +5018,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			"""Builds a wx radio box object."""
 			nonlocal self, argument_catalogue
 
-			choices, vertical, title, default, myFunction = self.getArguments(argument_catalogue, ["choices", "vertical", "title", "default", "myFunction"])
+			choices, vertical, title, default, maximum, myFunction = self.getArguments(argument_catalogue, ["choices", "vertical", "title", "default", "maximum", "myFunction"])
 
 			#Ensure that the choices given are a list or tuple
 			if ((not isinstance(choices, list)) and (not isinstance(choices, tuple))):
@@ -4978,8 +5033,12 @@ class handle_WidgetButton(handle_Widget_Base):
 			else:
 				direction = wx.RA_SPECIFY_ROWS
 
+			if (maximum < 0):
+				maximum = 0
+
+
 			#Create the thing to put in the grid
-			self.thing = wx.RadioBox(self.parent.thing, label = title, choices = choices, majorDimension = 1, style = direction)
+			self.thing = wx.RadioBox(self.parent.thing, label = title, choices = choices, majorDimension = maximum, style = direction)
 
 			#Set default position
 			if (len(choices) != 0):
@@ -10484,7 +10543,7 @@ class handle_Sizer(handle_Container_Base):
 
 		return handle
 	
-	def addButtonRadioBox(self, choices = [], title = "", vertical = False, default = 0, 
+	def addButtonRadioBox(self, choices = [], title = "", vertical = False, default = 0, maximum = 1,
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
@@ -10504,6 +10563,7 @@ class handle_Sizer(handle_Container_Base):
 								  If False: The box will be oriented vertically
 		default (int)           - Which of the radio buttons will be selected by default
 		enabled (bool)          - If True: The user can interact with this
+		maximum (int)           - The maximum number of rows or columns (defined by 'vertical') the box can have
 
 		Example Input: addButtonRadioBox(["Button 1", "Button 2", "Button 3"], "self.onQueueValue", 0)
 		"""
@@ -12341,7 +12401,7 @@ class handle_Window(handle_Container_Base):
 	def makeDialogBusy(self, text = ""):
 		"""Does not pause the running code, but instead ignores user inputs by 
 		locking the GUI until the code tells the dialog box to go away. 
-		This is done by eitehr exiting a while loop	or using the hide() function. 
+		This is done by eitehr exiting a while loop or using the hide() function. 
 
 		To protect the GUI better, implement: https://wxpython.org/Phoenix/docs/html/wx.WindowDisabler.html
 		_________________________________________________________________________
@@ -14972,8 +15032,8 @@ class Communication():
 
 			# error = self.mySocket.connect_ex((address, port))
 			# if (error == 0):
-			#	self.mySocket.shutdown(2)
-			# 	return True
+			#   self.mySocket.shutdown(2)
+			#   return True
 			# return False
 
 			if (self.mySocket == None):
