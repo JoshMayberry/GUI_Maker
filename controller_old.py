@@ -7991,6 +7991,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 		self.previousCell = (-1, -1)
 		self.readOnlyCatalogue = {}
+		self.cellTypeCatalogue = {}
 
 	def __len__(self):
 		"""Returns what the contextual length is for the object associated with this handle.
@@ -8019,7 +8020,7 @@ class handle_WidgetTable(handle_Widget_Base):
 			"""Builds a wx grid object."""
 			nonlocal self, argument_catalogue
 
-			rows, columns, readOnly, readOnlyDefault = self.getArguments(argument_catalogue, ["rows", "columns", "readOnly", "readOnlyDefault"])
+			rows, columns, readOnly = self.getArguments(argument_catalogue, ["rows", "columns", "readOnly" ])
 			showGrid, dragableColumns, dragableRows = self.getArguments(argument_catalogue, ["showGrid", "dragableColumns", "dragableRows"])
 			rowSize, columnSize = self.getArguments(argument_catalogue, ["rowSize", "columnSize"])
 
@@ -8031,7 +8032,8 @@ class handle_WidgetTable(handle_Widget_Base):
 			dragFunction, selectManyFunction, selectSingleFunction = self.getArguments(argument_catalogue, ["dragFunction", "selectManyFunction", "selectSingleFunction"])
 			rightClickCellFunction, rightClickLabelFunction = self.getArguments(argument_catalogue, ["rightClickCellFunction", "rightClickLabelFunction"])
 
-			cellType = self.getArguments(argument_catalogue, ["cellType"])
+			readOnlyDefault, cellType, cellTypeDefault = self.getArguments(argument_catalogue, ["readOnlyDefault", "cellType", "cellTypeDefault"])
+
 
 			#Create the thing to put in the grid
 			self.thing = self.Table(self, self.parent.thing, style = wx.WANTS_CHARS)
@@ -8110,14 +8112,14 @@ class handle_WidgetTable(handle_Widget_Base):
 						self.readOnlyCatalogue[row] = {}
 					if (column not in self.readOnlyCatalogue[row]):
 						self.readOnlyCatalogue[row][column] = {}
-
+					
 					if (readOnly != None):
-						if (type(readOnly) == bool):
+						if (isinstance(readOnly, bool)):
 							self.readOnlyCatalogue[row][column] = readOnly
 						else:
 							if (row in readOnly):
 								#Account for whole row set
-								if (type(readOnly[row]) == bool):
+								if (isinstance(readOnly[row], bool)):
 									self.readOnlyCatalogue[row][column] = readOnly[row]
 								else:
 									if (column in readOnly[row]):
@@ -8136,7 +8138,36 @@ class handle_WidgetTable(handle_Widget_Base):
 					else:
 						self.readOnlyCatalogue[row][column] = readOnlyDefault
 
-			
+			##Set Cell Type for Cells
+			self.cellTypeCatalogue = {}
+			for row in range(self.thing.GetNumberRows()):
+				for column in range(self.thing.GetNumberCols()):
+					if (row not in self.cellTypeCatalogue):
+						self.cellTypeCatalogue[row] = {}
+					if (column not in self.cellTypeCatalogue[row]):
+						self.cellTypeCatalogue[row][column] = {}
+						
+					if (cellType != None):
+						if (row in cellType):
+							#Account for whole row set
+							if (isinstance(cellType[row], str)):
+								self.cellTypeCatalogue[row][column] = cellType[row]
+							else:
+								if (column in cellType[row]):
+									self.cellTypeCatalogue[row][column] = cellType[row][column]
+								else:
+									self.cellTypeCatalogue[row][column] = cellTypeDefault
+
+						elif (None in cellType):
+							#Account for whole column set
+							if (column in cellType[None]):
+								self.cellTypeCatalogue[row][column] = cellType[None][column]
+							else:
+								self.cellTypeCatalogue[row][column] = cellTypeDefault
+						else:
+							self.cellTypeCatalogue[row][column] = cellTypeDefault
+					else:
+						self.cellTypeCatalogue[row][column] = cellTypeDefault
 
 			##Default Cell Selection
 			if ((default != None) and (default != (0, 0))):
@@ -8353,7 +8384,7 @@ class handle_WidgetTable(handle_Widget_Base):
 		row (int)         - The index of the row
 		column (int)      - The index of the column
 
-		Example Input: getTableReadOnly(1, 1, 0)
+		Example Input: getTableReadOnly(1, 1)
 		"""
 
 		readOnly = self.readOnlyCatalogue[row][column]
@@ -8372,6 +8403,34 @@ class handle_WidgetTable(handle_Widget_Base):
 		row, column = selection[0]
 
 		readOnly = self.getTableReadOnly(row, column)
+		return readOnly
+
+	def getTableCellType(self, row, column):
+		"""Returns the widget type of the given cell.
+		The top-left corner is row (0, 0) not (1, 1).
+
+		row (int)         - The index of the row
+		column (int)      - The index of the column
+
+		Example Input: getTableCellType(1, 1)
+		"""
+
+		cellType = self.cellTypeCatalogue[row][column]
+		return cellType
+
+	def getTableCurrentCellType(self):
+		"""Returns the widget type of the current cell.
+		The top-left corner is row (0, 0) not (1, 1).
+
+		Example Input: getTableCurrentCellType()
+		"""
+
+		selection = self.getTableCurrentCell()
+
+		#Default to the top left cell if a range is selected
+		row, column = selection[0]
+
+		readOnly = self.getTableCellType(row, column)
 		return readOnly
 
 	def clearTable(self):
@@ -9295,6 +9354,7 @@ class handle_WidgetTable(handle_Widget_Base):
 	class TableCellEditor(wx.grid.GridCellEditor):
 		"""Used to modify the grid cell editor's behavior.
 		Modified code from: https://github.com/wxWidgets/wxPython/blob/master/demo/GridCustEditor.py
+		Cell Type 'droplist' code from: https://wiki.wxpython.org/wxGridCellChoiceEditor2
 		"""
 
 		def __init__(self, parent, downOnEnter = True, debugging = False):
@@ -9345,32 +9405,57 @@ class handle_WidgetTable(handle_Widget_Base):
 			if (self.debugging):
 				print(f"TableCellEditor.Create(parent = {parent}, myId = {myId}, event = {event})")
 
-			#Prepare text control
+			#Account for special styles
+			self.cellType = self.parent.getTableCurrentCellType()
+
+			print("@1", self.cellType)
+
+			#Prepare widget control
+			if (isinstance(self.cellType, (list, tuple))):
+				self.cellTypeValue = self.cellType[1]
+				self.cellType = self.cellType[0]
+
 			styles = ""
 
-			#Check how the enter key is processed
-			if (self.downOnEnter):
-				style += "|wx.TE_PROCESS_ENTER"
+			#Account for special styles
+			if (self.cellType.lower() == "droplist"):
+				#Error Checking
+				if (not isinstance(self.cellTypeValue, (list, tuple))):
+					self.cellTypeValue = [self.cellTypeValue]
 
-			#Check readOnly
-			if (self.parent.getTableCurrentCellReadOnly()):
-				styles += "|wx.TE_READONLY"
+				self.myCellControl = wx.Choice(parent, myId, choices = self.cellTypeValue)
 
-			#Strip of extra divider
-			if (styles != ""):
-				if (styles[0] == "|"):
-					styles = styles[1:]
+				#Check readOnly
+				if (self.parent.getTableCurrentCellReadOnly()):
+					self.myCellControl.Enable(False)
+
+			#Use a text box
 			else:
-				styles = "wx.DEFAULT"
+				#Check how the enter key is processed
+				if (self.downOnEnter):
+					style += "|wx.TE_PROCESS_ENTER"
 
-			#Create text control
-			self.myTextControl = wx.TextCtrl(parent, myId, "", style = eval(styles))
-			self.myTextControl.SetInsertionPoint(0)
-			self.SetControl(self.myTextControl)
+				#Check readOnly
+				if (self.parent.getTableCurrentCellReadOnly()):
+					styles += "|wx.TE_READONLY"
+
+				#Strip of extra divider
+				if (styles != ""):
+					if (styles[0] == "|"):
+						styles = styles[1:]
+				else:
+					styles = "wx.DEFAULT"
+
+				#Create text control
+				self.myCellControl = wx.TextCtrl(parent, myId, "", style = eval(styles))
+				self.myCellControl.SetInsertionPoint(0)
+				self.SetControl(self.myCellControl)
 
 			#Handle events
 			if (event):
-				self.myTextControl.PushEventHandler(event)
+				self.myCellControl.PushEventHandler(event)
+
+			print("@5")
 
 		def SetSize(self, rect):
 			"""Called to position/size the edit control within the cell rectangle.
@@ -9378,11 +9463,13 @@ class handle_WidgetTable(handle_Widget_Base):
 			PaintBackground and do something meaningful there.
 			"""
 
+			print("@6")
+
 			#Write debug information
 			if (self.debugging):
 				print(f"TableCellEditor.SetSize(rect = {rect})")
 
-			self.myTextControl.SetSize(rect.x, rect.y, rect.width+2, rect.height+2, wx.SIZE_ALLOW_MINUS_ONE)
+			self.myCellControl.SetSize(rect.x, rect.y, rect.width+2, rect.height+2, wx.SIZE_ALLOW_MINUS_ONE)
 
 		def Show(self, show, attr):
 			"""Show or hide the edit control. You can use the attr (if not None)
@@ -9417,11 +9504,18 @@ class handle_WidgetTable(handle_Widget_Base):
 				print(f"TableCellEditor.BeginEdit(row = {row}, column = {column}, grid = {grid})")
 
 			self.startValue = grid.GetTable().GetValue(row, column)
-			self.myTextControl.SetValue(self.startValue)
-			self.myTextControl.SetInsertionPointEnd()
-			self.myTextControl.SetFocus()
+			
 
-			self.myTextControl.SetSelection(0, self.myTextControl.GetLastPosition())
+			#Account for special styles
+			if (self.cellType.lower() == "droplist"):
+				self.myCellControl.SetStringSelection(self.startValue)
+				self.myCellControl.SetFocus()
+			else:
+				self.myCellControl.SetValue(self.startValue)
+				self.myCellControl.SetInsertionPointEnd()
+				self.myCellControl.SetFocus()
+
+				self.myCellControl.SetSelection(0, self.myCellControl.GetLastPosition())
 
 			# #Handle Events
 			# event = wx.CommandEvent()
@@ -9452,7 +9546,12 @@ class handle_WidgetTable(handle_Widget_Base):
 			if (self.patching):
 				return
 
-			newValue = self.myTextControl.GetValue()
+			if (self.cellType.lower() == "droplist"):
+				newValue = self.myCellControl.GetStringSelection()
+			else:
+				newValue = self.myCellControl.GetValue()
+			
+			#Compare Value
 			if (newValue != oldValue):
 				#Fix loop problem
 				self.patching = True
@@ -9469,6 +9568,11 @@ class handle_WidgetTable(handle_Widget_Base):
 				return
 				# return newValue
 			else:
+				if (self.cellType.lower() == "droplist"):
+					self.myCellControl.SetStringSelection(self.cellTypeValue[0])
+				else:
+					self.startValue = ''
+					self.myCellControl.SetValue('')
 				return
 			
 		def ApplyEdit(self, row, column, grid):
@@ -9482,14 +9586,18 @@ class handle_WidgetTable(handle_Widget_Base):
 			if (self.debugging):
 				print(f"TableCellEditor.ApplyEdit(row = {row}, column = {column}, grid = {grid})")
 
-			value = self.myTextControl.GetValue()
+			value = self.myCellControl.GetValue()
 			table = grid.GetTable()
 
 			grid.SetCellValue(row, column, value) # update the table
 			# table.SetValue(row, column, value) # update the table
 
-			self.startValue = ''
-			self.myTextControl.SetValue('')
+			if (self.cellType.lower() == "droplist"):
+				self.startValue = self.cellTypeValue[0]
+				self.myCellControl.SetStringSelection(self.cellTypeValue[0])
+			else:
+				self.startValue = ''
+				self.myCellControl.SetValue('')
 
 			#Move cursor down
 			if (self.downOnEnter):
@@ -9510,8 +9618,11 @@ class handle_WidgetTable(handle_Widget_Base):
 			if (self.debugging):
 				print("TableCellEditor.Reset()")
 
-			self.myTextControl.SetValue(self.startValue)
-			self.myTextControl.SetInsertionPointEnd()
+			if (self.cellType.lower() == "droplist"):
+				self.myCellControl.SetStringSelection(self.startValue)
+			else:
+				self.myCellControl.SetValue(self.startValue)
+				self.myCellControl.SetInsertionPointEnd()
 
 		def IsAcceptedKey(self, event):
 			"""Return True to allow the given key to start editing: the base class
@@ -9556,10 +9667,13 @@ class handle_WidgetTable(handle_Widget_Base):
 					char = chr(key)
 
 				if char is not None:
-					# For this example, replace the text. Normally we would append it.
-					self.myTextControl.AppendText(char)
-					# self.myTextControl.SetValue(char)
-					self.myTextControl.SetInsertionPointEnd()
+					if (self.cellType.lower() == "droplist"):
+						self.myCellControl.SetStringSelection(ch)
+					else:
+						# For this example, replace the text. Normally we would append it.
+						self.myCellControl.AppendText(char)
+						# self.myCellControl.SetValue(char)
+						self.myCellControl.SetInsertionPointEnd()
 			
 			event.Skip()
 
@@ -10967,7 +11081,7 @@ class handle_Sizer(handle_Container_Base):
 		rowSize = None, columnSize = None, rowLabelSize = None, columnLabelSize = None, rowSizeMinimum = None, columnSizeMinimum = None,
 
 		showGrid = True, dragableRows = False, dragableColumns = False, arrowKeyExitEdit = False, enterKeyExitEdit = False, editOnEnter = False, 
-		readOnly = False, readOnlyDefault = False, default = (0, 0), 
+		readOnly = False, readOnlyDefault = False, default = (0, 0), cellType = None, cellTypeDefault = "inputbox",
 
 		preEditFunction = None, preEditFunctionArgs = None, preEditFunctionKwargs = None, 
 		postEditFunction = None, postEditFunctionArgs = None, postEditFunctionKwargs = None, 
@@ -11019,6 +11133,12 @@ class handle_Sizer(handle_Container_Base):
 				~ {None: column number (int): readOnly for the whole column (bool)}
 		readOnlyDefault (bool)  - What readOnly value to give a cell if the user does not provide one
 		default (tuple)         - Which cell the table starts out with selected. (row, column)
+		cellType (dict)         - Determines the widget type used for a specific cell in the table
+				~ {row number (int): {column number (int): cell type for the cell (str)}}
+				~ {row number (int): cell type for the whole row (str)}
+				~ {None: column number (int): cell type for the whole column (str)}
+		cellTypeDefault (str)   - What the cells default to as a widget
+			- Possible Inputs: "inputbox", "droplist"
 
 		preEditFunction (str)               - The function that is ran when the user edits a cell. If None: the user cannot edit cells. Accessed cells are before the edit
 		preEditFunctionArgs (any)           - The arguments for 'preEditFunction'
@@ -11054,6 +11174,10 @@ class handle_Sizer(handle_Container_Base):
 		Example Input: addTable(3, 4, 0, 0, readOnly = {1: True})
 		Example Input: addTable(3, 4, 0, 0, readOnly = {1: {1: True, 3: True}})
 		Example Input: addTable(3, 4, 0, 0, readOnly = {None: {1: True})
+
+		Example Input: addTable(3, 4, 0, 0, cellType = {1: "droplist"})
+		Example Input: addTable(3, 4, 0, 0, cellType = {1: {1: "droplist", 3: "droplist"}})
+		Example Input: addTable(3, 4, 0, 0, cellType = {None: {1: "droplist"}})
 		"""
 
 		handle = handle_WidgetTable()
