@@ -5114,7 +5114,10 @@ class handle_WidgetButton(handle_Widget_Base):
 
 		self.preBuild(argument_catalogue)
 
-		if (self.type.lower() == "buttoncheck"):
+		
+		if (self.type.lower() == "button"):
+			build_button()
+		elif (self.type.lower() == "buttoncheck"):
 			build_buttonCheck()
 		elif (self.type.lower() == "buttonradio"):
 			build_buttonRadio()
@@ -5124,9 +5127,9 @@ class handle_WidgetButton(handle_Widget_Base):
 			build_buttonRadioBox()
 		elif (self.type.lower() == "checklist"):
 			build_checkList()
-		elif (self.type.lower() == "button"):
-			build_button()
 		elif (self.type.lower() == "buttonimage"):
+			build_buttonImage()
+		elif (self.type.lower() == "buttonhelp"):
 			build_buttonImage()
 		else:
 			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -6287,6 +6290,11 @@ class handle_MenuPopup(handle_Container_Base):
 		#Internal variables
 		self.contents = [] #Contains all menu item handles for this popup menu
 		self.popupMenu = None
+
+	def __len__(self):
+		"""Returns what the contextual length is for the object associated with this handle."""
+
+		return len(self.contents)
 
 	def postBuild(self, argument_catalogue):
 		"""Runs after this object is built."""
@@ -10719,6 +10727,32 @@ class handle_Sizer(handle_Container_Base):
 
 		return handle
 	
+	def addButtonHelp(self, 
+
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
+
+		label = None, hidden = False, enabled = True, selected = False, 
+		flex = 0, flags = "c1", parent = None, handle = None):
+		"""Adds a context help button to the next cell on the grid.
+
+		flags (list)            - A list of strings for which flag to add to the sizer
+		myFunction (str)        - What function will be ran when the button is pressed
+		label (any)           - What this is catalogued as
+		myFunctionArgs (any)    - The arguments for 'myFunction'
+		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
+		default (bool)          - If True: This is the default thing selected
+		enabled (bool)          - If True: The user can interact with this
+		hidden (bool)           - If True: The widget is hidden from the user, but it is still created
+
+		Example Input: addButtonHelp(label = "myHelpButton")
+		"""
+
+		handle = handle_WidgetButton()
+		handle.type = "ButtonHelp"
+		handle.build(locals())
+
+		return handle
+	
 	def addButtonImage(self, idlePath = "", disabledPath = "", selectedPath = "", focusPath = "", hoverPath = "",
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
@@ -14649,6 +14683,7 @@ class Communication():
 
 			self.recieveStop = False #Used to stop the recieving function early
 			self.ipScanStop  = False #Used to stop the ip scanning function early
+			self.recieveListening = False #Used to chek if the recieve function has started listening or if it has finished listeing
 
 			#Create the socket
 			self.mySocket = None
@@ -14754,10 +14789,12 @@ class Communication():
 			def runFunction(self, bufferSize):
 				"""Needed to listen on a separate thread so the GUI is not tied up."""
 
+				self.recieveListening = True
+
 				#Listen
 				while True:
 					#Check for stop command
-					if (self.recieveStop):
+					if (self.recieveStop or (self.mySocket == None)):
 						self.recieveStop = False
 						break
 
@@ -14774,17 +14811,22 @@ class Communication():
 
 				#Mark end of message
 				self.dataBlock.append(None)
+				self.recieveListening = False
 
 			#Checks buffer size
 			if (not (((bufferSize & (bufferSize - 1)) == 0) and (bufferSize > 0))):
 				warnings.warn(f"Buffer size must be a power of 2, not {bufferSize}", Warning, stacklevel = 2)
 				return None
 
+			if (self.recieveListening):
+				warnings.warn(f"Already listening to socket", Warning, stacklevel = 2)
+				return None
+
 			#Listen for data on a separate thread
 			self.dataBlock = []
 			self.parent.backgroundRun(runFunction, [self, bufferSize])
 
-		def checkRecieve(self):
+		def checkRecieve(self, removeNone = True):
 			"""Checks what the recieveing data looks like.
 			Each read portion is an element in a list.
 			Returns the current block of data and whether it is finished listening or not.
@@ -14792,14 +14834,26 @@ class Communication():
 			Example Input: checkRecieve()
 			"""
 
+			if (self.recieveStop):
+				print("WARNING: Recieveing has stopped")
+				return [], False
+
+			if (not self.recieveListening):
+				self.startRecieve()
+
 			#The entire message has been read once the last element is None.
 			finished = False
 			if (len(self.dataBlock) != 0):
 				if (self.dataBlock[-1] == None):
 					finished = True
-					self.dataBlock.pop(-1) #Remove the None from the end so the user does not get confused
 
-			return self.dataBlock, finished
+					if (removeNone):
+						self.dataBlock.pop(-1) #Remove the None from the end so the user does not get confused
+
+			data = self.dataBlock[:]
+			self.dataBlock = []
+
+			return data, finished
 
 		def stopRecieve(self):
 			"""Stops listening for data from the socket.
