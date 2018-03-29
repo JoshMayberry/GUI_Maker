@@ -8019,7 +8019,8 @@ class handle_WidgetTable(handle_Widget_Base):
 		def addEditor(cellType, row = None, column = None, enterKeyExitEdit = False):
 			"""Adds the requested editor to the provided cell.
 			Creates the requested editor if it does not exist.
-			
+			Special thanks to RobinD42 for how to fix an error when closing the window on https://github.com/wxWidgets/Phoenix/issues/627
+
 			cellType (str) - What type of editor to add
 			row (int)      - Which row to add this to
 				- If None: Will make this the default editor instead
@@ -8040,6 +8041,9 @@ class handle_WidgetTable(handle_Widget_Base):
 				self.thing.SetDefaultEditor(self.cellTypeCatalogue[str(cellType)])
 			else:
 				self.thing.SetCellEditor(row, column, self.cellTypeCatalogue[str(cellType)])
+
+			#Increment the reference variable for managing clones
+			self.cellTypeCatalogue[str(cellType)].IncRef()
 
 		def build_table():
 			"""Builds a wx grid object."""
@@ -9394,7 +9398,7 @@ class handle_WidgetTable(handle_Widget_Base):
 			self.downOnEnter = downOnEnter
 			self.debugging = debugging
 			self.patching = False
-			self.debugging = True
+			# self.debugging = True
 
 			if (cellType == None):
 				self.cellType = "inputbox"
@@ -9687,7 +9691,10 @@ class handle_WidgetTable(handle_Widget_Base):
 
 				if char is not None:
 					if (self.cellType.lower() == "droplist"):
-						self.myCellControl.SetStringSelection(ch)
+						if (char in self.cellTypeValue):
+							self.myCellControl.SetStringSelection(char)
+						else:
+							self.myCellControl.SetStringSelection(self.cellTypeValue[0])
 					else:
 						# For this example, replace the text. Normally we would append it.
 						self.myCellControl.AppendText(char)
