@@ -2382,6 +2382,9 @@ class Utilities():
 		return size
 
 	def getWindow(self, windowLabel = None):
+		if (isinstance(windowLabel, handle_Window)):
+			return windowLabel
+
 		window = self.get(windowLabel, typeList = [handle_Window])
 		return window
 
@@ -11818,7 +11821,7 @@ class handle_Dialog(handle_Base):
 class handle_Window(handle_Container_Base):
 	"""A handle for working with a wxWindow."""
 
-	def __init__(self):
+	def __init__(self, controller):
 		"""Initializes defaults."""
 
 		#Initialize inherited classes
@@ -11830,6 +11833,7 @@ class handle_Window(handle_Container_Base):
 		self.visible = False
 		self.complexity_total = 0
 		self.complexity_max = 20
+		self.controller = controller
 
 		self.statusBarOn = True
 		self.toolBarOn = True
@@ -12130,6 +12134,17 @@ class handle_Window(handle_Container_Base):
 		self.hideWindow(*args, **kwargs)
 		event.Skip()
 
+	def onSwitchWindow(self, event, *args, **kwargs):
+		"""Event function for switchWindow()"""
+		
+		self.switchWindow(*args, **kwargs)
+		event.Skip()
+
+	def switchWindow(self, whichTo, hideFrom = True):
+		"""Overload for Controller.switchWindow()."""
+
+		self.controller.switchWindow(self, whichTo, hideFrom = hideFrom)
+
 	#Panels
 	def addPanel(self, label = None, size = wx.DefaultSize, border = wx.NO_BORDER, position = wx.DefaultPosition, parent = None,
 		tabTraversal = True, useDefaultSize = False, autoSize = True, flags = "c1", 
@@ -12180,8 +12195,8 @@ class handle_Window(handle_Container_Base):
 
 		#Account for no sizers available
 		if (len(sizerList) == 0):
-			errorMessage = f"{self.__repr__()} has no sizers"
-			raise ValueError(errorMessage)
+			warnings.warn(f"{self.__repr__()} has no sizers", Warning, stacklevel = 2)
+			return
 
 		#Account for random sizer request
 		if (returnAny):
@@ -12197,8 +12212,8 @@ class handle_Window(handle_Container_Base):
 				return sizer
 
 		#No sizer found
-		errorMessage = f"{self.__repr__()} has no sizer '{sizerLabel}'"
-		raise ValueError(errorMessage)
+		warnings.warn(f"{self.__repr__()} has no sizer '{sizerLabel}'", Warning, stacklevel = 2)
+		return
 
 	def addSizerGrid(self, rows = 1, columns = 1, rowGap = 0, colGap = 0, 
 		minWidth = -1, minHeight = -1, label = None, text = None,
@@ -12779,6 +12794,10 @@ class handle_Window(handle_Container_Base):
 
 			#Get random sizer
 			sizer = self.getSizer(returnAny = True)
+
+			if (sizer == None):
+				#Empty Window
+				return
 
 			if (self.mainPanel != None):
 				if (autoSize):
@@ -16393,7 +16412,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 		Example Input: addWindow(0, title = "Example")
 		"""
 
-		handle = handle_Window()
+		handle = handle_Window(self)
 		handle.build(locals())
 
 		return handle
