@@ -37,6 +37,7 @@ import wx.adv
 import wx.grid
 import wx.lib.masked
 import wx.lib.dialogs
+import wx.lib.agw.aui
 # import wx.lib.newevent
 import wx.lib.splitter
 import wx.lib.agw.floatspin
@@ -14269,6 +14270,32 @@ class handle_Splitter(handle_Container_Base):
 
 		return panel
 
+class handle_AuiManager(handle_Container_Base):
+	"""The manager for dockable windows.
+	Modified code from: https://www.blog.pythonlibrary.org/2009/12/09/the-%E2%80%9Cbook%E2%80%9D-controls-of-wxpython-part-2-of-2/
+	"""
+
+	def __init__(self, parent):
+		"""Initialize Defaults"""
+
+		#Initialize inherited classes
+		handle_Container_Base.__init__(self)
+
+		#Internal Variables
+		self.parent = parent
+
+		#Create manager
+		build()
+
+	def build(self):
+		"""Builds a wx AuiManager object"""
+
+		#Expand using: https://wxpython.org/Phoenix/docs/html/wx.aui.AuiManager.html
+
+		style = wx.lib.agw.aui.AUI_MGR_DEFAULT #See: https://wxpython.org/Phoenix/docs/html/wx.aui.AuiManagerOption.enumeration.html#wx-aui-auimanageroption
+
+		self.thing = wx.lib.agw.aui.AuiManager(self.parent.thing, style)
+
 class handle_Notebook(handle_Container_Base):
 	"""A handle for working with a wxNotebook."""
 
@@ -14291,7 +14318,7 @@ class handle_Notebook(handle_Container_Base):
 		"""Determiens which build system to use for this handle."""
 
 		def build_notebook():
-			"""Builds a wx  object."""
+			"""Builds a wx notebook object."""
 			nonlocal self, argument_catalogue
 
 			flags, tabSide, reduceFlicker, fixedWidth, padding, buildSelf = self.getArguments(argument_catalogue, ["flags", "tabSide", "reduceFlicker", "fixedWidth", "padding", "self"])
@@ -14364,6 +14391,85 @@ class handle_Notebook(handle_Container_Base):
 				self.myWindow = buildSelf
 			else:
 				self.myWindow = buildSelf.myWindow
+
+		def build_auiNotebook():
+			"""Builds a wx auiNotebook object."""
+			nonlocal self, argument_catalogue
+
+			# flags, tabSide, reduceFlicker, fixedWidth, padding, buildSelf = self.getArguments(argument_catalogue, ["flags", "tabSide", "reduceFlicker", "fixedWidth", "padding", "self"])
+			# initFunction, pageChangeFunction, pageChangingFunction, multiLine = self.getArguments(argument_catalogue, ["initFunction", "pageChangeFunction", "pageChangingFunction", "multiLine"])
+
+			#Create Styles
+			if (tabTop != None):
+				if (tabTop):
+					styles = "wx.lib.agw.aui.AUI_NB_TOP"
+				else:
+					styles = "wx.lib.agw.aui.AUI_NB_BOTTOM"
+			else:
+				styles = "wx.lib.agw.aui.AUI_NB_TOP"
+
+			if (tabSplit):
+				styles += "|wx.lib.agw.aui.AUI_NB_TAB_SPLIT"
+
+			if (tabMove):
+				styles += "|wx.lib.agw.aui.AUI_NB_TAB_MOVE"
+
+			if (tabBump):
+				styles += "|wx.lib.agw.aui.AUI_NB_TAB_EXTERNAL_MOVE"
+
+			if (tabSmart):
+				styles += "|wx.lib.agw.aui.AUI_NB_HIDE_ON_SINGLE_TAB"
+				styles += "|wx.lib.agw.aui.AUI_NB_SMART_TABS"
+				styles += "|wx.lib.agw.aui.AUI_NB_DRAW_DND_TAB"
+
+			if (tabOrderAccess):
+				styles += "|wx.lib.agw.aui.AUI_NB_ORDER_BY_ACCESS"
+
+			if (tabFloat):
+				styles += "|wx.lib.agw.aui.AUI_NB_TAB_FLOAT"
+
+			if (not variableWidth):
+				styles += "|wx.lib.agw.aui.AUI_NB_TAB_FIXED_WIDTH"
+
+			if (addScrollButton):
+				styles += "|wx.lib.agw.aui.AUI_NB_SCROLL_BUTTONS"
+
+			if (addListDrop != None):
+				if (addListDrop):
+					styles += "|wx.lib.agw.aui.AUI_NB_WINDOWLIST_BUTTON"
+				else:
+					styles += "|wx.lib.agw.aui.AUI_NB_USE_IMAGES_DROPDOWN"
+
+			if (addCloseButton != None):
+				if (addCloseButton):
+					styles += "|wx.lib.agw.aui.AUI_NB_CLOSE_ON_ALL_TABS"
+				else:
+					styles += "|wx.lib.agw.aui.AUI_NB_CLOSE_ON_ACTIVE_TAB"
+
+				if (closeOnLeft):
+					styles += "|wx.lib.agw.aui.AUI_NB_CLOSE_ON_TAB_LEFT"
+
+			if (middleClickClose):
+				styles += "|wx.lib.agw.aui.AUI_NB_MIDDLE_CLICK_CLOSE"
+
+			if (not drawFocus):
+				styles += "|wx.lib.agw.aui.AUI_NB_NO_TAB_FOCUS"
+
+			self.thing = wx.lib.agw.aui.auibook.AuiNotebook(self.parent.thing, agwStyle = eval(styles))
+
+			# aui.AuiNotebook.__init__(self, parent=parent)
+			# self.default_style = aui.AUI_NB_DEFAULT_STYLE | aui.AUI_NB_TAB_EXTERNAL_MOVE | wx.NO_BORDER
+			# self.SetWindowStyleFlag(self.default_style)
+	 
+			# # add some pages to the notebook
+			# pages = [TabPanelOne, TabPanelOne, TabPanelOne]
+	 
+			# x = 1
+			# for page in pages:
+			# 	label = "Tab #%i" % x
+			# 	tab = page(self)
+			# 	self.AddPage(tab, label, False)
+			# 	x += 1
 		
 		#########################################################
 
@@ -14371,6 +14477,8 @@ class handle_Notebook(handle_Container_Base):
 
 		if (self.type.lower() == "notebook"):
 			build_notebook()
+		elif (self.type.lower() == "auinotebook"):
+			build_auiNotebook()
 		else:
 			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
 
