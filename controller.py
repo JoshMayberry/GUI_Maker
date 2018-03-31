@@ -3784,7 +3784,149 @@ class handle_WidgetList(handle_Widget_Base):
 			if (postEditFunction):
 				postEditFunctionArgs, postEditFunctionKwargs = self.getArguments(argument_catalogue, ["postEditFunctionArgs", "postEditFunctionKwargs"])
 				self.setFunction_postEdit(postEditFunction, postEditFunctionArgs, postEditFunctionKwargs)
-		
+
+		def build_listTree():
+			"""Builds a wx choice object."""
+			nonlocal self, argument_catalogue
+
+			
+			choices, drag, drop = self.getArguments(argument_catalogue, ["choices", "drag", "drop"])
+			addButton, editable, rowHighlight, root = self.getArguments(argument_catalogue, ["addButton", "editable", "rowHighlight", "root"])
+			rowLines, rootLines, variableHeight, selectMultiple = self.getArguments(argument_catalogue, ["rowLines", "rootLines", "variableHeight", "selectMultiple"])
+
+			#Apply Settings
+			if (addButton == None):
+				style = "wx.TR_NO_BUTTONS"
+			else:
+				if (addButton):
+					style = "wx.TR_HAS_BUTTONS"
+				else:
+					style = "wx.TR_TWIST_BUTTONS"
+
+			if (editable):
+				style += "|wx.TR_EDIT_LABELS"
+
+			if (rowHighlight):
+				style += "|wx.TR_FULL_ROW_HIGHLIGHT"
+
+			if (root == None):
+				style += "|wx.TR_HIDE_ROOT"
+
+			if (rowLines or rootLines):
+				if (rowLines):
+					style += "|wx.TR_ROW_LINES"
+
+				if (rootLines and (root != None)):
+					style += "|wx.TR_LINES_AT_ROOT"
+			else:
+				style += "|wx.TR_NO_LINES"
+
+			if (variableHeight):
+				style += "|wx.TR_HAS_VARIABLE_ROW_HEIGHT"
+
+			if (selectMultiple):
+				style += "|wx.TR_MULTIPLE"
+			else:
+				style += "|wx.TR_SINGLE"
+
+		 	#Create the thing to put in the grid
+			self.thing = wx.TreeCtrl(self.parent.thing, style = eval(style))
+			
+			self.setValue({root: choices})
+
+			preRightDragFunction, postRightDragFunction = self.getArguments(argument_catalogue, ["preRightDragFunction", "postRightDragFunction"])
+			preDropFunction, postDropFunction, dragOverFunction = self.getArguments(argument_catalogue, ["preDropFunction", "postDropFunction", "dragOverFunction"])
+
+			# #Determine if it's contents are dragable
+			# if (drag):
+			# 	dragLabel, dragDelete, dragCopyOverride, allowExternalAppDelete = self.getArguments(argument_catalogue, ["dragLabel", "dragDelete", "dragCopyOverride", "allowExternalAppDelete"])
+			# 	preDragFunction, preDragFunctionArgs, preDragFunctionKwargs = self.getArguments(argument_catalogue, ["preDragFunction", "preDragFunctionArgs", "preDragFunctionKwargs"])
+			# 	postDragFunction, postDragFunctionArgs, postDragFunctionKwargs = self.getArguments(argument_catalogue, ["postDragFunction", "postDragFunctionArgs", "postDragFunctionKwargs"])
+				
+			# 	self.dragable = True
+			# 	self.betterBind(wx.EVT_TREE_BEGIN_DRAG, self.thing, self.onDragList_beginDragAway, None, 
+			# 		{"label": dragLabel, "deleteOnDrop": dragDelete, "overrideCopy": dragCopyOverride, "allowExternalAppDelete": allowExternalAppDelete})
+				
+			# 	self.preDragFunction = preDragFunction
+			# 	self.preDragFunctionArgs = preDragFunctionArgs
+			# 	self.preDragFunctionKwargs = preDragFunctionKwargs
+
+			# 	self.postDragFunction = postDragFunction
+			# 	self.postDragFunctionArgs = postDragFunctionArgs
+			# 	self.postDragFunctionKwargs = postDragFunctionKwargs
+
+			# #Determine if it accepts dropped items
+			# if (drop):
+			# 	dropIndex = self.getArguments(argument_catalogue, ["dropIndex"])
+			# 	preDropFunction, preDropFunctionArgs, preDropFunctionKwargs = self.getArguments(argument_catalogue, ["preDropFunction", "preDropFunctionArgs", "preDropFunctionKwargs"])
+			# 	postDropFunction, postDropFunctionArgs, postDropFunctionKwargs = self.getArguments(argument_catalogue, ["postDropFunction", "postDropFunctionArgs", "postDropFunctionKwargs"])
+			# 	dragOverFunction, dragOverFunctionArgs, postDropFunctionKwargs = self.getArguments(argument_catalogue, ["dragOverFunction", "dragOverFunctionArgs", "postDropFunctionKwargs"])
+				
+			# 	self.myDropTarget = self.DragTextDropTarget(self.thing, dropIndex,
+			# 		preDropFunction = preDropFunction, preDropFunctionArgs = preDropFunctionArgs, preDropFunctionKwargs = preDropFunctionKwargs, 
+			# 		postDropFunction = postDropFunction, postDropFunctionArgs = postDropFunctionArgs, postDropFunctionKwargs = postDropFunctionKwargs,
+			# 		dragOverFunction = dragOverFunction, dragOverFunctionArgs = dragOverFunctionArgs, dragOverFunctionKwargs = postDropFunctionKwargs)
+			# 	self.thing.SetDropTarget(self.myDropTarget)
+
+			#Bind the function(s)
+			myFunction, preEditFunction, postEditFunction = self.getArguments(argument_catalogue, ["myFunction", "preEditFunction", "postEditFunction"])
+			preCollapseFunction, preExpandFunction = self.getArguments(argument_catalogue, ["preCollapseFunction", "preExpandFunction"])
+			postCollapseFunction, postExpandFunction = self.getArguments(argument_catalogue, ["postCollapseFunction", "postExpandFunction"])
+			rightClickFunction, middleClickFunction, doubleClickFunction = self.getArguments(argument_catalogue, ["rightClickFunction", "middleClickFunction", "doubleClickFunction"])
+			keyDownFunction, toolTipFunction, itemMenuFunction = self.getArguments(argument_catalogue, ["keyDownFunction", "toolTipFunction", "itemMenuFunction"])
+
+			if (myFunction != None):
+				myFunctionArgs, myFunctionKwargs = self.getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
+				self.setFunction_postClick(myFunction, myFunctionArgs, myFunctionKwargs)
+
+			if (preEditFunction != None):
+				preEditFunctionArgs, preEditFunctionKwargs = self.getArguments(argument_catalogue, ["preEditFunctionArgs", "preEditFunctionKwargs"])
+				self.setFunction_preEdit(preEditFunction, preEditFunctionArgs, preEditFunctionKwargs)
+
+			if (postEditFunction != None):
+				postEditFunctionArgs, postEditFunctionKwargs = self.getArguments(argument_catalogue, ["postEditFunctionArgs", "postEditFunctionKwargs"])
+				self.setFunction_postEdit(postEditFunction, postEditFunctionArgs, postEditFunctionKwargs)
+
+			if (preCollapseFunction != None):
+				preCollapseFunctionArgs, preCollapseFunctionKwargs = self.getArguments(argument_catalogue, ["preCollapseFunctionArgs", "preCollapseFunctionKwargs"])
+				self.setFunction_collapse(preCollapseFunction, preCollapseFunctionArgs, preCollapseFunctionKwargs)
+
+			if (postCollapseFunction != None):
+				postCollapseFunctionArgs, postCollapseFunctionKwargs = self.getArguments(argument_catalogue, ["postCollapseFunctionArgs", "postCollapseFunctionKwargs"])
+				self.setFunction_collapse(postCollapseFunction, postCollapseFunctionArgs, postCollapseFunctionKwargs)
+
+			if (preExpandFunction != None):
+				preExpandFunctionArgs, preExpandFunctionKwargs = self.getArguments(argument_catalogue, ["preExpandFunctionArgs", "preExpandFunctionKwargs"])
+				self.setFunction_expand(preExpandFunction, preExpandFunctionArgs, preExpandFunctionKwargs)
+
+			if (postExpandFunction != None):
+				postExpandFunctionArgs, postExpandFunctionKwargs = self.getArguments(argument_catalogue, ["postExpandFunctionArgs", "postExpandFunctionKwargs"])
+				self.setFunction_expand(postExpandFunction, postExpandFunctionArgs, postExpandFunctionKwargs)
+
+			if (rightClickFunction != None):
+				rightClickFunctionArgs, rightClickFunctionKwargs = self.getArguments(argument_catalogue, ["rightClickFunctionArgs", "rightClickFunctionKwargs"])
+				self.setFunction_rightClick(rightClickFunction, rightClickFunctionArgs, rightClickFunctionKwargs)
+
+			if (middleClickFunction != None):
+				middleClickFunctionArgs, middleClickFunctionKwargs = self.getArguments(argument_catalogue, ["middleClickFunctionArgs", "middleClickFunctionKwargs"])
+				self.setFunction_middleClick(middleClickFunction, middleClickFunctionArgs, middleClickFunctionKwargs)
+			
+			if (doubleClickFunction != None):
+				doubleClickFunctionArgs, doubleClickFunctionKwargs = self.getArguments(argument_catalogue, ["doubleClickFunctionArgs", "doubleClickFunctionKwargs"])
+				self.setFunction_doubleClick(doubleClickFunction, doubleClickFunctionArgs, doubleClickFunctionKwargs)
+
+			if (keyDownFunction != None):
+				keyDownFunctionArgs, keyDownFunctionKwargs = self.getArguments(argument_catalogue, ["keyDownFunctionArgs", "keyDownFunctionKwargs"])
+				self.setFunction_keyDown(keyDownFunction, keyDownFunctionArgs, keyDownFunctionKwargs)
+
+			if (toolTipFunction != None):
+				toolTipFunctionArgs, toolTipFunctionKwargs = self.getArguments(argument_catalogue, ["toolTipFunctionArgs", "toolTipFunctionKwargs"])
+				self.setFunction_toolTip(toolTipFunction, toolTipFunctionArgs, toolTipFunctionKwargs)
+			
+			if (itemMenuFunction != None):
+				itemMenuFunctionArgs, itemMenuFunctionKwargs = self.getArguments(argument_catalogue, ["itemMenuFunctionArgs", "itemMenuFunctionKwargs"])
+				self.setFunction_itemMenu(itemMenuFunction, itemMenuFunctionArgs, itemMenuFunctionKwargs)
+
 		#########################################################
 
 		self.preBuild(argument_catalogue)
@@ -3793,6 +3935,8 @@ class handle_WidgetList(handle_Widget_Base):
 			build_listDrop()
 		elif (self.type.lower() == "listfull"):
 			build_listFull()
+		elif (self.type.lower() == "listtree"):
+			build_listTree()
 		else:
 			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -3990,6 +4134,21 @@ class handle_WidgetList(handle_Widget_Base):
 
 			#       self.thing.InsertItem(0, text)
 
+		elif (self.type.lower() == "listtree"):
+			if (not isinstance(newValue, dict)):
+				errorMessage = f"'newValue' must be a dict, not a {type(newValue)} in setValue() for {self.__repr__}"
+				raise KeyError(errorMessage)
+
+			if (len(newValue) != 1):
+				errorMessage = f"There must be only one root for 'newValue' not {len(newValue)} in setValue() for {self.__repr__}"
+				raise ValueError(errorMessage)				
+
+			rootThing = self.thing.AddRoot(str(list(newValue.keys())[0]))
+			self.thing.SetItemData(rootThing, ("key", "value"))
+
+			for root, branches in newValue.items():
+				self.appendValue(branches, rootThing)
+
 		else:
 			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -4009,25 +4168,66 @@ class handle_WidgetList(handle_Widget_Base):
 		else:
 			warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
 
-	#Change Settings
-	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listdrop"):
-			self.betterBind(wx.EVT_CHOICE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+	def appendValue(self, newValue, where = -1):
+		"""Appends the given value to the current contextual value for this handle."""
 
-		elif (self.type.lower() == "listfull"):
-			self.betterBind(wx.EVT_LIST_ITEM_SELECTED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		if (self.type.lower() == "listtree"):
+			if (not isinstance(where, wx.TreeCtrl)):
+				#Find the root
+				pass
+
+			#Account for multiple items on the same level
+			if (isinstance(newValue, (list, tuple))):
+				for item in newValue:
+					self.appendValue(item, where)
+			else:
+				#Account for new branches
+				if (isinstance(newValue, dict)):
+					for key, value in newValue.items():
+						if (key != None):
+							branch = self.thing.AppendItem(where, str(key))
+
+						if (value != None):
+							self.appendValue(value, branch)
+				else:
+					if (newValue != None):
+						branch = self.thing.AppendItem(where, str(newValue))
+		else:
+			warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	#Change Settings
+	def setFunction_preClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listtree"):
+			self.betterBind(wx.EVT_TREE_SEL_CHANGING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
 			
+	def setFunction_postClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listdrop"):
+			self.betterBind(wx.EVT_CHOICE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		elif (self.type.lower() == "listfull"):
+			self.betterBind(wx.EVT_LIST_ITEM_SELECTED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		elif (self.type.lower() == "listtree"):
+			self.betterBind(wx.EVT_TREE_SEL_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
+			
+	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self.setFunction_postClick(myFunction = myFunction, myFunctionArgs = myFunctionArgs, myFunctionKwargs = myFunctionKwargs)
+
 	def setFunction_preEdit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
 			self.betterBind(wx.EVT_LIST_BEGIN_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		elif (self.type.lower() == "listtree"):
+			self.betterBind(wx.EVT_TREE_BEGIN_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to EVT_LIST_BEGIN_LABEL_EDIT() for {self.__repr__()}", Warning, stacklevel = 2)
 			
 	def setFunction_postEdit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
 			self.betterBind(wx.EVT_LIST_END_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		elif (self.type.lower() == "listtree"):
+			self.betterBind(wx.EVT_TREE_END_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_postEdit() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -4085,6 +4285,66 @@ class handle_WidgetList(handle_Widget_Base):
 				self.myDropTarget.dragOverFunctionKwargs = myFunctionKwargs
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_dragOver() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_preCollapse(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listtree"):
+			self.betterBind(wx.EVT_TREE_ITEM_COLLAPSING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_preCollapse() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_postCollapse(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listtree"):
+			self.betterBind(wx.EVT_TREE_ITEM_COLLAPSED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_postCollapse() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_preExpand(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listtree"):
+			self.betterBind(wx.EVT_TREE_ITEM_EXPANDING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_preExpand() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_postExpand(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listtree"):
+			self.betterBind(wx.EVT_TREE_ITEM_EXPANDED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_postExpand() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_rightClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listtree"):
+			self.betterBind(wx.EVT_TREE_ITEM_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_rightClick() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_middleClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listtree"):
+			self.betterBind(wx.EVT_TREE_ITEM_MIDDLE_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_middleClick() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_doubleClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listtree"):
+			self.betterBind(wx.EVT_TREE_ITEM_ACTIVATED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_middleClick() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_keyDown(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listtree"):
+			self.betterBind(wx.EVT_TREE_KEY_DOWN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_keyDown() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_toolTip(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listtree"):
+			self.betterBind(wx.EVT_TREE_ITEM_GETTOOLTIP, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_toolTip() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_itemMenu(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listtree"):
+			self.betterBind(wx.EVT_TREE_ITEM_MENU, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_toolTip() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setReadOnly(self, state = True):
 		"""Sets the contextual readOnly for the object associated with this handle to what the user supplies."""
@@ -10399,6 +10659,110 @@ class handle_Sizer(handle_Container_Base):
 
 		handle = handle_WidgetList()
 		handle.type = "ListFull"
+		handle.build(locals())
+
+		return handle
+
+	def addListTree(self, choices = [], default = None, root = None,
+		addButton = True, editable = False, rowHighlight = True, drag = False, drop = False,
+		rowLines = True, rootLines = True, variableHeight = True, selectMultiple = False,
+
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
+		preEditFunction = None, preEditFunctionArgs = None, preEditFunctionKwargs = None,
+		postEditFunction = None, postEditFunctionArgs = None, postEditFunctionKwargs = None,
+
+		preRightDragFunction = None, preRightDragFunctionArgs = None, preRightDragFunctionKwargs = None, 
+		postRightDragFunction = None, postRightDragFunctionArgs = None, postRightDragFunctionKwargs = None, 
+		preDropFunction = None, preDropFunctionArgs = None, preDropFunctionKwargs = None, 
+		postDropFunction = None, postDropFunctionArgs = None, postDropFunctionKwargs = None, 
+		dragOverFunction = None, dragOverFunctionArgs = None, dragOverFunctionKwargs = None, 
+
+		preCollapseFunction = None, preCollapseFunctionArgs = None, preCollapseFunctionKwargs = None, 
+		postCollapseFunction = None, postCollapseFunctionArgs = None, postCollapseFunctionKwargs = None, 
+		preExpandFunction = None, preExpandFunctionArgs = None, preExpandFunctionKwargs = None, 
+		postExpandFunction = None, postExpandFunctionArgs = None, postExpandFunctionKwargs = None, 
+
+		rightClickFunction = None, rightClickFunctionArgs = None, rightClickFunctionKwargs = None, 
+		middleClickFunction = None, middleClickFunctionArgs = None, middleClickFunctionKwargs = None, 
+		doubleClickFunction = None, doubleClickFunctionArgs = None, doubleClickFunctionKwargs = None, 
+		
+		keyDownFunction = None, keyDownFunctionArgs = None, keyDownFunctionKwargs = None, 
+		toolTipFunction = None, toolTipFunctionArgs = None, toolTipFunctionKwargs = None, 
+		itemMenuFunction = None, itemMenuFunctionArgs = None, itemMenuFunctionKwargs = None, 
+
+		label = None, hidden = False, enabled = True, selected = False, 
+		flex = 0, flags = "c1", parent = None, handle = None):
+		"""Adds a tree list to the next cell on the grid.
+
+		choices (list)          - A list of the choices as strings
+		flags (list)            - A list of strings for which flag to add to the sizer
+		label (any)           - What this is catalogued as
+		default (int)           - Which item in the droplist is selected
+			- If a string is given, it will select the first item in the list that matches that string. If noting matches, it will default to the first element
+		enabled (bool)          - If True: The user can interact with this
+
+		myFunction (str)        - The function that is ran when the user chooses something from the list. If a list is given, each function will be bound.
+		myFunctionArgs (any)    - The arguments for 'myFunction'
+		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
+		
+		preEditFunction (str)       - The function that is ran when the user edits something from the list
+		preEditFunctionArgs (any)   - The arguments for 'preEditFunction'
+		preEditFunctionKwargs (any) - The keyword arguments for 'preEditFunction'function
+		
+		postEditFunction (str)       - The function that is ran when the user edits something from the list
+		postEditFunctionArgs (any)   - The arguments for 'postEditFunction'
+		postEditFunctionKwargs (any) - The keyword arguments for 'postEditFunction'function
+		
+		preRightDragFunction (str)       - The function that is ran when the user tries to right-click drag something from the list; before it begins to drag
+		preRightDragFunctionArgs (any)   - The arguments for 'preRightDragFunction'
+		preRightDragFunctionKwargs (any) - The keyword arguments for 'preRightDragFunction' function
+		
+		postRightDragFunction (str)       - The function that is ran when the user tries to right-click drag something from the list; after it begins to drag
+		postRightDragFunctionArgs (any)   - The arguments for 'postRightDragFunction'
+		postRightDragFunctionKwargs (any) - The keyword arguments for 'postRightDragFunction' function
+		
+		preDropFunction (str)       - The function that is ran when the user tries to drop something from the list; before it begins to drop
+		preDropFunctionArgs (any)   - The arguments for 'preDropFunction'
+		preDropFunctionKwargs (any) - The keyword arguments for 'preDropFunction'function
+		
+		postDropFunction (str)       - The function that is ran when the user tries to drop something from the list; after it drops
+		postDropFunctionArgs (any)   - The arguments for 'postDropFunction'
+		postDropFunctionKwargs (any) - The keyword arguments for 'postDropFunction'function
+		
+		dragOverFunction (str)       - The function that is ran when the user drags something over this object
+		dragOverFunctionArgs (any)   - The arguments for 'dragOverFunction'
+		dragOverFunctionKwargs (any) - The keyword arguments for 'dragOverFunction'function
+		
+		itemCollapseFunction (str)       - The function that is ran when the user collapses an item
+		itemCollapseFunctionArgs (any)   - The arguments for 'itemCollapseFunction'
+		itemCollapseFunctionKwargs (any) - The keyword arguments for 'itemCollapseFunction' function
+		
+		itemExpandFunction (str)       - The function that is ran when the user expands an item
+		itemExpandFunctionArgs (any)   - The arguments for 'itemExpandFunction'
+		itemExpandFunctionKwargs (any) - The keyword arguments for 'itemExpandFunction'function
+
+		itemRightClickFunction (str)       - The function that is ran when the user right clicks on an item
+		itemRightClickFunctionArgs (any)   - The arguments for 'itemRightClickFunction'
+		itemRightClickFunctionKwargs (any) - The keyword arguments for 'itemRightClickFunction' function
+
+		itemMiddleClickFunction (str)       - The function that is ran when the user expands an item
+		itemMiddleClickFunctionArgs (any)   - The arguments for 'itemMiddleClickFunction'
+		itemMiddleClickFunctionKwargs (any) - The keyword arguments for 'itemMiddleClickFunction'function
+
+		keyDownFunction (str)       - The function that is ran when the user uses the arrow keys to select an item
+		keyDownFunctionArgs (any)   - The arguments for 'keyDownFunction'
+		keyDownFunctionKwargs (any) - The keyword arguments for 'keyDownFunction'function
+
+		toolTipFunction (str)       - The function that is ran when the user requests a tool tip
+		toolTipFunctionArgs (any)   - The arguments for 'toolTipFunction'
+		toolTipFunctionKwargs (any) - The keyword arguments for 'toolTipFunction'function
+
+		Example Input: addListTree(choices = {"Lorem": [{"Ipsum": "Dolor"}, "Sit"], "Amet": None})
+		Example Input: addListTree(choices = {"Lorem": [{"Ipsum": "Dolor"}, "Sit"], "Amet": None}, label = "chosen")
+		"""
+
+		handle = handle_WidgetList()
+		handle.type = "ListTree"
 		handle.build(locals())
 
 		return handle
