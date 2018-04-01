@@ -1557,6 +1557,13 @@ class Utilities():
 			else:
 				warnings.warn(f"Could not find {handle_remove.__repr__()} in labelCatalogue or unnamedList for {handle_source.__repr__()}", Warning, stacklevel = 2)
 
+	def finalNest(self, handle):
+		"""The final step in teh nesting process."""
+
+		handle.nested = True
+		handle.nestingAddress = self.nestingAddress + [id(self)]
+		self.setAddressValue(handle.nestingAddress + [id(handle)], {None: handle})
+
 	#Settings
 	def getItemMod(self, flags = None, stretchable = True, border = 5):
 		"""Returns modable item attributes, stretchability, and border.
@@ -2688,6 +2695,14 @@ class handle_Container_Base(handle_Base):
 
 		#Remember build error policy
 		if (not isinstance(buildSelf, Controller)):
+			if (buildSelf.nestingAddress[0] not in nestingCatalogue):
+				warnings.warn(f"{buildSelf.nestingAddress[0]} not in nestingCatalogue", Warning, stacklevel = 2)
+				return
+
+			if (None not in nestingCatalogue[buildSelf.nestingAddress[0]]):
+				warnings.warn(f"None not in nestingCatalogue for {buildSelf.nestingAddress[0]}", Warning, stacklevel = 2)
+				return
+
 			buildSelf.allowBuildErrors = nestingCatalogue[buildSelf.nestingAddress[0]][None].allowBuildErrors
 			self.allowBuildErrors = buildSelf.allowBuildErrors
 
@@ -10464,9 +10479,7 @@ class handle_Sizer(handle_Container_Base):
 			warnings.warn(f"Add {handle.__class__} to nest() for {self.__repr__()}", Warning, stacklevel = 2)
 			return
 
-		handle.nested = True
-		handle.nestingAddress = self.nestingAddress + [id(self)]
-		self.setAddressValue(handle.nestingAddress + [id(handle)], {None: handle})
+		self.finalNest(handle)
 
 	def addFinalFunction(self, *args, **kwargs):
 		"""Overload for addFinalFunction in handle_Window()."""
@@ -13278,10 +13291,8 @@ class handle_Window(handle_Container_Base):
 		handle = handle_AuiManager(self, window)
 		handle.build(locals())
 
-		handle.nested = True
-		handle.nestingAddress = [id(self)]
-
-		# self.nest(handle)
+		#Nest handle
+		self.finalNest(handle)
 
 		return handle
 
@@ -14228,9 +14239,7 @@ class handle_Panel(handle_Container_Base):
 			warnings.warn(f"Add {handle.__class__} to nest() for {self.__repr__()}", Warning, stacklevel = 2)
 			return
 
-		handle.nested = True
-		handle.nestingAddress = self.nestingAddress + [id(self)]
-		self.setAddressValue(handle.nestingAddress + [id(handle)], {None: handle})
+		self.finalNest(handle)
 
 class handle_Splitter(handle_Container_Base):
 	"""A handle for working with a wxSplitter."""
@@ -14535,7 +14544,9 @@ class handle_AuiManager(handle_Container_Base):
 		label = None, panel = {}, sizer = {}, handle = None, 
 		dockTop = True, dockBottom = True, dockLeft = True, dockRight = True,
 		showTitle = True, showBorder = False, showGripper = True,
-		addCloseButton = False, floatable = False, fixedSize = False):
+		addCloseButton = False, addMaximizeButton = False, addMinimizeButton = False,
+		floatable = False, resizable = True, movable = True,
+		minimumSize = None, maximumSize = None, bestSize = None, fixedSize = False):
 		"""Adds a wx object to the aui manager."""
 
 		paneInfo = wx.lib.agw.aui.AuiPaneInfo()
@@ -14569,6 +14580,17 @@ class handle_AuiManager(handle_Container_Base):
 
 		#Attributes
 		paneInfo.CloseButton(addCloseButton)
+		paneInfo.MinimizeButton(addMinimizeButton)
+		paneInfo.MaximizeButton(addMaximizeButton)
+		paneInfo.Resizable(resizable)
+		paneInfo.Movable(movable)
+
+		if (minimumSize != None):
+			paneInfo.MinSize(minimumSize)
+		if (maximumSize != None):
+			paneInfo.MaxSize(maximumSize)
+		if (bestSize != None):
+			paneInfo.BestSize(bestSize)
 
 		if (fixedSize):
 			paneInfo.Fixed()
@@ -14579,54 +14601,37 @@ class handle_AuiManager(handle_Container_Base):
 
 		#Account for overriding the handle with your own widget or panel
 		if (handle == None):
-
-			handle = handle_WidgetText()
-			handle.type = "text"
-			kwargs = {"self": self, "text": "Lorem", "wrap": None, "ellipsize": False, "alignment": None,
-				"size": None, "bold": False, "italic": False, "color": None, "family": None, 
-				"label": None, "hidden": False, "enabled": True, "selected": False, 
-				"flex": 0, "flags": "c1", "parent": None, "handle": None}
-
-			handle.build(kwargs)
-
-
 			#Get the object
-			# handle = handle_NotebookPage()
-			# icon_path = None
-			# icon_internal = False
-			# kwargs = locals()
+			handle = handle_NotebookPage()
+			icon_path = None
+			icon_internal = False
+			kwargs = locals()
 
-			# if (isinstance(self, handle_Window)):
-			# 	kwargs["parent"] = self
-			# else:
-			# 	kwargs["parent"] = self.myWindow
+			if (isinstance(self, handle_Window)):
+				kwargs["parent"] = self
+			else:
+				kwargs["parent"] = self.myWindow
 
-			# handle.preBuild(kwargs)
-			# handle.build(kwargs)
-			# handle.postBuild(kwargs)
-
-			print("@2", type(handle))
-
-		### FOR DEBUGGING ###
-		# paneInfo = wx.lib.agw.aui.AuiPaneInfo().Name("notebook_content").CenterPane().PaneBorder(False)
+			handle.preBuild(kwargs)
+			handle.build(kwargs)
+			handle.postBuild(kwargs)
 
 		#Add Pane
-		self.thing.AddPane(handle.thing, paneInfo) 
+		self.thing.AddPane(handle.myPanel.thing, paneInfo) 
 		self.thing.Update()
 
 		#Record nesting
-		handle.nested = True
-		if (isinstance(handle, handle_NotebookPage)):
-			handle.myPanel.nested = True
+		self.finalNest(handle)
+		# handle.nested = True
+		# if (isinstance(handle, handle_NotebookPage)):
+		# 	handle.myPanel.nested = True
 
 		return handle
 
 	def nest(self, handle, *args, **kwargs):
 		print(f"@1 nesting {type(handle)} in {self.__repr__()}")
 
-		handle.nested = True
-		handle.nestingAddress = self.nestingAddress + [id(self)]
-		self.setAddressValue(handle.nestingAddress + [id(handle)], {None: handle})
+		self.finalNest(handle)
 
 class handle_Notebook(handle_Container_Base):
 	"""A handle for working with a wxNotebook."""
@@ -15294,6 +15299,15 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 
 		#Change page text
 		notebook.SetPageText(pageNumber, text)
+
+	def setMinimumSize(self, size = (100, 100)):
+		"""Sets the minimum size for this panel.
+
+		Example Input: setMinimumSize((100, 200))
+		"""
+
+		self.thing.SetMinSize(size)
+
 
 	#Etc
 	# def readBuildInstructions_sizer(self, parent, instructions):
