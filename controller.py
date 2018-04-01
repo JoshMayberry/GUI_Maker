@@ -2651,6 +2651,11 @@ class handle_Container_Base(handle_Base):
 		parent = argument_catalogue["parent"]
 		buildSelf = argument_catalogue["self"]
 
+		#Error Checking
+		if (buildSelf.nestingAddress == None):
+			errorMessage = f"{buildSelf.__repr__()} is not nested, and so it cannot nest things in preBuild() for {self.__repr__()}"
+			raise ValueError(errorMessage)
+
 		#Store data
 		self.label = label
 
@@ -2954,6 +2959,80 @@ class handle_Container_Base(handle_Base):
 
 		self.overloadHelp("setReadOnly", label, kwargs, window = window)
 
+	#Etc
+	def readBuildInstructions_sizer(self, parent, i, instructions):
+		"""Interprets instructions given by the user for what sizer to make and how to make it."""
+
+		if (not isinstance(instructions, dict)):
+			errorMessage = f"sizer_{i} must be a dictionary for {self.__repr__()}"
+			raise ValueError(errorMessage)
+
+		if (len(instructions) == 0):
+			instructions["parent"] = parent
+
+		if (len(instructions) == 1):
+			instructions["type"] = "Box"
+		else:
+			if ("type" not in instructions):
+				errorMessage = "Must supply which sizer type to make. The key should be 'type'. The value should be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
+				raise ValueError(errorMessage)
+
+		sizerType = instructions["type"].lower()
+		if (sizerType not in ["grid", "flex", "bag", "box", "text", "wrap"]):
+			errorMessage = f"There is no 'type' {instructions['type']}. The value should be be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
+			raise KeyError(errorMessage)
+
+		#Get Default build arguments
+		if (sizerType == "grid"):
+			sizerFunction = handle_Window.addSizerGrid
+		elif (sizerType == "flex"):
+			sizerFunction = handle_Window.addSizerGridFlex
+		elif (sizerType == "bag"):
+			sizerFunction = handle_Window.addSizerGridBag
+		elif (sizerType == "box"):
+			sizerFunction = handle_Window.addSizerBox
+		elif (sizerType == "text"):
+			sizerFunction = handle_Window.addSizerText
+		else:
+			sizerFunction = handle_Window.addSizerWrap
+		kwargs = {item.name: item.default for item in inspect.signature(sizerFunction).parameters.values()}
+
+		#Create Handler
+		sizer = handle_Sizer()
+		sizer.type = instructions["type"]
+		del instructions["type"]
+
+		#Overwrite default with user given data
+		for key, value in instructions.items():
+			kwargs[key] = value
+
+		#Finish building sizer
+		kwargs["self"] = parent
+		sizer.build(kwargs)
+
+		return sizer
+
+	def readBuildInstructions_panel(self, parent, i, instructions):
+		"""Interprets instructions given by the user for what panel to make and how to make it."""
+
+		if (not isinstance(instructions, dict)):
+			errorMessage = f"panel_{i} must be a dictionary for {self.__repr__()}"
+			raise ValueError(errorMessage)
+
+		#Overwrite default with user given data
+		kwargs = {item.name: item.default for item in inspect.signature(handle_Window.addPanel).parameters.values()}
+		for key, value in instructions.items():
+			kwargs[key] = value
+
+		#Create Handler
+		panel = handle_Panel()
+
+		#Finish building panel
+		kwargs["self"] = parent
+		panel.build(kwargs)
+
+		return panel
+
 class handle_Widget_Base(handle_Base):
 	"""A handle for working with a wxWidget."""
 
@@ -3027,6 +3106,14 @@ class handle_Widget_Base(handle_Base):
 
 		#Remember build error policy
 		if (not isinstance(buildSelf, Controller)):
+			if (buildSelf.nestingAddress[0] not in nestingCatalogue):
+				warnings.warn(f"{buildSelf.nestingAddress[0]} not in nestingCatalogue", Warning, stacklevel = 2)
+				return
+
+			if (None not in nestingCatalogue[buildSelf.nestingAddress[0]]):
+				warnings.warn(f"None not in nestingCatalogue for {buildSelf.nestingAddress[0]}", Warning, stacklevel = 2)
+				return
+
 			buildSelf.allowBuildErrors = nestingCatalogue[buildSelf.nestingAddress[0]][None].allowBuildErrors
 			self.allowBuildErrors = buildSelf.allowBuildErrors
 
@@ -4137,11 +4224,11 @@ class handle_WidgetList(handle_Widget_Base):
 
 		elif (self.type.lower() == "listtree"):
 			if (not isinstance(newValue, dict)):
-				errorMessage = f"'newValue' must be a dict, not a {type(newValue)} in setValue() for {self.__repr__}"
+				errorMessage = f"'newValue' must be a dict, not a {type(newValue)} in setValue() for {self.__repr__()}"
 				raise KeyError(errorMessage)
 
 			if (len(newValue) != 1):
-				errorMessage = f"There must be only one root for 'newValue' not {len(newValue)} in setValue() for {self.__repr__}"
+				errorMessage = f"There must be only one root for 'newValue' not {len(newValue)} in setValue() for {self.__repr__()}"
 				raise ValueError(errorMessage)				
 
 			rootThing = self.thing.AddRoot(str(list(newValue.keys())[0]))
@@ -10369,11 +10456,14 @@ class handle_Sizer(handle_Container_Base):
 		elif (isinstance(handle, handle_Notebook)):
 			self.thing.Add(handle.thing, int(flex), eval(flags), border)
 
+		elif (isinstance(handle, handle_AuiManager)):
+			# self.thing.Add(handle.mySizer.thing, int(flex), eval(flags), border)
+			pass
+
 		else:
 			warnings.warn(f"Add {handle.__class__} to nest() for {self.__repr__()}", Warning, stacklevel = 2)
 			return
 
-		
 		handle.nested = True
 		handle.nestingAddress = self.nestingAddress + [id(self)]
 		self.setAddressValue(handle.nestingAddress + [id(handle)], {None: handle})
@@ -11731,14 +11821,14 @@ class handle_Sizer(handle_Container_Base):
 		fixedWidth = False, multiLine = False, padding = None, reduceFlicker = True,
 
 		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
-		pageChangeFunction = None, pageChangeFunctionArgs = None, pageChangeFunctionKwargs = None,
-		pageChangingFunction = None, pageChangingFunctionArgs = None, pageChangingFunctionKwargs = None,
+		postPageChangeFunction = None, postPageChangeFunctionArgs = None, postPageChangeFunctionKwargs = None,
+		prePageChangeFunction = None, prePageChangeFunctionArgs = None, prePageChangeFunctionKwargs = None,
 
 		handle = None, parent = None):
 		"""Creates a blank notebook.
 
 		label (str)        - What this is called in the idCatalogue
-		flags (list)         - A list of strings for which flag to add to the sizer
+		flags (list)       - A list of strings for which flag to add to the sizer
 
 		tabSide (str)     - Determines which side of the panel the tabs apear on. Only the first letter is needed
 			- "top": Tabs will be placed on the top (north) side of the panel
@@ -11759,10 +11849,10 @@ class handle_Sizer(handle_Container_Base):
 		initFunctionArgs (any)   - The arguments for 'initFunction'
 		initFunctionKwargs (any) - The keyword arguments for 'initFunction'function
 
-		Example Input: makeNotebook()
-		Example Input: makeNotebook("myNotebook")
-		Example Input: makeNotebook(padding = (5, 5))
-		Example Input: makeNotebook(padding = (5, None))
+		Example Input: addNotebook()
+		Example Input: addNotebook("myNotebook")
+		Example Input: addNotebook(padding = (5, 5))
+		Example Input: addNotebook(padding = (5, None))
 		"""
 
 		handle = handle_Notebook()
@@ -11772,6 +11862,94 @@ class handle_Sizer(handle_Container_Base):
 		self.nest(handle)
 
 		return handle
+
+	def addAuiNotebook(self, label = None, flags = None, flex = 0, 
+
+		tabSide = "top", tabSplit = True, tabMove = True, tabBump = False, 
+		tabSmart = True, tabOrderAccess = False, tabFloat = False, 
+		addScrollButton = False, addListDrop = None, addCloseButton = None, 
+		closeOnLeft = False, middleClickClose = False, fixedWidth = False, drawFocus = True, 
+
+		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
+		postPageChangeFunction = None, postPageChangeFunctionArgs = None, postPageChangeFunctionKwargs = None,
+		prePageChangeFunction = None, prePageChangeFunctionArgs = None, prePageChangeFunctionKwargs = None,
+
+		handle = None, parent = None):
+		"""Creates a blank notebook with dockable pages.
+
+		label (str)        - What this is called in the idCatalogue
+		flags (list)       - A list of strings for which flag to add to the sizer
+
+		tabSide (str)     - Determines which side of the panel the tabs apear on. Only the first letter is needed
+			- "top": Tabs will be placed on the top (north) side of the panel
+			- "bottom": Tabs will be placed on the bottom (south) side of the panel
+			- "left": Tabs will be placed on the left (west) side of the panel
+			- "right": Tabs will be placed on the right (east) side of the panel
+		fixedWidth (bool) - Determines how tab width is determined (windows only)
+			- If True: All tabs will be the same width
+			- If False: Tab width will be 
+		multiLine (bool) - Determines if there can be several rows of tabs
+			- If True: There can be multiple rows
+			- If False: There cannot be multiple rows
+		padding (tuple) - Determines if there is empty space around all of the tab's icon and text in the form (left and right, top and bottom)
+			- If None or -1: There is no empty spage
+			- If not None or -1: This is how many pixels of empty space there will be
+
+		initFunction (str)       - The function that is ran when the panel first appears
+		initFunctionArgs (any)   - The arguments for 'initFunction'
+		initFunctionKwargs (any) - The keyword arguments for 'initFunction'function
+
+		Example Input: addAuiNotebook()
+		Example Input: addAuiNotebook("myNotebook")
+		"""
+
+		handle = handle_Notebook()
+		handle.type = "AuiNotebook"
+		handle.build(locals())
+
+		self.nest(handle)
+
+		return handle
+
+	# def addAui(self, label = None, flags = None, flex = 0, 
+
+	# 	reduceFlicker = True, 
+
+	# 	initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
+	# 	postPageChangeFunction = None, postPageChangeFunctionArgs = None, postPageChangeFunctionKwargs = None,
+	# 	prePageChangeFunction = None, prePageChangeFunctionArgs = None, prePageChangeFunctionKwargs = None,
+
+	# 	handle = None, parent = None):
+	# 	"""Creates a container for dockable panels.
+
+	# 	label (str)        - What this is called in the idCatalogue
+	# 	flags (list)       - A list of strings for which flag to add to the sizer
+
+	# 	tabSide (str)     - Determines which side of the panel the tabs apear on. Only the first letter is needed
+	# 		- "top": Tabs will be placed on the top (north) side of the panel
+	# 		- "bottom": Tabs will be placed on the bottom (south) side of the panel
+	# 		- "left": Tabs will be placed on the left (west) side of the panel
+	# 		- "right": Tabs will be placed on the right (east) side of the panel
+	# 	fixedWidth (bool) - Determines how tab width is determined (windows only)
+	# 		- If True: All tabs will be the same width
+	# 		- If False: Tab width will be 
+
+	# 	initFunction (str)       - The function that is ran when the panel first appears
+	# 	initFunctionArgs (any)   - The arguments for 'initFunction'
+	# 	initFunctionKwargs (any) - The keyword arguments for 'initFunction'function
+
+	# 	Example Input: addAui()
+	# 	Example Input: addAui("myAui")
+	# 	Example Input: addAui(padding = (5, 5))
+	# 	Example Input: addAui(padding = (5, None))
+	# 	"""
+
+	# 	handle = handle_AuiManager(self, self.myWindow)
+	# 	handle.build(locals())
+
+	# 	self.nest(handle)
+
+	# 	return handle
 
 	#Sizers
 	def addSizerBox(self, *args, **kwargs):
@@ -12205,6 +12383,7 @@ class handle_Window(handle_Container_Base):
 		self.autoSize = True
 		self.menuBar = None
 		self.statusBar = None
+		self.auiManager = None
 
 		self.finalFunctionList = []
 		self.sizersIterating = {} #Keeps track of which sizers have been used in a while loop, as well as if they are still in the while loop {sizer (handle): [currently in a while loop (bool), order entered (int)]}
@@ -13056,6 +13235,54 @@ class handle_Window(handle_Container_Base):
 		handle = handle_Dialog()
 		handle.type = "choice"
 		handle.build(locals())
+		return handle
+
+	def addAui(self, label = None, flags = None, flex = 0, 
+
+		reduceFlicker = True, 
+
+		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
+		postPageChangeFunction = None, postPageChangeFunctionArgs = None, postPageChangeFunctionKwargs = None,
+		prePageChangeFunction = None, prePageChangeFunctionArgs = None, prePageChangeFunctionKwargs = None,
+
+		handle = None, parent = None):
+		"""Creates a container for dockable panels.
+
+		label (str)        - What this is called in the idCatalogue
+		flags (list)       - A list of strings for which flag to add to the sizer
+
+		tabSide (str)     - Determines which side of the panel the tabs apear on. Only the first letter is needed
+			- "top": Tabs will be placed on the top (north) side of the panel
+			- "bottom": Tabs will be placed on the bottom (south) side of the panel
+			- "left": Tabs will be placed on the left (west) side of the panel
+			- "right": Tabs will be placed on the right (east) side of the panel
+		fixedWidth (bool) - Determines how tab width is determined (windows only)
+			- If True: All tabs will be the same width
+			- If False: Tab width will be 
+
+		initFunction (str)       - The function that is ran when the panel first appears
+		initFunctionArgs (any)   - The arguments for 'initFunction'
+		initFunctionKwargs (any) - The keyword arguments for 'initFunction'function
+
+		Example Input: addAui()
+		Example Input: addAui("myAui")
+		Example Input: addAui(padding = (5, 5))
+		Example Input: addAui(padding = (5, None))
+		"""
+
+		if (isinstance(self, handle_Window)):
+			window = self
+		else:
+			self.myWindow
+
+		handle = handle_AuiManager(self, window)
+		handle.build(locals())
+
+		handle.nested = True
+		handle.nestingAddress = [id(self)]
+
+		# self.nest(handle)
+
 		return handle
 
 	#Etc
@@ -14200,82 +14427,82 @@ class handle_Splitter(handle_Container_Base):
 
 		return self.sizerList
 
-	def readBuildInstructions_sizer(self, parent, i, instructions):
-		"""Interprets instructions given by the user for what sizer to make and how to make it."""
+	# def readBuildInstructions_sizer(self, parent, i, instructions):
+	# 	"""Interprets instructions given by the user for what sizer to make and how to make it."""
 
-		if (not isinstance(instructions, dict)):
-			errorMessage = f"sizer_{i} must be a dictionary for {self.__repr__()}"
-			raise ValueError(errorMessage)
+	# 	if (not isinstance(instructions, dict)):
+	# 		errorMessage = f"sizer_{i} must be a dictionary for {self.__repr__()}"
+	# 		raise ValueError(errorMessage)
 
-		if (len(instructions) == 1):
-			instructions["type"] = "Box"
-		else:
-			if ("type" not in instructions):
-				errorMessage = "Must supply which sizer type to make. The key should be 'type'. The value should be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
-				raise ValueError(errorMessage)
+	# 	if (len(instructions) == 1):
+	# 		instructions["type"] = "Box"
+	# 	else:
+	# 		if ("type" not in instructions):
+	# 			errorMessage = "Must supply which sizer type to make. The key should be 'type'. The value should be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
+	# 			raise ValueError(errorMessage)
 
-		sizerType = instructions["type"].lower()
-		if (sizerType not in ["grid", "flex", "bag", "box", "text", "wrap"]):
-			errorMessage = f"There is no 'type' {instructions['type']}. The value should be be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
-			raise KeyError(errorMessage)
+	# 	sizerType = instructions["type"].lower()
+	# 	if (sizerType not in ["grid", "flex", "bag", "box", "text", "wrap"]):
+	# 		errorMessage = f"There is no 'type' {instructions['type']}. The value should be be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
+	# 		raise KeyError(errorMessage)
 
-		#Get Default build arguments
-		if (sizerType == "grid"):
-			sizerFunction = handle_Window.addSizerGrid
-		elif (sizerType == "flex"):
-			sizerFunction = handle_Window.addSizerGridFlex
-		elif (sizerType == "bag"):
-			sizerFunction = handle_Window.addSizerGridBag
-		elif (sizerType == "box"):
-			sizerFunction = handle_Window.addSizerBox
-		elif (sizerType == "text"):
-			sizerFunction = handle_Window.addSizerText
-		else:
-			sizerFunction = handle_Window.addSizerWrap
-		kwargs = {item.name: item.default for item in inspect.signature(sizerFunction).parameters.values()}
+	# 	#Get Default build arguments
+	# 	if (sizerType == "grid"):
+	# 		sizerFunction = handle_Window.addSizerGrid
+	# 	elif (sizerType == "flex"):
+	# 		sizerFunction = handle_Window.addSizerGridFlex
+	# 	elif (sizerType == "bag"):
+	# 		sizerFunction = handle_Window.addSizerGridBag
+	# 	elif (sizerType == "box"):
+	# 		sizerFunction = handle_Window.addSizerBox
+	# 	elif (sizerType == "text"):
+	# 		sizerFunction = handle_Window.addSizerText
+	# 	else:
+	# 		sizerFunction = handle_Window.addSizerWrap
+	# 	kwargs = {item.name: item.default for item in inspect.signature(sizerFunction).parameters.values()}
 
-		#Create Handler
-		sizer = handle_Sizer()
-		sizer.type = instructions["type"]
-		del instructions["type"]
+	# 	#Create Handler
+	# 	sizer = handle_Sizer()
+	# 	sizer.type = instructions["type"]
+	# 	del instructions["type"]
 
-		#Overwrite default with user given data
-		for key, value in instructions.items():
-			kwargs[key] = value
+	# 	#Overwrite default with user given data
+	# 	for key, value in instructions.items():
+	# 		kwargs[key] = value
 
-		#Finish building sizer
-		kwargs["self"] = parent
-		sizer.build(kwargs)
+	# 	#Finish building sizer
+	# 	kwargs["self"] = parent
+	# 	sizer.build(kwargs)
 
-		return sizer
+	# 	return sizer
 
-	def readBuildInstructions_panel(self, parent, i, instructions):
-		"""Interprets instructions given by the user for what panel to make and how to make it."""
+	# def readBuildInstructions_panel(self, parent, i, instructions):
+	# 	"""Interprets instructions given by the user for what panel to make and how to make it."""
 
-		if (not isinstance(instructions, dict)):
-			errorMessage = f"panel_{i} must be a dictionary for {self.__repr__()}"
-			raise ValueError(errorMessage)
+	# 	if (not isinstance(instructions, dict)):
+	# 		errorMessage = f"panel_{i} must be a dictionary for {self.__repr__()}"
+	# 		raise ValueError(errorMessage)
 
-		#Overwrite default with user given data
-		kwargs = {item.name: item.default for item in inspect.signature(handle_Window.addPanel).parameters.values()}
-		for key, value in instructions.items():
-			kwargs[key] = value
+	# 	#Overwrite default with user given data
+	# 	kwargs = {item.name: item.default for item in inspect.signature(handle_Window.addPanel).parameters.values()}
+	# 	for key, value in instructions.items():
+	# 		kwargs[key] = value
 
-		#Create Handler
-		panel = handle_Panel()
+	# 	#Create Handler
+	# 	panel = handle_Panel()
 
-		#Finish building panel
-		kwargs["self"] = parent
-		panel.build(kwargs)
+	# 	#Finish building panel
+	# 	kwargs["self"] = parent
+	# 	panel.build(kwargs)
 
-		return panel
+	# 	return panel
 
 class handle_AuiManager(handle_Container_Base):
 	"""The manager for dockable windows.
 	Modified code from: https://www.blog.pythonlibrary.org/2009/12/09/the-%E2%80%9Cbook%E2%80%9D-controls-of-wxpython-part-2-of-2/
 	"""
 
-	def __init__(self, parent):
+	def __init__(self, parent, myWindow):
 		"""Initialize Defaults"""
 
 		#Initialize inherited classes
@@ -14283,18 +14510,123 @@ class handle_AuiManager(handle_Container_Base):
 
 		#Internal Variables
 		self.parent = parent
+		self.myWindow = myWindow
+		self.mySizer = None
 
-		#Create manager
-		build()
-
-	def build(self):
+	def build(self, argument_catalogue):
 		"""Builds a wx AuiManager object"""
+
+		reduceFlicker = self.getArguments(argument_catalogue, ["reduceFlicker"])
 
 		#Expand using: https://wxpython.org/Phoenix/docs/html/wx.aui.AuiManager.html
 
-		style = wx.lib.agw.aui.AUI_MGR_DEFAULT #See: https://wxpython.org/Phoenix/docs/html/wx.aui.AuiManagerOption.enumeration.html#wx-aui-auimanageroption
+		style = "wx.lib.agw.aui.AUI_MGR_DEFAULT" #See: https://wxpython.org/Phoenix/docs/html/wx.aui.AuiManagerOption.enumeration.html#wx-aui-auimanageroption
 
-		self.thing = wx.lib.agw.aui.AuiManager(self.parent.thing, style)
+		if (reduceFlicker):
+			style += "|wx.lib.agw.aui.AUI_MGR_LIVE_RESIZE"
+
+		self.thing = wx.lib.agw.aui.AuiManager(self.myWindow.thing, eval(style))
+		self.thing.SetManagedWindow(self.myWindow.thing)
+
+		# self.mySizer = self.readBuildInstructions_sizer(self.myWindow, 0, {})
+		# self.parent.nest(self.mySizer)
+
+	def addPane(self, text = "", default = "top", 
+		label = None, panel = {}, sizer = {}, handle = None, 
+		dockTop = True, dockBottom = True, dockLeft = True, dockRight = True,
+		showTitle = True, showBorder = False, showGripper = True,
+		addCloseButton = False, floatable = False, fixedSize = False):
+		"""Adds a wx object to the aui manager."""
+
+		paneInfo = wx.lib.agw.aui.AuiPaneInfo()
+
+		#Default Position
+		if (default != None):
+			if (default[0].lower() == "c"):
+				paneInfo.CenterPane()
+			elif (default[0].lower() == "t"):
+				paneInfo.Top()
+			elif (default[0].lower() == "b"):
+				paneInfo.Bottom()
+			elif (default[0].lower() == "l"):
+				paneInfo.Left()
+			else:
+				paneInfo.Right()
+		else:
+			paneInfo.Top()
+
+		#Appearance
+		paneInfo.Caption(text)
+		paneInfo.PaneBorder(showBorder)
+		paneInfo.CaptionVisible(showTitle)
+		paneInfo.Gripper(showGripper)
+
+		#Dockability
+		paneInfo.TopDockable(dockTop)
+		paneInfo.BottomDockable(dockBottom)
+		paneInfo.LeftDockable(dockLeft)
+		paneInfo.RightDockable(dockRight)
+
+		#Attributes
+		paneInfo.CloseButton(addCloseButton)
+
+		if (fixedSize):
+			paneInfo.Fixed()
+
+		if (floatable):
+			paneInfo.Float()
+			paneInfo.PinButton(True)
+
+		#Account for overriding the handle with your own widget or panel
+		if (handle == None):
+
+			handle = handle_WidgetText()
+			handle.type = "text"
+			kwargs = {"self": self, "text": "Lorem", "wrap": None, "ellipsize": False, "alignment": None,
+				"size": None, "bold": False, "italic": False, "color": None, "family": None, 
+				"label": None, "hidden": False, "enabled": True, "selected": False, 
+				"flex": 0, "flags": "c1", "parent": None, "handle": None}
+
+			handle.build(kwargs)
+
+
+			#Get the object
+			# handle = handle_NotebookPage()
+			# icon_path = None
+			# icon_internal = False
+			# kwargs = locals()
+
+			# if (isinstance(self, handle_Window)):
+			# 	kwargs["parent"] = self
+			# else:
+			# 	kwargs["parent"] = self.myWindow
+
+			# handle.preBuild(kwargs)
+			# handle.build(kwargs)
+			# handle.postBuild(kwargs)
+
+			print("@2", type(handle))
+
+		### FOR DEBUGGING ###
+		# paneInfo = wx.lib.agw.aui.AuiPaneInfo().Name("notebook_content").CenterPane().PaneBorder(False)
+
+		#Add Pane
+		self.thing.AddPane(handle.thing, paneInfo) 
+		self.thing.Update()
+
+		#Record nesting
+		handle.nested = True
+		if (isinstance(handle, handle_NotebookPage)):
+			handle.myPanel.nested = True
+
+		return handle
+
+	def nest(self, handle, *args, **kwargs):
+		print(f"@1 nesting {type(handle)} in {self.__repr__()}")
+
+		handle.nested = True
+		handle.nestingAddress = self.nestingAddress + [id(self)]
+		self.setAddressValue(handle.nestingAddress + [id(handle)], {None: handle})
 
 class handle_Notebook(handle_Container_Base):
 	"""A handle for working with a wxNotebook."""
@@ -14322,7 +14654,7 @@ class handle_Notebook(handle_Container_Base):
 			nonlocal self, argument_catalogue
 
 			flags, tabSide, reduceFlicker, fixedWidth, padding, buildSelf = self.getArguments(argument_catalogue, ["flags", "tabSide", "reduceFlicker", "fixedWidth", "padding", "self"])
-			initFunction, pageChangeFunction, pageChangingFunction, multiLine = self.getArguments(argument_catalogue, ["initFunction", "pageChangeFunction", "pageChangingFunction", "multiLine"])
+			initFunction, postPageChangeFunction, prePageChangeFunction, multiLine = self.getArguments(argument_catalogue, ["initFunction", "postPageChangeFunction", "prePageChangeFunction", "multiLine"])
 
 			#Configure Flags            
 			flags, x, border = self.getItemMod(flags)
@@ -14361,12 +14693,12 @@ class handle_Notebook(handle_Container_Base):
 				initFunctionArgs, initFunctionKwargs = self.getArguments(argument_catalogue, ["initFunctionArgs", "initFunctionKwargs"])
 				self.setFunction_init(initFunction, initFunctionArgs, initFunctionKwargs)
 			
-			if (pageChangingFunction != None):
-				pageChangingFunctionArgs, pageChangingFunctionKwargs = self.getArguments(argument_catalogue, ["pageChangingFunctionArgs", "pageChangingFunctionKwargs"])
+			if (prePageChangeFunction != None):
+				prePageChangeFunctionArgs, prePageChangeFunctionKwargs = self.getArguments(argument_catalogue, ["prePageChangeFunctionArgs", "prePageChangeFunctionKwargs"])
 				self.setFunction_prePageChange(initFunction, initFunctionArgs, initFunctionKwargs)
 
-			if (pageChangeFunction != None):
-				pageChangeFunctionArgs, pageChangeFunctionKwargs = self.getArguments(argument_catalogue, ["pageChangeFunctionArgs", "pageChangeFunctionKwargs"])
+			if (postPageChangeFunction != None):
+				postPageChangeFunctionArgs, postPageChangeFunctionKwargs = self.getArguments(argument_catalogue, ["postPageChangeFunctionArgs", "postPageChangeFunctionKwargs"])
 				self.setFunction_postPageChange(initFunction, initFunctionArgs, initFunctionKwargs)
 
 			#Determine if there is padding on the tabs
@@ -14396,15 +14728,25 @@ class handle_Notebook(handle_Container_Base):
 			"""Builds a wx auiNotebook object."""
 			nonlocal self, argument_catalogue
 
-			# flags, tabSide, reduceFlicker, fixedWidth, padding, buildSelf = self.getArguments(argument_catalogue, ["flags", "tabSide", "reduceFlicker", "fixedWidth", "padding", "self"])
-			# initFunction, pageChangeFunction, pageChangingFunction, multiLine = self.getArguments(argument_catalogue, ["initFunction", "pageChangeFunction", "pageChangingFunction", "multiLine"])
+			flags, buildSelf = self.getArguments(argument_catalogue, ["flags", "self"])
+			initFunction, postPageChangeFunction, prePageChangeFunction = self.getArguments(argument_catalogue, ["initFunction", "postPageChangeFunction", "prePageChangeFunction"])
+
+			tabSide, tabSplit, tabMove, tabBump = self.getArguments(argument_catalogue, ["tabSide", "tabSplit", "tabMove", "tabBump"])
+			tabSmart, tabOrderAccess, tabFloat = self.getArguments(argument_catalogue, ["tabSmart", "tabOrderAccess", "tabFloat"])
+			addScrollButton, addListDrop, addCloseButton = self.getArguments(argument_catalogue, ["addScrollButton", "addListDrop", "addCloseButton"])
+			closeOnLeft, middleClickClose = self.getArguments(argument_catalogue, ["closeOnLeft", "middleClickClose"])
+			fixedWidth, drawFocus = self.getArguments(argument_catalogue, ["fixedWidth", "drawFocus"])
 
 			#Create Styles
-			if (tabTop != None):
-				if (tabTop):
+			if (tabSide != None):
+				if (tabSide[0] == "t"):
 					styles = "wx.lib.agw.aui.AUI_NB_TOP"
-				else:
+				elif (tabSide[0] == "b"):
 					styles = "wx.lib.agw.aui.AUI_NB_BOTTOM"
+				elif (tabSide[0] == "l"):
+					styles = "wx.lib.agw.aui.AUI_NB_LEFT"
+				else:
+					styles = "wx.lib.agw.aui.AUI_NB_RIGHT"
 			else:
 				styles = "wx.lib.agw.aui.AUI_NB_TOP"
 
@@ -14418,7 +14760,7 @@ class handle_Notebook(handle_Container_Base):
 				styles += "|wx.lib.agw.aui.AUI_NB_TAB_EXTERNAL_MOVE"
 
 			if (tabSmart):
-				styles += "|wx.lib.agw.aui.AUI_NB_HIDE_ON_SINGLE_TAB"
+				# styles += "|wx.lib.agw.aui.AUI_NB_HIDE_ON_SINGLE_TAB"
 				styles += "|wx.lib.agw.aui.AUI_NB_SMART_TABS"
 				styles += "|wx.lib.agw.aui.AUI_NB_DRAW_DND_TAB"
 
@@ -14428,7 +14770,7 @@ class handle_Notebook(handle_Container_Base):
 			if (tabFloat):
 				styles += "|wx.lib.agw.aui.AUI_NB_TAB_FLOAT"
 
-			if (not variableWidth):
+			if (fixedWidth):
 				styles += "|wx.lib.agw.aui.AUI_NB_TAB_FIXED_WIDTH"
 
 			if (addScrollButton):
@@ -14457,19 +14799,18 @@ class handle_Notebook(handle_Container_Base):
 
 			self.thing = wx.lib.agw.aui.auibook.AuiNotebook(self.parent.thing, agwStyle = eval(styles))
 
-			# aui.AuiNotebook.__init__(self, parent=parent)
-			# self.default_style = aui.AUI_NB_DEFAULT_STYLE | aui.AUI_NB_TAB_EXTERNAL_MOVE | wx.NO_BORDER
-			# self.SetWindowStyleFlag(self.default_style)
-	 
-			# # add some pages to the notebook
-			# pages = [TabPanelOne, TabPanelOne, TabPanelOne]
-	 
-			# x = 1
-			# for page in pages:
-			# 	label = "Tab #%i" % x
-			# 	tab = page(self)
-			# 	self.AddPage(tab, label, False)
-			# 	x += 1
+			#Set values
+			if (isinstance(self, handle_Window)):
+				self.myWindow = buildSelf
+			else:
+				self.myWindow = buildSelf.myWindow
+
+			#Link to window's aui manager
+			if (self.myWindow.auiManager == None):
+				self.myWindow.auiManager = handle_AuiManager(self, self.myWindow)#, reduceFlicker = reduceFlicker)
+				self.build(locals())
+
+			self.myWindow.auiManager.addPane(self)
 		
 		#########################################################
 
@@ -14524,14 +14865,14 @@ class handle_Notebook(handle_Container_Base):
 		If only a 'pageLabel' is a list, they will all have the same 'text'.
 		If 'pageLabel' and 'text' are a list of different lengths, it will not add any of them.
 
-		text (str)          - What the page's tab will say
+		text (str)  - What the page's tab will say
 			- If None: The tab will be blank
-		label (str)       - What this is called in the idCatalogue
+		label (str) - What this is called in the idCatalogue
 		
 		insert (int)   - Determines where the new page will be added
 			- If None or -1: The page will be added to the end
 			- If not None or -1: This is the page index to place this page in 
-		default (bool)  - Determines if the new page should be automatically selected
+		default (bool) - Determines if the new page should be automatically selected
 
 		icon_path (str)      - Determiens if there should be an icon to the left of the text
 		icon_internal (bool) - Determiens if 'image_path' refers to an internal image
@@ -14635,7 +14976,7 @@ class handle_Notebook(handle_Container_Base):
 	def removePage(self, pageLabel):
 		"""Removes the given page from the notebook.
 
-		pageLabel (str)     - The catalogue label for the panel to add to the notebook
+		pageLabel (str) - The catalogue label for the panel to add to the notebook
 
 		Example Input: notebookRemovePage(1)
 		"""
@@ -14683,7 +15024,7 @@ class handle_Notebook(handle_Container_Base):
 	def getCurrentPage(self, index = False):
 		"""Returns the currently selected page from the given notebook
 
-		index (bool)        - Determines in what form the page is returned.
+		index (bool) - Determines in what form the page is returned.
 			- If True: Returns the page's index number
 			- If False: Returns the page's catalogue label
 			- If None: Returns the wxPanel object associated with the page
@@ -14706,7 +15047,7 @@ class handle_Notebook(handle_Container_Base):
 	def getPageIndex(self, pageLabel):
 		"""Returns the page index for a page with the given label in the given notebook.
 
-		pageLabel (str)     - The catalogue label for the panel to add to the notebook
+		pageLabel (str) - The catalogue label for the panel to add to the notebook
 
 		Example Input: getPageIndex(0)
 		"""
@@ -14722,7 +15063,7 @@ class handle_Notebook(handle_Container_Base):
 	def getPageText(self, pageIndex):
 		"""Returns the first page index for a page with the given label in the given notebook.
 
-		pageLabel (str)     - The catalogue label for the panel to add to the notebook
+		pageLabel (str) - The catalogue label for the panel to add to the notebook
 
 		Example Input: notebookGetPageLabel(1)
 		"""
@@ -14761,8 +15102,8 @@ class handle_Notebook(handle_Container_Base):
 	def setPageText(self, pageLabel, text = ""):
 		"""Changes the given notebook page's tab text.
 
-		pageLabel (str)     - The catalogue label for the panel to add to the notebook
-		text (str)          - What the page's tab will now say
+		pageLabel (str) - The catalogue label for the panel to add to the notebook
+		text (str)      - What the page's tab will now say
 
 		Example Input: notebookSetPageText(0, "Ipsum")
 		"""
@@ -14864,16 +15205,19 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 
 		text, panel, sizer, icon_path, icon_internal = self.getArguments(argument_catalogue, ["text", "panel", "sizer", "icon_path", "icon_internal"])
 
-		self.myWindow = self.parent.myWindow
+		if (isinstance(self.parent, handle_Window)):
+			self.myWindow = self.parent
+		else:
+			self.myWindow = self.parent.myWindow
 		self.index = len(self.parent) - 1
 
 		#Setup Panel
 		panel["parent"] = self.parent
-		self.myPanel = self.readBuildInstructions_panel(self, panel)
+		self.myPanel = self.readBuildInstructions_panel(self, 0, panel)
 
 		#Setup Sizer
 		sizer["parent"] = self.myPanel
-		self.mySizer = self.readBuildInstructions_sizer(self, sizer)
+		self.mySizer = self.readBuildInstructions_sizer(self, 0, sizer)
 
 		self.myPanel.nest(self.mySizer)
 
@@ -14952,75 +15296,75 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		notebook.SetPageText(pageNumber, text)
 
 	#Etc
-	def readBuildInstructions_sizer(self, parent, instructions):
-		"""Interprets instructions given by the user for what sizer to make and how to make it."""
+	# def readBuildInstructions_sizer(self, parent, instructions):
+	# 	"""Interprets instructions given by the user for what sizer to make and how to make it."""
 
-		if (not isinstance(instructions, dict)):
-			errorMessage = f"sizer must be a dictionary for {self.__repr__()}"
-			raise ValueError(errorMessage)
+	# 	if (not isinstance(instructions, dict)):
+	# 		errorMessage = f"sizer must be a dictionary for {self.__repr__()}"
+	# 		raise ValueError(errorMessage)
 
-		if (len(instructions) == 1):
-			instructions["type"] = "Box"
-		else:
-			if ("type" not in instructions):
-				errorMessage = "Must supply which sizer type to make. The key should be 'type'. The value should be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
-				raise ValueError(errorMessage)
+	# 	if (len(instructions) == 1):
+	# 		instructions["type"] = "Box"
+	# 	else:
+	# 		if ("type" not in instructions):
+	# 			errorMessage = "Must supply which sizer type to make. The key should be 'type'. The value should be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
+	# 			raise ValueError(errorMessage)
 
-		sizerType = instructions["type"].lower()
-		if (sizerType not in ["grid", "flex", "bag", "box", "text", "wrap"]):
-			errorMessage = f"There is no 'type' {instructions['type']}. The value should be be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
-			raise KeyError(errorMessage)
+	# 	sizerType = instructions["type"].lower()
+	# 	if (sizerType not in ["grid", "flex", "bag", "box", "text", "wrap"]):
+	# 		errorMessage = f"There is no 'type' {instructions['type']}. The value should be be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
+	# 		raise KeyError(errorMessage)
 
-		#Get Default build arguments
-		if (sizerType == "grid"):
-			sizerFunction = handle_Window.addSizerGrid
-		elif (sizerType == "flex"):
-			sizerFunction = handle_Window.addSizerGridFlex
-		elif (sizerType == "bag"):
-			sizerFunction = handle_Window.addSizerGridBag
-		elif (sizerType == "box"):
-			sizerFunction = handle_Window.addSizerBox
-		elif (sizerType == "text"):
-			sizerFunction = handle_Window.addSizerText
-		else:
-			sizerFunction = handle_Window.addSizerWrap
-		kwargs = {item.name: item.default for item in inspect.signature(sizerFunction).parameters.values()}
+	# 	#Get Default build arguments
+	# 	if (sizerType == "grid"):
+	# 		sizerFunction = handle_Window.addSizerGrid
+	# 	elif (sizerType == "flex"):
+	# 		sizerFunction = handle_Window.addSizerGridFlex
+	# 	elif (sizerType == "bag"):
+	# 		sizerFunction = handle_Window.addSizerGridBag
+	# 	elif (sizerType == "box"):
+	# 		sizerFunction = handle_Window.addSizerBox
+	# 	elif (sizerType == "text"):
+	# 		sizerFunction = handle_Window.addSizerText
+	# 	else:
+	# 		sizerFunction = handle_Window.addSizerWrap
+	# 	kwargs = {item.name: item.default for item in inspect.signature(sizerFunction).parameters.values()}
 
-		#Create Handler
-		sizer = handle_Sizer()
-		sizer.type = instructions["type"]
-		del instructions["type"]
+	# 	#Create Handler
+	# 	sizer = handle_Sizer()
+	# 	sizer.type = instructions["type"]
+	# 	del instructions["type"]
 
-		#Overwrite default with user given data
-		for key, value in instructions.items():
-			kwargs[key] = value
+	# 	#Overwrite default with user given data
+	# 	for key, value in instructions.items():
+	# 		kwargs[key] = value
 
-		#Finish building sizer
-		kwargs["self"] = parent
-		sizer.build(kwargs)
+	# 	#Finish building sizer
+	# 	kwargs["self"] = parent
+	# 	sizer.build(kwargs)
 
-		return sizer
+	# 	return sizer
 
-	def readBuildInstructions_panel(self, parent, instructions):
-		"""Interprets instructions given by the user for what panel to make and how to make it."""
+	# def readBuildInstructions_panel(self, parent, instructions):
+	# 	"""Interprets instructions given by the user for what panel to make and how to make it."""
 
-		if (not isinstance(instructions, dict)):
-			errorMessage = f"panel must be a dictionary for {self.__repr__()}"
-			raise ValueError(errorMessage)
+	# 	if (not isinstance(instructions, dict)):
+	# 		errorMessage = f"panel must be a dictionary for {self.__repr__()}"
+	# 		raise ValueError(errorMessage)
 
-		#Overwrite default with user given data
-		kwargs = {item.name: item.default for item in inspect.signature(handle_Window.addPanel).parameters.values()}
-		for key, value in instructions.items():
-			kwargs[key] = value
+	# 	#Overwrite default with user given data
+	# 	kwargs = {item.name: item.default for item in inspect.signature(handle_Window.addPanel).parameters.values()}
+	# 	for key, value in instructions.items():
+	# 		kwargs[key] = value
 
-		#Create Handler
-		panel = handle_Panel()
+	# 	#Create Handler
+	# 	panel = handle_Panel()
 
-		#Finish building panel
-		kwargs["self"] = parent
-		panel.build(kwargs)
+	# 	#Finish building panel
+	# 	kwargs["self"] = parent
+	# 	panel.build(kwargs)
 
-		return panel
+	# 	return panel
 
 #Classes
 class MyApp(wx.App):
