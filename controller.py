@@ -1,4 +1,4 @@
-__version__ = "4.2.1"
+__version__ = "4.3.0"
 
 #TO DO
 # - Add File Drop: https://www.blog.pythonlibrary.org/2012/06/20/wxpython-introduction-to-drag-and-drop/
