@@ -3724,6 +3724,9 @@ class handle_WidgetList(handle_Widget_Base):
 		self.myDropTarget = None
 		self.dragable = False
 
+		self.columnNames = None
+		self.columns = None
+
 		self.preDragFunction = None
 		self.preDragFunctionArgs = None
 		self.preDragFunctionKwargs = None
@@ -3803,6 +3806,7 @@ class handle_WidgetList(handle_Widget_Base):
 
 			report, singleSelect, editable = self.getArguments(argument_catalogue, ["report", "singleSelect", "editable"])
 			columns, drag, drop, choices = self.getArguments(argument_catalogue, ["columns", "drag", "drop", "choices"])
+			columnNames = self.getArguments(argument_catalogue, ["columnNames"])
 
 			#Determine style
 			if (report):
@@ -3831,12 +3835,9 @@ class handle_WidgetList(handle_Widget_Base):
 			else:
 				self.thing = wx.ListCtrl(self.parent.thing, style = eval(styleList))
 
-			#Error Check
-			if (columns == 1):
-				if ((type(choices) == list) or (type(choices) == tuple)):
-					if (len(choices) != 0):
-						if ((type(choices[0]) != list) and ((type(choices[0]) != tuple))):
-							choices = [choices]
+			#Remember key variables
+			self.columns = columns
+			self.columnNames = columnNames
 
 			#Add Items
 			self.setValue(choices)#, columns = columns, columnNames = columnNames)
@@ -3932,7 +3933,7 @@ class handle_WidgetList(handle_Widget_Base):
 			else:
 				style += "|wx.TR_SINGLE"
 
-		 	#Create the thing to put in the grid
+			#Create the thing to put in the grid
 			self.thing = wx.TreeCtrl(self.parent.thing, style = eval(style))
 			
 			self.setValue({root: choices})
@@ -3942,34 +3943,34 @@ class handle_WidgetList(handle_Widget_Base):
 
 			# #Determine if it's contents are dragable
 			# if (drag):
-			# 	dragLabel, dragDelete, dragCopyOverride, allowExternalAppDelete = self.getArguments(argument_catalogue, ["dragLabel", "dragDelete", "dragCopyOverride", "allowExternalAppDelete"])
-			# 	preDragFunction, preDragFunctionArgs, preDragFunctionKwargs = self.getArguments(argument_catalogue, ["preDragFunction", "preDragFunctionArgs", "preDragFunctionKwargs"])
-			# 	postDragFunction, postDragFunctionArgs, postDragFunctionKwargs = self.getArguments(argument_catalogue, ["postDragFunction", "postDragFunctionArgs", "postDragFunctionKwargs"])
+			#   dragLabel, dragDelete, dragCopyOverride, allowExternalAppDelete = self.getArguments(argument_catalogue, ["dragLabel", "dragDelete", "dragCopyOverride", "allowExternalAppDelete"])
+			#   preDragFunction, preDragFunctionArgs, preDragFunctionKwargs = self.getArguments(argument_catalogue, ["preDragFunction", "preDragFunctionArgs", "preDragFunctionKwargs"])
+			#   postDragFunction, postDragFunctionArgs, postDragFunctionKwargs = self.getArguments(argument_catalogue, ["postDragFunction", "postDragFunctionArgs", "postDragFunctionKwargs"])
 				
-			# 	self.dragable = True
-			# 	self.betterBind(wx.EVT_TREE_BEGIN_DRAG, self.thing, self.onDragList_beginDragAway, None, 
-			# 		{"label": dragLabel, "deleteOnDrop": dragDelete, "overrideCopy": dragCopyOverride, "allowExternalAppDelete": allowExternalAppDelete})
+			#   self.dragable = True
+			#   self.betterBind(wx.EVT_TREE_BEGIN_DRAG, self.thing, self.onDragList_beginDragAway, None, 
+			#       {"label": dragLabel, "deleteOnDrop": dragDelete, "overrideCopy": dragCopyOverride, "allowExternalAppDelete": allowExternalAppDelete})
 				
-			# 	self.preDragFunction = preDragFunction
-			# 	self.preDragFunctionArgs = preDragFunctionArgs
-			# 	self.preDragFunctionKwargs = preDragFunctionKwargs
+			#   self.preDragFunction = preDragFunction
+			#   self.preDragFunctionArgs = preDragFunctionArgs
+			#   self.preDragFunctionKwargs = preDragFunctionKwargs
 
-			# 	self.postDragFunction = postDragFunction
-			# 	self.postDragFunctionArgs = postDragFunctionArgs
-			# 	self.postDragFunctionKwargs = postDragFunctionKwargs
+			#   self.postDragFunction = postDragFunction
+			#   self.postDragFunctionArgs = postDragFunctionArgs
+			#   self.postDragFunctionKwargs = postDragFunctionKwargs
 
 			# #Determine if it accepts dropped items
 			# if (drop):
-			# 	dropIndex = self.getArguments(argument_catalogue, ["dropIndex"])
-			# 	preDropFunction, preDropFunctionArgs, preDropFunctionKwargs = self.getArguments(argument_catalogue, ["preDropFunction", "preDropFunctionArgs", "preDropFunctionKwargs"])
-			# 	postDropFunction, postDropFunctionArgs, postDropFunctionKwargs = self.getArguments(argument_catalogue, ["postDropFunction", "postDropFunctionArgs", "postDropFunctionKwargs"])
-			# 	dragOverFunction, dragOverFunctionArgs, postDropFunctionKwargs = self.getArguments(argument_catalogue, ["dragOverFunction", "dragOverFunctionArgs", "postDropFunctionKwargs"])
+			#   dropIndex = self.getArguments(argument_catalogue, ["dropIndex"])
+			#   preDropFunction, preDropFunctionArgs, preDropFunctionKwargs = self.getArguments(argument_catalogue, ["preDropFunction", "preDropFunctionArgs", "preDropFunctionKwargs"])
+			#   postDropFunction, postDropFunctionArgs, postDropFunctionKwargs = self.getArguments(argument_catalogue, ["postDropFunction", "postDropFunctionArgs", "postDropFunctionKwargs"])
+			#   dragOverFunction, dragOverFunctionArgs, postDropFunctionKwargs = self.getArguments(argument_catalogue, ["dragOverFunction", "dragOverFunctionArgs", "postDropFunctionKwargs"])
 				
-			# 	self.myDropTarget = self.DragTextDropTarget(self.thing, dropIndex,
-			# 		preDropFunction = preDropFunction, preDropFunctionArgs = preDropFunctionArgs, preDropFunctionKwargs = preDropFunctionKwargs, 
-			# 		postDropFunction = postDropFunction, postDropFunctionArgs = postDropFunctionArgs, postDropFunctionKwargs = postDropFunctionKwargs,
-			# 		dragOverFunction = dragOverFunction, dragOverFunctionArgs = dragOverFunctionArgs, dragOverFunctionKwargs = postDropFunctionKwargs)
-			# 	self.thing.SetDropTarget(self.myDropTarget)
+			#   self.myDropTarget = self.DragTextDropTarget(self.thing, dropIndex,
+			#       preDropFunction = preDropFunction, preDropFunctionArgs = preDropFunctionArgs, preDropFunctionKwargs = preDropFunctionKwargs, 
+			#       postDropFunction = postDropFunction, postDropFunctionArgs = postDropFunctionArgs, postDropFunctionKwargs = postDropFunctionKwargs,
+			#       dragOverFunction = dragOverFunction, dragOverFunctionArgs = dragOverFunctionArgs, dragOverFunctionKwargs = postDropFunctionKwargs)
+			#   self.thing.SetDropTarget(self.myDropTarget)
 
 			#Bind the function(s)
 			myFunction, preEditFunction, postEditFunction = self.getArguments(argument_catalogue, ["myFunction", "preEditFunction", "postEditFunction"])
@@ -4129,13 +4130,14 @@ class handle_WidgetList(handle_Widget_Base):
 		return value
 
 	#Setters
-	def setValue(self, newValue, filterNone = True, event = None):
+	def setValue(self, newValue, columns = None, columnNames = None, filterNone = False, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
 		if (self.type.lower() == "listdrop"):
-			if (filterNone):
-				if (None in newValue):
-					newValue[:] = [value for value in newValue if value is not None] #Filter out None
+			if (filterNone != None):
+				if (filterNone):
+					if (None in newValue):
+						newValue[:] = [value for value in newValue if value is not None] #Filter out None
 				else:
 					newValue[:] = [value if (value != None) else "" for value in newValue] #Replace None with blank space
 
@@ -4143,99 +4145,98 @@ class handle_WidgetList(handle_Widget_Base):
 
 		elif (self.type.lower() == "listfull"):
 			columnCount = self.thing.GetColumnCount()
-			### TO DO: Fix this mess ###
 			
-			# if (columnCount != 0):
-			#   columns = columnCount
-			# else:
-			#   #Error Check
-			#   if (columns == 1):
-			#       if ((isinstance(choices, list) or isinstance(choices, tuple)) and (len(choices) != 0)):
-			#           if ((not isinstance(choices[0], list)) and (not isinstance(choices[0], tuple))):
-			#               choices = [choices]
+			#Account for redefining columns
+			if (columns == None):
+				columns = self.columns
+			else:
+				self.columns = columns
 
-			#   if (filterNone):
-			#       if (None in choices):
-			#           choices = [value for value in choices if value is not None] #Filter out None
-			#       else:
-			#           choices[:] = [value if (value != None) else "" for value in choices] #Replace None with blank space
+			#Account for redefining column names
+			if (columnNames == None):
+				columnNames = self.columnNames
+			else:
+				self.columnNames = columnNames
 
-			# #Preserve column names
-			# if (columnNames != None):
-			#   if (columnNames == {}):
-			#       for i in range(self.thing.GetColumnCount()):
-			#           columnNames[i] = self.thing.GetColumn(i)
+			#Error Check
+			if (not isinstance(newValue, (list, tuple, dict))):
+				newValue = [newValue]
 
-			# #Clear list
-			# self.thing.ClearAll()
+			if (columns != 1):
+				if ((isinstance(newValue, (list, tuple))) and (len(newValue) != 0)):
+					if (not isinstance(newValue[0], (list, tuple))):
+						newValue = [newValue]
 
-			# #Add items
-			# if (self.thing.InReportView()):
-			#   #Error check
-			#   if (columnNames == None):
-			#       columnNames = {}
+			if (filterNone != None):
+				if (filterNone):
+					if (None in newValue):
+						newValue[:] = [value for value in newValue if value is not None] #Filter out None
+				else:
+					newValue[:] = [value if (value != None) else "" for value in newValue] #Replace None with blank space
 
-			#   #Create columns
-			#   for i in range(columns):
-			#       if (i in columnNames):
-			#           name = columnNames[i]
-			#       else:
-			#           name = ""
+			#Clear list
+			self.thing.ClearAll()
 
-			#       self.thing.InsertColumn(i, name)
+			#Add items
+			if (self.thing.InReportView()):
+				#Create columns
+				for i in range(columns):
+					if (i in columnNames):
+						name = columnNames[i]
+					else:
+						name = ""
 
-			#   #Remember the column names
-			#   self.thing.columnNames = columnNames
+					self.thing.InsertColumn(i, name)
 
-			#   #Add items
-			#   if (type(choices) != dict):
-			#       itemDict = {}
-			#       for row, column in enumerate(choices):
-			#           if (row not in itemDict):
-			#               itemDict[row] = []
+				#Add items
+				if (not isinstance(newValue, dict)):
+					itemDict = {}
+					for row, column in enumerate(newValue):
+						if (row not in itemDict):
+							itemDict[row] = []
 
-			#           itemDict[row].extend(column)
-			#   else:
-			#       itemDict = choices
+						itemDict[row].extend(column)
+				else:
+					itemDict = newValue
 
-			#   #Make sure there are enough rows
-			#   itemCount = self.thing.GetItemCount()
-			#   rowCount = len(list(itemDict.keys()))
+				#Make sure there are enough rows
+				itemCount = self.thing.GetItemCount()
+				rowCount = len(list(itemDict.keys()))
 
-			#   if (itemCount < rowCount):
-			#       for i in range(rowCount - itemCount):
-			#           self.thing.InsertItem(i + 1 + itemCount, "")
+				if (itemCount < rowCount):
+					for i in range(rowCount - itemCount):
+						self.thing.InsertItem(i + 1 + itemCount, "")
 
-			#   for row, column in itemDict.items():
-			#       # if (type(column) == str):
-			#       #   #Get the column number
-			#       #   index = [key for key, value in columnNames.items() if value == column]
+				for row, column in itemDict.items():
+					if (isinstance(column, str)):
+						#Get the column number
+						index = [key for key, value in columnNames.items() if value == column]
 
-			#       #   #Account for no column found
-			#       #   if (len(index) == 0):
-			#       #       warnings.warn(f"There is no column {column} for the list {label} in the column names {columnNames}\nAdding value to the first column instead", Warning, stacklevel = 2)
-			#       #       column = 0
-			#       #   else:
-			#       #       #Choose the first instance of it
-			#       #       column = index[0]
+					#Account for no column found
+					if (len(index) == 0):
+						warnings.warn(f"There is no column {column} for the list {label} in the column names {columnNames}\nAdding value to the first column instead", Warning, stacklevel = 2)
+						column = 0
+					else:
+						#Choose the first instance of it
+						column = index[0]
 
-			#       #Add contents
-			#       for i, text in enumerate(column):
-			#           #Error check
-			#           if (type(text) != str):
-			#               text = str(text)
+					#Add contents
+					for i, text in enumerate(column):
+						#Error check
+						if (not isinstance(text, str)):
+							text = str(text)
 
-			#           self.thing.SetItem(row, i, text)
+						self.thing.SetItem(row, i, text)
 
-			# else:
-			#   #Add items
-			#   choices.reverse()
-			#   for text in choices:
-			#       #Error check
-			#       if (type(text) != str):
-			#           text = str(text)
+			else:
+				#Add items
+				newValue.reverse()
+				for text in newValue:
+					#Error check
+					if (not isinstance(text, str)):
+						text = str(text)
 
-			#       self.thing.InsertItem(0, text)
+					self.thing.InsertItem(0, text)
 
 		elif (self.type.lower() == "listtree"):
 			if (not isinstance(newValue, dict)):
@@ -4244,7 +4245,7 @@ class handle_WidgetList(handle_Widget_Base):
 
 			if (len(newValue) != 1):
 				errorMessage = f"There must be only one root for 'newValue' not {len(newValue)} in setValue() for {self.__repr__()}"
-				raise ValueError(errorMessage)				
+				raise ValueError(errorMessage)
 
 			rootThing = self.thing.AddRoot(str(list(newValue.keys())[0]))
 			self.thing.SetItemData(rootThing, ("key", "value"))
@@ -7144,7 +7145,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		self.postBuild(argument_catalogue)
 
 	def setFunction_init(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		"""Changes the function that runs when a the object is first created."""
+		"""Changes the function that runs when the object is first created."""
 
 		if (self.type.lower() == "canvas"):
 			self.parent.betterBind(wx.EVT_INIT_DIALOG, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
@@ -9965,10 +9966,10 @@ class handle_WidgetTable(handle_Widget_Base):
 				# return newValue
 			else:
 				# if (self.cellType.lower() == "droplist"):
-				# 	self.myCellControl.SetStringSelection(self.cellTypeValue[0])
+				#   self.myCellControl.SetStringSelection(self.cellTypeValue[0])
 				# else:
-				# 	self.startValue = ''
-				# 	self.myCellControl.SetValue('')
+				#   self.startValue = ''
+				#   self.myCellControl.SetValue('')
 				return
 			
 		def ApplyEdit(self, row, column, grid):
@@ -11926,43 +11927,43 @@ class handle_Sizer(handle_Container_Base):
 
 	# def addAui(self, label = None, flags = None, flex = 0, 
 
-	# 	reduceFlicker = True, 
+	#   reduceFlicker = True, 
 
-	# 	initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
-	# 	postPageChangeFunction = None, postPageChangeFunctionArgs = None, postPageChangeFunctionKwargs = None,
-	# 	prePageChangeFunction = None, prePageChangeFunctionArgs = None, prePageChangeFunctionKwargs = None,
+	#   initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
+	#   postPageChangeFunction = None, postPageChangeFunctionArgs = None, postPageChangeFunctionKwargs = None,
+	#   prePageChangeFunction = None, prePageChangeFunctionArgs = None, prePageChangeFunctionKwargs = None,
 
-	# 	handle = None, parent = None):
-	# 	"""Creates a container for dockable panels.
+	#   handle = None, parent = None):
+	#   """Creates a container for dockable panels.
 
-	# 	label (str)        - What this is called in the idCatalogue
-	# 	flags (list)       - A list of strings for which flag to add to the sizer
+	#   label (str)        - What this is called in the idCatalogue
+	#   flags (list)       - A list of strings for which flag to add to the sizer
 
-	# 	tabSide (str)     - Determines which side of the panel the tabs apear on. Only the first letter is needed
-	# 		- "top": Tabs will be placed on the top (north) side of the panel
-	# 		- "bottom": Tabs will be placed on the bottom (south) side of the panel
-	# 		- "left": Tabs will be placed on the left (west) side of the panel
-	# 		- "right": Tabs will be placed on the right (east) side of the panel
-	# 	fixedWidth (bool) - Determines how tab width is determined (windows only)
-	# 		- If True: All tabs will be the same width
-	# 		- If False: Tab width will be 
+	#   tabSide (str)     - Determines which side of the panel the tabs apear on. Only the first letter is needed
+	#       - "top": Tabs will be placed on the top (north) side of the panel
+	#       - "bottom": Tabs will be placed on the bottom (south) side of the panel
+	#       - "left": Tabs will be placed on the left (west) side of the panel
+	#       - "right": Tabs will be placed on the right (east) side of the panel
+	#   fixedWidth (bool) - Determines how tab width is determined (windows only)
+	#       - If True: All tabs will be the same width
+	#       - If False: Tab width will be 
 
-	# 	initFunction (str)       - The function that is ran when the panel first appears
-	# 	initFunctionArgs (any)   - The arguments for 'initFunction'
-	# 	initFunctionKwargs (any) - The keyword arguments for 'initFunction'function
+	#   initFunction (str)       - The function that is ran when the panel first appears
+	#   initFunctionArgs (any)   - The arguments for 'initFunction'
+	#   initFunctionKwargs (any) - The keyword arguments for 'initFunction'function
 
-	# 	Example Input: addAui()
-	# 	Example Input: addAui("myAui")
-	# 	Example Input: addAui(padding = (5, 5))
-	# 	Example Input: addAui(padding = (5, None))
-	# 	"""
+	#   Example Input: addAui()
+	#   Example Input: addAui("myAui")
+	#   Example Input: addAui(padding = (5, 5))
+	#   Example Input: addAui(padding = (5, None))
+	#   """
 
-	# 	handle = handle_AuiManager(self, self.myWindow)
-	# 	handle.build(locals())
+	#   handle = handle_AuiManager(self, self.myWindow)
+	#   handle.build(locals())
 
-	# 	self.nest(handle)
+	#   self.nest(handle)
 
-	# 	return handle
+	#   return handle
 
 	#Sizers
 	def addSizerBox(self, *args, **kwargs):
@@ -14420,7 +14421,7 @@ class handle_Splitter(handle_Container_Base):
 		self.postBuild(argument_catalogue)
 
 	def setFunction_init(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		"""Changes the function that runs when a the object is first created."""
+		"""Changes the function that runs when the object is first created."""
 
 		if (self.type.lower() == "double"):
 			self.parent.betterBind(wx.EVT_INIT_DIALOG, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
@@ -14437,74 +14438,74 @@ class handle_Splitter(handle_Container_Base):
 		return self.sizerList
 
 	# def readBuildInstructions_sizer(self, parent, i, instructions):
-	# 	"""Interprets instructions given by the user for what sizer to make and how to make it."""
+	#   """Interprets instructions given by the user for what sizer to make and how to make it."""
 
-	# 	if (not isinstance(instructions, dict)):
-	# 		errorMessage = f"sizer_{i} must be a dictionary for {self.__repr__()}"
-	# 		raise ValueError(errorMessage)
+	#   if (not isinstance(instructions, dict)):
+	#       errorMessage = f"sizer_{i} must be a dictionary for {self.__repr__()}"
+	#       raise ValueError(errorMessage)
 
-	# 	if (len(instructions) == 1):
-	# 		instructions["type"] = "Box"
-	# 	else:
-	# 		if ("type" not in instructions):
-	# 			errorMessage = "Must supply which sizer type to make. The key should be 'type'. The value should be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
-	# 			raise ValueError(errorMessage)
+	#   if (len(instructions) == 1):
+	#       instructions["type"] = "Box"
+	#   else:
+	#       if ("type" not in instructions):
+	#           errorMessage = "Must supply which sizer type to make. The key should be 'type'. The value should be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
+	#           raise ValueError(errorMessage)
 
-	# 	sizerType = instructions["type"].lower()
-	# 	if (sizerType not in ["grid", "flex", "bag", "box", "text", "wrap"]):
-	# 		errorMessage = f"There is no 'type' {instructions['type']}. The value should be be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
-	# 		raise KeyError(errorMessage)
+	#   sizerType = instructions["type"].lower()
+	#   if (sizerType not in ["grid", "flex", "bag", "box", "text", "wrap"]):
+	#       errorMessage = f"There is no 'type' {instructions['type']}. The value should be be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
+	#       raise KeyError(errorMessage)
 
-	# 	#Get Default build arguments
-	# 	if (sizerType == "grid"):
-	# 		sizerFunction = handle_Window.addSizerGrid
-	# 	elif (sizerType == "flex"):
-	# 		sizerFunction = handle_Window.addSizerGridFlex
-	# 	elif (sizerType == "bag"):
-	# 		sizerFunction = handle_Window.addSizerGridBag
-	# 	elif (sizerType == "box"):
-	# 		sizerFunction = handle_Window.addSizerBox
-	# 	elif (sizerType == "text"):
-	# 		sizerFunction = handle_Window.addSizerText
-	# 	else:
-	# 		sizerFunction = handle_Window.addSizerWrap
-	# 	kwargs = {item.name: item.default for item in inspect.signature(sizerFunction).parameters.values()}
+	#   #Get Default build arguments
+	#   if (sizerType == "grid"):
+	#       sizerFunction = handle_Window.addSizerGrid
+	#   elif (sizerType == "flex"):
+	#       sizerFunction = handle_Window.addSizerGridFlex
+	#   elif (sizerType == "bag"):
+	#       sizerFunction = handle_Window.addSizerGridBag
+	#   elif (sizerType == "box"):
+	#       sizerFunction = handle_Window.addSizerBox
+	#   elif (sizerType == "text"):
+	#       sizerFunction = handle_Window.addSizerText
+	#   else:
+	#       sizerFunction = handle_Window.addSizerWrap
+	#   kwargs = {item.name: item.default for item in inspect.signature(sizerFunction).parameters.values()}
 
-	# 	#Create Handler
-	# 	sizer = handle_Sizer()
-	# 	sizer.type = instructions["type"]
-	# 	del instructions["type"]
+	#   #Create Handler
+	#   sizer = handle_Sizer()
+	#   sizer.type = instructions["type"]
+	#   del instructions["type"]
 
-	# 	#Overwrite default with user given data
-	# 	for key, value in instructions.items():
-	# 		kwargs[key] = value
+	#   #Overwrite default with user given data
+	#   for key, value in instructions.items():
+	#       kwargs[key] = value
 
-	# 	#Finish building sizer
-	# 	kwargs["self"] = parent
-	# 	sizer.build(kwargs)
+	#   #Finish building sizer
+	#   kwargs["self"] = parent
+	#   sizer.build(kwargs)
 
-	# 	return sizer
+	#   return sizer
 
 	# def readBuildInstructions_panel(self, parent, i, instructions):
-	# 	"""Interprets instructions given by the user for what panel to make and how to make it."""
+	#   """Interprets instructions given by the user for what panel to make and how to make it."""
 
-	# 	if (not isinstance(instructions, dict)):
-	# 		errorMessage = f"panel_{i} must be a dictionary for {self.__repr__()}"
-	# 		raise ValueError(errorMessage)
+	#   if (not isinstance(instructions, dict)):
+	#       errorMessage = f"panel_{i} must be a dictionary for {self.__repr__()}"
+	#       raise ValueError(errorMessage)
 
-	# 	#Overwrite default with user given data
-	# 	kwargs = {item.name: item.default for item in inspect.signature(handle_Window.addPanel).parameters.values()}
-	# 	for key, value in instructions.items():
-	# 		kwargs[key] = value
+	#   #Overwrite default with user given data
+	#   kwargs = {item.name: item.default for item in inspect.signature(handle_Window.addPanel).parameters.values()}
+	#   for key, value in instructions.items():
+	#       kwargs[key] = value
 
-	# 	#Create Handler
-	# 	panel = handle_Panel()
+	#   #Create Handler
+	#   panel = handle_Panel()
 
-	# 	#Finish building panel
-	# 	kwargs["self"] = parent
-	# 	panel.build(kwargs)
+	#   #Finish building panel
+	#   kwargs["self"] = parent
+	#   panel.build(kwargs)
 
-	# 	return panel
+	#   return panel
 
 class handle_AuiManager(handle_Container_Base):
 	"""The manager for dockable windows.
@@ -14599,18 +14600,18 @@ class handle_AuiManager(handle_Container_Base):
 			paneInfo.Float()
 			paneInfo.PinButton(True)
 
+		if (label != None):
+			paneInfo.Name(str(label))
+
 		#Account for overriding the handle with your own widget or panel
 		if (handle == None):
 			#Get the object
 			handle = handle_NotebookPage()
-			icon_path = None
-			icon_internal = False
+			handle.type = "auiPage"
 			kwargs = locals()
 
-			if (isinstance(self, handle_Window)):
-				kwargs["parent"] = self
-			else:
-				kwargs["parent"] = self.myWindow
+			kwargs["parent"] = self.myWindow
+			kwargs["myManager"] = self
 
 			handle.preBuild(kwargs)
 			handle.build(kwargs)
@@ -14624,7 +14625,7 @@ class handle_AuiManager(handle_Container_Base):
 		self.finalNest(handle)
 		# handle.nested = True
 		# if (isinstance(handle, handle_NotebookPage)):
-		# 	handle.myPanel.nested = True
+		#   handle.myPanel.nested = True
 
 		return handle
 
@@ -14632,6 +14633,135 @@ class handle_AuiManager(handle_Container_Base):
 		print(f"@1 nesting {type(handle)} in {self.__repr__()}")
 
 		self.finalNest(handle)
+
+	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		"""Changes the function that runs when the object is activated."""
+
+		self.parent.betterBind(wx.EVT_AUI_PANE_ACTIVATED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	def setFunction_tabClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		"""Changes the function that runs when the object is activated."""
+
+		self.parent.betterBind(wx.EVT_AUI_PANE_BUTTON, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	def setFunction_maximize(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		"""Changes the function that runs when the object is activated."""
+
+		self.parent.betterBind(wx.EVT_AUI_PANE_MAXIMIZE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	def setFunction_minimize(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		"""Changes the function that runs when the object is activated."""
+
+		self.parent.betterBind(wx.EVT_AUI_PANE_MINIMIZE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		"""Changes the function that runs when the object is activated."""
+
+		self.parent.betterBind(wx.EVT_AUI_PANE_RESTORE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	#Getters
+	def getSetup(self):
+		"""Returns a string that describes the current setup for the window panes.
+
+		Example Imput: getSetup()
+		"""
+
+		return self.thing.SavePerspective()
+
+	def getPaneInfo(self, label):
+		"""Returns the pane info object for the reqested pane object.
+		Note: Objects must have been given a label upon creation to be retrieved.
+
+		label (str) - What the object was called upon creation
+
+		Example Input: getPaneInfo("settings")
+		"""
+
+		return self.thing.GetPane(label)
+
+	#Setters
+	def setSetup(self, config, renderChanges = True):
+		"""Uses a string that describes the current setup for the window panes
+		to configure the positions, etc. of the panes.
+
+		Example Imput: setSetup(config)
+		"""
+
+		self.thing.LoadPerspective(config, update = renderChanges)
+
+	def setDockConstraint(self, width = 0.25, height = 0.25):
+		"""Changes the size of the available space to drop a pane that is being dragged.
+
+		width (float)  - Percentage of available width to use
+		height (float) - Percentage of available height to use
+
+		Example Input: setDockConstraint()
+		Example Input: setDockConstraint(height = 1)
+		Example Input: setDockConstraint(0.75, 0.75)
+		"""
+
+		self.thing.SetDockSizeConstraint(width, height)
+
+	def setTitle(self, label, text = ""):
+		"""Changes the title of the requested pane.
+
+		Example Input: setTitle()
+		"""
+
+		paneInfo = self.getPaneInfo(label)
+		paneInfo.Caption(text)
+		self.thing.Update()
+
+	#Change Attributes
+	def dockCenter(self, label):
+		"""Docks the page on the center area.
+
+		Example Input: dockCenter()
+		"""
+
+		paneInfo = self.getPaneInfo(label)
+		paneInfo.CenterPane()
+		self.thing.Update()
+
+	def dockTop(self, label):
+		"""Docks the page on the top area.
+
+		Example Input: dockTop()
+		"""
+
+		paneInfo = self.getPaneInfo(label)
+		paneInfo.Top()
+		self.thing.Update()
+
+	def dockBottom(self, label):
+		"""Docks the page on the bottom area.
+
+		Example Input: dockBottom()
+		"""
+
+		paneInfo = self.getPaneInfo(label)
+		paneInfo.Bottom()
+		self.thing.Update()
+
+	def dockLeft(self, label):
+		"""Docks the page on the left area.
+
+		Example Input: dockLeft()
+		"""
+
+		paneInfo = self.getPaneInfo(label)
+		paneInfo.Left()
+		self.thing.Update()
+
+	def dockRight(self, label):
+		"""Docks the page on the right area.
+
+		Example Input: dockRight()
+		"""
+
+		paneInfo = self.getPaneInfo(label)
+		paneInfo.Right()
+		self.thing.Update()
 
 class handle_Notebook(handle_Container_Base):
 	"""A handle for working with a wxNotebook."""
@@ -14840,7 +14970,7 @@ class handle_Notebook(handle_Container_Base):
 
 	#Change Settings
 	def setFunction_init(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		"""Changes the function that runs when a the object is first created."""
+		"""Changes the function that runs when the object is first created."""
 
 		if (self.type.lower() == "notebook"):
 			self.parent.betterBind(wx.EVT_INIT_DIALOG, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
@@ -14856,7 +14986,7 @@ class handle_Notebook(handle_Container_Base):
 			warnings.warn(f"Add {self.type} to setFunction_prePageChange() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_postPageChange(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		"""Changes the function that runs when a the page has finished changing."""
+		"""Changes the function that runs when the page has finished changing."""
 
 		if (self.type.lower() == "notebook"):
 			self.parent.betterBind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
@@ -14922,6 +15052,7 @@ class handle_Notebook(handle_Container_Base):
 
 			#Get the object
 			handle = handle_NotebookPage()
+			handle.type = "notebookPage"
 			handleList.append(handle)
 			kwargs = locals()
 			kwargs["parent"] = self
@@ -15132,10 +15263,12 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		self.thing = None
 		self.myPanel = None
 		self.mySizer = None
+		self.myManager = None
 		self.text = None
 		self.icon = None
 		self.iconIndex = None
 		self.index = None
+		self.type = None
 
 	def __str__(self):
 		"""Gives diagnostic information on the Notebook when it is printed out."""
@@ -15208,7 +15341,8 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		Example Input: build(0, "Lorem", select = True)
 		"""
 
-		text, panel, sizer, icon_path, icon_internal = self.getArguments(argument_catalogue, ["text", "panel", "sizer", "icon_path", "icon_internal"])
+		text, panel, sizer = self.getArguments(argument_catalogue, ["text", "panel", "sizer"])
+
 
 		if (isinstance(self.parent, handle_Window)):
 			self.myWindow = self.parent
@@ -15236,11 +15370,13 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 				self.text = text
 
 		#Format Icon
-		if (icon_path != None):
-			self.icon = self.getImage(icon_path, icon_internal)
-		else:
-			self.icon = None
-			self.iconIndex = None
+		if (self.type.lower() == "notebookpage"):
+			icon_path, icon_internal = self.getArguments(argument_catalogue, ["icon_path", "icon_internal"])
+			if (icon_path != None):
+				self.icon = self.getImage(icon_path, icon_internal)
+			else:
+				self.icon = None
+				self.iconIndex = None
 
 	def getSizer(self):
 		return self.mySizer
@@ -15251,14 +15387,17 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		Example Input: notebookRemovePage()
 		"""
 
-		#Determine page number
-		pageNumber = self.getPageIndex(pageLabel)
+		if (self.type.lower() == "notebookpage"):
+			#Determine page number
+			pageNumber = self.getPageIndex(pageLabel)
 
-		#Remove the page from the notebook
-		notebook.RemovePage(self.pageNumber)
+			#Remove the page from the notebook
+			notebook.RemovePage(self.pageNumber)
 
-		#Remove the page from the catalogue
-		del notebook.notebookPageDict[pageLabel]
+			#Remove the page from the catalogue
+			del notebook.notebookPageDict[pageLabel]
+		else:
+			warnings.warn(f"Add {self.type} to remove() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def getIndex(self, event = None):
 		"""Returns the page index for a page with the given label in the given notebook.
@@ -15266,8 +15405,12 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		Example Input: getIndex()
 		"""
 
-		#Determine page number
-		pageNumber = notebook.notebookPageDict[pageLabel]["index"]
+		if (self.type.lower() == "notebookpage"):
+			#Determine page number
+			pageNumber = notebook.notebookPageDict[pageLabel]["index"]
+		else:
+			warnings.warn(f"Add {self.type} to getIndex() for {self.__repr__()}", Warning, stacklevel = 2)
+			pageNumber = None
 
 		return pageNumber
 
@@ -15277,11 +15420,15 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		Example Input: notebookGetPageLabel()
 		"""
 
-		#Determine page number
-		pageNumber = self.getPageIndex(pageLabel)
+		if (self.type.lower() == "notebookpage"):
+			#Determine page number
+			pageNumber = self.getPageIndex(pageLabel)
 
-		#Get the tab's text
-		text = notebook.GetPageText(pageNumber)
+			#Get the tab's text
+			text = notebook.GetPageText(pageNumber)
+		else:
+			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
+			text = None
 
 		return text
 
@@ -15294,91 +15441,81 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		Example Input: notebookSetPageText("Ipsum")
 		"""
 
-		#Determine page number
-		pageNumber = self.getPageIndex(pageLabel)
+		if (self.type.lower() == "notebookpage"):
+			#Determine page number
+			pageNumber = self.getPageIndex(pageLabel)
 
-		#Change page text
-		notebook.SetPageText(pageNumber, text)
+			#Change page text
+			notebook.SetPageText(pageNumber, text)
 
-	def setMinimumSize(self, size = (100, 100)):
-		"""Sets the minimum size for this panel.
+		elif (self.type.lower() == "auipage"):
+			if (self.label == None):
+				warnings.warn(f"A label is needed for {self.__repr__()} to change the caption", Warning, stacklevel = 2)
 
-		Example Input: setMinimumSize((100, 200))
-		"""
+			self.myManager.setTitle(self.label, text)
 
-		self.thing.SetMinSize(size)
+		else:
+			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
+	def dockCenter(self, *args, **kwargs):
+		"""Overload for dockCenter() in handle_AuiManager."""
 
-	#Etc
-	# def readBuildInstructions_sizer(self, parent, instructions):
-	# 	"""Interprets instructions given by the user for what sizer to make and how to make it."""
+		if (self.type.lower() == "auipage"):
+			if (self.label == None):
+				warnings.warn(f"A label is needed for {self.__repr__()} to programatically dock it", Warning, stacklevel = 2)
 
-	# 	if (not isinstance(instructions, dict)):
-	# 		errorMessage = f"sizer must be a dictionary for {self.__repr__()}"
-	# 		raise ValueError(errorMessage)
+			self.myManager.dockCenter(self.label, *args, **kwargs)
 
-	# 	if (len(instructions) == 1):
-	# 		instructions["type"] = "Box"
-	# 	else:
-	# 		if ("type" not in instructions):
-	# 			errorMessage = "Must supply which sizer type to make. The key should be 'type'. The value should be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
-	# 			raise ValueError(errorMessage)
+		else:
+			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
-	# 	sizerType = instructions["type"].lower()
-	# 	if (sizerType not in ["grid", "flex", "bag", "box", "text", "wrap"]):
-	# 		errorMessage = f"There is no 'type' {instructions['type']}. The value should be be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
-	# 		raise KeyError(errorMessage)
+	def dockTop(self, *args, **kwargs):
+		"""Overload for dockTop() in handle_AuiManager."""
 
-	# 	#Get Default build arguments
-	# 	if (sizerType == "grid"):
-	# 		sizerFunction = handle_Window.addSizerGrid
-	# 	elif (sizerType == "flex"):
-	# 		sizerFunction = handle_Window.addSizerGridFlex
-	# 	elif (sizerType == "bag"):
-	# 		sizerFunction = handle_Window.addSizerGridBag
-	# 	elif (sizerType == "box"):
-	# 		sizerFunction = handle_Window.addSizerBox
-	# 	elif (sizerType == "text"):
-	# 		sizerFunction = handle_Window.addSizerText
-	# 	else:
-	# 		sizerFunction = handle_Window.addSizerWrap
-	# 	kwargs = {item.name: item.default for item in inspect.signature(sizerFunction).parameters.values()}
+		if (self.type.lower() == "auipage"):
+			if (self.label == None):
+				warnings.warn(f"A label is needed for {self.__repr__()} to programatically dock it", Warning, stacklevel = 2)
 
-	# 	#Create Handler
-	# 	sizer = handle_Sizer()
-	# 	sizer.type = instructions["type"]
-	# 	del instructions["type"]
+			self.myManager.dockTop(self.label, *args, **kwargs)
 
-	# 	#Overwrite default with user given data
-	# 	for key, value in instructions.items():
-	# 		kwargs[key] = value
+		else:
+			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
-	# 	#Finish building sizer
-	# 	kwargs["self"] = parent
-	# 	sizer.build(kwargs)
+	def dockBottom(self, *args, **kwargs):
+		"""Overload for dockBottom() in handle_AuiManager."""
 
-	# 	return sizer
+		if (self.type.lower() == "auipage"):
+			if (self.label == None):
+				warnings.warn(f"A label is needed for {self.__repr__()} to programatically dock it", Warning, stacklevel = 2)
 
-	# def readBuildInstructions_panel(self, parent, instructions):
-	# 	"""Interprets instructions given by the user for what panel to make and how to make it."""
+			self.myManager.dockBottom(self.label, *args, **kwargs)
 
-	# 	if (not isinstance(instructions, dict)):
-	# 		errorMessage = f"panel must be a dictionary for {self.__repr__()}"
-	# 		raise ValueError(errorMessage)
+		else:
+			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
-	# 	#Overwrite default with user given data
-	# 	kwargs = {item.name: item.default for item in inspect.signature(handle_Window.addPanel).parameters.values()}
-	# 	for key, value in instructions.items():
-	# 		kwargs[key] = value
+	def dockLeft(self, *args, **kwargs):
+		"""Overload for dockLeft() in handle_AuiManager."""
 
-	# 	#Create Handler
-	# 	panel = handle_Panel()
+		if (self.type.lower() == "auipage"):
+			if (self.label == None):
+				warnings.warn(f"A label is needed for {self.__repr__()} to programatically dock it", Warning, stacklevel = 2)
 
-	# 	#Finish building panel
-	# 	kwargs["self"] = parent
-	# 	panel.build(kwargs)
+			self.myManager.dockLeft(self.label, *args, **kwargs)
 
-	# 	return panel
+		else:
+			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def dockRight(self, *args, **kwargs):
+		"""Overload for dockRight() in handle_AuiManager."""
+
+		if (self.type.lower() == "auipage"):
+			if (self.label == None):
+				warnings.warn(f"A label is needed for {self.__repr__()} to programatically dock it", Warning, stacklevel = 2)
+
+			self.myManager.dockRight(self.label, *args, **kwargs)
+
+		else:
+			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 #Classes
 class MyApp(wx.App):
