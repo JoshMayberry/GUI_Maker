@@ -66,6 +66,7 @@ import wx.lib.agw.fourwaysplitter
 
 
 #Import communication elements for talking to other devices such as printers, the internet, a raspberry pi, etc.
+import select
 import socket
 import serial
 import serial.tools.list_ports
@@ -4212,13 +4213,13 @@ class handle_WidgetList(handle_Widget_Base):
 						#Get the column number
 						index = [key for key, value in columnNames.items() if value == column]
 
-					#Account for no column found
-					if (len(index) == 0):
-						warnings.warn(f"There is no column {column} for the list {label} in the column names {columnNames}\nAdding value to the first column instead", Warning, stacklevel = 2)
-						column = 0
-					else:
-						#Choose the first instance of it
-						column = index[0]
+						#Account for no column found
+						if (len(index) == 0):
+							warnings.warn(f"There is no column {column} for the list {label} in the column names {columnNames}\nAdding value to the first column instead", Warning, stacklevel = 2)
+							column = 0
+						else:
+							#Choose the first instance of it
+							column = index[0]
 
 					#Add contents
 					for i, text in enumerate(column):
@@ -15780,12 +15781,20 @@ class Communication():
 				#Listen
 				while True:
 					#Check for stop command
-					if (self.recieveStop or (self.mySocket == None)):
+					if (self.recieveStop or (self.mySocket == None)):# or ((len(self.dataBlock) > 0) and (self.dataBlock[-1] == None))):
 						self.recieveStop = False
+						break
+
+					#Check for data to recieve
+					self.mySocket.setblocking(0)
+					ready = select.select([self.mySocket], [], [], 0.5)
+					if (not ready[0]):
+						#Stop listening
 						break
 
 					#Retrieve the block of data
 					data = self.mySocket.recv(bufferSize).decode() #The .decode is needed for python 3.4, but not for python 2.7
+
 
 					#Check for end of data stream
 					if (len(data) < 1):
@@ -15808,6 +15817,10 @@ class Communication():
 				warnings.warn(f"Already listening to socket", Warning, stacklevel = 2)
 				return None
 
+			if ((len(self.dataBlock) > 0) and (self.dataBlock[-1] == None)):
+				warnings.warn(f"Use checkRecieve() to take out data", Warning, stacklevel = 2)
+				return None
+
 			#Listen for data on a separate thread
 			self.dataBlock = []
 			self.parent.backgroundRun(runFunction, [self, bufferSize])
@@ -15825,19 +15838,26 @@ class Communication():
 				return [], False
 
 			if (not self.recieveListening):
-				self.startRecieve()
+				if (len(self.dataBlock) > 0):
+					if (self.dataBlock[-1] != None):
+						self.startRecieve()
+				else:
+					self.startRecieve()
+
+			# print("@3", self.dataBlock)
 
 			#The entire message has been read once the last element is None.
 			finished = False
-			if (len(self.dataBlock) != 0):
-				if (self.dataBlock[-1] == None):
+			compareBlock = self.dataBlock[:] #Account for changing mid-analysis
+			self.dataBlock = []
+			if (len(compareBlock) != 0):
+				if (compareBlock[-1] == None):
 					finished = True
 
 					if (removeNone):
-						self.dataBlock.pop(-1) #Remove the None from the end so the user does not get confused
+						compareBlock.pop(-1) #Remove the None from the end so the user does not get confused
 
-			data = self.dataBlock[:]
-			self.dataBlock = []
+			data = compareBlock[:]
 
 			return data, finished
 
@@ -17982,29 +18002,52 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 
 #User Things
 class User_Utilities():
-	def __init__(self):
-		pass
+	def __init__(self, catalogue_variable = None):
+		if ((catalogue_variable != None) and (not isinstance(catalogue_variable, str))):
+			errorMessage = f"'catalogue_variable' must be a str, not a {type(catalogue_variable)}"
+			raise ValueError(errorMessage)
 
-	def __init__(self):
-		pass
+		self._catalogue_variable = catalogue_variable
 
 	def __len__(self):
 		return len(self)
 
 	def __contains__(self, key):
+		if (key in self[:]):
+			return True
+		# elif (key in [item.label for item in self[:]]):
+		# 	return True
 		return False
 
 	def __iter__(self):
-		return User_Utilities.Iterator({})
+		dataCatalogue = self._getDataCatalogue()
+		return Iterator(dataCatalogue)
 
 	def __getitem__(self, key):
-		return None
+		dataCatalogue = self._getDataCatalogue()
+		return self.get(dataCatalogue, key)
 
 	def __setitem__(self, key, value):
-		pass
+		dataCatalogue = self._getDataCatalogue()
+		dataCatalogue[key] = value
 
 	def __delitem__(self, key):
-		pass
+		dataCatalogue = self._getDataCatalogue()
+		del dataCatalogue[key]
+
+	def _getDataCatalogue(self):
+		"""Returns the data catalogue used to select items from this thing."""
+
+		if (self._catalogue_variable != None):
+			if (not hasattr(self, self._catalogue_variable)):
+				warnings.warn(f"There is no variable {self._catalogue_variable} in {self.__repr__()} to use for the data catalogue", Warning, stacklevel = 2)
+				dataCatalogue = {}
+			else:
+				dataCatalogue = getattr(self, self._catalogue_variable)
+		else:
+			dataCatalogue = {}
+
+		return dataCatalogue
 
 	def get(self, itemCatalogue, itemLabel = None):
 		"""Searches the label catalogue for the requested object.
