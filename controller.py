@@ -1320,12 +1320,12 @@ class Utilities():
 
 		event.Skip()
 
-	def backgroundRun(self, myFunctionList, myFunctionArgsList = None, myFunctionKwargsList = None, shown = False, makeThread = True):
+	def backgroundRun(self, myFunction, myFunctionArgs = None, myFunctionKwargs = None, shown = False, makeThread = True):
 		"""Runs a function in the background in a way that it does not lock up the GUI.
 		Meant for functions that take a long time to run.
 		If makeThread is true, the new thread object will be returned to the user.
 
-		myFunctionList (str)   - The function that will be ran when the event occurs
+		myFunction (str)       - The function that will be ran when the event occurs
 		myFunctionArgs (any)   - Any input arguments for myFunction. A list of multiple functions can be given
 		myFunctionKwargs (any) - Any input keyword arguments for myFunction. A list of variables for each function can be given. The index of the variables must be the same as the index for the functions
 		shown (bool)           - If True: The function will only run if the window is being shown. If the window is not shown, it will terminate the function. It will wait for the window to first be shown to run
@@ -1338,8 +1338,8 @@ class Utilities():
 		"""
 
 		#Skip empty functions
-		if (myFunctionList != None):
-			myFunctionList, myFunctionArgsList, myFunctionKwargsList = self.formatFunctionInputList(myFunctionList, myFunctionArgsList, myFunctionKwargsList)
+		if (myFunction != None):
+			myFunctionList, myFunctionArgsList, myFunctionKwargsList = self.formatFunctionInputList(myFunction, myFunctionArgs, myFunctionKwargs)
 
 			#Run each function
 			for i, myFunction in enumerate(myFunctionList):
@@ -1363,7 +1363,7 @@ class Utilities():
 				else:
 					warnings.warn(f"function {i} in myFunctionList == None for backgroundRun() for {self.__repr__()}", Warning, stacklevel = 2)
 		else:
-			warnings.warn(f"myFunctionList == None for backgroundRun() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"myFunction == None for backgroundRun() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		return None
 
@@ -12567,6 +12567,18 @@ class handle_Window(handle_Container_Base):
 		self.autoSize = False
 		self.thing.SetSize((x, y))
 
+	def setWindowPosition(self, x, y):
+		"""Re-defines the position of the window.
+
+		x (int)     - The width of the window
+		y (int)     - The height of the window
+
+		Example Input: setWindowPosition(350, 250)
+		"""
+
+		#Change the frame size
+		self.thing.SetPosition((x, y))
+
 	def setMinimumFrameSize(self, size = (100, 100)):
 		"""Sets the minimum window size for the user
 		Note: the program can still explicity change the size to be smaller by using setWindowSize().
@@ -15081,8 +15093,9 @@ class handle_Notebook(handle_Container_Base):
 					self.thing.AddPage(handle.myPanel.thing, handle.text, default)
 
 			#Record nesting
-			handle.nested = True
-			handle.myPanel.nested = True
+			self.finalNest(handle)
+			# handle.nested = True
+			# handle.myPanel.nested = True
 
 		if (len(handleList) > 1):
 			return handleList
@@ -15344,7 +15357,6 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 
 		text, panel, sizer = self.getArguments(argument_catalogue, ["text", "panel", "sizer"])
 
-
 		if (isinstance(self.parent, handle_Window)):
 			self.myWindow = self.parent
 		else:
@@ -15360,6 +15372,8 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		self.mySizer = self.readBuildInstructions_sizer(self, 0, sizer)
 
 		self.myPanel.nest(self.mySizer)
+
+		self.finalNest(self.myPanel)
 
 		#Format text
 		if (text == None):
