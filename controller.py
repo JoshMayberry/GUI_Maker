@@ -369,59 +369,73 @@ class ThreadQueue():
 
 		self.callback_queue.put([myFunction, myFunctionArgs, myFunctionKwargs])
 
-	def from_main_thread(self, blocking = True):
+	def from_main_thread(self, blocking = True, printEmpty = False):
 		"""An non-critical function from the sub-thread will run in the main thread.
 
 		blocking (bool) - If True: This is a non-critical function
 		"""
 
-		def setupFunction(self, myFunctionList, myFunctionArgsList, myFunctionKwargsList):
+		def setupFunction(myFunctionList, myFunctionArgsList, myFunctionKwargsList):
+			nonlocal self
+
 			#Skip empty functions
 			if (myFunctionList != None):
 				myFunctionList, myFunctionArgsList, myFunctionKwargsList = Utilities.formatFunctionInputList(self, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
 				
 				#Run each function
+				answerList = []
 				for i, myFunction in enumerate(myFunctionList):
 					#Skip empty functions
 					if (myFunction != None):
 						myFunctionEvaluated, myFunctionArgs, myFunctionKwargs = Utilities.formatFunctionInput(self, i, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
-						runFunction(self, myFunctionEvaluated, myFunctionArgs, myFunctionKwargs)
+						answer = runFunction(myFunctionEvaluated, myFunctionArgs, myFunctionKwargs)
+						answerList.append(answer)
 
-		def runFunction(self, myFunction, myFunctionArgs, myFunctionKwargs):
+				#Account for just one function
+				if (len(answerList) == 1):
+					answerList = answerList[0]
+			return answerList
+
+		def runFunction(myFunction, myFunctionArgs, myFunctionKwargs):
 			"""Runs a function."""
+			nonlocal self
 
 			#Has both args and kwargs
 			if ((myFunctionKwargs != None) and (myFunctionArgs != None)):
-				myFunction(*myFunctionArgs, **myFunctionKwargs)
+				answer = myFunction(*myFunctionArgs, **myFunctionKwargs)
 
 			#Has args, but not kwargs
 			elif (myFunctionArgs != None):
-				myFunction(*myFunctionArgs)
+				answer = myFunction(*myFunctionArgs)
 
 			#Has kwargs, but not args
 			elif (myFunctionKwargs != None):
-				myFunction(**myFunctionKwargs)
+				answer = myFunction(**myFunctionKwargs)
 
 			#Has neither args nor kwargs
 			else:
-				myFunction()
+				answer = myFunction()
+
+			return answer
 
 		if (blocking):
 			myFunction, myFunctionArgs, myFunctionKwargs = self.callback_queue.get() #blocks until an item is available
-			setupFunction(self, myFunction, myFunctionArgs, myFunctionKwargs)
+			answer = setupFunction(myFunction, myFunctionArgs, myFunctionKwargs)
 			
-			runFunction(self, myFunction, myFunctionArgs, myFunctionKwargs)
-
 		else:       
 			while True:
 				try:
 					myFunction, myFunctionArgs, myFunctionKwargs = self.callback_queue.get(False) #doesn't block
 				
 				except queue.Empty: #raised when queue is empty
-					print("--- Thread Queue Empty ---")
+					if (printEmpty):
+						print("--- Thread Queue Empty ---")
+					answer = None
 					break
 
-				setupFunction(self, myFunction, myFunctionArgs, myFunctionKwargs)
+				answer = setupFunction(myFunction, myFunctionArgs, myFunctionKwargs)
+
+		return answer
 
 class MyThread(threading.Thread):
 	"""Used to run functions in the background.
@@ -1300,17 +1314,17 @@ class Utilities():
 
 		else:
 			if (myThread != mainThread):
-				self.threadQueue.from_dummy_thread(myFunction, myFunctionArgs, myFunctionKwargs)
+				self.controller.threadQueue.from_dummy_thread(myFunction, myFunctionArgs, myFunctionKwargs)
 
 			else:
 				warnings.warn(f"Cannot pass from the main thread to the main thread for {self.__repr__()}", Warning, stacklevel = 2)
 
-	def recieveFunction(self):
+	def recieveFunction(self, blocking = True, printEmpty = False):
 		"""Passes a function from one thread to another. Used to recieve the function.
 		If a thread object is not given it will pass from the current thread to the main thread.
 		"""
 
-		self.threadQueue.from_main_thread()
+		self.controller.threadQueue.from_main_thread(blocking = blocking, printEmpty = printEmpty)
 
 	def onBackgroundRun(self, event, myFunctionList, myFunctionArgsList = None, myFunctionKwargsList = None, shown = False):
 		"""Here so the function backgroundRun can be triggered from a bound event."""
@@ -4497,20 +4511,13 @@ class handle_WidgetList(handle_Widget_Base):
 						else:
 							myFunctionEvaluated()
 
-		preDragFunction = copy.deepcopy(self.preDragFunction)
-		preDragFunctionArgs = copy.deepcopy(self.preDragFunctionArgs)
-		preDragFunctionKwargs = copy.deepcopy(self.preDragFunctionKwargs)
+		preDragFunction = self.preDragFunction
+		preDragFunctionArgs = self.preDragFunctionArgs
+		preDragFunctionKwargs = self.preDragFunctionKwargs
 
-		postDragFunction = copy.deepcopy(self.postDragFunction)
-		postDragFunctionArgs = copy.deepcopy(self.postDragFunctionArgs)
-		postDragFunctionKwargs = copy.deepcopy(self.postDragFunctionKwargs)
-
-		#Determine if a specific id should be set
-		if (label != None):
-			myId = self.newId(label)
-			
-		else:
-			myId = self.newId()
+		postDragFunction = self.postDragFunction
+		postDragFunctionArgs = self.postDragFunctionArgs
+		postDragFunctionKwargs = self.postDragFunctionKwargs
 
 		#Get Values
 		index = event.GetIndex()
@@ -4522,7 +4529,7 @@ class handle_WidgetList(handle_Widget_Base):
 		originList_object = wx.DropSource(originList)
 
 		#Catalogue dragObject
-		self.addToId(textToDrag, label)
+		self.parent[label] = textToDrag
 
 		#Run pre-functions
 		runFunction(preDragFunction, preDragFunctionArgs, preDragFunctionKwargs)
@@ -4553,7 +4560,7 @@ class handle_WidgetList(handle_Widget_Base):
 					
 
 		#Remove dragObject from catalogue
-		self.removeFromId(label)
+		del self.parent[label]
 		dragDropDestination = None
 
 		#Run post-functions
@@ -8845,6 +8852,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 		#Set the cell value
 		self.thing.GoToCell(row, column)
+		self.thing.SetGridCursor(row, column)
 
 	def setTableCell(self, row, column, value, noneReplace = True):
 		"""Writes something to a cell.
@@ -8984,7 +8992,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 			if not selection:
 				#Only a single cell was selected
-				if (event != None):
+				if (isinstance(event, wx.grid.GridEvent)):
 					row = event.GetRow()
 					column = event.GetCol()
 				else:
@@ -12268,6 +12276,11 @@ class handle_Dialog(handle_Base):
 		#Error Check
 		if (self.thing == None):
 			warnings.warn(f"The {self.type} dialogue box {self.__repr__()} has already been shown", Warning, stacklevel = 2)
+			return
+
+		myThread = threading.current_thread()
+		if (myThread != threading.main_thread()):
+			warnings.warn(f"The {self.type} dialogue box {self.__repr__()} must be shown in the main thread, not a background thread", Warning, stacklevel = 2)
 			return
 
 		#Show dialogue
@@ -15858,8 +15871,6 @@ class Communication():
 				else:
 					self.startRecieve()
 
-			# print("@3", self.dataBlock)
-
 			#The entire message has been read once the last element is None.
 			finished = False
 			compareBlock = self.dataBlock[:] #Account for changing mid-analysis
@@ -17216,6 +17227,9 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 		#Record Address
 		self.setAddressValue([id(self)], {None: self})
 
+		#Used to pass functions from threads
+		self.threadQueue = ThreadQueue()
+
 		#Create the wx app object
 		self.app = MyApp(parent = self)
 
@@ -18154,7 +18168,7 @@ class User_Utilities():
 
 		return data
 
-	def getUnique(self, base = "{}", increment = 1, exclude = []):
+	def getUnique(self, base = "{}", increment = 1, start = 1, exclude = []):
 		"""Returns a unique name with the given criteria.
 
 		Example Input: getUnique()
@@ -18167,4 +18181,4 @@ class User_Utilities():
 				increment += 1
 			else:
 				break
-		return base.format(increment)
+		return base.format(start + increment - 1)
