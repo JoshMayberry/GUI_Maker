@@ -19,6 +19,7 @@ __version__ = "4.3.0"
 # import os
 import sys
 import time
+import math
 import copy
 import ctypes
 import string
@@ -12566,31 +12567,66 @@ class handle_Window(handle_Container_Base):
 		event = self.getArgument_event(label, args, kwargs)
 		handle.setSelection(newValue, event = event)
 
+	#Event Functions
+	def setFunction_size(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self.betterBind(wx.EVT_SIZE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	def setFunction_position(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self.betterBind(wx.EVT_MOVE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
 	#Change Settings
-	def setWindowSize(self, x, y):
+	def setWindowSize(self, x, y = None):
 		"""Re-defines the size of the window.
 
 		x (int)     - The width of the window
 		y (int)     - The height of the window
 
 		Example Input: setWindowSize(350, 250)
+		Example Input: setWindowSize((350, 250))
 		"""
+
+		if (y == None):
+			y = x[1]
+			x = x[0]
 
 		#Change the frame size
 		self.autoSize = False
 		self.thing.SetSize((x, y))
 
-	def setWindowPosition(self, x, y):
+	def getWindowSize(self):
+		"""Returns the size of the window
+
+		Example Input: getWindowSize()
+		"""
+
+		size = self.thing.GetSize()
+		return size
+
+	def setWindowPosition(self, x, y = None):
 		"""Re-defines the position of the window.
 
 		x (int)     - The width of the window
 		y (int)     - The height of the window
 
 		Example Input: setWindowPosition(350, 250)
+		Example Input: setWindowPosition((350, 250))
 		"""
+
+		if (y == None):
+			y = x[1]
+			x = x[0]
 
 		#Change the frame size
 		self.thing.SetPosition((x, y))
+
+	def getWindowPosition(self):
+		"""Returns the position of the window
+
+		Example Input: getWindowPosition()
+		"""
+
+		position = self.thing.GetPosition()
+		return position
 
 	def setMinimumFrameSize(self, size = (100, 100)):
 		"""Sets the minimum window size for the user
@@ -12650,13 +12686,23 @@ class handle_Window(handle_Container_Base):
 		#Set the title
 		self.thing.SetTitle(title)
 
-	def centerWindow(self):
+	def centerWindow(self, offset = None):
 		"""Centers the window on the screen.
 
 		Example Input: centerWindow()
+		Example Input: centerWindow(offset = (0, -100))
 		"""
 
-		self.thing.Center()
+		if (offset == None):
+			offset = (0, 0)
+
+		screenSize = self.getScreenSize()
+		windowSize = self.thing.GetSize()
+
+		size_x = math.floor(screenSize[0] / 2 - windowSize[0] + offset[0])
+		size_y = math.floor(screenSize[1] / 2 - windowSize[1] + offset[1])
+
+		self.thing.SetPosition((size_x, size_y))
 
 	#Visibility
 	def showWindow(self):
@@ -12676,22 +12722,27 @@ class handle_Window(handle_Container_Base):
 			else:
 				self.thing.Raise()
 
-	def showWindowCheck(self, notShown = False):
+	def showWindowCheck(self, notShown = False, onScreen = False):
 		"""Checks if a window is currently being shown to the user.
 
-		notShown (bool) - If True: checks if the window is NOT shown instead
+		notShown (bool) - If True: Checks if the window is NOT shown instead
+		onScreen (bool) - If True: Checks if the window is visible on the computer monitor (not dragged off to the side)
 
 		Example Input: showWindowCheck()
 		"""
 
-		if (notShown):
-			if (self.visible):
-				return False
-			return True
+		if (onScreen):
+			screenSize = self.getScreenSize()
+			position = self.thing.GetPosition()
+
+			flag = (position[0] < screenSize[0]) and (position[1] < screenSize[1])
 		else:
-			if (self.visible):
-				return True
-			return False
+			flag = self.visible
+
+		if (notShown):
+			flag = not flag
+
+		return flag
 
 	def onShowWindow(self, event, *args, **kwargs):
 		"""Event function for showWindow()"""
