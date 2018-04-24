@@ -152,12 +152,20 @@ def build(*args, **kwargs):
 class Iterator(object):
 	"""Used by handle objects to iterate over their nested objects."""
 
-	def __init__(self, data):
+	def __init__(self, data, filterNone = False):
 		self.data = data
 
 		if (isinstance(self.data, dict)):
 			self.order = list(self.data.keys())
+
+			if (filterNone):
+				self.order = [key for key in self.data.keys() if key != None]
+			else:
+				self.order = [key if key != None else "" for key in self.data.keys()]
+
 			self.order.sort()
+
+			self.order = [key if key != "" else None for key in self.order]
 
 	def __iter__(self):
 		return self
@@ -2685,7 +2693,7 @@ class handle_Container_Base(handle_Base):
 		#Add object to internal catalogue
 		if (label != None):
 			if (label in buildSelf.labelCatalogue):
-				warnings.warn(f"Overwriting label association for {label} in ", Warning, stacklevel = 2)
+				warnings.warn(f"Overwriting label association for {label} in {buildSelf.__repr__()}", Warning, stacklevel = 2)
 
 			buildSelf.labelCatalogue[self.label] = self
 			buildSelf.labelCatalogueOrder.append(self.label)
@@ -3108,7 +3116,7 @@ class handle_Widget_Base(handle_Base):
 		#Add object to internal catalogue
 		if (label != None):
 			if (label in buildSelf.labelCatalogue):
-				warnings.warn(f"Overwriting label association for {label} in ", Warning, stacklevel = 2)
+				warnings.warn(f"Overwriting label association for {label} in {buildSelf.__repr__()}", Warning, stacklevel = 2)
 
 			buildSelf.labelCatalogue[self.label] = self
 			buildSelf.labelCatalogueOrder.append(self.label)
@@ -3488,7 +3496,62 @@ class handle_Widget_Base(handle_Base):
 
 		#Catalogue tool tip
 		if (label != None):
-			self.catalogueToolTip(label, toolTip)
+			if (label in self.myWindow.toolTipCatalogue):
+				warnings.warn(f"Overwriting tool tip for {label} in {self.myWindow.__repr__()}", Warning, stacklevel = 2)
+
+			self.myWindow.toolTipCatalogue[label] = toolTip
+
+	def setToolTipAppearDelay(self, delay = 0, label = None):
+		"""Changes the appear delay for the tool tip.
+
+		delay (int) - How long to set the delay for
+		label (str) - What tool tip to modify this for
+			- If None: Will apply to all tool tips created up to this point (not future ones)
+
+		Example Input: setToolTipAppearDelay()
+		Example Input: setToolTipAppearDelay(500)
+		Example Input: setToolTipAppearDelay(500, "passwordInput")
+		"""
+
+		if (label != None):
+			if (label not in self.myWindow.toolTipCatalogue):
+				warnings.warn(f"There is no tool tip {label} for {self.myWindow.__repr__()}", Warning, stacklevel = 2)
+				return
+
+			toolTip = self.myWindow.toolTipCatalogue[label]
+			toolTip.SetDelay(delay)
+		else:
+			for label, toolTip in self.myWindow.toolTipCatalogue:
+				toolTip.SetDelay(delay)
+
+	def setToolTipDisappearDelay(self, delay = 0, label = None):
+		"""Changes the appear delay for the tool tip.
+
+		delay (int) - How long to set the delay for
+		label (str) - What tool tip to modify this for
+			- If None: Will apply to all tool tips created up to this point (not future ones)
+
+		Example Input: setToolTipDisappearDelay()
+		Example Input: setToolTipDisappearDelay(500)
+		Example Input: setToolTipDisappearDelay(500, "passwordInput")
+		"""
+
+		pass
+
+	def setToolTipReappearDelay(self, delay = 0, label = None):
+		"""Changes the appear delay for the tool tip.
+
+		delay (int) - How long to set the delay for
+		label (str) - What tool tip to modify this for
+			- If None: Will apply to all tool tips created up to this point (not future ones)
+
+		Example Input: setToolTipReappearDelay()
+		Example Input: setToolTipReappearDelay(500)
+		Example Input: setToolTipReappearDelay(500, "passwordInput")
+		"""
+
+		pass
+
 
 class handle_WidgetText(handle_Widget_Base):
 	"""A handle for working with text widgets."""
@@ -4081,8 +4144,16 @@ class handle_WidgetList(handle_Widget_Base):
 					break
 				else:
 					subValue = []
+					print(type(wx.EVT_LIST_END_LABEL_EDIT))
+					print(isinstance(event, type(wx.EVT_LIST_END_LABEL_EDIT)))
 					for column in range(columnCount):
-						subValue.append(thing.GetItem(row, column).GetText()) #(list) - What is selected in the first column of the row selected in the full list as strings
+						#If the event is a postEdit event, then the value is not applied until after the event is over and not vetoed. (See: http://wxpython-users.1045709.n5.nabble.com/wx-ListCtrl-Problem-editing-td2342724.html)
+						if ((not isinstance(event, wx.EVT_LIST_END_LABEL_EDIT)) or ((event != None) and (column != event.GetColumn()))):
+							value = self.thing.GetItem(row, column).GetText()
+						else:
+							value = event.GetText()
+						print("@1", value, isinstance(event, wx.EVT_LIST_END_LABEL_EDIT))
+						subValue.append(self.thing.GetItem(row, column).GetText()) #(list) - What is selected in the first column of the row selected in the full list as strings
 					value.append(subValue)
 
 		else:
@@ -12416,8 +12487,8 @@ class handle_Window(handle_Container_Base):
 
 		self.finalFunctionList = []
 		self.sizersIterating = {} #Keeps track of which sizers have been used in a while loop, as well as if they are still in the while loop {sizer (handle): [currently in a while loop (bool), order entered (int)]}
-		self.keyPressQueue = {} #A dictionary that contains all of all the key events that need to be bound to this window
-
+		self.keyPressQueue = {} #A dictionary that contains all of the key events that need to be bound to this window
+		self.toolTipCatalogue = {} #A dictionary that contains all of the tool tips for this window
 
 	def __str__(self):
 		"""Gives diagnostic information on the Window when it is printed out."""
@@ -15753,7 +15824,7 @@ class Communication():
 			#Create the socket
 			self.mySocket = None
 
-		def open(self, address, port = 9100, error = False, pingCheck = False):
+		def open(self, address, port = 9100, error = False, pingCheck = False, timeout = -1):
 			"""Opens the socket connection.
 
 			address (str) - The ip address/website you are connecting to
@@ -15769,6 +15840,9 @@ class Communication():
 			#Account for the socket having been closed
 			if (self.mySocket == None):
 				self.mySocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+			if (timeout != -1):
+				self.setTimeout(timeout)
 
 			#Remove any white space
 			address = re.sub(" ", "", address)
@@ -16181,7 +16255,7 @@ class Communication():
 			"""Gets the tiemout for the socket.
 			By default, the timeout is None.
 
-			Example Input: setTimeout()
+			Example Input: getTimeout()
 			"""
 
 			timeout = self.mySocket.gettimeout()
@@ -18228,8 +18302,9 @@ class User_Utilities():
 		"""
 
 		while True:
-			if ((base.format(increment) in self) or (base.format(increment) in exclude) or (increment in exclude) or (str(increment) in [str(item) for item in exclude])):
+			ending = start + increment - 1
+			if ((base.format(ending) in self) or (base.format(ending) in exclude) or (ending in exclude) or (str(ending) in [str(item) for item in exclude])):
 				increment += 1
 			else:
 				break
-		return base.format(start + increment - 1)
+		return base.format(ending)
