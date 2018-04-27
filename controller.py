@@ -3160,7 +3160,7 @@ class handle_Widget_Base(handle_Base):
 		"""Runs after this object is built."""
 		
 		#Unpack arguments
-		selected, hidden, flags, flex = self.getArguments(argument_catalogue, ["selected", "hidden", "flags", "flex"])
+		selected, hidden, enabled, flags, flex = self.getArguments(argument_catalogue, ["selected", "hidden", "enabled", "flags", "flex"])
 
 		#Determine if it is selected by default
 		if (selected):
@@ -3172,6 +3172,13 @@ class handle_Widget_Base(handle_Base):
 				self.addFinalFunction(self.thing.ShowItems, False)
 			else:
 				self.thing.Hide()
+
+		#Determine disability
+		if (not enabled):
+			if (isinstance(self, handle_Sizer)):
+				self.addFinalFunction(self.setEnable, False)
+			else:
+				self.setEnable(False)
 		
 		#Add it to the sizer
 		self.sizer.nest(self, flex = flex, flags = flags)
@@ -3271,13 +3278,13 @@ class handle_Widget_Base(handle_Base):
 
 	#Change State
 	##Enable / Disable
-	def toggleEnable(self):
+	def toggleEnable(self, event = None):
 		"""Disables an item if it is enabled.
 		Otherwise, it enables the item.
 
 		Example Input: toggleEnable()
 		"""
-		
+
 		#Make sure the object is disabled
 		if (not self.thing.IsEnabled()):
 			self.enable()
@@ -4144,16 +4151,13 @@ class handle_WidgetList(handle_Widget_Base):
 					break
 				else:
 					subValue = []
-					print(type(wx.EVT_LIST_END_LABEL_EDIT))
-					print(isinstance(event, type(wx.EVT_LIST_END_LABEL_EDIT)))
 					for column in range(columnCount):
 						#If the event is a postEdit event, then the value is not applied until after the event is over and not vetoed. (See: http://wxpython-users.1045709.n5.nabble.com/wx-ListCtrl-Problem-editing-td2342724.html)
-						if ((not isinstance(event, wx.EVT_LIST_END_LABEL_EDIT)) or ((event != None) and (column != event.GetColumn()))):
-							value = self.thing.GetItem(row, column).GetText()
+						if ((event != None) and (event.GetClassName() == "wxListEvent") and (column == event.GetColumn())):
+							item = event.GetText()
 						else:
-							value = event.GetText()
-						print("@1", value, isinstance(event, wx.EVT_LIST_END_LABEL_EDIT))
-						subValue.append(self.thing.GetItem(row, column).GetText()) #(list) - What is selected in the first column of the row selected in the full list as strings
+							item = self.thing.GetItem(row, column).GetText()
+						subValue.append(item) #(list) - What is selected in the first column of the row selected in the full list as strings
 					value.append(subValue)
 
 		else:
@@ -11932,7 +11936,7 @@ class handle_Sizer(handle_Container_Base):
 			- "right": Tabs will be placed on the right (east) side of the panel
 		fixedWidth (bool) - Determines how tab width is determined (windows only)
 			- If True: All tabs will be the same width
-			- If False: Tab width will be 
+			- If False: Tab width will be differnet from eachother
 		multiLine (bool) - Determines if there can be several rows of tabs
 			- If True: There can be multiple rows
 			- If False: There cannot be multiple rows
@@ -12776,14 +12780,18 @@ class handle_Window(handle_Container_Base):
 		self.thing.SetPosition((size_x, size_y))
 
 	#Visibility
-	def showWindow(self):
+	def showWindow(self, asDialog = False):
 		"""Shows a specific window to the user.
 		If the window is already shown, it will bring it to the front
 
 		Example Input: showWindow()
+		Example Input: showWindow(asDialog = True)
 		"""
 
 		self.thing.Show()
+
+		if (asDialog):
+			self.controller.windowDisabler = [self.thing, wx.WindowDisabler(self.thing)]
 
 		if (not self.visible):
 			self.visible = True
@@ -12827,6 +12835,11 @@ class handle_Window(handle_Container_Base):
 
 		Example Input: hideWindow()
 		"""
+
+		if (self.controller.windowDisabler != None):
+			if (self.controller.windowDisabler[0] == self.thing):
+				# del self.controller.windowDisabler[1]
+				self.controller.windowDisabler = None
 
 		if (self.visible):
 			self.thing.Hide()
@@ -17344,6 +17357,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 		self.nestingAddress = []
 		self.nested = True #Removes any warnings that may come up
 		self.checkComplexity = checkComplexity
+		self.windowDisabler = None
 
 		self.loggingPrint = False
 		self.old_stdout = sys.stdout.write
