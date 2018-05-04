@@ -883,7 +883,7 @@ class Utilities():
 
 		return myFunctionEvaluated, myFunctionArgs, myFunctionKwargs
 
-	def betterBind(self, eventType, thing, myFunctionList, myFunctionArgsList = None, myFunctionKwargsList = None, mode = 1):
+	def betterBind(self, eventType, thing, myFunctionList, myFunctionArgsList = None, myFunctionKwargsList = None, mode = 1, rebind = False):
 		"""Binds wxObjects in a better way.
 		Inspired by: "Florian Bosch" on http://stackoverflow.com/questions/173687/is-it-possible-to-pass-arguments-into-event-bindings
 		Special thanks for help on mult-functions to "Mike Driscoll" on http://stackoverflow.com/questions/11621833/how-to-bind-2-functions-to-a-single-event
@@ -894,6 +894,7 @@ class Utilities():
 		myFunctionArgs (list)    - Any input arguments for myFunction. A list of multiple functions can be given
 		myFunctionKwargs (dict)  - Any input keyword arguments for myFunction. A dictionary of variables for each function can be given as a list. The index of the variables must be the same as the index for the functions 
 		mode (int)               - Dictates how things are bound. Used for special cases
+		rebind (bool)            - Will unbind the provided function (if it was already bound) from the 'thing' and then rebind it. Only works for non-argument functions
 		_________________________________________________________________________
 
 		MULTIPLE FUNCTION ORDER
@@ -910,8 +911,9 @@ class Utilities():
 		"""
 
 		#Create the sub-function that does the binding
-		def bind(self, eventType, thing, myFunctionEvaluated, myFunctionArgs, myFunctionKwargs, mode):
+		def bind(myFunctionEvaluated, myFunctionArgs, myFunctionKwargs):
 			"""This sub-function is needed to make the multiple functions work properly."""
+			nonlocal self, eventType, thing, mode, rebind
 
 			#Get the class type in order to bind the object to the correct thing
 			thingClass = thing.GetClassName()
@@ -927,6 +929,13 @@ class Utilities():
 				bindObject = self.thing
 			else:
 				bindObject = thing
+
+			#Account for rebinding
+			if (rebind):
+				unbound = bindObject.Unbind(eventType, handler = myFunctionEvaluated, source = thing)
+				if (not unbound):
+					#If the lambda style function was used, this will not work
+					warnings.warn(f"Unbinding function {myFunctionEvaluated} for {self.__repr__()} failed", Warning, stacklevel = 3)
 
 			#Typical binding mode
 			if (mode == 1):
@@ -944,7 +953,7 @@ class Utilities():
 
 				#Has neither args nor kwargs
 				else:
-					bindObject.Bind(eventType, lambda event: myFunctionEvaluated(event), thing)
+					bindObject.Bind(eventType, myFunctionEvaluated, thing)
 
 			#Binding mode for window key bindings
 			elif (mode == 2):
@@ -962,7 +971,7 @@ class Utilities():
 
 				#Has neither args nor kwargs
 				else:
-					bindObject.Bind(eventType, lambda event: myFunctionEvaluated(event))
+					bindObject.Bind(eventType, myFunctionEvaluated)
 
 			else:
 				errorMessage = f"Unknown mode {mode} for betterBind()"
@@ -976,7 +985,7 @@ class Utilities():
 				#Skip empty functions
 				if (myFunction != None):
 					myFunctionEvaluated, myFunctionArgs, myFunctionKwargs = self.formatFunctionInput(i, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
-					bind(self, eventType, thing, myFunctionEvaluated, myFunctionArgs, myFunctionKwargs, mode)
+					bind(myFunctionEvaluated, myFunctionArgs, myFunctionKwargs)
 
 	def keyBind(self, key, myFunctionList, myFunctionArgsList = None, myFunctionKwargsList = None, includeEvent = True,
 		keyUp = True, numpad = False, ctrl = False, alt = False, shift = False, event = None, thing = None):
@@ -2837,23 +2846,11 @@ class handle_Container_Base(handle_Base):
 
 		self.overloadHelp("disable", label, kwargs, window = window)
 
-	def onCheckEnabled(self, event, *args, **kwargs):
-		"""A wx.CommandEvent version of checkEnabled."""
-
-		self.checkEnabled(*args, event = event, **kwargs)
-		event.Skip()
-
 	def checkEnabled(self, label = None, window = False, **kwargs):
 		"""Overload for checkEnabled in handle_Widget_Base."""
 
 		answer = self.overloadHelp("checkEnabled", label, kwargs, window = window)
 		return answer
-
-	def onCheckDisabled(self, event, *args, **kwargs):
-		"""A wx.CommandEvent version of checkDisabled."""
-
-		self.checkDisabled(*args, event = event, **kwargs)
-		event.Skip()
 
 	def checkDisabled(self, label = None, window = False, **kwargs):
 		"""Overload for checkDisabled in handle_Widget_Base."""
@@ -2917,23 +2914,11 @@ class handle_Container_Base(handle_Base):
 
 		self.overloadHelp("hide", label, kwargs, window = window)
 
-	def oncheckShown(self, event, *args, **kwargs):
-		"""A wx.CommandEvent version of checkShown."""
-
-		self.checkShown(*args, event = event, **kwargs)
-		event.Skip()
-
 	def checkShown(self, label = None, window = False, **kwargs):
 		"""Overload for checkShown in handle_Widget_Base."""
 
 		answer = self.overloadHelp("checkShown", label, kwargs, window = window)
 		return answer
-
-	def onCheckHidden(self, event, *args, **kwargs):
-		"""A wx.CommandEvent version of checkHidden."""
-
-		self.checkHidden(*args, event = event, **kwargs)
-		event.Skip()
 
 	def checkHidden(self, label = None, window = False, **kwargs):
 		"""Overload for checkHidden in handle_Widget_Base."""
@@ -2964,18 +2949,13 @@ class handle_Container_Base(handle_Base):
 
 		self.overloadHelp("setModified", label, kwargs, window = window)
 
-	def onCheckModified(self, event, *args, **kwargs):
-		"""A wx.CommandEvent version of checkModified."""
-
-		self.checkModified(*args, event = event, **kwargs)
-		event.Skip()
-
 	def checkModified(self, label = None, window = False, **kwargs):
 		"""Overload for checkModified in handle_Widget_Base."""
 
 		answer = self.overloadHelp("checkModified", label, kwargs, window = window)
 		return answer
 
+	##Read Only
 	def onReadOnly(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of readOnly."""
 
@@ -2997,6 +2977,28 @@ class handle_Container_Base(handle_Base):
 		"""Overload for setReadOnly in handle_Widget_Base."""
 
 		self.overloadHelp("setReadOnly", label, kwargs, window = window)
+
+	def checkReadOnly(self, label = None, window = False, **kwargs):
+		"""Overload for checkReadOnly in handle_Widget_Base."""
+
+		answer = self.overloadHelp("checkReadOnly", label, kwargs, window = window)
+		return answer
+
+	#Tool Tips
+	def setToolTipAppearDelay(self, *args, label = None, window = False, **kwargs):
+		"""Override function for setToolTipAppearDelay for handle_Widget_Base."""
+
+		self.overloadHelp("setToolTipAppearDelay", label, kwargs, window = window)
+
+	def setToolTipDisappearDelay(self, *args, label = None, window = False, **kwargs):
+		"""Override function for setToolTipDisappearDelay for handle_Widget_Base."""
+
+		self.overloadHelp("setToolTipDisappearDelay", label, kwargs, window = window)
+
+	def setToolTipReappearDelay(self, *args, label = None, window = False, **kwargs):
+		"""Override function for setToolTipReappearDelay for handle_Widget_Base."""
+
+		self.overloadHelp("setToolTipReappearDelay", label, kwargs, window = window)
 
 	#Etc
 	def readBuildInstructions_sizer(self, parent, i, instructions):
@@ -3160,7 +3162,7 @@ class handle_Widget_Base(handle_Base):
 		"""Runs after this object is built."""
 		
 		#Unpack arguments
-		selected, hidden, enabled, flags, flex = self.getArguments(argument_catalogue, ["selected", "hidden", "enabled", "flags", "flex"])
+		buildSelf, selected, hidden, enabled, flags, flex = self.getArguments(argument_catalogue, ["self", "selected", "hidden", "enabled", "flags", "flex"])
 
 		#Determine if it is selected by default
 		if (selected):
@@ -3179,6 +3181,12 @@ class handle_Widget_Base(handle_Base):
 				self.addFinalFunction(self.setEnable, False)
 			else:
 				self.setEnable(False)
+
+		#Determine native window
+		if (isinstance(buildSelf, handle_Window)):
+			self.myWindow = buildSelf
+		else:
+			self.myWindow = buildSelf.myWindow
 		
 		#Add it to the sizer
 		self.sizer.nest(self, flex = flex, flags = flags)
@@ -3267,6 +3275,16 @@ class handle_Widget_Base(handle_Base):
 		return value
 
 	#Setters
+	def setValue(self, newValue, event = None):
+		"""Returns what the contextual value is for the object associated with this handle."""
+
+		warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setSelection(self, newValue, event = None):
+		"""Returns what the contextual value is for the object associated with this handle."""
+
+		warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+
 	def setReadOnly(self, state = True, event = None):
 		"""Sets the contextual readOnly for the object associated with this handle to what the user supplies."""
 
@@ -3513,22 +3531,29 @@ class handle_Widget_Base(handle_Base):
 
 		delay (int) - How long to set the delay for
 		label (str) - What tool tip to modify this for
-			- If None: Will apply to all tool tips created up to this point (not future ones)
+			- If None: Will apply to all tool tips for this window created up to this point (not future ones)
 
 		Example Input: setToolTipAppearDelay()
 		Example Input: setToolTipAppearDelay(500)
 		Example Input: setToolTipAppearDelay(500, "passwordInput")
 		"""
 
+		if (isinstance(self, handle_Window)):
+			window = self
+		elif (isinstance(self, handle_Panel)):
+			window = self.parent
+		else:
+			window = self.myWindow
+
 		if (label != None):
-			if (label not in self.myWindow.toolTipCatalogue):
-				warnings.warn(f"There is no tool tip {label} for {self.myWindow.__repr__()}", Warning, stacklevel = 2)
+			if (label not in window.toolTipCatalogue):
+				warnings.warn(f"There is no tool tip {label} for {window.__repr__()}", Warning, stacklevel = 2)
 				return
 
-			toolTip = self.myWindow.toolTipCatalogue[label]
+			toolTip = window.toolTipCatalogue[label]
 			toolTip.SetDelay(delay)
 		else:
-			for label, toolTip in self.myWindow.toolTipCatalogue:
+			for label, toolTip in window.toolTipCatalogue:
 				toolTip.SetDelay(delay)
 
 	def setToolTipDisappearDelay(self, delay = 0, label = None):
@@ -3543,7 +3568,23 @@ class handle_Widget_Base(handle_Base):
 		Example Input: setToolTipDisappearDelay(500, "passwordInput")
 		"""
 
-		pass
+		if (isinstance(self, handle_Window)):
+			window = self
+		elif (isinstance(self, handle_Panel)):
+			window = self.parent
+		else:
+			window = self.myWindow
+
+		if (label != None):
+			if (label not in window.toolTipCatalogue):
+				warnings.warn(f"There is no tool tip {label} for {window.__repr__()}", Warning, stacklevel = 2)
+				return
+
+			toolTip = window.toolTipCatalogue[label]
+			toolTip.SetAutoPop(delay)
+		else:
+			for label, toolTip in window.toolTipCatalogue:
+				toolTip.SetAutoPop(delay)
 
 	def setToolTipReappearDelay(self, delay = 0, label = None):
 		"""Changes the appear delay for the tool tip.
@@ -3557,8 +3598,23 @@ class handle_Widget_Base(handle_Base):
 		Example Input: setToolTipReappearDelay(500, "passwordInput")
 		"""
 
-		pass
+		if (isinstance(self, handle_Window)):
+			window = self
+		elif (isinstance(self, handle_Panel)):
+			window = self.parent
+		else:
+			window = self.myWindow
 
+		if (label != None):
+			if (label not in window.toolTipCatalogue):
+				warnings.warn(f"There is no tool tip {label} for {window.__repr__()}", Warning, stacklevel = 2)
+				return
+
+			toolTip = window.toolTipCatalogue[label]
+			toolTip.SetReshow(delay)
+		else:
+			for label, toolTip in window.toolTipCatalogue:
+				toolTip.SetReshow(delay)
 
 class handle_WidgetText(handle_Widget_Base):
 	"""A handle for working with text widgets."""
@@ -4933,6 +4989,10 @@ class handle_WidgetInput(handle_Widget_Base):
 		#Initialize inherited classes
 		handle_Widget_Base.__init__(self)
 
+		#Defaults
+		self.exclude = None
+		self.previousValue = None
+
 	def __len__(self, returnMax = True):
 		"""Returns what the contextual length is for the object associated with this handle.
 
@@ -5125,10 +5185,13 @@ class handle_WidgetInput(handle_Widget_Base):
 			nonlocal self, argument_catalogue
 
 			useFloat, readOnly, increment, digits, size = self.getArguments(argument_catalogue, ["useFloat", "readOnly", "increment", "digits", "size"])
-			myInitial, myMin, myMax, maxSize, minSize = self.getArguments(argument_catalogue, ["myInitial", "myMin", "myMax", "maxSize", "minSize"])
+			myInitial, myMin, myMax, maxSize, minSize, exclude = self.getArguments(argument_catalogue, ["myInitial", "myMin", "myMax", "maxSize", "minSize", "exclude"])
 
-			# wx.SP_ARROW_KEYS: The user can use arrow keys to change the value.
-			# wx.SP_WRAP: The value wraps at the minimum and maximum.
+			#Remember values
+			self.exclude = exclude
+
+			#wx.SP_ARROW_KEYS: The user can use arrow keys to change the value.
+			#wx.SP_WRAP: The value wraps at the minimum and maximum.
 			styles = "wx.SP_ARROW_KEYS|wx.SP_WRAP"
 
 			#Create the thing to put in the grid
@@ -5166,21 +5229,26 @@ class handle_WidgetInput(handle_Widget_Base):
 			# self.thing.SetMinSize(self.thing.GetBestSize())
 			# self.thing.SetMaxSize(self.thing.GetBestSize())
 
+			#Remember values
+			self.previousValue = self.thing.GetValue()
+
 			#Bind the function(s)
 			myFunction, changeTextFunction = self.getArguments(argument_catalogue, ["myFunction", "changeTextFunction"])
-			
+
 			if (myFunction != None):
 				myFunctionArgs, myFunctionKwargs = self.getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
 				self.betterBind(wx.EVT_SPINCTRL, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 	
 			if (changeTextFunction != None):
 				if (isinstance(changeTextFunction, bool)):
-					if (changeTextFunction):
-						if (myFunction != None):
-							self.betterBind(wx.EVT_TEXT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+					if (changeTextFunction and (myFunction != None)):
+						self.betterBind(wx.EVT_TEXT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 				else:
 					changeTextFunctionArgs, changeTextFunctionKwargs = self.getArguments(argument_catalogue, ["changeTextFunctionArgs", "changeTextFunctionKwargs"])
 					self.betterBind(wx.EVT_TEXT, self.thing, changeTextFunction, changeTextFunctionArgs, changeTextFunctionKwargs)
+
+			if (not ((self.exclude == None) or (isinstance(self.exclude, (list, tuple)) and (len(self.exclude) == 0)))):
+				self.betterBind(wx.EVT_KILL_FOCUS, self.thing, self.onCheckValue_exclude)
 		
 		#########################################################
 
@@ -5250,7 +5318,7 @@ class handle_WidgetInput(handle_Widget_Base):
 			self.betterBind(wx.EVT_TEXT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
 		elif (self.type.lower() == "inputspinner"):
-			self.betterBind(wx.EVT_SPINCTRL, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)  
+			self.betterBind(wx.EVT_SPINCTRL, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -5269,8 +5337,16 @@ class handle_WidgetInput(handle_Widget_Base):
 	def setFunction_postEdit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "inputbox"):
 			self.betterBind(wx.EVT_KILL_FOCUS, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+		elif (self.type.lower() == "inputspinner"):
+			self.betterBind(wx.EVT_KILL_FOCUS, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+			if (not ((self.exclude == None) or (isinstance(self.exclude, (list, tuple)) and (len(self.exclude) == 0)))):
+				self.betterBind(wx.EVT_KILL_FOCUS, self.thing, self.onCheckValue_exclude, rebind = True)
+
 		elif (self.type.lower() == "inputsearch"):
 			self.betterBind(wx.EVT_TEXT_ENTER, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
 		elif (self.type.lower() == "slider"):
 			self.betterBind(wx.EVT_SCROLL_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
@@ -5323,6 +5399,37 @@ class handle_WidgetInput(handle_Widget_Base):
 
 		else:
 			warnings.warn(f"Add {self.type} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def onCheckValue_exclude(self, event):
+		"""Checks the current value to make sure it is valid."""
+
+		if (self.type.lower() == "inputspinner"):
+			if (self.exclude != None):
+				#Error Check
+				if (not isinstance(self.exclude, (list, tuple))):
+					warnings.warn(f"'exclude' must be a list or tuple for {self.__repr__()}", Warning, stacklevel = 2)
+					event.Skip()
+					return
+
+				#Setup
+				value = self.getValue()
+				if (value > self.previousValue):
+					increment = 1
+				else:
+					increment = -1
+
+				#Get Valid Entry
+				if (value in self.exclude):
+					while value in self.exclude:
+						value += increment
+					self.setValue(value)
+
+				#Remember current value
+				self.previousValue = value
+		else:
+			warnings.warn(f"Add {self.type} to onCheckValue_exclude() for {self.__repr__()}", Warning, stacklevel = 2)
+
+		event.Skip()
 
 class handle_WidgetButton(handle_Widget_Base):
 	"""A handle for working with button widgets."""
@@ -6450,7 +6557,8 @@ class handle_Menu(handle_Container_Base):
 			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Change Settings
-	def addMenuItem(self, text = "", icon = None, internal = False, special = None, check = None, default = False, toolTip = "",
+	def addMenuItem(self, text = "", icon = None, internal = False, 
+		special = None, check = None, default = False, toolTip = "",
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
@@ -6655,7 +6763,13 @@ class handle_MenuItem(handle_Widget_Base):
 		return value
 
 	def postBuild(self, argument_catalogue):
-		pass
+		buildSelf = self.getArguments(argument_catalogue, "self")
+
+		#Determine native window
+		if (isinstance(buildSelf, handle_Window)):
+			self.myWindow = buildSelf
+		else:
+			self.myWindow = buildSelf.myWindow
 
 	def getValue(self, event = None):
 		"""Returns what the contextual value is for the object associated with this handle."""
@@ -7986,7 +8100,8 @@ class handle_WidgetCanvas(handle_Widget_Base):
 			self.queue("dc.SetPen", pen)
 			self.queue("dc.DrawSpline", points)
 
-	def drawArc(self, x, y, width, height = None, start = 0, end = 180, outline = (0, 0, 0), fill = None, style = None):
+	def drawArc(self, x, y, width, height = None, start = 0, end = 180, 
+		outline = (0, 0, 0), fill = None, style = None):
 		"""Draws an arced line on the canvas.
 		The arc is drawn counter-clockwise from (x1, y1) to (x3, y3).
 
@@ -8144,7 +8259,8 @@ class handle_WidgetCanvas(handle_Widget_Base):
 			self.queue("dc.SetPen", pen)
 			self.queue("dc.DrawCheckMark", [x, y, width, height])
 
-	def drawRectangle(self, x, y, width, height = None, radius = None, outline = (0, 0, 0), outlineWidth = 1, fill = None, style = None):
+	def drawRectangle(self, x, y, width, height = None, radius = None, 
+		outline = (0, 0, 0), outlineWidth = 1, fill = None, style = None):
 		"""Draws a rectangle on the canvas.
 
 		x (int)       - The x-coordinate for the top-left corner of the rectangle
@@ -8255,7 +8371,8 @@ class handle_WidgetCanvas(handle_Widget_Base):
 			else:
 				self.queue("dc.DrawRectangle", [x, y, width, height])
 
-	def drawPolygon(self, points, outline = (0, 0, 0), outlineWidth = 1, fill = None, style = None, algorithm = 0):
+	def drawPolygon(self, points, outline = (0, 0, 0), outlineWidth = 1, 
+		fill = None, style = None, algorithm = 0):
 		"""Draws a polygon on the canvas.
 
 		points (list) - The vertices of the polygon as tuples
@@ -9041,7 +9158,7 @@ class handle_WidgetTable(handle_Widget_Base):
 			- If True: Returns [[(row 1, col 1), (row 1, col 2)], [(row 2, col 1), (row 2, col 2)]]
 			- If False: Returns (row, col) of which cell in the range is currently active
 
-		Example Input: getTableCurrentCellValue()
+		Example Input: getTableCurrentCell()
 		"""
 
 		#Check for multiple cells that were drag selected
@@ -9126,31 +9243,29 @@ class handle_WidgetTable(handle_Widget_Base):
 
 		return value
 
-	def setTableRowLabel(self, row, rowLabel):
+	def setTableRowLabel(self, row, text):
 		"""Changes a row's label.
 		The top-left corner is row (0, 0) not (1, 1).
 
 		row (int)         - The index of the row
-		rowLabel (str)    - The new label for the row
+		text (str)    - The new label for the row
 
 		Example Input: setTableRowLabel(1, "Row 1")
 		"""
 
 		#Ensure correct data type
-		if (type(rowLabel) != str):
-			rowLabel = str(rowLabel)
-
-		
+		if (type(text) != str):
+			text = str(text)
 
 		#Set the cell value
-		self.thing.SetRowLabelValue(row, rowLabel)
+		self.thing.SetRowLabel(row, text)
 
 	def setTableColumnLabel(self, column = 0, text = ""):
 		"""Changes a cell's column label.
 		The top-left corner is row (0, 0) not (1, 1).
 
 		column (int)      - The index of the row
-		columnLabel (str) - The new label for the row
+		text (str) - The new label for the row
 
 		Example Input: setTableColumnLabel(1, "Column 2")
 		"""
@@ -10957,7 +11072,7 @@ class handle_Sizer(handle_Container_Base):
 
 		return handle
 
-	def addSlider(self, myMin = 0, myMax = 100, myInitial = 0, vertical = False,
+	def addInputSlider(self, myMin = 0, myMax = 100, myInitial = 0, vertical = False,
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
 
@@ -10974,7 +11089,7 @@ class handle_Sizer(handle_Container_Base):
 		myFunctionArgs (any)    - The arguments for 'myFunction'
 		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
 
-		Example Input: addSlider(0, 100, 50, "initialTemperature")
+		Example Input: addInputSlider(0, 100, 50, "initialTemperature")
 		"""
 
 		handle = handle_WidgetInput()
@@ -11076,7 +11191,7 @@ class handle_Sizer(handle_Container_Base):
 		return handle
 	
 	def addInputSpinner(self, myMin = 0, myMax = 100, myInitial = 0, size = wx.DefaultSize, maxSize = None, minSize = None,
-		increment = None, digits = None, useFloat = False, readOnly = False,
+		increment = None, digits = None, useFloat = False, readOnly = False, exclude = [],
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 		changeTextFunction = True, changeTextFunctionArgs = None, changeTextFunctionKwargs = None,
@@ -11099,6 +11214,7 @@ class handle_Sizer(handle_Container_Base):
 
 		useFloat (bool) - If True: Will increment decimal numbers instead of integers
 		readOnly (bool) - If True: The user will not be able to change the value
+		exclude (list)  - A list of integers/floats to exclude from the spinner
 		
 		myFunctionArgs (any)           - The arguments for 'myFunction'
 		myFunctionKwargs (any)         - The keyword arguments for 'myFunction'function
@@ -11109,6 +11225,7 @@ class handle_Sizer(handle_Container_Base):
 
 		Example Input: addInputSpinner(0, 100, 50, "initialTemperature")
 		Example Input: addInputSpinner(0, 100, 50, "initialTemperature", maxSize = (100, 100))
+		Example Input: addInputSpinner(0, 100, 50, "initialTemperature", exclude = [1,2,3])
 		"""
 
 		handle = handle_WidgetInput()
@@ -11171,24 +11288,24 @@ class handle_Sizer(handle_Container_Base):
 
 		return handle
 	
-	def addButtonCheck(self, text = "", 
+	def addButtonCheck(self, text = "", default = False,
 
-		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, default = False,
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		label = None, hidden = False, enabled = True, selected = False, 
 		flex = 0, flags = "c1", parent = None, handle = None):
 		"""Adds a check box to the next cell on the grid.
 		Event fires every time the check box is clicked
 
-		text (str)            - What will be written to the right of the button
-		myFunction (str)        - What function will be ran when the button is pressed
-		flags (list)            - A list of strings for which flag to add to the sizer
-		label (any)           - What this is catalogued as
-		myFunctionArgs (any)    - The arguments for 'myFunction'
-		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
-		selected (bool)          - If True: This is the default thing selected
-		enabled (bool)          - If True: The user can interact with this
-		hidden (bool)           - If True: The widget is hidden from the user, but it is still created
+		text (str)             - What will be written to the right of the button
+		myFunction (str)       - What function will be ran when the button is pressed
+		flags (list)           - A list of strings for which flag to add to the sizer
+		label (any)            - What this is catalogued as
+		myFunctionArgs (any)   - The arguments for 'myFunction'
+		myFunctionKwargs (any) - The keyword arguments for 'myFunction'function
+		selected (bool)        - If True: This is the default thing selected
+		enabled (bool)         - If True: The user can interact with this
+		hidden (bool)          - If True: The widget is hidden from the user, but it is still created
 
 		Example Input: addButtonCheck("compute?", "computeFinArray", 0)
 		"""
@@ -11199,7 +11316,7 @@ class handle_Sizer(handle_Container_Base):
 
 		return handle
 	
-	def addCheckList(self, choices = [], multiple = True, sort = False,
+	def addButtonCheckList(self, choices = [], multiple = True, sort = False,
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
@@ -11216,7 +11333,7 @@ class handle_Sizer(handle_Container_Base):
 		multiple (bool)         - True if the user can check off multiple check boxes
 		sort (bool)             - True if the checklist will be sorted alphabetically or numerically
 
-		Example Input: addCheckList(["Milk", "Eggs", "Bread"], 0, sort = True)
+		Example Input: addButtonCheckList(["Milk", "Eggs", "Bread"], 0, sort = True)
 		"""
 
 		handle = handle_WidgetButton()
@@ -11318,18 +11435,18 @@ class handle_Sizer(handle_Container_Base):
 		flex = 0, flags = "c1", parent = None, handle = None):
 		"""Adds a button to the next cell on the grid. You design what the button looks like yourself.
 
-		idlePath (str)          - Where the image of the button idling is on the computer
-		disabledPath (str)      - Where the image of the button disabled is on the computer
-		selectedPath (str)      - Where the image of the button selected is on the computer
-		focusPath (str)         - Where the image of the button focused is on the computer
-		hoverPath (str)         - Where the image of the button hovered is on the computer
-		myFunction (str)        - What function will be ran when the button is pressed
-		flags (list)            - A list of strings for which flag to add to the sizer
-		label (any)           - What this is catalogued as
-		myFunctionArgs (any)    - The arguments for 'myFunction'
-		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
-		default (bool)          - If True: This is the default thing selected
-		enabled (bool)          - If True: The user can interact with this
+		idlePath (str)         - Where the image of the button idling is on the computer
+		disabledPath (str)     - Where the image of the button disabled is on the computer
+		selectedPath (str)     - Where the image of the button selected is on the computer
+		focusPath (str)        - Where the image of the button focused is on the computer
+		hoverPath (str)        - Where the image of the button hovered is on the computer
+		myFunction (str)       - What function will be ran when the button is pressed
+		flags (list)           - A list of strings for which flag to add to the sizer
+		label (any)            - What this is catalogued as
+		myFunctionArgs (any)   - The arguments for 'myFunction'
+		myFunctionKwargs (any) - The keyword arguments for 'myFunction'function
+		default (bool)         - If True: This is the default thing selected
+		enabled (bool)         - If True: The user can interact with this
 
 		Example Input: addButtonImage("1.bmp", "2.bmp", "3.bmp", "4.bmp", "5.bmp", "computeFinArray")
 		"""
@@ -11436,7 +11553,7 @@ class handle_Sizer(handle_Container_Base):
 
 		return handle
 	
-	def addPickerColor(self, addInputBox = False, colorText = False, initial = None,
+	def addPickerColor(self, initial = None, addInputBox = False, colorText = False,
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
@@ -11460,7 +11577,7 @@ class handle_Sizer(handle_Container_Base):
 
 		return handle
 	
-	def addPickerFont(self, maxSize = 72, fontText = False, addInputBox = False,
+	def addPickerFont(self, maxSize = 72, addInputBox = False, fontText = False,
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
@@ -11517,8 +11634,8 @@ class handle_Sizer(handle_Container_Base):
 		myFunctionKwargs (any) - The keyword arguments for 'myFunction'function
 		
 
-		Example Input: addPickerFile(0, myFunction = self.openFile, addInputBox = True)
-		Example Input: addPickerFile(0, saveFile = True, myFunction = self.saveFile, saveConfirmation = True, directoryOnly = True)
+		Example Input: addPickerFile(myFunction = self.openFile, addInputBox = True)
+		Example Input: addPickerFile(saveFile = True, myFunction = self.saveFile, saveConfirmation = True, directoryOnly = True)
 		"""
 
 		handle = handle_WidgetPicker()
@@ -11580,9 +11697,9 @@ class handle_Sizer(handle_Container_Base):
 		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
 		hidden (bool)           - If True: The widget is hidden from the user, but it is still created
 
-		Example Input: addPickerTime(0)
-		Example Input: addPickerTime(0, "17:30")
-		Example Input: addPickerTime(0, "12:30:20")
+		Example Input: addPickerTime()
+		Example Input: addPickerTime("17:30")
+		Example Input: addPickerTime("12:30:20")
 		"""
 
 		handle = handle_WidgetPicker()
@@ -11609,9 +11726,9 @@ class handle_Sizer(handle_Container_Base):
 		dropDown (bool)         - True if a calandar dropdown should be displayed instead of just the arrows
 		hidden (bool)           - If True: The widget is hidden from the user, but it is still created
 
-		Example Input: addPickerDate(0)
-		Example Input: addPickerDate(0, "10/16/2000")
-		Example Input: addPickerDate(0, dropDown = True)
+		Example Input: addPickerDate()
+		Example Input: addPickerDate("10/16/2000")
+		Example Input: addPickerDate(dropDown = True)
 		"""
 
 		handle = handle_WidgetPicker()
@@ -11655,7 +11772,7 @@ class handle_Sizer(handle_Container_Base):
 		yearFunctionKwargs (any)  - The keyword arguments for 'yearFunction'function
 
 
-		Example Input: addPickerDateWindow(0)
+		Example Input: addPickerDateWindow()
 		"""
 
 		handle = handle_WidgetPicker()
@@ -11850,7 +11967,7 @@ class handle_Sizer(handle_Container_Base):
 
 		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
 
-		label = None, handle = None):
+		label = None, hidden = False, enabled = True, handle = None):
 		"""Creates four blank panels next to each other like a grid.
 		The borders between quad panels are dragable. The itersection point is also dragable.
 		The panel order is top left, top right, bottom left, bottom right.
@@ -11878,7 +11995,7 @@ class handle_Sizer(handle_Container_Base):
 
 		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
 
-		label = None, handle = None):
+		label = None, hidden = False, enabled = True, handle = None):
 		"""Creates any number of panels side by side of each other.
 		The borders between poly panels are dragable.
 
@@ -11923,7 +12040,7 @@ class handle_Sizer(handle_Container_Base):
 		postPageChangeFunction = None, postPageChangeFunctionArgs = None, postPageChangeFunctionKwargs = None,
 		prePageChangeFunction = None, prePageChangeFunctionArgs = None, prePageChangeFunctionKwargs = None,
 
-		handle = None, parent = None):
+		hidden = False, enabled = True, handle = None, parent = None):
 		"""Creates a blank notebook.
 
 		label (str)        - What this is called in the idCatalogue
@@ -11962,7 +12079,7 @@ class handle_Sizer(handle_Container_Base):
 
 		return handle
 
-	def addAuiNotebook(self, label = None, flags = None, flex = 0, 
+	def addNotebookAui(self, label = None, flags = None, flex = 0, 
 
 		tabSide = "top", tabSplit = True, tabMove = True, tabBump = False, 
 		tabSmart = True, tabOrderAccess = False, tabFloat = False, 
@@ -11998,8 +12115,8 @@ class handle_Sizer(handle_Container_Base):
 		initFunctionArgs (any)   - The arguments for 'initFunction'
 		initFunctionKwargs (any) - The keyword arguments for 'initFunction'function
 
-		Example Input: addAuiNotebook()
-		Example Input: addAuiNotebook("myNotebook")
+		Example Input: addNotebookAui()
+		Example Input: addNotebookAui("myNotebook")
 		"""
 
 		handle = handle_Notebook()
@@ -12620,6 +12737,14 @@ class handle_Window(handle_Container_Base):
 		value = handle.getAll(event = event)
 		return value
 
+	def getSelection(self, label, *args, **kwargs):
+		"""Overload for getSelection for handle_Widget_Base."""
+
+		handle = self.get(label, *args, **kwargs)
+		event = self.getArgument_event(label, args, kwargs)
+		value = handle.getSelection(event = event)
+		return value
+
 	def getLabel(self, label, *args, **kwargs):
 		"""Overload for getLabel for handle_Widget_Base."""
 
@@ -12703,31 +12828,41 @@ class handle_Window(handle_Container_Base):
 		position = self.thing.GetPosition()
 		return position
 
-	def setMinimumFrameSize(self, size = (100, 100)):
+	def setMinimumFrameSize(self, x = (100, 100), y = None):
 		"""Sets the minimum window size for the user
 		Note: the program can still explicity change the size to be smaller by using setWindowSize().
 
 		size (int tuple) - The size of the window. (length, width)
 
 		Example Input: setMinimumFrameSize()
+		Example Input: setMinimumFrameSize(200, 100)
 		Example Input: setMinimumFrameSize((200, 100))
 		"""
 
-		#Set the size property
-		self.thing.SetMinSize(size)
+		if (y == None):
+			y = x[1]
+			x = x[0]
 
-	def setMaximumFrameSize(self, size = (900, 700)):
+		#Set the size property
+		self.thing.SetMinSize((x, y))
+
+	def setMaximumFrameSize(self, x = (900, 700), y = None):
 		"""Sets the maximum window size for the user
 		Note: the program can still explicity change the size to be smaller by using setWindowSize().
 
 		size (int tuple) - The size of the window. (length, width)
 
 		Example Input: setMaximumFrameSize()
+		Example Input: setMaximumFrameSize(700, 300)
 		Example Input: setMaximumFrameSize((700, 300))
 		"""
 
+		if (y == None):
+			y = x[1]
+			x = x[0]
+
 		#Set the size property
-		self.thing.SetMaxSize(size)
+		self.thing.SetMaxSize((x, y))
 
 	def setAutoWindowSize(self, minimum = None):
 		"""Re-defines the size of the window.
@@ -12774,8 +12909,8 @@ class handle_Window(handle_Container_Base):
 		screenSize = self.getScreenSize()
 		windowSize = self.thing.GetSize()
 
-		size_x = math.floor(screenSize[0] / 2 - windowSize[0] + offset[0])
-		size_y = math.floor(screenSize[1] / 2 - windowSize[1] + offset[1])
+		size_x = math.floor(screenSize[0] / 2 - windowSize[0] / 2 + offset[0])
+		size_y = math.floor(screenSize[1] / 2 - windowSize[1] / 2 + offset[1])
 
 		self.thing.SetPosition((size_x, size_y))
 
@@ -12934,8 +13069,8 @@ class handle_Window(handle_Container_Base):
 		warnings.warn(f"{self.__repr__()} has no sizer '{sizerLabel}'", Warning, stacklevel = 2)
 		return
 
-	def addSizerGrid(self, rows = 1, columns = 1, rowGap = 0, colGap = 0, 
-		minWidth = -1, minHeight = -1, label = None, text = None,
+	def addSizerGrid(self, rows = 1, columns = 1, text = None, label = None,
+		rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1,
 
 		parent = None, hidden = False, handle = None):
 		"""Creates a grid sizer to the specified size.
@@ -12964,8 +13099,8 @@ class handle_Window(handle_Container_Base):
 		handle.build(kwargs)
 		return handle
 
-	def addSizerGridFlex(self, rows = 1, columns = 1, rowGap = 0, colGap = 0, 
-		minWidth = -1, minHeight = -1, flexGrid = True, label = None, text = None,
+	def addSizerGridFlex(self, rows = 1, columns = 1, text = None, label = None, 
+		rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1, flexGrid = True,
 
 		parent = None, hidden = False, vertical = None, handle = None):
 		"""Creates a flex grid sizer.
@@ -13000,8 +13135,9 @@ class handle_Window(handle_Container_Base):
 		handle.build(kwargs)
 		return handle
 
-	def addSizerGridBag(self, rows = 1, columns = 1, rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1, 
-		emptySpace = None, flexGrid = True, label = None, text = None,
+	def addSizerGridBag(self, rows = 1, columns = 1, text = None, label = None, 
+		rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1, 
+		emptySpace = None, flexGrid = True,
 
 		parent = None, hidden = False, vertical = None, handle = None):
 		"""Creates a bag grid sizer.
@@ -13036,7 +13172,8 @@ class handle_Window(handle_Container_Base):
 		handle.build(kwargs)
 		return handle
 
-	def addSizerBox(self, minWidth = -1, minHeight = -1, label = None, text = None,
+	def addSizerBox(self, text = None, label = None, minWidth = -1, minHeight = -1,
+
 		parent = None, hidden = False, vertical = True, handle = None):
 		"""Creates a box sizer.
 
@@ -13061,7 +13198,7 @@ class handle_Window(handle_Container_Base):
 		handle.build(kwargs)
 		return handle
 
-	def addSizerText(self, text = "", minWidth = -1, minHeight = -1, label = None, 
+	def addSizerText(self, text = "", label = None, minWidth = -1, minHeight = -1, 
 
 		parent = None, hidden = False, vertical = True, handle = None):
 		"""Creates a static box sizer.
@@ -13089,8 +13226,8 @@ class handle_Window(handle_Container_Base):
 		handle.build(kwargs)
 		return handle
 
-	def addSizerWrap(self, minWidth = -1, minHeight = -1, label = None, 
-		extendLast = False, text = None,
+	def addSizerWrap(self, text = None, label = None, minWidth = -1, minHeight = -1, 
+		extendLast = False,
 
 		parent = None, hidden = False, vertical = True, handle = None):
 		"""Creates a wrap sizer.
@@ -13160,7 +13297,7 @@ class handle_Window(handle_Container_Base):
 		self.menuBar = wx.MenuBar()
 		self.thing.SetMenuBar(self.menuBar)
 
-	def addMenu(self, label = None, text = " ", detachable = False,
+	def addMenu(self, text = " ", label = None, detachable = False,
 
 		parent = None, hidden = False, enabled = False, handle = None):
 		"""Adds a menu to a pre-existing menubar.
@@ -13171,8 +13308,8 @@ class handle_Window(handle_Container_Base):
 		label (str)     - What this is called in the idCatalogue
 		detachable (bool) - If True: The menu can be undocked
 
-		Example Input: addMenu(0, "&File")
-		Example Input: addMenu("first", "&File")
+		Example Input: addMenu("&File", 0)
+		Example Input: addMenu("&File", "first")
 		"""
 
 		handle = handle_Menu()
@@ -13223,7 +13360,7 @@ class handle_Window(handle_Container_Base):
 
 		self.statusBar = self.thing.CreateStatusBar()
 
-	def setStatusText(self, message, autoAdd = False):
+	def setStatusText(self, message = " ", autoAdd = False):
 		"""Sets the text shown in the status bar.
 
 		message (str) - What the status bar will say.
@@ -13609,17 +13746,17 @@ class handle_Window(handle_Container_Base):
 		outside = self.getSizer(outsideNumber)
 		self.nest(inside, outside, *args, **kwargs)
 
-	def addFinalFunction(self, myFunctionList, myFunctionArgsList = None, myFunctionKwargsList = None):
+	def addFinalFunction(self, myFunction, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Adds a function to the queue that will run after building, but before launching, the app."""
 
-		self.finalFunctionList.append([myFunctionList, myFunctionArgsList, myFunctionKwargsList])
+		self.finalFunctionList.append([myFunction, myFunctionArgs, myFunctionKwargs])
 
-	def addKeyPress(self, key, myFunctionList, myFunctionArgsList = None, myFunctionKwargsList = None, 
+	def addKeyPress(self, key, myFunction, myFunctionArgs = None, myFunctionKwargs = None, 
 		keyUp = True, numpad = False, ctrl = False, alt = False, shift = False):
 		"""Adds a single key press event to the frame.
 
 		key (str)              - The keyboard key to bind the function(s) to
-		myFunctionList (str)   - The function that will be ran when the event occurs
+		myFunction (str)   - The function that will be ran when the event occurs
 		myFunctionArgs (any)   - Any input arguments for myFunction. A list of multiple functions can be given
 		myFunctionKwargs (any) - Any input keyword arguments for myFunction. A list of variables for each function can be given. The index of the variables must be the same as the index for the functions
 		
@@ -13659,12 +13796,12 @@ class handle_Window(handle_Container_Base):
 		#Queue up the key event
 		##This is needed so that future key events do not over-write current key events
 		if (thing not in self.keyPressQueue):
-			self.keyPressQueue[thing] = {key: [myFunctionList, myFunctionArgsList, myFunctionKwargsList]}
+			self.keyPressQueue[thing] = {key: [myFunction, myFunctionArgs, myFunctionKwargs]}
 		else:
 			if (key not in self.keyPressQueue[thing]):
-				self.keyPressQueue[thing][key] = [myFunctionList, myFunctionArgsList, myFunctionKwargsList]
+				self.keyPressQueue[thing][key] = [myFunction, myFunctionArgs, myFunctionKwargs]
 			else:
-				self.keyPressQueue[thing][key].append([myFunctionList, myFunctionArgsList, myFunctionKwargsList])
+				self.keyPressQueue[thing][key].append([myFunction, myFunctionArgs, myFunctionKwargs])
 
 	#Overloads
 	def addMenuItem(self, menuLabel, *args, **kwargs):
@@ -13757,11 +13894,11 @@ class handle_Window(handle_Container_Base):
 
 		return handle
 
-	def addSlider(self, sizerLabel, *args, **kwargs):
-		"""Overload for addSlider in handle_Sizer()."""
+	def addInputSlider(self, sizerLabel, *args, **kwargs):
+		"""Overload for addInputSlider in handle_Sizer()."""
 
 		mySizer = self.getSizer(sizerLabel)
-		handle = mySizer.addSlider(*args, **kwargs)
+		handle = mySizer.addInputSlider(*args, **kwargs)
 
 		return handle
 
@@ -13813,11 +13950,11 @@ class handle_Window(handle_Container_Base):
 
 		return handle
 
-	def addCheckList(self, sizerLabel, *args, **kwargs):
-		"""Overload for addCheckList in handle_Sizer()."""
+	def addButtonCheckList(self, sizerLabel, *args, **kwargs):
+		"""Overload for addButtonCheckList in handle_Sizer()."""
 
 		mySizer = self.getSizer(sizerLabel)
-		handle = mySizer.addCheckList(*args, **kwargs)
+		handle = mySizer.addButtonCheckList(*args, **kwargs)
 
 		return handle
 
@@ -17745,6 +17882,24 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 			else:
 				self.enableToolTips(True)
 
+	def setToolTipAppearDelay(self, *args, **kwargs):
+		"""Override function for setToolTipAppearDelay for handle_Window."""
+
+		for window in self.getWindow():
+			window.setToolTipAppearDelay(*args, **kwargs)
+
+	def setToolTipDisappearDelay(self, *args, **kwargs):
+		"""Override function for setToolTipDisappearDelay for handle_Window."""
+
+		for window in self.getWindow():
+			window.setToolTipDisappearDelay(*args, **kwargs)
+
+	def setToolTipReappearDelay(self, *args, **kwargs):
+		"""Override function for setToolTipReappearDelay for handle_Window."""
+
+		for window in self.getWindow():
+			window.setToolTipReappearDelay(*args, **kwargs)
+
 	def centerWindowAll(self, *args, **kwargs):
 		"""Centers all the windows on the screen.
 
@@ -18007,11 +18162,11 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 
 		return handle
 
-	def addSlider(self, windowLabel, *args, **kwargs):
-		"""Overload for addSlider in handle_Window()."""
+	def addInputSlider(self, windowLabel, *args, **kwargs):
+		"""Overload for addInputSlider in handle_Window()."""
 
 		myFrame = self.getWindow(windowLabel)
-		handle = myFrame.addSlider(*args, **kwargs)
+		handle = myFrame.addInputSlider(*args, **kwargs)
 
 		return handle
 
@@ -18063,11 +18218,11 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 
 		return handle
 
-	def addCheckList(self, windowLabel, *args, **kwargs):
-		"""Overload for addCheckList in handle_Window()."""
+	def addButtonCheckList(self, windowLabel, *args, **kwargs):
+		"""Overload for addButtonCheckList in handle_Window()."""
 
 		myFrame = self.getWindow(windowLabel)
-		handle = myFrame.addCheckList(*args, **kwargs)
+		handle = myFrame.addButtonCheckList(*args, **kwargs)
 
 		return handle
 
