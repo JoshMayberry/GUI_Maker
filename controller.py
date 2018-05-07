@@ -987,7 +987,7 @@ class Utilities():
 					myFunctionEvaluated, myFunctionArgs, myFunctionKwargs = self.formatFunctionInput(i, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
 					bind(myFunctionEvaluated, myFunctionArgs, myFunctionKwargs)
 
-	def keyBind(self, key, myFunctionList, myFunctionArgsList = None, myFunctionKwargsList = None, includeEvent = True,
+	def keyBind(self, key, myFunction, myFunctionArgs = None, myFunctionKwargs = None, includeEvent = True,
 		keyUp = True, numpad = False, ctrl = False, alt = False, shift = False, event = None, thing = None):
 		"""Binds wxObjects to key events.
 		Speed efficency help from Aya on http://stackoverflow.com/questions/17166074/most-efficient-way-of-making-an-if-elif-elif-else-statement-when-the-else-is-don
@@ -995,7 +995,7 @@ class Utilities():
 		key (str)              - The keyboard key to bind the function(s) to
 		thing (wxObject)       - What is being bound to
 			- If None: Will bind to self.thing
-		myFunctionList (str)   - The function that will be ran when the event occurs
+		myFunction (str)   - The function that will be ran when the event occurs
 		myFunctionArgs (any)   - Any input arguments for myFunction. A list of multiple functions can be given
 		myFunctionKwargs (any) - Any input keyword arguments for myFunction. A list of variables for each function can be given. The index of the variables must be the same as the index for the functions
 		includeEvent (bool)    - If True: The event variable will be passed to the function, like a normal event function would get
@@ -1085,7 +1085,7 @@ class Utilities():
 			thing = self.thing
 
 		#Bind the event
-		self.betterBind(event, thing, self.onKeyPress, [value, myFunctionList, myFunctionArgsList, myFunctionKwargsList, ctrl, alt, shift, includeEvent], mode = 2)
+		self.betterBind(event, thing, self.onKeyPress, [value, myFunction, myFunctionArgs, myFunctionKwargs, ctrl, alt, shift, includeEvent], mode = 2)
 
 		return value #Used for finished()
 
@@ -1344,11 +1344,11 @@ class Utilities():
 
 		self.controller.threadQueue.from_main_thread(blocking = blocking, printEmpty = printEmpty)
 
-	def onBackgroundRun(self, event, myFunctionList, myFunctionArgsList = None, myFunctionKwargsList = None, shown = False):
+	def onBackgroundRun(self, event, myFunctionList, myFunctionArgsList = None, myFunctionKwargsList = None, shown = False, makeThread = True):
 		"""Here so the function backgroundRun can be triggered from a bound event."""
 
 		#Run the function correctly
-		self.backgroundRun(myFunctionList, myFunctionArgsList, myFunctionKwargsList, shown)
+		self.backgroundRun(myFunctionList, myFunctionArgsList, myFunctionKwargsList, shown, makeThread)
 
 		event.Skip()
 
@@ -1399,11 +1399,11 @@ class Utilities():
 
 		return None
 
-	def autoRun(self, delay, myFunctionList, myFunctionArgsList = None, myFunctionKwargsList = None, after = False):
+	def autoRun(self, delay, myFunction, myFunctionArgs = None, myFunctionKwargs = None, after = False):
 		"""Automatically runs the provided function.
 
 		delay (int)           - How many milliseconds to wait before the function is executed
-		myFunctionList (list) - What function will be ran. Can be a string or function object
+		myFunction (list) - What function will be ran. Can be a string or function object
 		after (bool)          - If True: The function will run after the function that called this function instead of after a timer ends
 
 		Example Input: autoRun(0, self.startupFunction)
@@ -1443,8 +1443,8 @@ class Utilities():
 					wx.CallLater(delay, myFunctionEvaluated)
 
 		#Skip empty functions
-		if (myFunctionList != None):
-			myFunctionList, myFunctionArgsList, myFunctionKwargsList = self.formatFunctionInputList(myFunctionList, myFunctionArgsList, myFunctionKwargsList)
+		if (myFunction != None):
+			myFunctionList, myFunctionArgsList, myFunctionKwargsList = self.formatFunctionInputList(myFunction, myFunctionArgs, myFunctionKwargs)
 			
 			#Run each function
 			for i, myFunction in enumerate(myFunctionList):
@@ -2422,31 +2422,31 @@ class Utilities():
 
 		return size
 
-	def getWindow(self, windowLabel = None):
-		if (isinstance(windowLabel, handle_Window)):
-			return windowLabel
+	def getWindow(self, label = None):
+		if (isinstance(label, handle_Window)):
+			return label
 
-		window = self.get(windowLabel, typeList = [handle_Window])
+		window = self.get(label, typeList = [handle_Window])
 		return window
 
-	def getTable(self, tableLabel = None):
-		table = self.get(tableLabel, typeList = [handle_WidgetTable])
+	def getTable(self, label = None):
+		table = self.get(label, typeList = [handle_WidgetTable])
 		return table
 
-	def getCanvas(self, canvasLabel = None):
-		canvas = self.get(canvasLabel, typeList = [handle_WidgetCanvas])
+	def getCanvas(self, label = None):
+		canvas = self.get(label, typeList = [handle_WidgetCanvas])
 		return canvas
 
-	def getSizer(self, sizerLabel = None):
-		sizer = self.get(sizerLabel, typeList = [handle_Sizer])
+	def getSizer(self, label = None):
+		sizer = self.get(label, typeList = [handle_Sizer])
 		return sizer
 
-	def getWidget(self, widgetLabel = None):
-		widget = self.get(widgetLabel, typeList = [handle_Widget_Base])
+	def getWidget(self, label = None):
+		widget = self.get(label, typeList = [handle_Widget_Base])
 		return widget
 
-	def getPopupMenu(self, popupMenuLabel = None):
-		popupMenu = self.get(popupMenuLabel, typeList = [handle_MenuPopup])
+	def getPopupMenu(self, label = None):
+		popupMenu = self.get(label, typeList = [handle_MenuPopup])
 		return popupMenu
 
 class CommonEventFunctions():
@@ -9243,7 +9243,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 		return value
 
-	def setTableRowLabel(self, row, text):
+	def setTableRowLabel(self, row = 0, text = ""):
 		"""Changes a row's label.
 		The top-left corner is row (0, 0) not (1, 1).
 
@@ -9380,7 +9380,8 @@ class handle_WidgetTable(handle_Widget_Base):
 		color = self.thing.GetCellBackgroundColour(row, column)
 		return color
 
-	def setTableCellFont(self, row, column, font, italic = False, bold = False):
+	def setTableCellFont(self, row, column, font, 
+		italic = False, bold = False):
 		"""Changes the color of the text in a cell.
 		The top-left corner is row (0, 0) not (1, 1).
 
@@ -14952,7 +14953,7 @@ class handle_AuiManager(handle_Container_Base):
 
 		self.parent.betterBind(wx.EVT_AUI_PANE_MINIMIZE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
-	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+	def setFunction_restore(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the object is activated."""
 
 		self.parent.betterBind(wx.EVT_AUI_PANE_RESTORE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
@@ -15733,10 +15734,10 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		return text
 
 	##Setters
-	def setValue(self, text = "", event = None):
+	def setValue(self, newValue = "", event = None):
 		"""Changes the given notebook page's tab text.
 
-		text (str)          - What the page's tab will now say
+		newValue (str)          - What the page's tab will now say
 
 		Example Input: notebookSetPageText("Ipsum")
 		"""
@@ -15746,13 +15747,13 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 			pageNumber = self.getPageIndex(pageLabel)
 
 			#Change page text
-			notebook.SetPageText(pageNumber, text)
+			notebook.SetPageText(pageNumber, newValue)
 
 		elif (self.type.lower() == "auipage"):
 			if (self.label == None):
 				warnings.warn(f"A label is needed for {self.__repr__()} to change the caption", Warning, stacklevel = 2)
 
-			self.myManager.setTitle(self.label, text)
+			self.myManager.setTitle(self.label, newValue)
 
 		else:
 			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -15884,7 +15885,7 @@ class Communication():
 		return Barcodes.read(self)
 
 	#COM port
-	def getComPorts(self):
+	def getComPortList(self):
 		"""Returns a list of available ports.
 		Code from Matt Williams on http://stackoverflow.com/questions/1205383/listing-serial-com-ports-on-windows.
 
