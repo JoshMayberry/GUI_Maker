@@ -15457,13 +15457,13 @@ class handle_Notebook(handle_Container_Base):
 		self.thing.AdvanceSelection(False)
 
 	##Getters
-	def getCurrentPage(self, index = False):
+	def getCurrentPage(self, index = True):
 		"""Returns the currently selected page from the given notebook
 
 		index (bool) - Determines in what form the page is returned.
 			- If True: Returns the page's index number
 			- If False: Returns the page's catalogue label
-			- If None: Returns the wxPanel object associated with the page
+			- If None: Returns the handle object for the page
 
 		Example Input: notebookGetCurrentPage()
 		Example Input: notebookGetCurrentPage(True)
@@ -15472,13 +15472,22 @@ class handle_Notebook(handle_Container_Base):
 		#Determine current page
 		currentPage = self.thing.GetSelection()
 
-		if (currentPage != wx.NOT_FOUND):
-			if (not index):
-				currentPage = self.notebookGetPageLabel(notebookLabel, currentPage)
-		else:
-			currentPage = None
+		if (currentPage == wx.NOT_FOUND):
+			return
 
-		return currentPage
+		#Return the correct type
+		if (index):
+			return currentPage
+
+		for item in self:
+			if (item.index == currentPage):
+				if (index == None):
+					return currentPage
+				else:
+					return item.label
+
+		errorMessage = f"Unknown Error in getCurrentPage() for {self.__repr__()}"
+		raise ValueError(errorMessage)
 
 	def getPageIndex(self, pageLabel):
 		"""Returns the page index for a page with the given label in the given notebook.
@@ -15501,11 +15510,12 @@ class handle_Notebook(handle_Container_Base):
 
 		pageLabel (str) - The catalogue label for the panel to add to the notebook
 
-		Example Input: notebookGetPageLabel(1)
+		Example Input: getPageText(1)
 		"""
 
 		#Determine page number
-		pageNumber = self.getPageIndex(pageLabel)
+		if (not isinstance(pageIndex, str)):
+			pageNumber = self.getPageIndex(pageLabel)
 
 		#Get the tab's text
 		text = self.thing.GetPageText(pageNumber)
@@ -15718,7 +15728,7 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 	def getValue(self, event = None):
 		"""Returns the first page index for a page with the given label in the given notebook.
 
-		Example Input: notebookGetPageLabel()
+		Example Input: getValue()
 		"""
 
 		if (self.type.lower() == "notebookpage"):
@@ -15931,6 +15941,9 @@ class Communication():
 
 		#Create Ethernet object
 		mySocket = self.Ethernet(self)
+
+		if (which in self.socketDict):
+			warnings.warn(f"Overwriting Socket {which}", Warning, stacklevel = 2)
 
 		#Catalogue the COM port
 		self.socketDict[which] = mySocket
@@ -16470,6 +16483,9 @@ class Communication():
 				return False #Offline
 
 			elif ("Request timed out" in output):
+				return False #Offline
+
+			elif ("could not find host" in output):
 				return False #Offline
 
 			else:
