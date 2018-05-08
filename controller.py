@@ -70,6 +70,7 @@ import wx.lib.agw.fourwaysplitter
 import select
 import socket
 import serial
+import netaddr
 import serial.tools.list_ports
 
 #Import barcode software for drawing and decoding barcodes
@@ -85,7 +86,6 @@ import subprocess
 #Import needed support modules
 import re
 # import atexit
-# import netaddr
 # import PIL.Image
 
 
@@ -102,6 +102,7 @@ import re
 	# wxPython
 	# cx_Freeze
 	# pyserial
+	# netaddr
 
 #Maybe Required Modules?
 	# openpyxl
@@ -110,7 +111,6 @@ import re
 	# pillow
 	# pycryptodomex
 	# atexit
-	# netaddr
 	# elaphe
 	# python3-ghostscript "https://pypi.python.org/pypi/python3-ghostscript/0.5.0#downloads"
 	# sqlite3
@@ -3892,7 +3892,8 @@ class handle_WidgetList(handle_Widget_Base):
 			if (returnRows):
 				value = self.thing.GetItemCount()
 			else:
-				value = self.thing.GetColumnCount()
+				# value = self.thing.GetColumnCount()
+				value = self.columns
 
 		else:
 			warnings.warn(f"Add {self.type} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -4198,7 +4199,8 @@ class handle_WidgetList(handle_Widget_Base):
 
 		elif (self.type.lower() == "listfull"):
 			value = []
-			columnCount = self.thing.GetColumnCount()
+			# columnCount = self.thing.GetColumnCount()
+			columnCount = self.columns
 
 			row = -1
 			while True:
@@ -4230,7 +4232,8 @@ class handle_WidgetList(handle_Widget_Base):
 
 		elif (self.type.lower() == "listfull"):
 			value = []
-			columnCount = self.thing.GetColumnCount()
+			# columnCount = self.thing.GetColumnCount()
+			columnCount = self.columns
 
 			row = -1
 			while True:
@@ -4261,7 +4264,8 @@ class handle_WidgetList(handle_Widget_Base):
 		elif (self.type.lower() == "listfull"):
 			value = []
 			rowCount = self.thing.GetItemCount()
-			columnCount = self.thing.GetColumnCount()
+			# columnCount = self.thing.GetColumnCount()
+			columnCount = self.columns
 
 			n = self.thing.GetItemCount()
 			for row in range(rowCount):
@@ -4291,7 +4295,8 @@ class handle_WidgetList(handle_Widget_Base):
 			self.thing.SetItems(newValue) #(list) - What the choice options will now be now
 
 		elif (self.type.lower() == "listfull"):
-			columnCount = self.thing.GetColumnCount()
+			# columnCount = self.thing.GetColumnCount()
+			columnCount = self.columns
 			
 			#Account for redefining columns
 			if (columns == None):
@@ -16046,6 +16051,10 @@ class Communication():
 			Example Input: close(None)
 			"""
 
+			if (self.mySocket == None):
+				warnings.warn(f"Socket already closed", Warning, stacklevel = 2)
+				return
+
 			if (now != None):
 				if (now):
 					self.restrict()
@@ -16474,6 +16483,9 @@ class Communication():
 			info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 			info.wShowWindow = subprocess.SW_HIDE
 
+			#Remove Whitespace
+			address = re.sub("\s", "", address)
+
 			#Ping the address
 			output = subprocess.Popen(['ping', '-n', '1', '-w', '500', address], stdout=subprocess.PIPE, startupinfo=info).communicate()[0]
 			output = output.decode("utf-8")
@@ -16505,9 +16517,9 @@ class Communication():
 			def runFunction(self, start, end):
 				"""Needed to scan on a separate thread so the GUI is not tied up."""
 
-				#Strip out empty spaces
-				start = re.sub(" ", "", start)
-				end = re.sub(" ", "", end)
+				#Remove Whitespace
+				start = re.sub("\s", "", start)
+				end = re.sub("\s", "", end)
 
 				#Get ip scan range
 				networkAddressSet = list(netaddr.IPRange(start, end))
