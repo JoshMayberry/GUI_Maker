@@ -15984,7 +15984,7 @@ class Communication():
 			#Background thread variables
 			self.dataBlock   = [] #Used to recieve data from the socket
 			self.ipScanBlock = [] #Used to store active ip addresses from an ip scan
-			self.clientDict  = {} #Used to keep track of all client connections [connection object, client dataBlock, stop recieve flag, recieved all flag]
+			self.clientDict  = {} #Used to keep track of all client connections {"mySocket": connection object (socket), "data": client dataBlock (str), "stop": stop flag (bool), "listening": currently listening flag, "finished": recieved all flag}
 
 			self.recieveStop = False #Used to stop the recieving function early
 			self.ipScanStop  = False #Used to stop the ip scanning function early
@@ -15992,8 +15992,12 @@ class Communication():
 
 			#Create the socket
 			self.mySocket = None
+			self.stream = None
+			self.address = None
+			self.port = None
 
-		def open(self, address, port = 9100, error = False, pingCheck = False, timeout = -1):
+		def open(self, address, port = 9100, error = False, pingCheck = False, 
+			timeout = -1, stream = True):
 			"""Opens the socket connection.
 
 			address (str) - The ip address/website you are connecting to
@@ -16006,15 +16010,23 @@ class Communication():
 			Example Input: open("www.example.com")
 			"""
 
+			if (self.mySocket != None):
+				warnings.warn(f"Socket already opened", Warning, stacklevel = 2)
+
 			#Account for the socket having been closed
-			if (self.mySocket == None):
+			# if (self.mySocket == None):
+			if (stream):
 				self.mySocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+				self.stream = "SOCK_STREAM"
+			else:
+				self.mySocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+				self.stream = "SOCK_DGRAM"
 
 			if (timeout != -1):
 				self.setTimeout(timeout)
 
 			#Remove any white space
-			address = re.sub(" ", "", address)
+			address = re.sub("\s", "", address)
 
 			#Make sure it exists
 			if (pingCheck):
@@ -16025,12 +16037,17 @@ class Communication():
 					self.mySocket = None
 					return False
 
+			#Remember Values
+			self.address = address
+			self.port = port
+
 			#Connect to the socket
-			if (error):
-				error = self.mySocket.connect_ex((address, port))
-				return error
-			else:
-				self.mySocket.connect((address, port))
+			if (stream):
+				if (error):
+					error = self.mySocket.connect_ex((address, port))
+					return error
+				else:
+					self.mySocket.connect((address, port))
 
 			#Finish
 			if (pingCheck):
@@ -16083,10 +16100,13 @@ class Communication():
 				data = data.encode() #The .encode() is needed for python 3.4, but not for python 2.7
 
 			#Send the data
-			self.mySocket.sendall(data)
-			# self.mySocket.send(data)
+			if (self.stream == "SOCK_DGRAM"):
+				self.mySocket.sendto(data, (self.address, self.port))
+			else:
+				self.mySocket.sendall(data)
+				# self.mySocket.send(data)
 
-		def startRecieve(self, bufferSize = 256):
+		def startRecieve(self, bufferSize = 256, scanDelay = 500):
 			"""Retrieves data from the socket connection.
 			Because this can take some time, it saves the list of ip addresses as an internal variable.
 			Special thanks to A. Polino and david.gaarenstroom on http://code.activestate.com/recipes/577514-chek-if-a-number-is-a-power-of-two/
@@ -16119,7 +16139,7 @@ class Communication():
 
 					#Retrieve the block of data
 					data = self.mySocket.recv(bufferSize).decode() #The .decode is needed for python 3.4, but not for python 2.7
-
+					# data, address = self.mySocket.recvfrom(bufferSize)#.decode() #The .decode is needed for python 3.4, but not for python 2.7
 
 					#Check for end of data stream
 					if (len(data) < 1):
@@ -16128,6 +16148,8 @@ class Communication():
 
 					#Save the data
 					self.dataBlock.append(data)
+
+					time.sleep(scanDelay / 1000)
 
 				#Mark end of message
 				self.dataBlock.append(None)
@@ -16195,47 +16217,71 @@ class Communication():
 			self.recieveStop = True
 
 		#Server Side
-		def startServer(self, port = 10000, clients = 1):
+		def startServer(self, address = None, port = 10000, clients = 1, scanDelay = 500):
 			"""Starts a server that connects to clients.
 			Modified code from Doug Hellmann on: https://pymotw.com/2/socket/tcp.html
 
-			port (int)    - The port number to listen on
-			clients (int) - The number of clients to listen for
+			port (int)      - The port number to listen on
+			clients (int)   - The number of clients to listen for
+			scanDelay (int) - How long in milliseconds between scans for clients
 
 			Example Input: startServer()
-			Example Input: startServer(80)
+			Example Input: startServer(port = 80)
 			Example Input: startServer(clients = 5)
 			"""
 
-			def runFunction(self, port, clients):
+			def runFunction():
 				"""Needed to listen on a separate thread so the GUI is not tied up."""
+				nonlocal self, address, port, clients, scanDelay
 
 				#Bind the socket to the port
-				serverIp = ('', port)
+				if (address == None):
+					address = '0.0.0.0'
+
+				#Remove any white space
+				address = re.sub("\s", "", address)
+
+				serverIp = (socket.gethostbyname(address), port)
+				self.address = address
+				self.port = port
+
 				self.mySocket.bind(serverIp)
 
 				#Listen for incoming connections
 				self.mySocket.listen(clients)
 				count = clients #How many clients still need to connect
+				clientIp = None
 				while True:
 					# Wait for a connection
 					try:
 						connection, clientIp = self.mySocket.accept()
 					except:
-						count = self.closeClient(clientIp[0], count)
+						traceback.print_exc()
+						if (clientIp != None):
+							count = self.closeClient(clientIp[0], count)
+						else:
+							break
 
 						#Check for all clients having connected and left
 						if (count <= 0):
 							break
 
-					#Catalogue client
-					if (clientIp not in self.clientDict):
-						self.clientDict[clientIp] = [connection, "", False, False]
+					if (clientIp != None):
+						#Catalogue client
+						if (clientIp not in self.clientDict):
+							self.clientDict[clientIp] = {"mySocket": connection, "data": "", "stop": False, "listening": False, "finished": False}
+						else:
+							warnings.warn(f"Client {clientIp} recieved again", Warning, stacklevel = 2)
+
+					time.sleep(scanDelay / 1000)
+
+			#Error Checking
+			self.mySocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 			#Listen for data on a separate thread
-			self.parent.backgroundRun(runFunction, [self, port, clients])
+			self.parent.backgroundRun(runFunction)
 
-		def clientSend(self, clientIp, data):
+		def clientSend(self, clientIp, data, logoff = False):
 			"""Sends data across the socket connection to a client.
 
 			clientIp (str) - The IP address of the client
@@ -16254,8 +16300,11 @@ class Communication():
 				data = data.encode() #The .encode() is needed for python 3.4, but not for python 2.7
 
 			#Send the data
-			client = self.clientDict[clientIp][0]
+			client = self.clientDict[clientIp]["mySocket"]
 			client.sendall(data)
+
+			# if (logoff):
+			# 	client.shutdown(socket.SHUT_WR)
 
 		def clientStartRecieve(self, clientIp, bufferSize = 256):
 			"""Retrieves data from the socket connection.
@@ -16273,21 +16322,23 @@ class Communication():
 				"""Needed to listen on a separate thread so the GUI is not tied up."""
 
 				#Reset client dataBlock
-				self.clientDict[clientIp][1] = ""
+				self.clientDict[clientIp]["data"] = ""
+				self.clientDict[clientIp]["finished"] = False
+				self.clientDict[clientIp]["listening"] = True
 
 				#Listen
-				client = self.clientDict[clientIp][0]
+				client = self.clientDict[clientIp]["mySocket"]
 				while True:
 					#Check for stop command
-					if (self.clientDict[clientIp][2]):
-						self.clientDict[clientIp][2] = False
+					if (self.clientDict[clientIp]["stop"]):
+						self.clientDict[clientIp]["stop"] = False
 						break
 
 					#Retrieve the block of data
 					data = client.recv(bufferSize).decode() #The .decode is needed for python 3.4, but not for python 2.7
 
 					#Save the data
-					self.clientDict[clientIp][1] += data
+					self.clientDict[clientIp]["data"] += data
 
 					#Check for end of data stream
 					if (len(data) < bufferSize):
@@ -16295,7 +16346,8 @@ class Communication():
 						break
 
 				#Mark end of message
-				self.clientDict[clientIp][3] = True
+				self.clientDict[clientIp]["finished"] = True
+				self.clientDict[clientIp]["listening"] = False
 
 			#Checks buffer size
 			if (not (((bufferSize & (bufferSize - 1)) == 0) and (bufferSize > 0))):
@@ -16316,14 +16368,26 @@ class Communication():
 			Example Input: clientCheckRecieve("169.254.231.0")
 			"""
 
-			#The entire message has been read once the self.clientDict[clientIp][3] is True
-			finished = False
-			if (len(self.clientDict[clientIp][1]) != 0):
-				#Check for end of message
-				if (self.clientDict[clientIp][3]):
-					finished = True
+			if (self.clientDict[clientIp]["stop"]):
+				print("WARNING: Recieveing has stopped")
+				return [], False
 
-			return self.clientDict[clientIp][1], finished
+			if (not self.clientDict[clientIp]["listening"]):
+				if (len(self.clientDict[clientIp]["data"]) > 0):
+					if (self.clientDict[clientIp]["finished"] != True):
+						self.clientStartRecieve(clientIp)
+				else:
+					self.clientStartRecieve(clientIp)
+
+			#Account for changing mid-analysis
+			finished = self.clientDict[clientIp]["finished"]
+			data = self.clientDict[clientIp]["data"][:]
+			self.clientDict[clientIp]["data"] = ""
+
+			# if (len(compareBlock) == 0):
+			# 	finished = False
+
+			return data, finished
 
 		def clientStopRecieve(self, clientIp):
 			"""Stops listening for data from the client.
@@ -16335,7 +16399,7 @@ class Communication():
 			Example Input: clientStopRecieve("169.254.231.0")
 			"""
 
-			self.clientDict[clientIp][2] = True
+			self.clientDict[clientIp]["stop"] = True
 
 		def getClients(self):
 			"""Returns a list of all current client IP addresses.
@@ -16358,7 +16422,7 @@ class Communication():
 			if (clientIp not in self.clientDict):
 				warnings.warn(f"There is no client {clientIp} for this server", Warning, stacklevel = 2)
 			else:
-				client = self.clientDict[clientIp][0]
+				client = self.clientDict[clientIp]["mySocket"]
 				client.close()
 				del(self.clientDict[clientIp])
 
