@@ -13369,10 +13369,26 @@ class handle_Window(handle_Container_Base):
 	def setStatusText(self, message = " ", autoAdd = False):
 		"""Sets the text shown in the status bar.
 
-		message (str) - What the status bar will say.
+		message (str)  - What the status bar will say
+			- If dict: {What to say (str): How long to wait in ms before moving on to the next message (int). Use None for ending}
+		autoAdd (bool) - If there is no status bar, add one
 
 		Example Input: setStatusText("Ready")
+		Example Input: setStatusText({"Ready": 1000, "Set": 1000, "Go!": None, "This will not appear": 1000)
 		"""
+
+		def timerMessage():
+			"""The thread function that runs for the timer status message."""
+			nonlocal self, message
+
+			for text, delay in message.items():
+				if (text == None):
+					text = " "
+				self.statusBar.SetStatusText(text)
+
+				if (delay == None):
+					break
+				time.sleep(delay / 1000)
 
 		#Error Checking
 		if (self.statusBar == None):
@@ -13382,7 +13398,13 @@ class handle_Window(handle_Container_Base):
 				warnings.warn(f"There is no status bar for {self.__repr__()}", Warning, stacklevel = 2)
 				return
 
-		self.statusBar.SetStatusText(message)
+		if (isinstance(message, dict)):
+			self.backgroundRun(timerMessage)
+		else:
+			if (message == None):
+				message = " "
+
+			self.statusBar.SetStatusText(message)
 
 	#Dialog Boxes
 	def makeDialogMessage(self, text = "", title = "", stayOnTop = False, icon = None, 
@@ -18424,8 +18446,20 @@ class User_Utilities():
 
 		self._catalogue_variable = catalogue_variable
 
+	def __repr__(self):
+		representation = f"{type(self).__name__}(id = {id(self)})"
+		return representation
+
+	def __str__(self):
+		output = f"{type(self).__name__}()\n-- id: {id(self)}\n"
+		if (hasattr(self, "parent") and (self.parent != None)):
+			output += f"-- Parent: {self.parent.__repr__()}\n"
+		if (hasattr(self, "root") and (self.root != None)):
+			output += f"-- Root: {self.root.__repr__()}\n"
+		return output
+
 	def __len__(self):
-		return len(self)
+		return len(self[:])
 
 	def __contains__(self, key):
 		if (key in self[:]):
