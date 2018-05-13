@@ -1957,7 +1957,7 @@ class Utilities():
 					elif (imagePath == "folder"):
 						image = wx.ArtProvider.GetBitmap(wx.ART_FOLDER)
 						
-					elif (imagePath == "newFolder"):
+					elif (imagePath == "folderNew"):
 						image = wx.ArtProvider.GetBitmap(wx.ART_NEW_DIR)
 						
 					elif (imagePath == "folderOpen"):
@@ -2050,6 +2050,97 @@ class Utilities():
 			image = wx.NullBitmap
 
 		return image
+
+	def getColor(self, color):
+		"""Returns a wxColor object.
+
+		color (str) - What color to return
+			- If tuple: Will interperet as (Red, Green, Blue). Values can be integers from 0 to 255 or floats from 0.0 to 1.0
+
+		Example Input: getColor("white")
+		Example Input: getColor((255, 255, 0))
+		Example Input: getColor((0.5, 0.5, 0.5))
+		Example Input: getColor((255, 0.5, 0))
+		"""
+
+		if (isinstance(color, str)):
+			if (color[0].lower() == "w"):
+				color = (255, 255, 255)
+			elif (color[:3].lower() == "bla"):
+				color = (0, 0, 0)
+			if (color[0].lower() == "r"):
+				color = (255, 0, 0)
+			if (color[0].lower() == "g"):
+				color = (0, 255, 0)
+			if (color[:3].lower() == "blu"):
+				color = (0, 0, 255)
+			else:
+				warnings.warn(f"Unknown color {color} given to getColor in {self.__repr__()}", Warning, stacklevel = 2)
+				return
+		elif (not isinstance(color, (list, tuple))):
+				warnings.warn(f"'color' must be a tuple or string, not a {type(color)}, for getColor in {self.__repr__()}", Warning, stacklevel = 2)
+				return
+		elif (len(color) != 3):
+				warnings.warn(f"'color' must have a length of three, not {len(color)}, for getColor in {self.__repr__()}", Warning, stacklevel = 2)
+				return
+
+		color = list(color)
+		for i, item in enumerate(color):
+			if (isinstance(item, float)):
+				color[i] = math.ceil(item * 255)
+
+		thing = wx.Colour(color[0], color[1], color[2])
+		return thing
+
+	def getFont(self, size = None, bold = False, italic = False, color = None, family = None):
+		"""Returns a wxFont object.
+
+		size (int)    - The font size of the text  
+		bold (bool)   - Determines the boldness of the text
+			- If True: The font will be bold
+			- If False: The font will be normal
+			- If None: The font will be light
+		italic (bool) - Determines the italic state of the text
+			- If True: The font will be italicized
+			- If False: The font will not be italicized
+			- If None: The font will be slanted
+		color (str)   - The color of the text. Can be an RGB tuple (r, g, b) or hex value
+			- If None: Will use black
+		family (str)  - What font family it is.
+			~ "times new roman"
+
+		Example Input: getFont()
+		Example Input: getFont(size = 72, bold = True, color = "red")
+		"""
+
+		#Configure the font object
+		if (italic != None):
+			if (italic):
+				italic = wx.ITALIC
+			else:
+				italic = wx.NORMAL
+		else:
+			italic = wx.SLANT
+
+		if (bold != None):
+			if (bold):
+				bold = wx.BOLD
+			else:
+				bold = wx.NORMAL
+		else:
+			bold = wx.LIGHT
+
+		if (family == "TimesNewRoman"):
+			family = wx.ROMAN
+		else:
+			family = wx.DEFAULT
+
+		if (size == None):
+			size = wx.DEFAULT
+
+		font = wx.Font(size, family, italic, bold)
+
+		return font
 
 	#Converters
 	def convertImageToBitmap(self, imgImage):
@@ -2412,7 +2503,7 @@ class Utilities():
 		"""
 
 		#Get the current font
-		font = self.GetFont()
+		font = self.getFont()
 		dc = wx.WindowDC(self)
 		dc.SetFont(font)
 
@@ -3683,7 +3774,7 @@ class handle_WidgetText(handle_Widget_Base):
 			#Create the thing to put in the grid
 			self.thing = wx.StaticText(self.parent.thing, label = text, style = eval(style))
 
-			# font = self.makeFont(size = size, bold = bold, italic = italic, color = color, family = family)
+			# font = self.getFont(size = size, bold = bold, italic = italic, color = color, family = family)
 			# self.thing.SetFont(font)
 
 			# if (wrap != None):
@@ -3802,57 +3893,6 @@ class handle_WidgetText(handle_Widget_Base):
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
 
-	#Create sub objects
-	def makeFont(self, size = None, bold = False, italic = False, color = None, family = None):
-		"""Returns a wxFont object.
-
-		size (int)    - The font size of the text  
-		bold (bool)   - Determines the boldness of the text
-			- If True: The font will be bold
-			- If False: The font will be normal
-			- If None: The font will be light
-		italic (bool) - Determines the italic state of the text
-			- If True: The font will be italicized
-			- If False: The font will not be italicized
-			- If None: The font will be slanted
-		color (str)   - The color of the text. Can be an RGB tuple (r, g, b) or hex value
-			- If None: Will use black
-		family (str)  - What font family it is.
-			~ "times new roman"
-
-		Example Input: makeFont()
-		Example Input: makeFont(size = 72, bold = True, color = "red")
-		"""
-
-		#Configure the font object
-		if (italic != None):
-			if (italic):
-				italic = wx.ITALIC
-			else:
-				italic = wx.NORMAL
-		else:
-			italic = wx.SLANT
-
-		if (bold != None):
-			if (bold):
-				bold = wx.BOLD
-			else:
-				bold = wx.NORMAL
-		else:
-			bold = wx.LIGHT
-
-		if (family == "TimesNewRoman"):
-			family = wx.ROMAN
-		else:
-			family = wx.DEFAULT
-
-		if (size == None):
-			size = wx.DEFAULT
-
-		font = wx.Font(size, family, italic, bold)
-
-		return font
-
 class handle_WidgetList(handle_Widget_Base):
 	"""A handle for working with list widgets."""
 
@@ -3949,13 +3989,21 @@ class handle_WidgetList(handle_Widget_Base):
 
 			report, singleSelect, editable = self.getArguments(argument_catalogue, ["report", "singleSelect", "editable"])
 			columns, drag, drop, choices = self.getArguments(argument_catalogue, ["columns", "drag", "drop", "choices"])
-			columnNames = self.getArguments(argument_catalogue, ["columnNames"])
+			columnNames, columnWidth = self.getArguments(argument_catalogue, ["columnNames", "columnWidth"])
+			border, rowLines, columnLines, boldHeader = self.getArguments(argument_catalogue, ["border", "rowLines", "columnLines", "boldHeader"])
 
 			#Determine style
 			if (report):
 				styleList = "wx.LC_REPORT"
 			else:
 				styleList = "wx.LC_LIST" #Auto calculate columns and rows
+
+			if (border):
+				styleList += "|wx.BORDER_SUNKEN"
+			if (rowLines):
+				styleList += "|wx.LC_HRULES"
+			if (columnLines):
+				styleList += "|wx.LC_VRULES"
 
 			if (singleSelect):
 				styleList += "|wx.LC_SINGLE_SEL" #Default: Can select multiple with shift
@@ -3981,9 +4029,11 @@ class handle_WidgetList(handle_Widget_Base):
 			#Remember key variables
 			self.columns = columns
 			self.columnNames = columnNames
+			self.columnWidth = columnWidth
+			self.boldHeader = boldHeader
 
 			#Add Items
-			self.setValue(choices)#, columns = columns, columnNames = columnNames)
+			self.setValue(choices)
 
 			#Determine if it's contents are dragable
 			if (drag):
@@ -4281,7 +4331,7 @@ class handle_WidgetList(handle_Widget_Base):
 		return value
 
 	#Setters
-	def setValue(self, newValue, columns = None, columnNames = None, filterNone = False, event = None):
+	def setValue(self, newValue, columns = None, columnNames = None, columnWidth = None, filterNone = False, boldHeader = None, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
 		if (self.type.lower() == "listdrop"):
@@ -4308,7 +4358,21 @@ class handle_WidgetList(handle_Widget_Base):
 			if (columnNames == None):
 				columnNames = self.columnNames
 			else:
-				self.columnNames = columnNames
+				for key, value in columnNames.items():
+					self.columnNames[key] = value
+
+			#Account for redefining column widths
+			if (columnWidth == None):
+				columnWidth = self.columnWidth
+			else:
+				for key, value in columnWidth.items():
+					self.columnWidth[key] = value
+			
+			#Account for redefining column style
+			if (boldHeader == None):
+				boldHeader = self.boldHeader
+			else:
+				self.boldHeader = boldHeader
 
 			#Error Check
 			if (not isinstance(newValue, (list, tuple, dict))):
@@ -4338,7 +4402,18 @@ class handle_WidgetList(handle_Widget_Base):
 					else:
 						name = ""
 
-					self.thing.InsertColumn(i, name)
+					if (i in columnWidth):
+						self.thing.InsertColumn(i, name, width = columnWidth[i])
+					else:
+						self.thing.InsertColumn(i, name)
+
+					#Style column
+					if (boldHeader):
+						item = wx.ListItem()
+						font = wx.Font(self.thing.GetClassDefaultAttributes().font)
+						font.MakeBold()
+						item.SetFont(font)
+						self.thing.SetColumn(i, item)
 
 				#Add items
 				if (not isinstance(newValue, dict)):
@@ -4609,6 +4684,66 @@ class handle_WidgetList(handle_Widget_Base):
 			self.setDisable(state)
 		else:
 			warnings.warn(f"Add {self.type} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setRowColor(self, row = None, color = "white"):
+		"""Sets the contextual row color for the object associated with this handle to what the user supplies.
+
+		row (int)   - Which row to change the color of
+			- If list: Will change the color of all rows in the list
+			- If None: Will change the color of all rows
+			- If slice: Will change the color of all rows in the slice
+		color (str) - What color to make the rows
+			- If tuple: Will interperet as (Red, Green, Blue). Values can be integers from 0 to 255 or floats from 0.0 to 1.0
+
+		Example Input: setRowColor(0, color = "grey")
+		Example Input: setRowColor(0, color = (255, 0, 0))
+		Example Input: setRowColor(0, color = (0.5, 0.5, 0.5))
+		Example Input: setRowColor(slice(None, None, None))
+		Example Input: setRowColor(slice(1, 3, None))
+		Example Input: setRowColor(slice(None, None, 2))
+		"""
+
+		if (self.type.lower() == "listfull"):
+			colorHandle = self.getColor(color)
+			rowCount = self.thing.GetItemCount()
+
+			if (row == None):
+				rowList = range(rowCount)
+
+			elif (isinstance(row, slice)):				
+				if (row.start != None):
+					if (row.start > rowCount):
+						errorMessage = f"{row.start} is less than {rowCount}; not enough rows for start in setRowColor for {self.__repr__()}"
+						raise KeyError(errorMessage)
+					start = row.start
+				else:
+					start = 0
+				
+				if (row.stop != None):
+					if (row.stop > rowCount):
+						errorMessage = f"{row.stop} is less than {rowCount}; not enough rows for stop in setRowColor for {self.__repr__()}"
+						raise KeyError(errorMessage)
+					stop = row.stop
+				else:
+					stop = rowCount
+
+				if (row.step != None):
+					step = row.step
+				else:
+					step = 1
+
+				rowList = range(start, stop, step)
+
+			else:
+				rowList = [row]
+
+			for i in rowList:
+				self.thing.SetItemBackgroundColour(i, colorHandle)
+			
+		else:
+			warnings.warn(f"Add {self.type} to setRowColor() for {self.__repr__()}", Warning, stacklevel = 2)
+
+
 
 	#Event functions
 	def onDragList_beginDragAway(self, event, label = None,
@@ -6186,7 +6321,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			else:
 				styles = "0"
 
-			# font = self.makeFont()
+			# font = self.getFont()
 			font = wx.NullFont
 		
 			#Create the thing to put in the grid
@@ -10862,7 +10997,8 @@ class handle_Sizer(handle_Container_Base):
 
 	def addListFull(self, choices = [], default = False, singleSelect = False, editable = False,
 
-		report = False, columns = 1, columnNames = {},
+		report = False, columns = 1, columnNames = {}, columnWidth = {},
+		border = True, rowLines = True, columnLines = True, boldHeader = True,
 		drag = False, dragDelete = False, dragCopyOverride = False, 
 		allowExternalAppDelete = True, dragLabel = None, drop = False, dropIndex = 0,
 
@@ -10943,29 +11079,29 @@ class handle_Sizer(handle_Container_Base):
 		dragOverFunctionKwargs (any) - The keyword arguments for 'dragOverFunction'function
 		
 
-		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], 0)
-		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], 0, myFunction = self.onChosen)
+		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"])
+		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], myFunction = self.onChosen)
 
-		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], 0, report = True)
-		Example Input: addListFull([["Lorem", "Ipsum"], ["Dolor"]], 0, report = True, columns = 2)
-		Example Input: addListFull([["Lorem", "Ipsum"], ["Dolor"]], 0, report = True, columns = 2, columnNames = {0: "Sit", 1: "Amet"})
-		Example Input: addListFull({"Sit": ["Lorem", "Ipsum"], "Amet": ["Dolor"]], 0, report = True, columns = 2, columnNames = {0: "Sit", 1: "Amet"})
-		Example Input: addListFull({"Sit": ["Lorem", "Ipsum"], 1: ["Dolor"]], 0, report = True, columns = 2, columnNames = {0: "Sit"})
+		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], report = True)
+		Example Input: addListFull([["Lorem", "Ipsum"], ["Dolor"]], report = True, columns = 2)
+		Example Input: addListFull([["Lorem", "Ipsum"], ["Dolor"]], report = True, columns = 2, columnNames = {0: "Sit", 1: "Amet"})
+		Example Input: addListFull({"Sit": ["Lorem", "Ipsum"], "Amet": ["Dolor"]], report = True, columns = 2, columnNames = {0: "Sit", 1: "Amet"})
+		Example Input: addListFull({"Sit": ["Lorem", "Ipsum"], 1: ["Dolor"]], report = True, columns = 2, columnNames = {0: "Sit"})
 
-		Example Input: addListFull([["Lorem", "Ipsum"], ["Dolor"]], 0, report = True, columns = 2, columnNames = {0: "Sit", 1: "Amet"}, editable = True)
+		Example Input: addListFull([["Lorem", "Ipsum"], ["Dolor"]], report = True, columns = 2, columnNames = {0: "Sit", 1: "Amet"}, editable = True)
 
-		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], 0, drag = True)
-		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], 0, drag = True, dragDelete = True)
-		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], 0, drag = True, dragDelete = True, allowExternalAppDelete = False)
+		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], drag = True)
+		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], drag = True, dragDelete = True)
+		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], drag = True, dragDelete = True, allowExternalAppDelete = False)
 
-		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], 0, drop = True)
-		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], 0, drop = True, drag = True)
+		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], drop = True)
+		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], drop = True, drag = True)
 
-		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], 0, drop = True, dropIndex = 2)
-		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], 0, drop = True, dropIndex = -1)
-		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], 0, drop = True, dropIndex = -2)
+		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], drop = True, dropIndex = 2)
+		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], drop = True, dropIndex = -1)
+		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], drop = True, dropIndex = -2)
 
-		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], 0, drop = True, dropLabel = "text", preDropFunction = self.checkText)
+		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], drop = True, dropLabel = "text", preDropFunction = self.checkText)
 		"""
 
 		handle = handle_WidgetList()
@@ -18439,12 +18575,16 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 
 #User Things
 class User_Utilities():
-	def __init__(self, catalogue_variable = None):
+	def __init__(self, catalogue_variable = None, label_variable = None):
 		if ((catalogue_variable != None) and (not isinstance(catalogue_variable, str))):
 			errorMessage = f"'catalogue_variable' must be a str, not a {type(catalogue_variable)}"
 			raise ValueError(errorMessage)
+		if ((label_variable != None) and (not isinstance(label_variable, str))):
+			errorMessage = f"'label_variable' must be a str, not a {type(label_variable)}"
+			raise ValueError(errorMessage)
 
 		self._catalogue_variable = catalogue_variable
+		self._label_variable = label_variable
 
 	def __repr__(self):
 		representation = f"{type(self).__name__}(id = {id(self)})"
@@ -18464,8 +18604,12 @@ class User_Utilities():
 	def __contains__(self, key):
 		if (key in self[:]):
 			return True
-		# elif (key in [item.label for item in self[:]]):
-		# 	return True
+		else:
+			if (self._label_variable != None):
+				for item in self[:]:
+					if (hasattr(item, self._label_variable)):
+						if (key == getattr(item, self._label_variable)):
+							return True
 		return False
 
 	def __iter__(self):
@@ -18483,6 +18627,14 @@ class User_Utilities():
 	def __delitem__(self, key):
 		dataCatalogue = self._getDataCatalogue()
 		del dataCatalogue[key]
+
+	def __enter__(self):
+		return self
+
+	def __exit__(self, exc_type, exc_value, traceback):
+		if (traceback != None):
+			print(exc_type, exc_value)
+			return False
 
 	def _getDataCatalogue(self):
 		"""Returns the data catalogue used to select items from this thing."""
