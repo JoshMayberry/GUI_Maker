@@ -719,15 +719,18 @@ class Utilities():
 		#Account for passing in a wxEvent
 		if (isinstance(itemLabel, wx.Event)):
 			answer = None
-			for item in self[:]:
-				if (itemLabel.GetEventObject() == item.thing):
-					answer = item
-					break
+			if (itemLabel.GetEventObject() == self.thing):
+				answer = self
 			else:
-				if (checkNested):
-					answer = nestCheck(self[:], itemLabel)
+				for item in self[:]:
+					if (itemLabel.GetEventObject() == item.thing):
+						answer = item
+						break
 				else:
-					answer = None
+					if (checkNested):
+						answer = nestCheck(self[:], itemLabel)
+					else:
+						answer = None
 
 		#Account for indexing
 		elif (isinstance(itemLabel, slice)):
@@ -12927,6 +12930,11 @@ class handle_Window(handle_Container_Base):
 		Example Input: setWindowSize((350, 250))
 		"""
 
+		if (isinstance(x, str)):
+			if (x.lower() == "default"):
+				self.thing.SetSize(wx.DefaultSize)
+				return
+
 		if (y == None):
 			y = x[1]
 			x = x[0]
@@ -12953,6 +12961,14 @@ class handle_Window(handle_Container_Base):
 		Example Input: setWindowPosition(350, 250)
 		Example Input: setWindowPosition((350, 250))
 		"""
+
+		if (isinstance(x, str)):
+			if (x.lower() == "center"):
+				self.centerWindow()
+				return
+			elif (x.lower() == "default"):
+				self.thing.SetPosition(wx.DefaultPosition)
+				return
 
 		if (y == None):
 			y = x[1]
