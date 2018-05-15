@@ -17,6 +17,7 @@ __version__ = "4.3.0"
 
 #Import standard elements to interact with the computer
 # import os
+import ast
 import sys
 import time
 import math
@@ -666,21 +667,18 @@ class Utilities():
 
 			answer = None
 			for item in itemList:
-				#Skip Widgets
-				if (not isinstance(item, handle_Widget_Base)):
+				if (isinstance(itemLabel, wx.Event)):
+					if (itemLabel.GetEventObject() == item.thing):
+						return item
+				else:
 					if (itemLabel == item.label):
 						return item
-					else:
-						answer = nestCheck(item[:], itemLabel)
-						if (answer != None):
-							return answer
-				else:
-					if (isinstance(itemLabel, wx.Event)):
-						if (itemLabel.GetEventObject() == item.thing):
-							return item
-					else:
-						if (itemLabel == item.label):
-							return item
+				
+				#Do not go deeper into Widgets
+				if (not isinstance(item, handle_Widget_Base)):
+					answer = nestCheck(item[:], itemLabel)
+					if (answer != None):
+						return answer
 			return answer
 
 		def checkType(handleList):
@@ -719,7 +717,7 @@ class Utilities():
 		#Account for passing in a wxEvent
 		if (isinstance(itemLabel, wx.Event)):
 			answer = None
-			if (itemLabel.GetEventObject() == self.thing):
+			if ((not isinstance(self, Controller)) and (itemLabel.GetEventObject() == self.thing)):
 				answer = self
 			else:
 				for item in self[:]:
@@ -4490,12 +4488,15 @@ class handle_WidgetList(handle_Widget_Base):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
 		if (self.type.lower() == "listdrop"):
-			if (isinstance(newValue, str)):
-				newValue = self.thing.FindString(newValue)
+			if (newValue != None):
+				if (isinstance(newValue, str)):
+					newValue = self.thing.FindString(newValue)
 
-			if (newValue == None):
-				errorMessage = f"Invalid drop list selection in setSelection() for {self.__repr__()}"
-				raise ValueError(errorMessage)
+				if (newValue == None):
+					errorMessage = f"Invalid drop list selection in setSelection() for {self.__repr__()}"
+					raise ValueError(errorMessage)
+			else:
+				newValue = 0
 				
 			self.thing.SetSelection(newValue) #(int) - What the choice options will now be
 
@@ -12934,6 +12935,8 @@ class handle_Window(handle_Container_Base):
 			if (x.lower() == "default"):
 				self.thing.SetSize(wx.DefaultSize)
 				return
+			else:
+				x = ast.literal_eval(x)
 
 		if (y == None):
 			y = x[1]
@@ -12969,6 +12972,8 @@ class handle_Window(handle_Container_Base):
 			elif (x.lower() == "default"):
 				self.thing.SetPosition(wx.DefaultPosition)
 				return
+			else:
+				x = ast.literal_eval(x)
 
 		if (y == None):
 			y = x[1]
@@ -14761,6 +14766,7 @@ class handle_Splitter(handle_Container_Base):
 
 			#Create the panel splitter
 			self.thing = wx.SplitterWindow(self.parent.thing, style = wx.SP_LIVE_UPDATE)
+			self.myWindow = buildSelf.myWindow
 
 			#Add panels and sizers to splitter
 			for i in range(2):
@@ -14815,6 +14821,7 @@ class handle_Splitter(handle_Container_Base):
 			nonlocal self, argument_catalogue
 
 			buildSelf = self.getArguments(argument_catalogue, "self")
+			self.myWindow = buildSelf.myWindow
 
 			#Add panels and sizers to splitter
 			for i in range(4):
@@ -14846,6 +14853,7 @@ class handle_Splitter(handle_Container_Base):
 			nonlocal self, argument_catalogue
 
 			minimumSize, vertical, buildSelf = self.getArguments(argument_catalogue, ["minimumSize", "vertical", "self"])
+			self.myWindow = buildSelf.myWindow
 
 			#Add panels and sizers to splitter
 			for i in range(panelNumbers):
@@ -14910,10 +14918,49 @@ class handle_Splitter(handle_Container_Base):
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_init() for {self.__repr__()}", Warning, stacklevel = 2)
 
+	def setFunction_preMoveSash(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		"""Changes the function that runs when the object is first created."""
+
+		if (self.type.lower() == "double"):
+			self.parent.betterBind(wx.EVT_SPLITTER_SASH_POS_CHANGING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_preMoveSash() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_postMoveSash(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		"""Changes the function that runs when the object is first created."""
+
+		if (self.type.lower() == "double"):
+			self.parent.betterBind(wx.EVT_SPLITTER_SASH_POS_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_preMoveSash() for {self.__repr__()}", Warning, stacklevel = 2)
+
 	def getSizers(self):
 		"""Returns the internal sizer list."""
 
 		return self.sizerList
+
+	def getSashPosition(self):
+		"""Returns teh current sash position."""
+		
+		if (self.type.lower() == "double"):
+			value = self.thing.GetSashPosition()
+		else:
+			warnings.warn(f"Add {self.type} to getSashPosition() for {self.__repr__()}", Warning, stacklevel = 2)
+			value = None
+
+		return value
+
+	def setSashPosition(self, newValue):
+		"""Changes the position of the sash marker."""
+		
+		if (self.type.lower() == "double"):
+			if (isinstance(newValue, str)):
+				newValue = ast.literal_eval(newValue)
+
+			if (newValue != None):
+				self.thing.SetSashPosition(newValue)
+		else:
+			warnings.warn(f"Add {self.type} to setSashPosition() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	# def readBuildInstructions_sizer(self, parent, i, instructions):
 	#   """Interprets instructions given by the user for what sizer to make and how to make it."""
