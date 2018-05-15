@@ -18618,7 +18618,7 @@ class User_Utilities():
 
 	def __getitem__(self, key):
 		dataCatalogue = self._getDataCatalogue()
-		return self.get(dataCatalogue, key)
+		return self._get(dataCatalogue, key)
 
 	def __setitem__(self, key, value):
 		dataCatalogue = self._getDataCatalogue()
@@ -18639,7 +18639,7 @@ class User_Utilities():
 	def _getDataCatalogue(self):
 		"""Returns the data catalogue used to select items from this thing."""
 
-		if (self._catalogue_variable != None):
+		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable != None)):
 			if (not hasattr(self, self._catalogue_variable)):
 				warnings.warn(f"There is no variable {self._catalogue_variable} in {self.__repr__()} to use for the data catalogue", Warning, stacklevel = 2)
 				dataCatalogue = {}
@@ -18650,17 +18650,17 @@ class User_Utilities():
 
 		return dataCatalogue
 
-	def get(self, itemCatalogue, itemLabel = None):
+	def _get(self, itemCatalogue, itemLabel = None):
 		"""Searches the label catalogue for the requested object.
 
 		itemLabel (any) - What the object is labled as in the catalogue
 			- If slice: objects will be returned from between the given spots 
 			- If None: Will return all that would be in an unbound slice
 
-		Example Input: get(self.rowCatalogue)
-		Example Input: get(self.rowCatalogue, 0)
-		Example Input: get(self.rowCatalogue, slice(None, None, None))
-		Example Input: get(self.rowCatalogue, slice(2, 7, None))
+		Example Input: _get(self.rowCatalogue)
+		Example Input: _get(self.rowCatalogue, 0)
+		Example Input: _get(self.rowCatalogue, slice(None, None, None))
+		Example Input: _get(self.rowCatalogue, slice(2, 7, None))
 		"""
 
 		#Account for retrieving all nested
@@ -18670,7 +18670,7 @@ class User_Utilities():
 		#Account for indexing
 		if (isinstance(itemLabel, slice)):
 			if (itemLabel.step != None):
-				raise FutureWarning(f"Add slice steps to get() for indexing {self.__repr__()}")
+				raise FutureWarning(f"Add slice steps to _get() for indexing {self.__repr__()}")
 			
 			elif ((itemLabel.start != None) and (itemLabel.start not in itemCatalogue)):
 				errorMessage = f"There is no item labled {itemLabel.start} in the row catalogue for {self.__repr__()}"
