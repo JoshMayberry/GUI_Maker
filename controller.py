@@ -154,8 +154,10 @@ class Iterator(object):
 	"""Used by handle objects to iterate over their nested objects."""
 
 	def __init__(self, data, filterNone = False):
-		self.data = data
+		if (not isinstance(data, (list, dict))):
+			data = data[:]
 
+		self.data = data
 		if (isinstance(self.data, dict)):
 			self.order = list(self.data.keys())
 
@@ -1592,7 +1594,7 @@ class Utilities():
 				warnings.warn(f"Could not find {handle_remove.__repr__()} in labelCatalogue or unnamedList for {handle_source.__repr__()}", Warning, stacklevel = 2)
 
 	def finalNest(self, handle):
-		"""The final step in teh nesting process."""
+		"""The final step in the nesting process."""
 
 		handle.nested = True
 		handle.nestingAddress = self.nestingAddress + [id(self)]
@@ -8771,7 +8773,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 			rows, columns, readOnly = self.getArguments(argument_catalogue, ["rows", "columns", "readOnly" ])
 			showGrid, dragableColumns, dragableRows = self.getArguments(argument_catalogue, ["showGrid", "dragableColumns", "dragableRows"])
-			rowSize, columnSize = self.getArguments(argument_catalogue, ["rowSize", "columnSize"])
+			rowSize, columnSize, autoSizeRow, autoSizeColumn = self.getArguments(argument_catalogue, ["rowSize", "columnSize", "autoSizeRow", "autoSizeColumn"])
 
 			rowLabelSize, columnLabelSize, rowSizeMinimum, columnSizeMinimum = self.getArguments(argument_catalogue, ["rowLabelSize", "columnLabelSize", "rowSizeMinimum", "columnSizeMinimum"])
 			gridLabels, contents, default, enterKeyExitEdit = self.getArguments(argument_catalogue, ["gridLabels", "contents", "default", "enterKeyExitEdit"])
@@ -8782,7 +8784,6 @@ class handle_WidgetTable(handle_Widget_Base):
 			rightClickCellFunction, rightClickLabelFunction = self.getArguments(argument_catalogue, ["rightClickCellFunction", "rightClickLabelFunction"])
 
 			readOnlyDefault, cellType, cellTypeDefault = self.getArguments(argument_catalogue, ["readOnlyDefault", "cellType", "cellTypeDefault"])
-
 
 			#Create the thing to put in the grid
 			self.thing = self.Table(self, self.parent.thing, style = wx.WANTS_CHARS)
@@ -8815,13 +8816,16 @@ class handle_WidgetTable(handle_Widget_Base):
 				self.thing.EnableDragRowSize(True)
 			
 			##Row and Column Sizes
-			if (rowSize != None):
-				for i in range(nRows):
-					self.thing.SetRowSize(i, rowSize)
+			self.setRowSize(rowSize, autoSizeRow)
+			self.setColumnSize(columnSize, autoSizeColumn)
 
 			if (columnSize != None):
-				for i in range(nColumns):
-					self.thing.SetColSize(i, columnSize)         
+				if (isinstance(columnSize, dict)):
+					for column, value in columnSize.items():
+						self.thing.SetColSize(column, value)
+				else:
+					for i in range(nColumns):
+						self.thing.SetColSize(i, columnSize)         
 
 			if (rowLabelSize != None):
 				self.thing.SetRowLabelSize(rowLabelSize)
@@ -8954,6 +8958,8 @@ class handle_WidgetTable(handle_Widget_Base):
 
 			if (editOnEnter):
 				self.betterBind(wx.EVT_KEY_DOWN, self.thing.GetGridWindow(), self.onTableEditOnEnter, mode = 2)
+
+			self.betterBind(wx.EVT_SIZE, self.thing, self.onTableAutoSize, mode = 2)
 		
 		#########################################################
 
@@ -8991,6 +8997,112 @@ class handle_WidgetTable(handle_Widget_Base):
 		self.betterBind(wx.grid.EVT_GRID_LABEL_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
 	#Interact with table
+	def setRowSize(self, size = -1, autoSize = -1):
+		"""Changes the size of a row.
+
+		size (str) - The height of the rows
+			- If None: Will make it the default size
+			- If dict: {row (int): size (int)}. Use None to define the default size
+			- If -1: Will use the size in memory
+		autoSize (bool) - Determines the size of the rows based on the sizer element. 'size' will override this
+			- If None: Will remove autoSize behavior
+			- If dict: {row (int): autoSize (int)}. Use None to define the default state
+			- If -1: Will use the autoSize in memory
+
+		Example Input: setRowSize(size = 20)
+		Example Input: setRowSize(autoSize = None)
+		Example Input: setRowSize(size = {0: 50, None: 20})
+		Example Input: setRowSize(size = {0: 50}, autoSize = True)
+		Example Input: setRowSize(size = {0: 50, None: 20}, autoSize = {1: True})
+		"""
+
+		#Setup
+		if (size == -1):
+			size = self.rowSize
+		if (autoSize == -1):
+			autoSize = self.autoSizeRow
+
+		default = self.thing.GetDefaultRowSize()
+		if (size == None):
+			size = default
+
+		if (not isinstance(size, dict)):
+			size = {None: size}
+		elif (None not in size):
+			size[None] = default
+
+		if (not isinstance(autoSize, dict)):
+			autoSize = {None: autoSize}
+		elif (None not in autoSize):
+			autoSize[None] = False
+
+		#Modify Size
+		for row in range(self.thing.GetNumberRows()):
+			self.thing.SetRowSize(row, size[None])
+
+		for row, value in size.items():
+			if (row != None):
+				if (value == None):
+					value = default
+				self.thing.SetRowSize(row, value)
+
+		#Remember Values
+		self.rowSize = size
+		self.autoSizeRow = autoSize
+
+	def setColumnSize(self, size = -1, autoSize = -1):
+		"""Changes the size of a column.
+
+		size (str) - The height of the columns
+			- If None: Will make it the default size
+			- If dict: {column (int): size (int)}. Use None to define the default size
+			- If -1: Will use the size in memory
+		autoSize (bool) - Determines the size of the columns based on the sizer element. 'size' will override this
+			- If None: Will remove autoSize behavior
+			- If dict: {column (int): autoSize (int)}. Use None to define the default state
+			- If -1: Will use the autoSize in memory
+
+		Example Input: setColumnSize(size = 20)
+		Example Input: setColumnSize(autoSize = None)
+		Example Input: setColumnSize(size = {0: 50, None: 20})
+		Example Input: setColumnSize(size = {0: 50}, autoSize = True)
+		Example Input: setColumnSize(size = {0: 50, None: 20}, autoSize = {1: True})
+		"""
+
+		#Setup
+		if (size == -1):
+			size = self.columnSize
+		if (autoSize == -1):
+			autoSize = self.autoSizeColumn
+
+		default = self.thing.GetDefaultColSize()
+		if (size == None):
+			size = default
+
+		if (not isinstance(size, dict)):
+			size = {None: size}
+		elif (None not in size):
+			size[None] = default
+
+		if (not isinstance(autoSize, dict)):
+			autoSize = {None: autoSize}
+		elif (None not in autoSize):
+			autoSize[None] = False
+
+		#Modify Size
+		for column in range(self.thing.GetNumberCols()):
+			self.thing.SetColSize(column, size[None])
+
+		for column, value in size.items():
+			if (column != None):
+				if (value == None):
+					value = default
+				self.thing.SetColSize(column, value)
+
+		#Remember Values
+		self.columnSize = size
+		self.autoSizeColumn = autoSize
+
 	def setTablePreviousCell(self, row = None, column = None):
 		"""Sets the internal previous cell to the specified value.
 		If 'row' and 'column' are None, it will take the current cell.
@@ -9922,6 +10034,37 @@ class handle_WidgetTable(handle_Widget_Base):
 
 		event.Skip()
 
+	def onTableAutoSize(self, event):
+		"""Allows the table to automatically change the size of the columns to fit in the sizer element"""
+
+		#Enable Disableing
+		if ((self.autoSizeRow[None] != None) or (self.autoSizeColumn[None] != None)):
+			if (self.autoSizeRow[None] != None):
+				rowList = [item for item, state in self.autoSizeRow.items() if ((item != None) and (state != False) and (item not in self.rowSize))]
+				if (self.autoSizeRow[None]):
+					rowList.extend([item for item in range(self.thing.GetNumberRows()) if ((item not in rowList) and (item not in self.rowSize) and (item not in self.autoSizeRow))])
+			else:
+				rowList = []
+
+			if (self.autoSizeColumn[None] != None):
+				columnList = [item for item, state in self.autoSizeColumn.items() if ((item != None) and (state != False) and (item not in self.columnSize))]
+				if (self.autoSizeColumn[None]):
+					columnList.extend([item for item in range(self.thing.GetNumberCols()) if ((item not in columnList) and (item not in self.columnSize) and (item not in self.autoSizeColumn))])
+			else:
+				columnList = []
+
+			totalSize = self.mySizerItem.GetSize()
+			rowSize = math.floor(totalSize[1] / (len(rowList) + 1))
+			columnSize = math.floor(totalSize[0] / (len(columnList) + 1))
+
+			for row in rowList:
+				self.thing.SetRowSize(row, rowSize)
+			for column in columnList:
+				self.thing.SetColSize(column, columnSize)
+
+
+		event.Skip()
+
 	####################################################################################################
 	class Table(wx.grid.Grid):
 		"""Enables a copy and paste behavior for the table.
@@ -10797,6 +10940,14 @@ class handle_Sizer(handle_Container_Base):
 			errorMessage = "Cannot nest objects twice"
 			raise SyntaxError(errorMessage)
 
+		#Remember Values
+		if (isinstance(self, handle_Sizer)):
+			if (hasattr(handle, "mySizer")):
+				warnings.warn(f"{handle.__repr__()} already has the sizer {handle.mySizer.__repr__()} as 'mySizer' in nest() for {self.__repr__()}\nOverwriting 'mySizer'", Warning, stacklevel = 2)
+			handle.mySizer = self
+		else:
+			warnings.warn(f"{self.__repr__()} is not a sizer and is using nest()", Warning, stacklevel = 2)
+
 		#Configure Flags
 		flags, position, border = self.getItemMod(flags)
 
@@ -10826,6 +10977,15 @@ class handle_Sizer(handle_Container_Base):
 			return
 
 		self.finalNest(handle)
+
+		#Remember Values
+		if (isinstance(self, handle_Sizer) and (not isinstance(handle, handle_Sizer))):
+			for item in self.thing.GetChildren():
+				if (item.GetWindow() == handle.thing):
+					handle.mySizerItem = item
+					break
+			else:
+				warnings.warn(f"Could not find sizer item for {handle.__repr__()} in nest() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def addFinalFunction(self, *args, **kwargs):
 		"""Overload for addFinalFunction in handle_Window()."""
@@ -11957,7 +12117,7 @@ class handle_Sizer(handle_Container_Base):
 		return handle
 
 	def addTable(self, rows = 1, columns = 1,
-		contents = None, gridLabels = [[],[]], toolTips = None, 
+		contents = None, gridLabels = [[],[]], toolTips = None, autoSizeRow = False, autoSizeColumn = False,
 		rowSize = None, columnSize = None, rowLabelSize = None, columnLabelSize = None, rowSizeMinimum = None, columnSizeMinimum = None,
 
 		showGrid = True, dragableRows = False, dragableColumns = False, arrowKeyExitEdit = False, enterKeyExitEdit = False, editOnEnter = False, 
@@ -11989,12 +12149,24 @@ class handle_Sizer(handle_Container_Base):
 		toolTips (list)   - The coordinates and message for all the tool tips. [[row, column, message], [row, column, message], ...]
 		label (str)     - What this is called in the idCatalogue
 		
-		rowSize (str)           - The height of the rows. 'None' will make it the default size
-		columnSize (str)        - The width of the columns. 'None' will make it the default size
-		rowLabelSize (int)      - The width of the row labels. 'None' will make it the default size
-		columnLabelSize (int)   - The height of the column labels. 'None' will make it the default size
-		rowSizeMinimum (str)    - The minimum height for the rows. 'None' will make it the default size
-		columnSizeMinimum (str) - The minimum width for the columns. 'None' will make it the default size
+		rowSize (str)           - The height of the rows
+			- If None: Will make it the default size
+			- If dict: {row (int): size (int)}. Use None to define the default size
+		columnSize (str)        - The width of the columns
+			- If None: Will make it the default size
+			- If dict: {column (int): size (int)}. Use None to define the default size
+		rowLabelSize (int)      - The width of the row labels
+			- If None: Will make it the default size
+		columnLabelSize (int)   - The height of the column labels
+			- If None: Will make it the default size
+		rowSizeMinimum (str)    - The minimum height for the rows
+			- If None: Will make it the default size
+		columnSizeMinimum (str) - The minimum width for the columns
+			- If None: Will make it the default size
+		autoSizeRow (bool)      - Determines the size of the rows based on the sizer element. 'rowSize' will override this
+			- If dict: {row (int): autoSize (int)}. Use None to define the default state
+		autoSizeColumn (bool)   - Determines the size of the columns based on the sizer element. 'columnSize' will override this
+			- If dict: {column (int): autoSize (int)}. Use None to define the default state
 		
 		showGrid (bool)         - If True: the grid lines will be visible
 		dragableRows (bool)     - If True: The user can drag the row lines of the cells
@@ -12047,17 +12219,23 @@ class handle_Sizer(handle_Container_Base):
 		wizardFrameNumber (int) - The number of the wizard page. If None, it assumes either a frame or a panel
 
 		Example Input: addTable()
-		Example Input: addTable(3, 4, 0, 0, contents = [[1, 2, 3], [a, b, c], [4, 5, 6], [d, e, f]])
-		Example Input: addTable(3, 4, 0, 0, contents = myArray)
+		Example Input: addTable(rows = 3, columns = 4)
+		Example Input: addTable(rows = 3, columns = 4, contents = [[1, 2, 3], [a, b, c], [4, 5, 6], [d, e, f]])
+		Example Input: addTable(rows = 3, columns = 4, contents = myArray)
 
-		Example Input: addTable(3, 4, 0, 0, readOnly = True)
-		Example Input: addTable(3, 4, 0, 0, readOnly = {1: True})
-		Example Input: addTable(3, 4, 0, 0, readOnly = {1: {1: True, 3: True}})
-		Example Input: addTable(3, 4, 0, 0, readOnly = {None: {1: True})
+		Example Input: addTable(rows = 3, columns = 4, readOnly = True)
+		Example Input: addTable(rows = 3, columns = 4, readOnly = {1: True})
+		Example Input: addTable(rows = 3, columns = 4, readOnly = {1: {1: True, 3: True}})
+		Example Input: addTable(rows = 3, columns = 4, readOnly = {None: {1: True})
 
-		Example Input: addTable(3, 4, 0, 0, cellType = {1: "droplist"})
-		Example Input: addTable(3, 4, 0, 0, cellType = {1: {1: "droplist", 3: "droplist"}})
-		Example Input: addTable(3, 4, 0, 0, cellType = {None: {1: "droplist"}})
+		Example Input: addTable(rows = 3, columns = 4, cellType = {1: "droplist"})
+		Example Input: addTable(rows = 3, columns = 4, cellType = {1: {1: "droplist", 3: "droplist"}})
+		Example Input: addTable(rows = 3, columns = 4, cellType = {None: {1: "droplist"}})
+
+		Example Input: addTable(rows = 3, columns = 4, columnSize = 20)
+		Example Input: addTable(rows = 3, columns = 4, columnSize = {0: 50, None: 20})
+		Example Input: addTable(rows = 3, columns = 4, columnSize = {0: 50}, autoSizeColumn = True)
+		Example Input: addTable(rows = 3, columns = 4, columnSize = {0: 50, None: 20}, autoSizeColumn = {1: True})
 		"""
 
 		handle = handle_WidgetTable()
@@ -14940,7 +15118,7 @@ class handle_Splitter(handle_Container_Base):
 		return self.sizerList
 
 	def getSashPosition(self):
-		"""Returns teh current sash position."""
+		"""Returns the current sash position."""
 		
 		if (self.type.lower() == "double"):
 			value = self.thing.GetSashPosition()
@@ -18639,7 +18817,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 #User Things
 class User_Utilities():
 	def __init__(self, catalogue_variable = None, label_variable = None):
-		if ((catalogue_variable != None) and (not isinstance(catalogue_variable, str))):
+		if ((catalogue_variable != None) and (not isinstance(catalogue_variable, (str, Controller)))):
 			errorMessage = f"'catalogue_variable' must be a str, not a {type(catalogue_variable)}"
 			raise ValueError(errorMessage)
 		if ((label_variable != None) and (not isinstance(label_variable, str))):
@@ -18662,9 +18840,14 @@ class User_Utilities():
 		return output
 
 	def __len__(self):
+		if (isinstance(self._catalogue_variable, Controller)):
+			return self._catalogue_variable.__len__()
 		return len(self[:])
 
 	def __contains__(self, key):
+		if (isinstance(self._catalogue_variable, Controller)):
+			return self._catalogue_variable.__contains__(key)
+
 		if (key in self[:]):
 			return True
 		else:
@@ -18676,25 +18859,43 @@ class User_Utilities():
 		return False
 
 	def __iter__(self):
+		if (isinstance(self._catalogue_variable, Controller)):
+			return self._catalogue_variable.__iter__()
+
 		dataCatalogue = self._getDataCatalogue()
 		return Iterator(dataCatalogue)
 
 	def __getitem__(self, key):
+		if (isinstance(self._catalogue_variable, Controller)):
+			return self._catalogue_variable.__getitem__(key)
+			
 		dataCatalogue = self._getDataCatalogue()
 		return self._get(dataCatalogue, key)
 
 	def __setitem__(self, key, value):
+		if (isinstance(self._catalogue_variable, Controller)):
+			return self._catalogue_variable.__setitem__(key, value)
+		
 		dataCatalogue = self._getDataCatalogue()
 		dataCatalogue[key] = value
 
 	def __delitem__(self, key):
+		if (isinstance(self._catalogue_variable, Controller)):
+			return self._catalogue_variable.__delitem__(key)
+		
 		dataCatalogue = self._getDataCatalogue()
 		del dataCatalogue[key]
 
 	def __enter__(self):
+		if (isinstance(self._catalogue_variable, Controller)):
+			return self._catalogue_variable.__enter__()
+			
 		return self
 
 	def __exit__(self, exc_type, exc_value, traceback):
+		if (isinstance(self._catalogue_variable, Controller)):
+			return self._catalogue_variable.__exit__(exc_type, exc_value, traceback)
+			
 		if (traceback != None):
 			print(exc_type, exc_value)
 			return False
@@ -18703,11 +18904,17 @@ class User_Utilities():
 		"""Returns the data catalogue used to select items from this thing."""
 
 		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable != None)):
-			if (not hasattr(self, self._catalogue_variable)):
-				warnings.warn(f"There is no variable {self._catalogue_variable} in {self.__repr__()} to use for the data catalogue", Warning, stacklevel = 2)
-				dataCatalogue = {}
+			if (isinstance(self._catalogue_variable, str)):
+				if (not hasattr(self, self._catalogue_variable)):
+					warnings.warn(f"There is no variable {self._catalogue_variable} in {self.__repr__()} to use for the data catalogue", Warning, stacklevel = 2)
+					dataCatalogue = {}
+				else:
+					dataCatalogue = getattr(self, self._catalogue_variable)
 			else:
-				dataCatalogue = getattr(self, self._catalogue_variable)
+				if (isinstance(self._catalogue_variable, Controller)):
+					dataCatalogue = self._catalogue_variable.labelCatalogue
+				else:
+					dataCatalogue = self._catalogue_variable
 		else:
 			dataCatalogue = {}
 
@@ -18768,11 +18975,11 @@ class User_Utilities():
 					answer = answer[0]
 			return answer
 
-		errorMessage = f"There is no item labled {itemLabel} in the row catalogue for {self.__repr__()}"
+		errorMessage = f"There is no item labled {itemLabel} in the data catalogue for {self.__repr__()}"
 		raise KeyError(errorMessage)
 
 	def getValue(self, variable, order = True):
-		"""Returns a list of all row's values for the requested variable.
+		"""Returns a list of all values for the requested variable.
 		Special thank to Andrew Dalke for how to sort objects by attributes on https://wiki.python.org/moin/HowTo/Sorting#Key_Functions
 
 		variable (str) - what variable to retrieve from all rows
