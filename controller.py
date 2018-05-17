@@ -2103,33 +2103,36 @@ class Utilities():
 		Example Input: getColor((255, 0.5, 0))
 		"""
 
-		if (isinstance(color, str)):
-			if (color[0].lower() == "w"):
-				color = (255, 255, 255)
-			elif (color[:3].lower() == "bla"):
-				color = (0, 0, 0)
-			if (color[0].lower() == "r"):
-				color = (255, 0, 0)
-			if (color[0].lower() == "g"):
-				color = (0, 255, 0)
-			if (color[:3].lower() == "blu"):
-				color = (0, 0, 255)
-			else:
-				warnings.warn(f"Unknown color {color} given to getColor in {self.__repr__()}", Warning, stacklevel = 2)
-				return
-		elif (not isinstance(color, (list, tuple))):
-				warnings.warn(f"'color' must be a tuple or string, not a {type(color)}, for getColor in {self.__repr__()}", Warning, stacklevel = 2)
-				return
-		elif (len(color) != 3):
-				warnings.warn(f"'color' must have a length of three, not {len(color)}, for getColor in {self.__repr__()}", Warning, stacklevel = 2)
-				return
+		if (color == None):
+			thing = wx.NullColour
+		else:
+			if (isinstance(color, str)):
+				if (color[0].lower() == "w"):
+					color = (255, 255, 255)
+				elif (color[:3].lower() == "bla"):
+					color = (0, 0, 0)
+				if (color[0].lower() == "r"):
+					color = (255, 0, 0)
+				if (color[0].lower() == "g"):
+					color = (0, 255, 0)
+				if (color[:3].lower() == "blu"):
+					color = (0, 0, 255)
+				else:
+					warnings.warn(f"Unknown color {color} given to getColor in {self.__repr__()}", Warning, stacklevel = 2)
+					return
+			elif (not isinstance(color, (list, tuple))):
+					warnings.warn(f"'color' must be a tuple or string, not a {type(color)}, for getColor in {self.__repr__()}", Warning, stacklevel = 2)
+					return
+			elif (len(color) != 3):
+					warnings.warn(f"'color' must have a length of three, not {len(color)}, for getColor in {self.__repr__()}", Warning, stacklevel = 2)
+					return
 
-		color = list(color)
-		for i, item in enumerate(color):
-			if (isinstance(item, float)):
-				color[i] = math.ceil(item * 255)
+			color = list(color)
+			for i, item in enumerate(color):
+				if (isinstance(item, float)):
+					color[i] = math.ceil(item * 255)
 
-		thing = wx.Colour(color[0], color[1], color[2])
+			thing = wx.Colour(color[0], color[1], color[2])
 		return thing
 
 	def getFont(self, size = None, bold = False, italic = False, color = None, family = None):
@@ -9719,20 +9722,7 @@ class handle_WidgetTable(handle_Widget_Base):
 		Example Input: setTableCellColor(1, 2, "red")
 		"""
 
-		if ((not isinstance(color, list)) and (not isinstance(color, tuple))):
-			#Determine color (r, g, b)
-			if (color == None):
-				color = self.thing.GetDefaultCellBackgroundColour()
-
-			elif (color == "grey"):
-				color = (210, 210, 210)
-
-			else:
-				print("Add the color", color, "to setTableCellColor")
-				return None
-
-		#Convert color to wxColor
-		color = wx.Colour(color[0], color[1], color[2])
+		color = self.getColor(color)
 
 		if ((row == None) and (column == None)):
 			for i in range(self.thing.GetNumberRows()):
