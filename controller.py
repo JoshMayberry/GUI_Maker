@@ -8910,7 +8910,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 			##Minimum Sizes
 			if (rowSizeMinimum != None):
-				self.thing.SetRowMinimalAcceptableWidth(rowSizeMinimum)
+				self.thing.SetRowMinimalAcceptableHeight(rowSizeMinimum)
 			
 			if (columnSizeMinimum != None):
 				self.thing.SetColMinimalAcceptableWidth(columnSizeMinimum)
