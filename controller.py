@@ -676,11 +676,9 @@ class Utilities():
 					if (itemLabel == item.label):
 						return item
 				
-				#Do not go deeper into Widgets
-				if (not isinstance(item, handle_Widget_Base)):
-					answer = nestCheck(item[:], itemLabel)
-					if (answer != None):
-						return answer
+				answer = nestCheck(item[:], itemLabel)
+				if (answer != None):
+					return answer
 			return answer
 
 		def checkType(handleList):
@@ -791,6 +789,45 @@ class Utilities():
 		else:
 			errorMessage = f"There is no item labled {itemLabel} in the label catalogue for {self.__repr__()}"
 		raise KeyError(errorMessage)
+
+	def runMyFunction(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		"""Runs a function."""
+
+		def runFunction(myFunctionEvaluated, myFunctionArgs, myFunctionKwargs):
+			"""This sub-function is needed to make the multiple functions work properly."""
+
+			#Ensure the *args and **kwargs are formatted correctly 
+			if ((type(myFunctionArgs) != list) and (myFunctionArgs != None)):
+				myFunctionArgs = [myFunctionArgs]
+
+			if ((type(myFunctionKwargs) != list) and (myFunctionKwargs != None)):
+				myFunctionKwargs = [myFunctionKwargs]
+
+			#Has both args and kwargs
+			if ((myFunctionKwargs != None) and (myFunctionArgs != None)):
+				myFunctionEvaluated(*myFunctionArgs, **myFunctionKwargs)
+
+			#Has args, but not kwargs
+			elif (myFunctionArgs != None):
+				myFunctionEvaluated(*myFunctionArgs)
+
+			#Has kwargs, but not args
+			elif (myFunctionKwargs != None):
+				myFunctionEvaluated(**myFunctionKwargs)
+
+			#Has neither args nor kwargs
+			else:
+				myFunctionEvaluated()
+
+		#Skip empty functions
+		if (myFunction != None):
+			myFunctionList, myFunctionArgsList, myFunctionKwargsList = self.formatFunctionInputList(myFunction, myFunctionArgs, myFunctionKwargs)
+			#Run each function
+			for i, myFunction in enumerate(myFunctionList):
+				#Skip empty functions
+				if (myFunction != None):
+					myFunctionEvaluated, myFunctionArgs, myFunctionKwargs = self.formatFunctionInput(i, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
+					runFunction(myFunctionEvaluated, myFunctionArgs, myFunctionKwargs)
 
 	#Binding Functions
 	def formatFunctionInputList(self, myFunctionList, myFunctionArgsList, myFunctionKwargsList):
@@ -1405,9 +1442,9 @@ class Utilities():
 	def autoRun(self, delay, myFunction, myFunctionArgs = None, myFunctionKwargs = None, after = False):
 		"""Automatically runs the provided function.
 
-		delay (int)           - How many milliseconds to wait before the function is executed
+		delay (int)       - How many milliseconds to wait before the function is executed
 		myFunction (list) - What function will be ran. Can be a string or function object
-		after (bool)          - If True: The function will run after the function that called this function instead of after a timer ends
+		after (bool)      - If True: The function will run after the function that called this function instead of after a timer ends
 
 		Example Input: autoRun(0, self.startupFunction)
 		Example Input: autoRun(5000, myFrame.switchWindow, [0, 1])
@@ -2657,6 +2694,10 @@ class handle_Base(Utilities, CommonEventFunctions):
 		self.nestingAddress = None
 		self.allowBuildErrors = None
 
+		self.unnamedList = []
+		self.labelCatalogue = {}
+		self.labelCatalogueOrder = []
+
 	def __repr__(self):
 		representation = f"{type(self).__name__}(id = {id(self)}"
 
@@ -2683,61 +2724,11 @@ class handle_Base(Utilities, CommonEventFunctions):
 			output += f"-- wxObject: {type(self.thing).__name__}\n"
 		if (self.nested):
 			output += "-- nested: True\n"
-		return output
-
-	def __enter__(self):
-		"""Allows the user to use a with statement to build the GUI."""
-
-		return self
-
-	def __exit__(self, exc_type, exc_value, traceback):
-		"""Allows the user to use a with statement to build the GUI."""
-
-		#Error handling
-		if (traceback != None):
-			print(exc_type, exc_value)
-
-			if (self.allowBuildErrors == None):
-				return False
-			elif (not self.allowBuildErrors):
-				return True
-
-	def getLabel(self, event = None):
-		"""Returns the label for this object."""
-
-		return self.label
-
-class handle_Container_Base(handle_Base):
-	"""The base handler for all GUI handlers.
-	Meant to be inherited.
-	"""
-
-	def __init__(self):
-		"""Initializes defaults."""
-
-		#Initialize Inherited Classes
-		handle_Base.__init__(self)
-
-		#Defaults
-		self.unnamedList = []
-		self.labelCatalogue = {}
-		self.labelCatalogueOrder = []
-
-	def __str__(self):
-		"""Gives diagnostic information on the Widget when it is printed out."""
-
-		output = handle_Base.__str__(self)
-		if (self.unnamedList != None):
+		if ((self.unnamedList != None) and (len(self.unnamedList) != 0)):
 			output += f"-- unnamed items: {len(self.unnamedList)}\n"
-		if (self.labelCatalogue != None):
+		if ((self.labelCatalogue != None) and (len(self.labelCatalogue) != 0)):
 			output += f"-- labeled items: {len(self.labelCatalogue)}\n"
-
 		return output
-
-	def __add__(self, other):
-		"""If two sizers are added together, then they are nested."""
-
-		self.nest(other)
 
 	def __len__(self):
 		"""Returns the number of immediate nested elements.
@@ -2777,6 +2768,44 @@ class handle_Container_Base(handle_Base):
 			return True
 		return False
 
+	def __enter__(self):
+		"""Allows the user to use a with statement to build the GUI."""
+
+		return self
+
+	def __exit__(self, exc_type, exc_value, traceback):
+		"""Allows the user to use a with statement to build the GUI."""
+
+		#Error handling
+		if (traceback != None):
+			print(exc_type, exc_value)
+
+			if (self.allowBuildErrors == None):
+				return False
+			elif (not self.allowBuildErrors):
+				return True
+
+	def getLabel(self, event = None):
+		"""Returns the label for this object."""
+
+		return self.label
+
+class handle_Container_Base(handle_Base):
+	"""The base handler for all GUI handlers.
+	Meant to be inherited.
+	"""
+
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize Inherited Classes
+		handle_Base.__init__(self)
+
+	def __add__(self, other):
+		"""If two sizers are added together, then they are nested."""
+
+		self.nest(other)
+
 	def preBuild(self, argument_catalogue):
 		"""Runs before this object is built."""
 
@@ -2803,12 +2832,12 @@ class handle_Container_Base(handle_Base):
 		else:
 			buildSelf.unnamedList.append(self)
 
-		#Determine parent
 		if (parent != None):
 			self.parent = parent
 		else:
 			if (not isinstance(buildSelf, Controller)):
 				if (buildSelf.parent != None):
+					self.parent = buildSelf
 					self.parent = buildSelf.parent
 				else:
 					if (buildSelf.mainPanel != None):
@@ -3195,8 +3224,8 @@ class handle_Widget_Base(handle_Base):
 		output = handle_Base.__str__(self)
 		
 		if (self.nestingAddress != None):
-			sizer = self.getAddressValue(self.nestingAddress)[None]
-			output += f"-- sizer id: {id(sizer)}\n"
+			# sizer = self.getAddressValue(self.nestingAddress)[None]
+			output += f"-- sizer id: {id(self.mySizer)}\n"
 		return output
 
 	def preBuild(self, argument_catalogue):
@@ -3387,6 +3416,45 @@ class handle_Widget_Base(handle_Base):
 			
 		else:
 			warnings.warn(f"Add {self.type} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_rightClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self.betterBind(wx.EVT_RIGHT_DOWN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	def addPopupMenu(self, label = None, rightClick = True, 
+
+		preFunction = None, preFunctionArgs = None, preFunctionKwargs = None, 
+		postFunction = None, postFunctionArgs = None, postFunctionKwargs = None,
+
+		parent = None, hidden = False, enabled = False, handle = None):
+		"""Enables a popup menu.
+
+		label (str) - A unique name for this popupMenu. Used to interact with it later.
+
+		preFunction (str)       - The function that is ran after the popup menu appears
+		preFunctionArgs (any)   - The arguments for 'preFunction'
+		preFunctionKwargs (any) - The keyword arguments for 'preFunction'function
+
+		postFunction (str)       - The function that is ran after the popup menu appears
+		postFunctionArgs (any)   - The arguments for 'postFunction'
+		postFunctionKwargs (any) - The keyword arguments for 'postFunction'function
+
+		rightClick - Whether right clicking (True) or left clicking (False) will bring it up.
+			- If None: Will not respond to a right click. Assumes you will trigger the popup menu some other way.
+
+		Example Input: addPopupMenu()
+		Example Input: addPopupMenu(0)
+		Example Input: addPopupMenu("main")
+		Example Input: addPopupMenu(0, rightClick = False)
+		Example Input: addPopupMenu(0, rightClick = None)
+		Example Input: addPopupMenu(0, preFunction = myFrame.onHideWindow, preFunctionArgs = 0)
+		"""
+
+		handle = handle_MenuPopup()
+		handle.type = "MenuPopup_widget"
+		parent = self
+		handle.preBuild(locals())
+		handle.postBuild(locals())
+		return handle
 
 	#Change State
 	##Enable / Disable
@@ -4650,6 +4718,8 @@ class handle_WidgetList(handle_Widget_Base):
 	def setFunction_rightClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listtree"):
 			self.betterBind(wx.EVT_TREE_ITEM_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		elif (self.type.lower() == "listfull"):
+			self.betterBind(wx.EVT_RIGHT_DOWN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_rightClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -7068,7 +7138,7 @@ class handle_MenuPopup(handle_Container_Base):
 		self.popupMenu.setValue(event = event)
 
 	#Change Settings
-	def show(self, event = None):
+	def show(self, event):
 		"""Triggers the popup menu."""
 
 		self.onTriggerPopupMenu(event)
@@ -8775,7 +8845,8 @@ class handle_WidgetTable(handle_Widget_Base):
 			showGrid, dragableColumns, dragableRows = self.getArguments(argument_catalogue, ["showGrid", "dragableColumns", "dragableRows"])
 			rowSize, columnSize, autoSizeRow, autoSizeColumn = self.getArguments(argument_catalogue, ["rowSize", "columnSize", "autoSizeRow", "autoSizeColumn"])
 
-			rowLabelSize, columnLabelSize, rowSizeMinimum, columnSizeMinimum = self.getArguments(argument_catalogue, ["rowLabelSize", "columnLabelSize", "rowSizeMinimum", "columnSizeMinimum"])
+			rowLabelSize, columnLabelSize = self.getArguments(argument_catalogue, ["rowLabelSize", "columnLabelSize"])
+			rowSizeMinimum, columnSizeMinimum, rowSizeMaximum, columnSizeMaximum = self.getArguments(argument_catalogue, ["rowSizeMinimum", "columnSizeMinimum", "rowSizeMaximum", "columnSizeMaximum"])
 			gridLabels, contents, default, enterKeyExitEdit = self.getArguments(argument_catalogue, ["gridLabels", "contents", "default", "enterKeyExitEdit"])
 			toolTips, arrowKeyExitEdit, editOnEnter = self.getArguments(argument_catalogue, ["toolTips", "arrowKeyExitEdit", "editOnEnter"])
 
@@ -8784,6 +8855,10 @@ class handle_WidgetTable(handle_Widget_Base):
 			rightClickCellFunction, rightClickLabelFunction = self.getArguments(argument_catalogue, ["rightClickCellFunction", "rightClickLabelFunction"])
 
 			readOnlyDefault, cellType, cellTypeDefault = self.getArguments(argument_catalogue, ["readOnlyDefault", "cellType", "cellTypeDefault"])
+			
+			#Remember Values
+			self.rowSizeMaximum = rowSizeMaximum
+			self.columnSizeMaximum = columnSizeMaximum
 
 			#Create the thing to put in the grid
 			self.thing = self.Table(self, self.parent.thing, style = wx.WANTS_CHARS)
@@ -8997,6 +9072,44 @@ class handle_WidgetTable(handle_Widget_Base):
 		self.betterBind(wx.grid.EVT_GRID_LABEL_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
 	#Interact with table
+	def setColumnNumber(self, number):
+		"""Changes the number of columns in the table.
+		Modified Code from: https://www.pythonstudio.us/wxpython/how-do-i-add-and-delete-rows-columns-and-cells.html
+
+		number (int) - How many columns to make the table have
+
+		Example Input: setColumnNumber(10)
+		"""
+
+		current = self.thing.GetNumberCols()
+		if (number != current):
+			if (number > current):
+				self.thing.AppendCols(number - current)
+			else:
+				self.thing.DeleteCols(number, current - number)
+
+			self.thing.ForceRefresh()
+			self.onTableAutoSize()
+
+	def setRowNumber(self, number):
+		"""Changes the number of rows in the table.
+		Modified Code from: https://www.pythonstudio.us/wxpython/how-do-i-add-and-delete-rows-rows-and-cells.html
+
+		number (int) - How many rows to make the table have
+
+		Example Input: setRowNumber(10)
+		"""
+
+		current = self.thing.GetNumberRows()
+		if (number != current):
+			if (number > current):
+				self.thing.AppendRows(number - current)
+			else:
+				self.thing.DeleteRows(number, current - number)
+
+			self.thing.ForceRefresh()
+			self.onTableAutoSize()
+
 	def setRowSize(self, size = -1, autoSize = -1):
 		"""Changes the size of a row.
 
@@ -9035,6 +9148,17 @@ class handle_WidgetTable(handle_Widget_Base):
 			autoSize = {None: autoSize}
 		elif (None not in autoSize):
 			autoSize[None] = False
+
+		#Account for exceeding the maximum
+		if (not isinstance(self.rowSizeMaximum, dict)):
+			self.rowSizeMaximum = {None: self.rowSizeMaximum}
+		elif (None not in self.rowSizeMaximum):
+			self.rowSizeMaximum[None] = None
+
+		for row, value in size.items():
+			if ((row in self.rowSizeMaximum) and (self.rowSizeMaximum[row]) != None):
+				if (value > self.rowSizeMaximum[row]):
+					size[row] = self.rowSizeMaximum[row]
 
 		#Modify Size
 		for row in range(self.thing.GetNumberRows()):
@@ -9088,6 +9212,17 @@ class handle_WidgetTable(handle_Widget_Base):
 			autoSize = {None: autoSize}
 		elif (None not in autoSize):
 			autoSize[None] = False
+
+		#Account for exceeding the maximum
+		if (not isinstance(self.columnSizeMaximum, dict)):
+			self.columnSizeMaximum = {None: self.columnSizeMaximum}
+		elif (None not in self.columnSizeMaximum):
+			self.columnSizeMaximum[None] = None
+
+		for column, value in size.items():
+			if ((column in self.columnSizeMaximum) and (self.columnSizeMaximum[column]) != None):
+				if (value > self.columnSizeMaximum[column]):
+					size[column] = self.columnSizeMaximum[column]
 
 		#Modify Size
 		for column in range(self.thing.GetNumberCols()):
@@ -10034,36 +10169,135 @@ class handle_WidgetTable(handle_Widget_Base):
 
 		event.Skip()
 
-	def onTableAutoSize(self, event):
+	def onTableAutoSize(self, event = None, distributeRemainer = True, distributeAttempts = 5):
 		"""Allows the table to automatically change the size of the columns to fit in the sizer element"""
+
+		def find(autoSize, size, row = True):
+			"""Finds the rows or columns.
+
+			Example Input: find(self.autoSizeRow, self.rowSize, row = True)
+			Example Input: find(self.autoSizeColumn, self.columnSize, row = False)
+			"""
+			nonlocal self, nRows, nColumns
+
+			if (autoSize[None] != None):
+				itemList = [item for item, state in autoSize.items() if ((item != None) and (state != False) and (item not in size))]
+				if (autoSize[None]):
+					if (row):
+						n = nRows
+					else:
+						n = nColumns
+					itemList.extend([item for item in range(n) if ((item not in itemList) and (item not in size) and (item not in autoSize))])
+			else:
+				itemList = []
+
+			return itemList
+
+		def calculate(autoSize, itemList, row = True):
+			"""Calculates the new size for the row or column.
+
+			Example Input: calculate(self.rowSizeMaximum, rowList, row = True)
+			Example Input: calculate(self.columnSizeMaximum, columnList, row = False)
+			"""
+			nonlocal self, totalSize, distributeRemainer, distributeAttempts, nRows, nColumns
+
+			def checkMaximum():
+				"""Checks if the decided value exceeds the maximum for that item.
+
+				Example Input: checkMaximum(autoSize, itemList)
+				"""
+				nonlocal self, totalSize, autoSize, itemList, row, itemSize, distributeRemainer, n
+
+				#Account for exceeding maximum
+				tooLong = {}
+				if (autoSize != None):
+					for i, item in enumerate(itemList):
+						if (item in itemSize):
+							value = itemSize[item]
+						else:
+							value = itemSize[None]
+
+						if ((item in autoSize) and (autoSize[item] < value)):
+							tooLong[item] = value - autoSize[item]
+						elif ((autoSize[None] != None) and (autoSize[None] < value)):
+							tooLong[item] = value - autoSize[None]
+
+					notIncluded = [item for item in range(n) if ((item != None) and (item not in tooLong))]
+					if ((not distributeRemainer) or (len(notIncluded) == 0)):
+						for item, value in tooLong.items():
+							itemSize[item] = itemSize[None] - value
+						tooLong = {}
+					else:
+						for item, value in tooLong.items():
+							newValue = math.floor(value / (len(notIncluded) + 1))
+
+							for subItem in notIncluded:
+								if (subItem in itemSize):
+									itemSize[subItem] += newValue
+								else:
+									itemSize[subItem] = itemSize[None] + newValue
+
+							if (item in itemSize):
+								itemSize[item] -= value
+							else:
+								itemSize[item] = itemSize[None] - value
+				return tooLong
+
+			if (row):
+				n = nRows
+			else:
+				n = nColumns
+
+			itemSize = {None: math.floor(totalSize[int(row)] / (len(itemList) + 1))}
+
+			#Account for not converging upon a solution
+			for tries in range(distributeAttempts):
+				tooLong = checkMaximum()
+				if (len(tooLong) == 0):
+					break
+			else:
+				warnings.warn(f"Could not find a solution in onTableAutoSize.calculate(row = {row}) for {self.__repr__()}", Warning, stacklevel = 2)
+				distributeRemainer = False
+				checkMaximum()
+
+			return itemSize
+
+		def apply(itemList, itemSize, row = True):
+			"""Applies the size change.
+
+			Example Input: apply(rowList, rowSize, row = True)
+			Example Input: apply(columnList, columnSize, row = False)
+			"""
+			nonlocal self
+
+			if (row):
+				myFunction = self.thing.SetRowSize
+			else:
+				myFunction = self.thing.SetColSize
+
+			for item in itemList:
+				if (item in itemSize):
+					myFunction(item, itemSize[item])
+				else:
+					myFunction(item, itemSize[None])
 
 		#Enable Disableing
 		if ((self.autoSizeRow[None] != None) or (self.autoSizeColumn[None] != None)):
-			if (self.autoSizeRow[None] != None):
-				rowList = [item for item, state in self.autoSizeRow.items() if ((item != None) and (state != False) and (item not in self.rowSize))]
-				if (self.autoSizeRow[None]):
-					rowList.extend([item for item in range(self.thing.GetNumberRows()) if ((item not in rowList) and (item not in self.rowSize) and (item not in self.autoSizeRow))])
-			else:
-				rowList = []
+			nRows = self.thing.GetNumberRows()
+			nColumns = self.thing.GetNumberCols()
 
-			if (self.autoSizeColumn[None] != None):
-				columnList = [item for item, state in self.autoSizeColumn.items() if ((item != None) and (state != False) and (item not in self.columnSize))]
-				if (self.autoSizeColumn[None]):
-					columnList.extend([item for item in range(self.thing.GetNumberCols()) if ((item not in columnList) and (item not in self.columnSize) and (item not in self.autoSizeColumn))])
-			else:
-				columnList = []
+			rowList = find(self.autoSizeRow, self.rowSize, row = True)
+			columnList = find(self.autoSizeColumn, self.columnSize, row = False)
 
 			totalSize = self.mySizerItem.GetSize()
-			rowSize = math.floor(totalSize[1] / (len(rowList) + 1))
-			columnSize = math.floor(totalSize[0] / (len(columnList) + 1))
+			rowSize = calculate(self.rowSizeMaximum, rowList, row = True)
+			columnSize = calculate(self.columnSizeMaximum, columnList, row = False)
 
-			for row in rowList:
-				self.thing.SetRowSize(row, rowSize)
-			for column in columnList:
-				self.thing.SetColSize(column, columnSize)
+			apply(rowList, rowSize, row = True)
+			apply(columnList, columnSize, row = False)
 
-
-		event.Skip()
+		if (event != None):
+			event.Skip()
 
 	####################################################################################################
 	class Table(wx.grid.Grid):
@@ -12118,7 +12352,8 @@ class handle_Sizer(handle_Container_Base):
 
 	def addTable(self, rows = 1, columns = 1,
 		contents = None, gridLabels = [[],[]], toolTips = None, autoSizeRow = False, autoSizeColumn = False,
-		rowSize = None, columnSize = None, rowLabelSize = None, columnLabelSize = None, rowSizeMinimum = None, columnSizeMinimum = None,
+		rowSize = None, columnSize = None, rowLabelSize = None, columnLabelSize = None, 
+		rowSizeMinimum = None, columnSizeMinimum = None, rowSizeMaximum = None, columnSizeMaximum = None,
 
 		showGrid = True, dragableRows = False, dragableColumns = False, arrowKeyExitEdit = False, enterKeyExitEdit = False, editOnEnter = False, 
 		readOnly = False, readOnlyDefault = False, default = (0, 0), cellType = None, cellTypeDefault = "inputbox",
@@ -12159,10 +12394,16 @@ class handle_Sizer(handle_Container_Base):
 			- If None: Will make it the default size
 		columnLabelSize (int)   - The height of the column labels
 			- If None: Will make it the default size
+
 		rowSizeMinimum (str)    - The minimum height for the rows
-			- If None: Will make it the default size
+			- If None: Will not restrict minimum row size
 		columnSizeMinimum (str) - The minimum width for the columns
-			- If None: Will make it the default size
+			- If None: Will not restrict minimum column size
+		rowSizeMaximum (str)    - The maximum height for the rows. Does not apply to the user, only when the program is setting the size
+			- If None: Will not restrict maximum row size
+		columnSizeMaximum (str) - The maximum width for the columns. Does not apply to the user, only when the program is setting the size
+			- If None: Will not restrict maximum column size
+
 		autoSizeRow (bool)      - Determines the size of the rows based on the sizer element. 'rowSize' will override this
 			- If dict: {row (int): autoSize (int)}. Use None to define the default state
 		autoSizeColumn (bool)   - Determines the size of the columns based on the sizer element. 'columnSize' will override this
@@ -12930,6 +13171,10 @@ class handle_Window(handle_Container_Base):
 		self.statusBar = None
 		self.auiManager = None
 
+		self.refreshFunction = None
+		self.refreshFunctionArgs = None
+		self.refreshFunctionKwargs = None
+
 		self.finalFunctionList = []
 		self.sizersIterating = {} #Keeps track of which sizers have been used in a while loop, as well as if they are still in the while loop {sizer (handle): [currently in a while loop (bool), order entered (int)]}
 		self.keyPressQueue = {} #A dictionary that contains all of the key events that need to be bound to this window
@@ -13686,7 +13931,7 @@ class handle_Window(handle_Container_Base):
 		Example Input: addPopupMenu("main")
 		Example Input: addPopupMenu(0, rightClick = False)
 		Example Input: addPopupMenu(0, rightClick = None)
-		Example Input: addPopupMenu(0, myFrame.onHideWindow, 0)
+		Example Input: addPopupMenu(0, preFunction = myFrame.onHideWindow, preFunctionArgs = 0)
 		"""
 
 		handle = handle_MenuPopup()
@@ -14090,6 +14335,26 @@ class handle_Window(handle_Container_Base):
 				modifiedSize = (currentSize[0] + 1, currentSize[1] + 1)
 				self.thing.SetSize(modifiedSize)
 				self.thing.SetSize(currentSize)
+
+	def setRefresh(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		"""Sets the functions to call for refresh()."""
+
+		self.refreshFunction = myFunction
+		self.refreshFunctionArgs = myFunctionArgs
+		self.refreshFunctionKwargs = myFunctionKwargs
+
+	def refresh(self):
+		"""Runs the user defined refresh function.
+		This function is intended to make sure all widget values are up to date.
+
+		Example Input: refresh()
+		"""
+
+		if (self.refreshFunction == None):
+			warnings.warn(f"The refresh function for {self.__repr__()} has not been set yet\nUse setRefresh() during window creation first to set the refresh function", Warning, stacklevel = 2)
+			return
+
+		self.runMyFunction(self.refreshFunction, self.refreshFunctionArgs, self.refreshFunctionKwargs)
 
 	def nest(self, inside, outside):
 		"""Nests an object in another object.
@@ -15671,6 +15936,15 @@ class handle_Notebook(handle_Container_Base):
 		else:
 			warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
 
+	def getValue(self, event = None):
+		"""Gets the contextual value for the object associated with this handle to what the user supplies."""
+
+		if (self.type.lower() == "notebook"):
+			index = self.getCurrentPage()
+			return self.getPageText(index)
+		else:
+			warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
+
 	#Change Settings
 	def setFunction_init(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the object is first created."""
@@ -15695,6 +15969,14 @@ class handle_Notebook(handle_Container_Base):
 			self.parent.betterBind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_postPageChange() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_rightClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "notebook"):
+			self.betterBind(wx.EVT_RIGHT_DOWN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			for handle in self[:]:
+				handle.setFunction_rightClick(myFunction = myFunction, myFunctionArgs = myFunctionArgs, myFunctionKwargs = myFunctionKwargs)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_rightClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def addPage(self, text = None, label = None, parent = None, panel = {}, sizer = {},
 		insert = None, default = False, icon_path = None, icon_internal = False):
@@ -15918,11 +16200,11 @@ class handle_Notebook(handle_Container_Base):
 		"""
 
 		#Determine page number
-		if (not isinstance(pageIndex, str)):
-			pageNumber = self.getPageIndex(pageLabel)
+		if (not isinstance(pageIndex, int)):
+			pageIndex = self.getPageIndex(pageIndex)
 
 		#Get the tab's text
-		text = self.thing.GetPageText(pageNumber)
+		text = self.thing.GetPageText(pageIndex)
 
 		return text
 
@@ -16151,7 +16433,7 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 	def setValue(self, newValue = "", event = None):
 		"""Changes the given notebook page's tab text.
 
-		newValue (str)          - What the page's tab will now say
+		newValue (str) - What the page's tab will now say
 
 		Example Input: notebookSetPageText("Ipsum")
 		"""
@@ -16168,10 +16450,16 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 				warnings.warn(f"A label is needed for {self.__repr__()} to change the caption", Warning, stacklevel = 2)
 
 			self.myManager.setTitle(self.label, newValue)
-
 		else:
 			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
+	def setFunction_rightClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "notebookpage"):
+			self.betterBind(wx.EVT_RIGHT_DOWN, self.myPanel.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_rightClick() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	#Etc
 	def dockCenter(self, *args, **kwargs):
 		"""Overload for dockCenter() in handle_AuiManager."""
 
@@ -18840,18 +19128,20 @@ class User_Utilities():
 		return output
 
 	def __len__(self):
-		if (isinstance(self._catalogue_variable, Controller)):
-			return self._catalogue_variable.__len__()
+		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable != None)):
+			if (isinstance(self._catalogue_variable, Controller)):
+				return self._catalogue_variable.__len__()
 		return len(self[:])
 
 	def __contains__(self, key):
-		if (isinstance(self._catalogue_variable, Controller)):
-			return self._catalogue_variable.__contains__(key)
+		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable != None)):
+			if (isinstance(self._catalogue_variable, Controller)):
+				return self._catalogue_variable.__contains__(key)
 
 		if (key in self[:]):
 			return True
 		else:
-			if (self._label_variable != None):
+			if (hasattr(self, "_catalogue_variable") and (self._label_variable != None)):
 				for item in self[:]:
 					if (hasattr(item, self._label_variable)):
 						if (key == getattr(item, self._label_variable)):
@@ -18859,42 +19149,48 @@ class User_Utilities():
 		return False
 
 	def __iter__(self):
-		if (isinstance(self._catalogue_variable, Controller)):
-			return self._catalogue_variable.__iter__()
+		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable != None)):
+			if (isinstance(self._catalogue_variable, Controller)):
+				return self._catalogue_variable.__iter__()
 
 		dataCatalogue = self._getDataCatalogue()
 		return Iterator(dataCatalogue)
 
 	def __getitem__(self, key):
-		if (isinstance(self._catalogue_variable, Controller)):
-			return self._catalogue_variable.__getitem__(key)
+		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable != None)):
+			if (isinstance(self._catalogue_variable, Controller)):
+				return self._catalogue_variable.__getitem__(key)
 			
 		dataCatalogue = self._getDataCatalogue()
 		return self._get(dataCatalogue, key)
 
 	def __setitem__(self, key, value):
-		if (isinstance(self._catalogue_variable, Controller)):
-			return self._catalogue_variable.__setitem__(key, value)
+		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable != None)):
+			if (isinstance(self._catalogue_variable, Controller)):
+				return self._catalogue_variable.__setitem__(key, value)
 		
 		dataCatalogue = self._getDataCatalogue()
 		dataCatalogue[key] = value
 
 	def __delitem__(self, key):
-		if (isinstance(self._catalogue_variable, Controller)):
-			return self._catalogue_variable.__delitem__(key)
+		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable != None)):
+			if (isinstance(self._catalogue_variable, Controller)):
+				return self._catalogue_variable.__delitem__(key)
 		
 		dataCatalogue = self._getDataCatalogue()
 		del dataCatalogue[key]
 
 	def __enter__(self):
-		if (isinstance(self._catalogue_variable, Controller)):
-			return self._catalogue_variable.__enter__()
+		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable != None)):
+			if (isinstance(self._catalogue_variable, Controller)):
+				return self._catalogue_variable.__enter__()
 			
 		return self
 
 	def __exit__(self, exc_type, exc_value, traceback):
-		if (isinstance(self._catalogue_variable, Controller)):
-			return self._catalogue_variable.__exit__(exc_type, exc_value, traceback)
+		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable != None)):
+			if (isinstance(self._catalogue_variable, Controller)):
+				return self._catalogue_variable.__exit__(exc_type, exc_value, traceback)
 			
 		if (traceback != None):
 			print(exc_type, exc_value)
