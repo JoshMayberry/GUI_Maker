@@ -16,7 +16,7 @@ __version__ = "4.3.0"
 ##WARNING: If you turn off a feature, make sure you dont try to use it.
 
 #Import standard elements to interact with the computer
-# import os
+import os
 import ast
 import sys
 import time
@@ -38,6 +38,7 @@ import wx
 import wx.adv
 import wx.grid
 import wx.lib.masked
+import wx.lib.buttons
 import wx.lib.dialogs
 import wx.lib.agw.aui
 # import wx.lib.newevent
@@ -965,7 +966,7 @@ class Utilities():
 				else:
 					bindObject = self.parent.thing
 
-			elif (thingClass == "wxMenuItem"):
+			elif (thingClass in ["wxMenuItem", "wxToolBarToolBase"]):
 				bindObject = self.thing
 			else:
 				bindObject = thing
@@ -2790,13 +2791,21 @@ class handle_Base(Utilities, CommonEventFunctions):
 
 	def preBuild(self, argument_catalogue):
 		"""Runs before this object is built."""
-		
-		pass
 
-	def postBuild(self, argument_catalogue):
-		"""Runs after this object is built."""
-		
 		buildSelf = argument_catalogue["self"]
+		
+		#Determine mySizer
+		if (hasattr(self, "mySizer") and (self.mySizer != None)):
+			warnings.warn(f"{self.__repr__()} already has the sizer {self.mySizer.__repr__()} as 'mySizer' in finalNest() for {buildSelf.__repr__()}\nOverwriting 'mySizer'", Warning, stacklevel = 2)
+			
+		if (isinstance(buildSelf, handle_Sizer)):
+			self.mySizer = buildSelf
+		elif (isinstance(buildSelf, (handle_Window, Controller, handle_MenuPopup))):
+			self.mySizer = None
+		elif (isinstance(buildSelf, handle_Menu) and (buildSelf.type.lower() != "toolbar")):
+			self.mySizer = None
+		else:
+			self.mySizer = buildSelf.mySizer
 		
 		#Determine native window
 		if (isinstance(buildSelf, handle_Window)):
@@ -2805,6 +2814,31 @@ class handle_Base(Utilities, CommonEventFunctions):
 			self.myWindow = None
 		else:
 			self.myWindow = buildSelf.myWindow
+
+	def postBuild(self, argument_catalogue):
+		"""Runs after this object is built."""
+		
+		#Unpack arguments
+		buildSelf = argument_catalogue["self"]
+		hidden, enabled = self.getArguments(argument_catalogue, ["hidden", "enabled"])
+
+		#Determine visibility
+		if (isinstance(self, handle_Window) and (not hidden)):
+			self.showWindow()
+		elif (hidden):
+			if (isinstance(self, handle_Sizer)):
+				self.addFinalFunction(self.thing.ShowItems, False)
+			else:
+				self.thing.Hide()
+
+		#Determine disability
+		if (isinstance(self, handle_Window) and (not enabled)):
+			pass
+		elif (not enabled):
+			if (isinstance(self, handle_Sizer)):
+				self.addFinalFunction(self.setEnable, False)
+			else:
+				self.setEnable(False)
 
 	def getLabel(self, event = None):
 		"""Returns the label for this object."""
@@ -3186,6 +3220,7 @@ class handle_Container_Base(handle_Base):
 
 		#Create Handler
 		sizer = handle_Sizer()
+		sizer.index = i
 		sizer.type = instructions["type"]
 		del instructions["type"]
 
@@ -3213,6 +3248,7 @@ class handle_Container_Base(handle_Base):
 
 		#Create Handler
 		panel = handle_Panel()
+		panel.index = i
 
 		#Finish building panel
 		kwargs["self"] = parent
@@ -3246,7 +3282,7 @@ class handle_Widget_Base(handle_Base):
 
 		output = handle_Base.__str__(self)
 		
-		if (self.nestingAddress != None):
+		if ((self.nestingAddress != None) and (hasattr(self, "mySizer") and (self.mySizer != None))):
 			# sizer = self.getAddressValue(self.nestingAddress)[None]
 			output += f"-- sizer id: {id(self.mySizer)}\n"
 		return output
@@ -3261,7 +3297,6 @@ class handle_Widget_Base(handle_Base):
 
 		#Store data
 		self.label = label
-		self.sizer = buildSelf
 
 		#Add object to internal catalogue
 		if (label != None):
@@ -3278,7 +3313,7 @@ class handle_Widget_Base(handle_Base):
 			self.parent = parent
 		else:
 			if (not isinstance(buildSelf, Controller)):
-				if ((isinstance(buildSelf, handle_Menu) and (buildSelf.type.lower() in ["menu", "popupmenu"]))):
+				if (isinstance(buildSelf, handle_Menu)):
 					self.parent = buildSelf
 				else:
 					if (buildSelf.parent != None):
@@ -3312,28 +3347,16 @@ class handle_Widget_Base(handle_Base):
 		handle_Base.postBuild(self, argument_catalogue)
 		
 		#Unpack arguments
-		buildSelf, selected, hidden, enabled, flags, flex = self.getArguments(argument_catalogue, ["self", "selected", "hidden", "enabled", "flags", "flex"])
+		selected, flags, flex, mySizer = self.getArguments(argument_catalogue, ["selected", "flags", "flex", "mySizer"])
 
 		#Determine if it is selected by default
 		if (selected):
 			self.thing.SetDefault()
-
-		#Determine visibility
-		if (hidden):
-			if (isinstance(self, handle_Sizer)):
-				self.addFinalFunction(self.thing.ShowItems, False)
-			else:
-				self.thing.Hide()
-
-		#Determine disability
-		if (not enabled):
-			if (isinstance(self, handle_Sizer)):
-				self.addFinalFunction(self.setEnable, False)
-			else:
-				self.setEnable(False)
 		
 		#Add it to the sizer
-		self.sizer.nest(self, flex = flex, flags = flags)
+		if (mySizer == None):
+			mySizer = self.mySizer
+		mySizer.nest(self, flex = flex, flags = flags)
 
 	def build(self, argument_catalogue):
 		"""Determiens which build system to use for this handle."""
@@ -3446,7 +3469,7 @@ class handle_Widget_Base(handle_Base):
 		preFunction = None, preFunctionArgs = None, preFunctionKwargs = None, 
 		postFunction = None, postFunctionArgs = None, postFunctionKwargs = None,
 
-		parent = None, hidden = False, enabled = False, handle = None):
+		parent = None, hidden = False, enabled = True, handle = None):
 		"""Enables a popup menu.
 
 		label (str) - A unique name for this popupMenu. Used to interact with it later.
@@ -3836,23 +3859,31 @@ class handle_WidgetText(handle_Widget_Base):
 			#Ensure correct format
 			if (not isinstance(text, str)):
 				text = f"{text}"
+			if (not isinstance(argument_catalogue["flags"], (list, tuple))):
+				argument_catalogue["flags"] = [argument_catalogue["flags"]]
 
 			#Apply Settings
 			if (alignment != None):
 				if (isinstance(alignment, bool)):
 					if (alignment):
 						style = "wx.ALIGN_LEFT"
+						argument_catalogue["flags"].append("al")
 					else:
 						style = "wx.ALIGN_CENTRE"
+						argument_catalogue["flags"].append("ac")
 				elif (alignment == 0):
 					style = "wx.ALIGN_LEFT"
+					argument_catalogue["flags"].append("al")
 				elif (alignment == 1):
 					style = "wx.ALIGN_RIGHT"
+					argument_catalogue["flags"].append("ar")
 				else:
 					style = "wx.ALIGN_CENTRE"
+					argument_catalogue["flags"].append("ac")
 			else:
 				style = "wx.ALIGN_CENTRE"
-
+				argument_catalogue["flags"].append("ac")
+			
 			if (ellipsize != None):
 				if (isinstance(ellipsize, bool)):
 					if (ellipsize):
@@ -4591,6 +4622,20 @@ class handle_WidgetList(handle_Widget_Base):
 				newValue = 0
 				
 			self.thing.SetSelection(newValue) #(int) - What the choice options will now be
+
+		elif (self.type.lower() == "listfull"):
+			if (newValue != None):
+				if (isinstance(newValue, str)):
+					newValue = self.thing.FindItem(-1, newValue)
+
+				if (newValue == None):
+					errorMessage = f"Invalid drop list selection in setSelection() for {self.__repr__()}"
+					raise ValueError(errorMessage)
+			else:
+				newValue = 0
+				
+			self.thing.Select(newValue) #(int) - What the choice options will now be
+
 
 		else:
 			warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -5869,8 +5914,8 @@ class handle_WidgetButton(handle_Widget_Base):
 
 			#########################################################
 
-			idlePath, disabledPath, selectedPath = self.getArguments(argument_catalogue, ["idlePath", "disabledPath", "selectedPath"])
-			focusPath, hoverPath, myFunction = self.getArguments(argument_catalogue, ["focusPath", "hoverPath", "myFunction"])
+			idlePath, disabledPath, selectedPath, text = self.getArguments(argument_catalogue, ["idlePath", "disabledPath", "selectedPath", "text"])
+			focusPath, hoverPath, toggle, myFunction = self.getArguments(argument_catalogue, ["focusPath", "hoverPath", "toggle", "myFunction"])
 
 			# wx.BU_LEFT: Left-justifies the bitmap label.
 			# wx.BU_TOP: Aligns the bitmap label to the top of the button.
@@ -5882,9 +5927,23 @@ class handle_WidgetButton(handle_Widget_Base):
 			if (image == None):
 				image = self.getImage(None)
 
+			#Remember values
+			self.toggle = toggle
+
 			#Create the thing to put in the grid
-			self.thing = wx.BitmapButton(self.parent.thing, bitmap = image, style = wx.BU_AUTODRAW)
+			if (text != None):
+				if (toggle):
+					self.thing = wx.lib.buttons.GenBitmapTextToggleButton(self.parent.thing, bitmap = image, label = text, style = wx.BU_AUTODRAW)
+				else:
+					self.thing = wx.lib.buttons.GenBitmapTextButton(self.parent.thing, bitmap = image, label = text, style = wx.BU_AUTODRAW)
+			else:
+				if (toggle):
+					self.thing = wx.lib.buttons.GenBitmapToggleButton(self.parent.thing, bitmap = image, style = wx.BU_AUTODRAW)
+				else:
+					# self.thing = wx.BitmapToggleButton(self.parent.thing, bitmap = image)
+					self.thing = wx.lib.buttons.GenBitmapButton(self.parent.thing, bitmap = image, style = wx.BU_AUTODRAW)
 		
+			#Apply extra images
 			image = imageCheck(disabledPath)
 			if (image != None):
 				self.thing.SetBitmapDisabled(image)
@@ -5958,8 +6017,8 @@ class handle_WidgetButton(handle_Widget_Base):
 		elif (self.type.lower() == "button"):
 			value = self.thing.GetLabel() #(str) - What the button says
 
-		elif (self.type.lower() == "buttonimage"):
-			value = self.thing.GetLabel() #(str) - What the button says
+		elif ((self.type.lower() == "buttonimage") and (self.toggle)):
+			value = self.thing.GetToggle() #(bool) - True: Selected; False: Un-Selected
 
 		else:
 			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -6041,8 +6100,8 @@ class handle_WidgetButton(handle_Widget_Base):
 		elif (self.type.lower() == "button"):
 			self.thing.SetLabel(newValue) #(str) - What the button will say on it
 
-		elif (self.type.lower() == "buttonimage"):
-			self.thing.SetLabel(newValue) #(str) - What the button will say on it
+		elif ((self.type.lower() == "buttonimage") and (self.toggle)):
+			self.thing.SetToggle(bool(newValue)) #(bool) - True: selected; False: un-selected
 
 		else:
 			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -6051,6 +6110,8 @@ class handle_WidgetButton(handle_Widget_Base):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
 		if (self.type.lower() == "buttonradiobox"):
+			if (newValue == None):
+				newValue = 0
 			self.setValue(newValue, event)
 		else:
 			warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -6699,19 +6760,19 @@ class handle_Menu(handle_Container_Base):
 		#Initialize inherited classes
 		handle_Container_Base.__init__(self)
 
-	def preBuild(self, argument_catalogue):
-		"""Runs after this object is built."""
+	# def preBuild(self, argument_catalogue):
+	# 	"""Runs after this object is built."""
 
-		handle_Container_Base.preBuild(self, argument_catalogue)
+	# 	handle_Container_Base.preBuild(self, argument_catalogue)
 
-	def postBuild(self, argument_catalogue):
-		"""Runs after this object is built."""
+	# def postBuild(self, argument_catalogue):
+	# 	"""Runs after this object is built."""
 
-		handle_Container_Base.postBuild(self, argument_catalogue)
+	# 	handle_Container_Base.postBuild(self, argument_catalogue)
 		
-		#Unpack arguments
-		buildSelf = argument_catalogue["self"]
-		buildSelf.finalNest(self)
+	# 	#Unpack arguments
+	# 	buildSelf = argument_catalogue["self"]
+	# 	buildSelf.finalNest(self)
 
 	def build(self, argument_catalogue):
 		"""Determiens which build system to use for this handle."""
@@ -6738,57 +6799,67 @@ class handle_Menu(handle_Container_Base):
 
 			self.text = text
 
-			#Finsih
+			#Finish
 			if (isinstance(buildSelf, handle_Window)):
 				#Main Menu
-				self.myWindow = buildSelf
+				# self.myWindow = buildSelf
 				buildSelf.menuBar.Append(self.thing, self.text)
 
 			elif (isinstance(buildSelf, handle_MenuPopup)):
 				#Popup Menu
-				self.myWindow = buildSelf.myWindow
+				pass
+				# self.myWindow = buildSelf.myWindow
 
 			else:
 				#Sub Menu
-				self.myWindow = buildSelf.myWindow
+				# self.myWindow = buildSelf.myWindow
 				buildSelf.thing.Append(wx.ID_ANY, self.text, self.thing)
 
 		def build_toolbar():
 			"""Builds a wx toolbar control object."""
 			nonlocal self, argument_catalogue
 
-			self.thing = wx.ToolBar(self.parent.thing)
+			vertical, detachable, flat, align, top = self.getArguments(argument_catalogue, ["vertical", "detachable", "flat", "align", "top"])
+			showIcon, showDivider, showToolTip, showText = self.getArguments(argument_catalogue, ["showIcon", "showDivider", "showToolTip", "showText"])
+			flags, flex, vertical_text, myFunction = self.getArguments(argument_catalogue, ["flags", "flex", "vertical_text", "myFunction"])
+
+			if (vertical):
+				style = "wx.TB_VERTICAL"
+			else:
+				style = "wx.TB_HORIZONTAL"
+
+			if (detachable):
+				style += "|wx.TB_DOCKABLE"
+
+			if (flat):
+				style += "|wx.TB_FLAT"
+			if (not align):
+				style += "|wx.TB_NOALIGN"
+			if (top == None):
+				style += "|wx.TB_RIGHT"
+			elif (not top):
+				style += "|wx.TB_BOTTOM"
+
+			if (not showIcon):
+				style += "wx.TB_NOICONS"
+			if (not showDivider):
+				style += "wx.TB_NODIVIDER"
+			if (not showToolTip):
+				style += "wx.TB_NO_TOOLTIPS"
+			if (showText):
+				style += "|wx.TB_TEXT"
+				if (vertical_text):
+					style += "wx.TB_HORZ_LAYOUT"
+			
+			self.thing = wx.ToolBar(self.parent.thing, style = eval(style))
 			self.thing.Realize()
 
+			self.mySizer.nest(self, flex = flex, flags = flags)
 
-			# addInputBox, fontText, maxSize, myFunction = self.getArguments(argument_catalogue, ["addInputBox", "fontText", "maxSize", "myFunction"])
-
-			# #Add settings
-			# styles = ""
-			# if (addInputBox):
-			# 	styles += "|wx.FNTP_USE_TEXTCTRL"
-			
-			# if (fontText):
-			# 	styles += "|wx.FNTP_FONTDESC_AS_LABEL"
-			# 	#FNTP_USEFONT_FOR_LABEL
-
-			# if (len(styles) != 0):
-			# 	styles = styles[1:] #Remove leading line
-			# else:
-			# 	styles = "0"
-
-			# # font = self.getFont()
-			# font = wx.NullFont
-		
-			# #Create the thing to put in the grid
-			# self.thing = wx.FontPickerCtrl(self.parent.thing, font = font, style = eval(styles))
-			
-			# self.thing.SetMaxPointSize(maxSize) 
-
-			# #Bind the function(s)
-			# if (myFunction != None):
-			# 	myFunctionArgs, myFunctionKwargs = self.getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
-			# 	self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
+			#Bind the function(s)
+			if (myFunction != None):
+				myFunctionArgs, myFunctionKwargs = self.getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
+				self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
 		
 		#########################################################
 
@@ -6802,6 +6873,16 @@ class handle_Menu(handle_Container_Base):
 			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self.postBuild(argument_catalogue)
+
+	def nest(self, handle, *args, **kwargs):
+		"""Nests wx controls in a toolbar."""
+
+		#Do not nest already nested objects
+		if (handle.nested):
+			errorMessage = "Cannot nest objects twice"
+			raise SyntaxError(errorMessage)
+
+		self.finalNest(handle)
 
 	#Getters
 	def getValue(self, event = None):
@@ -6852,12 +6933,20 @@ class handle_Menu(handle_Container_Base):
 			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Change Settings
-	def addItem(self, text = "", icon = None, internal = False, 
-		special = None, check = None, default = False, toolTip = "",
+	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		"""Changes the function that runs when the widget is changed/clicked on."""
+		
+		if (self.type.lower() == "toolbar"):
+			self.betterBind(wx.EVT_TOOL_RCLICKED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def addItem(self, text = "", icon = None, internal = False, disabled_icon = None, disabled_internal = None,
+		special = None, check = None, default = False, toolTip = "", stretchable = None,
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1"):
 		"""Adds a menu item to a specific pre-existing menu.
 		Note: More special IDs for future implementation can be found at: https://wiki.wxpython.org/SpecialIDs
 
@@ -6868,9 +6957,14 @@ class handle_Menu(handle_Container_Base):
 
 		which (int)     - The label for the menu to add this to. Can be a string
 		text (str)      - The label for the menu item. This is what is shown to the user
-		icon (str)      - The file path to the icon for the menu item
-			If None: No icon will be shown
-		internal (bool) - If True: The icon provided is an internal icon, not an external file
+
+		icon (str)              - The file path to the icon for the menu item
+			- If None: No icon will be shown
+		internal (bool)         - If True: The icon provided is an internal icon, not an external file
+		disabled_icon (str)     - The file path to the icon for the menu item while it is disabled
+			- If None: Will use a darker version of 'icon'
+		disabled_internal (bool) - If the icon in 'disabled' provided is an internal icon, not an external file
+			- If None: Will use the value given for 'internal'
 
 		label (str) - What this is called in the idCatalogue
 		special (str) - Declares if the item has a special pre-defined functionality. Overrides 'label'. Only the first letter matters
@@ -6899,34 +6993,46 @@ class handle_Menu(handle_Container_Base):
 		enabled (bool) - If True: The user can interact with this
 		toolTip (str)  - What the status bar will say if this is moused over
 
-		Example Input: addItem(0, "Lorem")
-		Example Input: addItem(0, icon = 'exit.bmp')
-		Example Input: addItem(2, "Print Preview", myFunction = [self.onPrintLabelsPreview, "self.onShowPopupWindow"], myFunctionArgs = [None, 0], label = "printPreview")
+		Example Input: addItem("Lorem")
+		Example Input: addItem(icon = 'exit.bmp')
+		Example Input: addItem("Print Preview", myFunction = [self.onPrintLabelsPreview, "self.onShowPopupWindow"], myFunctionArgs = [None, 0], label = "printPreview")
+		Example Input: addItem(label = "scanner", check = True, default = True, icon = "resources/scanner_enabled.ico", disabled_icon = "resources/scanner_disabled.ico")
 		"""
 
 		handle = handle_MenuItem()
 		handle.type = "MenuItem"
+		selected = False
+		mySizer = self
 		handle.build(locals())
 		self.finalNest(handle)
 
 		return handle
 
-	def addSeparator(self, 
-		label = None, hidden = False, parent = None, handle = None):
+	def addSeparator(self, *args, **kwargs):
 		"""Adds a line to a specific pre-existing menu to separate menu items.
 
 		Example Input: addSeparator()
 		"""
 
-		handle = handle_MenuItem()
-		handle.type = "MenuItem"
-		text = None
-		handle.build(locals())
-		self.finalNest(handle)
+		handle = self.addItem(*args, text = None, stretchable = False, **kwargs)
 
 		return handle
 
-	def addSub(self, text = "", 
+	def addStretchableSpace(self, *args, **kwargs):
+		"""Adds a line to a specific pre-existing menu to separate menu items.
+
+		Example Input: addSeparator()
+		"""
+
+		if (self.type.lower() == "toolbar"):
+			handle = self.addItem(*args, text = None, stretchable = True, **kwargs)
+		else:
+			warnings.warn(f"Add {self.type} to addStretchableSpace() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addSub(self, text = "", flex = 0, flags = "c1", 
 		label = None, hidden = False, parent = None, handle = None):
 		"""Adds a sub menu to a specific pre-existing menu.
 		To adding items to a sub menu is the same as for menus.
@@ -6940,8 +7046,347 @@ class handle_Menu(handle_Container_Base):
 
 		handle = handle_Menu()
 		detachable = False
-
+		selected = False
+		mySizer = self
 		handle.build(locals())
+
+		return handle
+
+	def addText(self, *args, **kwargs):
+		"""Adds a text widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			subHandle = handle_Sizer.addText(self, *args, mySizer = self, **kwargs)
+			handle = self.thing.AddControl(subHandle.thing)
+			self.thing.Realize()
+		else:
+			warnings.warn(f"Add {self.type} to addText() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addHyperlink(self, *args, **kwargs):
+		"""Adds a hyperlink widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			subHandle = handle_Sizer.addHyperlink(self, *args, mySizer = self, **kwargs)
+			handle = self.thing.AddControl(subHandle.thing)
+			self.thing.Realize()
+		else:
+			warnings.warn(f"Add {self.type} to addHyperlink() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addLine(self, *args, **kwargs):
+		"""Adds a line widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			subHandle = handle_Sizer.addLine(self, *args, mySizer = self, **kwargs)
+			handle = self.thing.AddControl(subHandle.thing)
+			self.thing.Realize()
+		else:
+			warnings.warn(f"Add {self.type} to addLine() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addListDrop(self, *args, **kwargs):
+		"""Adds a drop list widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			subHandle = handle_Sizer.addListDrop(self, *args, mySizer = self, **kwargs)
+			handle = self.thing.AddControl(subHandle.thing)
+			self.thing.Realize()
+		else:
+			warnings.warn(f"Add {self.type} to addListDrop() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addListFull(self, *args, **kwargs):
+		"""Adds a full list widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			subHandle = handle_Sizer.addListFull(self, *args, mySizer = self, **kwargs)
+			handle = self.thing.AddControl(subHandle.thing)
+			self.thing.Realize()
+		else:
+			warnings.warn(f"Add {self.type} to addListFull() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addInputSlider(self, *args, **kwargs):
+		"""Adds an input slider widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			subHandle = handle_Sizer.addInputSlider(self, *args, mySizer = self, **kwargs)
+			handle = self.thing.AddControl(subHandle.thing)
+			self.thing.Realize()
+		else:
+			warnings.warn(f"Add {self.type} to addInputSlider() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addInputBox(self, *args, **kwargs):
+		"""Adds an input box widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			subHandle = handle_Sizer.addInputBox(self, *args, mySizer = self, **kwargs)
+			handle = self.thing.AddControl(subHandle.thing)
+			self.thing.Realize()
+		else:
+			warnings.warn(f"Add {self.type} to addInputBox() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addInputSearch(self, *args, **kwargs):
+		"""Adds a search box widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			subHandle = handle_Sizer.addInputSearch(self, *args, mySizer = self, **kwargs)
+			handle = self.thing.AddControl(subHandle.thing)
+			self.thing.Realize()
+		else:
+			warnings.warn(f"Add {self.type} to addInputSearch() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addInputSpinner(self, *args, **kwargs):
+		"""Adds an input spinner widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			subHandle = handle_Sizer.addInputSpinner(self, *args, mySizer = self, **kwargs)
+			handle = self.thing.AddControl(subHandle.thing)
+			self.thing.Realize()
+		else:
+			warnings.warn(f"Add {self.type} to addInputSpinner() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addButton(self, *args, **kwargs):
+		"""Adds a button widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			subHandle = handle_Sizer.addButton(self, *args, mySizer = self, **kwargs)
+			handle = self.thing.AddControl(subHandle.thing)
+			self.thing.Realize()
+		else:
+			warnings.warn(f"Add {self.type} to addButton() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addButtonToggle(self, *args, **kwargs):
+		"""Adds a toggle button widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			subHandle = handle_Sizer.addButtonToggle(self, *args, mySizer = self, **kwargs)
+			handle = self.thing.AddControl(subHandle.thing)
+			self.thing.Realize()
+		else:
+			warnings.warn(f"Add {self.type} to addButtonToggle() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addButtonCheck(self, *args, **kwargs):
+		"""Adds a check button widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			subHandle = handle_Sizer.addButtonCheck(self, *args, mySizer = self, **kwargs)
+			handle = self.thing.AddControl(subHandle.thing)
+			self.thing.Realize()
+		else:
+			warnings.warn(f"Add {self.type} to addButtonCheck() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addButtonCheckList(self, *args, **kwargs):
+		"""Adds a check list widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			subHandle = handle_Sizer.addButtonCheckList(self, *args, mySizer = self, **kwargs)
+			handle = self.thing.AddControl(subHandle.thing)
+			self.thing.Realize()
+		else:
+			warnings.warn(f"Add {self.type} to addButtonCheckList() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addButtonRadio(self, *args, **kwargs):
+		"""Adds a radio button widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			subHandle = handle_Sizer.addButtonRadio(self, *args, mySizer = self, **kwargs)
+			handle = self.thing.AddControl(subHandle.thing)
+			self.thing.Realize()
+		else:
+			warnings.warn(f"Add {self.type} to addButtonRadio() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addButtonRadioBox(self, *args, **kwargs):
+		"""Adds a radio button box widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			subHandle = handle_Sizer.addButtonRadioBox(self, *args, mySizer = self, **kwargs)
+			handle = self.thing.AddControl(subHandle.thing)
+			self.thing.Realize()
+		else:
+			warnings.warn(f"Add {self.type} to addButtonRadioBox() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addButtonImage(self, *args, **kwargs):
+		"""Adds an image button widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			subHandle = handle_Sizer.addButtonImage(self, *args, mySizer = self, **kwargs)
+			handle = self.thing.AddControl(subHandle.thing)
+			self.thing.Realize()
+		else:
+			warnings.warn(f"Add {self.type} to addButtonImage() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addImage(self, *args, **kwargs):
+		"""Adds an image widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			subHandle = handle_Sizer.addImage(self, *args, mySizer = self, **kwargs)
+			handle = self.thing.AddControl(subHandle.thing)
+			self.thing.Realize()
+		else:
+			warnings.warn(f"Add {self.type} to addImage() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addProgressBar(self, *args, **kwargs):
+		"""Adds a progress bar widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			subHandle = handle_Sizer.addProgressBar(self, *args, mySizer = self, **kwargs)
+			handle = self.thing.AddControl(subHandle.thing)
+			self.thing.Realize()
+		else:
+			warnings.warn(f"Add {self.type} to addProgressBar() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addPickerColor(self, *args, **kwargs):
+		"""Adds a color picker widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			subHandle = handle_Sizer.addPickerColor(self, *args, mySizer = self, **kwargs)
+			handle = self.thing.AddControl(subHandle.thing)
+			self.thing.Realize()
+		else:
+			warnings.warn(f"Add {self.type} to addPickerColor() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addPickerFont(self, *args, **kwargs):
+		"""Adds a font picker widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			subHandle = handle_Sizer.addPickerFont(self, *args, mySizer = self, **kwargs)
+			handle = self.thing.AddControl(subHandle.thing)
+			self.thing.Realize()
+		else:
+			warnings.warn(f"Add {self.type} to addPickerFont() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addPickerFile(self, *args, **kwargs):
+		"""Adds a file picker widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			subHandle = handle_Sizer.addPickerFile(self, *args, mySizer = self, **kwargs)
+			handle = self.thing.AddControl(subHandle.thing)
+			self.thing.Realize()
+		else:
+			warnings.warn(f"Add {self.type} to addPickerFile() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addPickerFileWindow(self, *args, **kwargs):
+		"""Adds a file window picker widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			subHandle = handle_Sizer.addPickerFileWindow(self, *args, mySizer = self, **kwargs)
+			handle = self.thing.AddControl(subHandle.thing)
+			self.thing.Realize()
+		else:
+			warnings.warn(f"Add {self.type} to addPickerFileWindow() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addPickerTime(self, *args, **kwargs):
+		"""Adds a time picker widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			subHandle = handle_Sizer.addPickerTime(self, *args, mySizer = self, **kwargs)
+			handle = self.thing.AddControl(subHandle.thing)
+			self.thing.Realize()
+		else:
+			warnings.warn(f"Add {self.type} to addPickerTime() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addPickerDate(self, *args, **kwargs):
+		"""Adds a date picker widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			subHandle = handle_Sizer.addPickerDate(self, *args, mySizer = self, **kwargs)
+			handle = self.thing.AddControl(subHandle.thing)
+			self.thing.Realize()
+		else:
+			warnings.warn(f"Add {self.type} to addPickerDate() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addPickerDateWindow(self, *args, **kwargs):
+		"""Adds a text date window picker to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			subHandle = handle_Sizer.addPickerDateWindow(self, *args, mySizer = self, **kwargs)
+			handle = self.thing.AddControl(subHandle.thing)
+			self.thing.Realize()
+		else:
+			warnings.warn(f"Add {self.type} to addPickerDateWindow() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addCanvas(self, *args, **kwargs):
+		"""Adds a canvas widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			subHandle = handle_Sizer.addCanvas(self, *args, mySizer = self, **kwargs)
+			handle = self.thing.AddControl(subHandle.thing)
+			self.thing.Realize()
+		else:
+			warnings.warn(f"Add {self.type} to addCanvas() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
 
 		return handle
 
@@ -6966,14 +7411,16 @@ class handle_MenuItem(handle_Widget_Base):
 
 		return value
 
-	def postBuild(self, argument_catalogue):
-		buildSelf = self.getArguments(argument_catalogue, "self")
+	# def postBuild(self, argument_catalogue):
+	# 	buildSelf = self.getArguments(argument_catalogue, "self")
 
-		#Determine native window
-		if (isinstance(buildSelf, handle_Window)):
-			self.myWindow = buildSelf
-		else:
-			self.myWindow = buildSelf.myWindow
+	# 	handle_Widget_Base.postBuild(self, argument_catalogue)
+
+	# 	# #Determine native window
+	# 	# if (isinstance(buildSelf, handle_Window)):
+	# 	# 	self.myWindow = buildSelf
+	# 	# else:
+	# 	# 	self.myWindow = buildSelf.myWindow
 
 	def build(self, argument_catalogue):
 		"""Determiens which build system to use for this handle."""
@@ -7081,15 +7528,79 @@ class handle_MenuItem(handle_Widget_Base):
 			"""Builds a wx tool control object."""
 			nonlocal self, argument_catalogue
 
-			pass
+			text = self.getArguments(argument_catalogue, ["text"])
+			if (text == None):
+				stretchable = self.getArguments(argument_catalogue, ["stretchable"])
+				if (stretchable):
+					self.thing = self.parent.AddStretchableSpace()
+				else:
+					self.thing = self.parent.AddSeparator()
+			else:
+				icon, internal, toolTip = self.getArguments(argument_catalogue, ["icon", "internal", "toolTip"])
+				disabled_icon, disabled_internal = self.getArguments(argument_catalogue, ["disabled_icon", "disabled_internal"])
+				check, default, myFunction, special = self.getArguments(argument_catalogue, ["check", "default", "myFunction", "special"])
+				
+				#Get Images
+				if (icon == None):
+					warnings.warn(f"No icon provided for {self.__repr__()}", Warning, stacklevel = 2)
+					icon = "error"
+					internal = True
+				image = self.getImage(icon, internal)
+
+				if (disabled_icon == None):
+					imageDisabled = wx.NullBitmap
+				else:
+					if (disabled_internal == None):
+						disabled_internal = internal
+					imageDisabled = self.getImage(disabled_icon, disabled_internal)
+
+				#Configure Settings
+				if (toolTip == None):
+					toolTip = ""
+				elif (not isinstance(toolTip, str)):
+					toolTip = f"{toolTip}"
+
+				if (check == None):
+					kind = "wx.ITEM_NORMAL"
+				else:
+					if (check):
+						kind = "wx.ITEM_CHECK"
+					else:
+						kind = "wx.ITEM_RADIO"
+
+				self.thing = self.parent.thing.AddTool(wx.ID_ANY, text, image, imageDisabled, kind = eval(kind), shortHelp = toolTip, longHelp = toolTip)
+
+				if (default):
+					self.thing.SetToggle(True)#Determine how to do the bound function
+				
+				if (myFunction == None):
+					if (special != None):
+						if (special[0] == "q" or special[0] == "e"):
+							self.parent.betterBind(wx.EVT_TOOL, self.thing, "self.onExit")
+						elif (special[0] == "c"):
+							self.parent.betterBind(wx.EVT_TOOL, self.thing, "self.onQuit")
+						elif (special[0] == "h"):
+							self.parent.betterBind(wx.EVT_TOOL, self.thing, "self.onHide")
+						elif (special[0] == "s"):
+							self.parent.betterBind(wx.EVT_TOOL, self.thing, "self.onToggleStatusBar")
+						elif (special[0] == "t"):
+							self.parent.betterBind(wx.EVT_TOOL, self.thing, "self.onToggleToolBar")
+						else:
+							errorMessage = f"Unknown special function {special} for {self.__repr__()}"
+							raise KeyError(errorMessage)
+				else:
+					myFunctionArgs, myFunctionKwargs = self.getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
+					self.parent.betterBind(wx.EVT_TOOL, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+			self.parent.thing.Realize()
 		
 		#########################################################
 
 		self.preBuild(argument_catalogue)
 
-		if (self.type.lower() == "menuitem"):
+		if (self.parent.type.lower() == "menu"):
 			build_menuItem()
-		elif (self.type.lower() == "toolbaritem"):
+		elif (self.parent.type.lower() == "toolbar"):
 			build_toolbarItem()
 		else:
 			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -7191,14 +7702,14 @@ class handle_MenuPopup(handle_Container_Base):
 
 		handle_Container_Base.postBuild(self, argument_catalogue)
 
-		#Remember window handle
-		buildSelf = self.getArguments(argument_catalogue, ["self"])
-		if (isinstance(buildSelf, handle_Window)):
-			#Main Menu
-			self.myWindow = buildSelf
-		else:
-			#Sub Menu
-			self.myWindow = buildSelf.myWindow
+		# #Remember window handle
+		# buildSelf = self.getArguments(argument_catalogue, ["self"])
+		# if (isinstance(buildSelf, handle_Window)):
+		# 	#Main Menu
+		# 	self.myWindow = buildSelf
+		# else:
+		# 	#Sub Menu
+		# 	self.myWindow = buildSelf.myWindow
 
 	def build(self, argument_catalogue):
 		"""Determiens which build system to use for this handle."""
@@ -7282,7 +7793,7 @@ class handle_MenuPopup(handle_Container_Base):
 
 	#Add Content
 	def addItem(self, text = "", icon = None, internal = False, special = None, 
-		check = None, default = False, toolTip = "", 
+		check = None, default = False, toolTip = "",
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
@@ -7291,33 +7802,25 @@ class handle_MenuPopup(handle_Container_Base):
 
 		text (str)           - The label of the item. This is what is shown to the user
 			- If None: The item will be an item separator instead of a selectable object
-		label (str)        - The label for the popup menu item. Can be an integer
+		label (str)          - The label for the popup menu item. Can be an integer
 			- If None: Will not be labeled, which means it cannot be modified later
 		enable (bool)        - If the row is clickable
 		hidden (bool)        - If the row is hidden
 
-		icon_filePath (str)  - The file path to the icon for the menu item
+		icon (str)              - The file path to the icon for the menu item
 			- If None: No icon will be used
-		icon_internal (bool) - If the icon provided is an internal icon, not an external file
+		internal (bool)         - If the icon provided is an internal icon, not an external file
+		
 		check_enable (bool)  - Determines if the row has a check box or radio button
 			- If None:  Normal menu item
 			- If True:  Check box menu item
 			- If False: Radio Button menu item
 		check_default (bool) - If this check box is checked already
 
-		overwrite (bool)    - Determines how existing items with the same 'label' are handled
-			- If True: It will overwrite existing menu items
-			- If False: It will do nothing
-			- If None: It will increment the label by 1 until it is unique.
-				- If 'label' is a string: It will be in the form "_x", where 'x' is the incremented value
-				- If 'label' is an int or float: It will be in the form 'x' as an int or float, where 'x' is the incremented value
-		printWarnings(bool) - If warning messages should be printed
-		printErrors (bool)  - If error messages should be printed
-
-		myFunction (function) the function to run when pressed
-		myFunctionArgs (list) args for 'myFunction'
-		myFunctionKwargs (dict) kwargs for 'myFunction'
-		special (str)   - Declares if the item has a special pre-defined functionality
+		myFunction (function)   - the function to run when pressed
+		myFunctionArgs (list)   - args for 'myFunction'
+		myFunctionKwargs (dict) - kwargs for 'myFunction'
+		special (str)           - Declares if the item has a special pre-defined functionality
 			"new", "open", "save", "quit" or "exit", "status", "tool". Only the first letter matters
 			- If 'myFunction' is defined, 'myFunction' will be ran before the special functionality happens
 
@@ -7353,7 +7856,7 @@ class handle_MenuPopup(handle_Container_Base):
 		return handle
 
 	def addSub(self, text = None, label = None, 
-		parent = None, hidden = False, enabled = False, handle = None):
+		parent = None, hidden = False, enabled = True, handle = None):
 		"""Adds a sub menu to a specific pre-existing menu.
 		To adding items to a sub menu is the same as for menus.
 
@@ -7505,7 +8008,7 @@ class handle_MenuPopup(handle_Container_Base):
 							runFunctionEvaluated()
 
 		def addMenu(self, label = None, text = " ", detachable = False,
-			parent = None, hidden = False, enabled = False, handle = None):
+			parent = None, hidden = False, enabled = True, handle = None):
 			"""Adds a menu to a pre-existing menubar.
 			This is a collapsable array of menu items.
 
@@ -7524,6 +8027,7 @@ class handle_MenuPopup(handle_Container_Base):
 			kwargs["self"] = self.parent
 
 			handle.build(kwargs)
+			self.finalNest(handle)
 			return handle
 
 		def populateMenu(self, menu, contents):
@@ -9170,6 +9674,9 @@ class handle_WidgetTable(handle_Widget_Base):
 		self.postBuild(argument_catalogue)
 
 	#Change Settings
+	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self.setFunction_selectSingle(myFunction = myFunction, myFunctionArgs = myFunctionArgs, myFunctionKwargs = myFunctionKwargs)
+
 	def setFunction_preEdit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		self.betterBind(wx.grid.EVT_GRID_CELL_CHANGING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
@@ -11020,12 +11527,9 @@ class handle_Sizer(handle_Container_Base):
 		"""Allows the user to use a with statement to build the GUI."""
 
 		#Error handling
-		if (self in self.myWindow.sizersIterating):
-			errorMessage = f"Only use {self.__repr__()} in a while loop once"
-			raise SyntaxError(errorMessage)
-
-		#Allow nested while loops to nest their objects
-		self.myWindow.sizersIterating[self] = [True, len(self.myWindow.sizersIterating)]
+		if (self not in self.myWindow.sizersIterating):
+			#Allow nested while loops to nest their objects
+			self.myWindow.sizersIterating[self] = [True, len(self.myWindow.sizersIterating)]
 
 		handle = handle_Container_Base.__enter__(self)
 
@@ -11035,19 +11539,23 @@ class handle_Sizer(handle_Container_Base):
 		"""Allows the user to use a with statement to build the GUI."""
 		
 		#Allow nested while loops to nest their objects
-		self.myWindow.sizersIterating[self][0] = False
+		building = False
+		if (self.myWindow.sizersIterating[self][0]):
+			building = True
+			self.myWindow.sizersIterating[self][0] = False
 
 		state = handle_Container_Base.__exit__(self, exc_type, exc_value, traceback)
 		if (state != None):
 			return state
 
-		#Check for auto-nesting conditions
-		myOrder = self.myWindow.sizersIterating[self][1]
-		leftOpen = {value[1]: key for key, value in self.myWindow.sizersIterating.items() if (value[0])}
+		if (building):
+			#Check for auto-nesting conditions
+			myOrder = self.myWindow.sizersIterating[self][1]
+			leftOpen = {value[1]: key for key, value in self.myWindow.sizersIterating.items() if (value[0])}
 
-		if (myOrder - 1 in leftOpen):
-			if (not self.nested):
-				leftOpen[myOrder - 1].nest(self)
+			if (myOrder - 1 in leftOpen):
+				if (not self.nested):
+					leftOpen[myOrder - 1].nest(self)
 
 	def build(self, argument_catalogue):
 		if (self.type == None):
@@ -11283,13 +11791,7 @@ class handle_Sizer(handle_Container_Base):
 			errorMessage = "Cannot nest objects twice"
 			raise SyntaxError(errorMessage)
 
-		#Remember Values
-		if (isinstance(self, handle_Sizer)):
-			if (hasattr(handle, "mySizer")):
-				warnings.warn(f"{handle.__repr__()} already has the sizer {handle.mySizer.__repr__()} as 'mySizer' in nest() for {self.__repr__()}\nOverwriting 'mySizer'", Warning, stacklevel = 2)
-			handle.mySizer = self
-		else:
-			warnings.warn(f"{self.__repr__()} is not a sizer and is using nest()", Warning, stacklevel = 2)
+		self.finalNest(handle)
 
 		#Configure Flags
 		flags, position, border = self.getItemMod(flags)
@@ -11311,6 +11813,9 @@ class handle_Sizer(handle_Container_Base):
 		elif (isinstance(handle, handle_Notebook)):
 			self.thing.Add(handle.thing, int(flex), eval(flags), border)
 
+		elif (isinstance(handle, handle_Menu) and (handle.type.lower() == "toolbar")):
+			self.thing.Add(handle.thing, int(flex), eval(flags), border)
+
 		elif (isinstance(handle, handle_AuiManager)):
 			# self.thing.Add(handle.mySizer.thing, int(flex), eval(flags), border)
 			pass
@@ -11318,8 +11823,6 @@ class handle_Sizer(handle_Container_Base):
 		else:
 			warnings.warn(f"Add {handle.__class__} to nest() for {self.__repr__()}", Warning, stacklevel = 2)
 			return
-
-		self.finalNest(handle)
 
 		#Remember Values
 		if (isinstance(self, handle_Sizer) and (not isinstance(handle, handle_Sizer))):
@@ -11344,8 +11847,8 @@ class handle_Sizer(handle_Container_Base):
 	def addText(self, text = "", wrap = None, ellipsize = False, alignment = None,
 		size = None, bold = False, italic = False, color = None, family = None, 
 
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		label = None, hidden = False, enabled = True, selected = False,
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds text to the grid.
 		If you want to update this text, you will need to run the function setObjectValue() or setObjectValueWithLabel().
 		If you provide a variable to this function and that variable changes- the text on the GUI will not update.
@@ -11374,8 +11877,8 @@ class handle_Sizer(handle_Container_Base):
 			- If False: Will align text to the center
 			- If None: Will align text to the center
 			- If 0: Will align text to the left
-			- If 1: Will align text to the center
-			- If 2: Will align text to the right
+			- If 1: Will align text to the right
+			- If 2: Will align text to the center
 
 		size (int)    - The font size of the text  
 		bold (bool)   - If True: the font will be bold
@@ -11407,7 +11910,7 @@ class handle_Sizer(handle_Container_Base):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds a hyperlink text to the next cell on the grid.
 
 		text (str)            - What text is shown
@@ -11430,7 +11933,7 @@ class handle_Sizer(handle_Container_Base):
 	def addEmpty(self, 
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = ["ex", "ba"], parent = None, handle = None):
+		flex = 0, flags = ["ex", "ba"], parent = None, handle = None, mySizer = None):
 		"""Adds an empty space to the next cell on the grid.
 
 		label (any)     - What this is catalogued as
@@ -11450,7 +11953,7 @@ class handle_Sizer(handle_Container_Base):
 	def addLine(self, vertical = False,
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = ["ex", "ba"], parent = None, handle = None):
+		flex = 0, flags = ["ex", "ba"], parent = None, handle = None, mySizer = None):
 		"""Adds a simple line to the window.
 		It can be horizontal or vertical.
 
@@ -11474,7 +11977,7 @@ class handle_Sizer(handle_Container_Base):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds a dropdown list with choices to the next cell on the grid.
 
 		choices (list)          - A list of the choices as strings
@@ -11518,7 +12021,7 @@ class handle_Sizer(handle_Container_Base):
 		dragOverFunction = None, dragOverFunctionArgs = None, dragOverFunctionKwargs = None, 
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds a full list with choices to the next cell on the grid.
 		https://wxpython.org/Phoenix/docs/html/wx.ListCtrl.html
 
@@ -11644,7 +12147,7 @@ class handle_Sizer(handle_Container_Base):
 		itemMenuFunction = None, itemMenuFunctionArgs = None, itemMenuFunctionKwargs = None, 
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds a tree list to the next cell on the grid.
 
 		choices (list)          - A list of the choices as strings
@@ -11725,7 +12228,7 @@ class handle_Sizer(handle_Container_Base):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds a slider bar to the next cell on the grid.
 
 		myMin (int)             - The minimum value of the slider bar
@@ -11755,7 +12258,7 @@ class handle_Sizer(handle_Container_Base):
 		preEditFunction = None, preEditFunctionArgs = None, preEditFunctionKwargs = None,  
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds an input box to the next cell on the grid.
 
 		myFunction (str)       - The function that is ran when the user enters text
@@ -11809,7 +12312,7 @@ class handle_Sizer(handle_Container_Base):
 		cancelFunction = None, cancelFunctionArgs = None, cancelFunctionKwargs = None, 
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds an input box to the next cell on the grid.
 
 		myFunction (str)       - The function that is ran when the user enters text and presses enter
@@ -11845,7 +12348,7 @@ class handle_Sizer(handle_Container_Base):
 		changeTextFunction = True, changeTextFunctionArgs = None, changeTextFunctionKwargs = None,
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds a spin control to the next cell on the grid. This is an input box for numbers.
 
 		myMin (int)       - The minimum value of the input spinner
@@ -11887,7 +12390,7 @@ class handle_Sizer(handle_Container_Base):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds a button to the next cell on the grid.
 
 		text (str)            - What will be written on the button
@@ -11915,7 +12418,7 @@ class handle_Sizer(handle_Container_Base):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds a toggle button to the next cell on the grid.
 
 		text (str)             - What will be written on the button
@@ -11941,7 +12444,7 @@ class handle_Sizer(handle_Container_Base):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds a check box to the next cell on the grid.
 		Event fires every time the check box is clicked
 
@@ -11969,7 +12472,7 @@ class handle_Sizer(handle_Container_Base):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds a checklist to the next cell on the grid.
 
 		choices (list)          - A list of strings that are the choices for the check boxes
@@ -11995,7 +12498,7 @@ class handle_Sizer(handle_Container_Base):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds a radio button to the next cell on the grid. If default, it will disable the other
 		radio buttons of the same group.
 
@@ -12023,7 +12526,7 @@ class handle_Sizer(handle_Container_Base):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds a box filled with grouped radio buttons to the next cell on the grid.
 		Because these buttons are grouped, only one can be selected
 
@@ -12054,7 +12557,7 @@ class handle_Sizer(handle_Container_Base):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds a context help button to the next cell on the grid.
 
 		flags (list)            - A list of strings for which flag to add to the sizer
@@ -12075,12 +12578,13 @@ class handle_Sizer(handle_Container_Base):
 
 		return handle
 	
-	def addButtonImage(self, idlePath = "", disabledPath = "", selectedPath = "", focusPath = "", hoverPath = "",
+	def addButtonImage(self, idlePath = "", disabledPath = "", selectedPath = "", 
+		focusPath = "", hoverPath = "", text = None,
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		label = None, hidden = False, enabled = True, selected = False, toggle = False, default = False,
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds a button to the next cell on the grid. You design what the button looks like yourself.
 
 		idlePath (str)         - Where the image of the button idling is on the computer
@@ -12108,7 +12612,7 @@ class handle_Sizer(handle_Container_Base):
 	def addImage(self, imagePath = "", internal = False, size = wx.DefaultSize,
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds an embeded image to the next cell on the grid.
 
 		imagePath (str) - Where the image is on the computer. Can be a PIL image. If None, it will be a blank image
@@ -12184,7 +12688,7 @@ class handle_Sizer(handle_Container_Base):
 	def addProgressBar(self, myInitial = 0, myMax = 100, vertical = False,
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds progress bar to the next cell on the grid.
 
 		myInitial (int)         - The value that the progress bar starts at
@@ -12201,9 +12705,14 @@ class handle_Sizer(handle_Container_Base):
 
 		return handle
 
-	def addToolBar(self, label = None, detachable = False,
+	def addToolBar(self, showText = False, showIcon = True, showDivider = True,
+		detachable = False, flat = False, vertical = False, align = True,
+		vertical_text = False, showToolTip = True, top = True,
 
-		parent = None, hidden = False, enabled = False, handle = None):
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
+
+		label = None, hidden = False, enabled = True, selected = False, 
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds a tool bar to the next cell on the grid.
 		Menu items can be added to this.
 
@@ -12225,7 +12734,7 @@ class handle_Sizer(handle_Container_Base):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds a color picker to the next cell on the grid.
 		It can display the name or RGB of the color as well.
 
@@ -12249,7 +12758,7 @@ class handle_Sizer(handle_Container_Base):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds a color picker to the next cell on the grid.
 		It can display the name or RGB of the color as well.
 
@@ -12277,7 +12786,7 @@ class handle_Sizer(handle_Container_Base):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds a file picker to the next cell on the grid.
 
 		flags (list)      - A list of strings for which flag to add to the sizer
@@ -12319,7 +12828,7 @@ class handle_Sizer(handle_Container_Base):
 		rightClickFunction = None, rightClickFunctionArgs = None, rightClickFunctionKwargs = None, 
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds a file picker window to the next cell on the grid.
 
 		myFunction (str)               - What function will be ran when the file is chosen
@@ -12351,7 +12860,7 @@ class handle_Sizer(handle_Container_Base):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds a time picker to the next cell on the grid.
 		The input time is in military time.
 
@@ -12380,7 +12889,7 @@ class handle_Sizer(handle_Container_Base):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds a date picker to the next cell on the grid.
 
 		myFunction (str)        - What function will be ran when the date is changed
@@ -12412,7 +12921,7 @@ class handle_Sizer(handle_Container_Base):
 		yearFunction = None, yearFunctionArgs = None, yearFunctionArgsKwargs = None, 
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Adds a date picker to the next cell on the grid.
 
 		myFunction (str)          - What function will be ran when the date is changed
@@ -12454,7 +12963,7 @@ class handle_Sizer(handle_Container_Base):
 		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 		"""Creates a blank canvas window.
 
 		size (int tuple)  - The size of the canvas. (length, width)
@@ -12494,7 +13003,7 @@ class handle_Sizer(handle_Container_Base):
 		rightClickLabelFunction = None, rightClickLabelFunctionArgs = None, rightClickLabelFunctionKwargs = None,
 
 		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
 
 		"""Adds a table to the next cell on the grid. 
 		If enabled, it can be edited; the column &  sizerNumber, size can be changed.
@@ -13715,7 +14224,7 @@ class handle_Window(handle_Container_Base):
 
 		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
 
-		handle = None):
+		handle = None, hidden = False, enabled = True):
 		"""Creates a blank panel window.
 
 		label (any)     - What this is catalogued as
@@ -13782,7 +14291,7 @@ class handle_Window(handle_Container_Base):
 	def addSizerGrid(self, rows = 1, columns = 1, text = None, label = None,
 		rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1,
 
-		parent = None, hidden = False, handle = None):
+		parent = None, hidden = False, enabled = True, handle = None):
 		"""Creates a grid sizer to the specified size.
 
 		label (any)     - What this is catalogued as
@@ -13812,7 +14321,7 @@ class handle_Window(handle_Container_Base):
 	def addSizerGridFlex(self, rows = 1, columns = 1, text = None, label = None, 
 		rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1, flexGrid = True,
 
-		parent = None, hidden = False, vertical = None, handle = None):
+		parent = None, hidden = False, enabled = True, vertical = None, handle = None):
 		"""Creates a flex grid sizer.
 		############## NEEDS TO BE FIXED #################
 
@@ -13849,7 +14358,7 @@ class handle_Window(handle_Container_Base):
 		rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1, 
 		emptySpace = None, flexGrid = True,
 
-		parent = None, hidden = False, vertical = None, handle = None):
+		parent = None, hidden = False, enabled = True, vertical = None, handle = None):
 		"""Creates a bag grid sizer.
 
 		label (any)      - What this is catalogued as
@@ -13884,7 +14393,7 @@ class handle_Window(handle_Container_Base):
 
 	def addSizerBox(self, text = None, label = None, minWidth = -1, minHeight = -1,
 
-		parent = None, hidden = False, vertical = True, handle = None):
+		parent = None, hidden = False, enabled = True, vertical = True, handle = None):
 		"""Creates a box sizer.
 
 		label (any)     - What this is catalogued as
@@ -13910,7 +14419,7 @@ class handle_Window(handle_Container_Base):
 
 	def addSizerText(self, text = "", label = None, minWidth = -1, minHeight = -1, 
 
-		parent = None, hidden = False, vertical = True, handle = None):
+		parent = None, hidden = False, enabled = True, vertical = True, handle = None):
 		"""Creates a static box sizer.
 		This is a sizer surrounded by a box with a title, much like a wxRadioBox.
 
@@ -13939,7 +14448,7 @@ class handle_Window(handle_Container_Base):
 	def addSizerWrap(self, text = None, label = None, minWidth = -1, minHeight = -1, 
 		extendLast = False,
 
-		parent = None, hidden = False, vertical = True, handle = None):
+		parent = None, hidden = False, enabled = True, vertical = True, handle = None):
 		"""Creates a wrap sizer.
 		The widgets will arrange themselves into rows and columns on their own, starting in the top-left corner.
 
@@ -14009,7 +14518,7 @@ class handle_Window(handle_Container_Base):
 
 	def addMenu(self, text = " ", label = None, detachable = False,
 
-		parent = None, hidden = False, enabled = False, handle = None):
+		parent = None, hidden = False, enabled = True, handle = None):
 		"""Adds a menu to a pre-existing menubar.
 		This is a collapsable array of menu items.
 
@@ -14025,6 +14534,7 @@ class handle_Window(handle_Container_Base):
 		handle = handle_Menu()
 		handle.type = "Menu"
 		handle.build(locals())
+		self.finalNest(handle)
 
 		return handle
 
@@ -14033,7 +14543,7 @@ class handle_Window(handle_Container_Base):
 		preFunction = None, preFunctionArgs = None, preFunctionKwargs = None, 
 		postFunction = None, postFunctionArgs = None, postFunctionKwargs = None,
 
-		parent = None, hidden = False, enabled = False, handle = None):
+		parent = None, hidden = False, enabled = True, handle = None):
 		"""Enables a popup menu.
 
 		label (str) - A unique name for this popupMenu. Used to interact with it later.
@@ -16061,7 +16571,7 @@ class handle_Notebook(handle_Container_Base):
 		"""Gets the contextual value for the object associated with this handle to what the user supplies."""
 
 		if (self.type.lower() == "notebook"):
-			index = self.getCurrentPage()
+			index = self.getCurrentPage(index = True)
 			return self.getPageText(index)
 		else:
 			warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -16099,8 +16609,10 @@ class handle_Notebook(handle_Container_Base):
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_rightClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
-	def addPage(self, text = None, label = None, parent = None, panel = {}, sizer = {},
-		insert = None, default = False, icon_path = None, icon_internal = False):
+	def addPage(self, text = None, panel = {}, sizer = {},
+		insert = None, default = False, icon_path = None, icon_internal = False,
+
+		label = None, hidden = False, enabled = True, parent = None):
 		"""Adds a gage to the notebook.
 		Lists can be given to add multiple pages. They are added in order from left to right.
 		If only a 'pageLabel' is a list, they will all have the same 'text'.
@@ -16262,7 +16774,7 @@ class handle_Notebook(handle_Container_Base):
 		self.thing.AdvanceSelection(False)
 
 	##Getters
-	def getCurrentPage(self, index = True):
+	def getCurrentPage(self, index = None):
 		"""Returns the currently selected page from the given notebook
 
 		index (bool) - Determines in what form the page is returned.
@@ -16287,7 +16799,7 @@ class handle_Notebook(handle_Container_Base):
 		for item in self:
 			if (item.index == currentPage):
 				if (index == None):
-					return currentPage
+					return item
 				else:
 					return item.label
 
@@ -16310,16 +16822,20 @@ class handle_Notebook(handle_Container_Base):
 		errorMessage = f"There is no page labled {pageLabel} in {self.__repr__()}"
 		raise KeyError(errorMessage)
 
-	def getPageText(self, pageIndex):
+	def getPageText(self, pageIndex = None):
 		"""Returns the first page index for a page with the given label in the given notebook.
 
 		pageLabel (str) - The catalogue label for the panel to add to the notebook
+			- If None: Uses the current page
 
+		Example Input: getPageText()
 		Example Input: getPageText(1)
 		"""
 
 		#Determine page number
-		if (not isinstance(pageIndex, int)):
+		if (pageIndex == None):
+			pageIndex = self.getCurrentPage(index = True)
+		elif (not isinstance(pageIndex, int)):
 			pageIndex = self.getPageIndex(pageIndex)
 
 		#Get the tab's text
@@ -16537,16 +17053,28 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		"""
 
 		if (self.type.lower() == "notebookpage"):
-			#Determine page number
-			pageNumber = self.getPageIndex(pageLabel)
-
-			#Get the tab's text
-			text = notebook.GetPageText(pageNumber)
+			text = self.getPageText()
 		else:
 			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 			text = None
 
 		return text
+
+	def getPageText(self):
+		"""Returns the page text.
+
+		Example Input: getPageText()
+		"""
+
+		return self.text
+
+	def getPageIndex(self):
+		"""Returns the page text.
+
+		Example Input: getPageIndex()
+		"""
+
+		return self.index
 
 	##Setters
 	def setValue(self, newValue = "", event = None):
@@ -18565,7 +19093,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 		delFunction = None, delFunctionArgs = None, delFunctionKwargs = None, 
 		idleFunction = None, idleFunctionArgs = None, idleFunctionKwargs = None, 
 
-		parent = None, handle = None):
+		parent = None, handle = None, hidden = True, enabled = True):
 		"""Creates a new window.
 		Returns the index number of the created window.
 
@@ -19411,22 +19939,49 @@ class User_Utilities():
 		Example Input: getValue("naed", "defaultOrder")
 		"""
 
-		data = [getattr(item, variable) for item in self]
+		if ((order != None) and (not isinstance(order, bool))):
+			data = [getattr(item, variable) for item in self.getOrder(order)]
+		else:
+			data = [getattr(item, variable) for item in self]
 
-		if (order != None):
-			if (isinstance(order, bool)):
-				if (order):
-					data.sort()
-			else:
-				containsList = [item for item in self if hasattr(item, order)]
-				missingList = [item for item in self if not hasattr(item, order)]
-
-				handleList = sorted(containsList, key = lambda item: getattr(item, order))
-
-				data = [getattr(item, variable) for item in handleList]
-				data.extend(sorted(getattr(item, variable) for item in missingList))
+			if ((order != None) and (isinstance(order, bool)) and order):
+				data.sort()
 
 		return data
+
+	def getOrder(self, variable, includeMissing = True):
+		"""Returns a list of children in order according to the variable given.
+
+		variable (str) - what variable to use for sorting
+		includeMissing (bool) - Determiens what to do with children who do not have the requested variable
+
+		Example Input: getOrder("order")
+		"""
+
+		handleList = sorted([item for item in self if hasattr(item, variable)], key = lambda item: getattr(item, variable))
+
+		if (includeMissing):
+			handleList.extend([item for item in self if not hasattr(item, variable)])
+
+		return handleList
+
+	def getHandle(self, where):
+		"""Returns a list of children whose variables are equal to what is given.
+
+		where (dict) - {variable (str): value (any)}
+
+		Example Input: getHandle({"order": 4})
+		"""
+
+		handleList = []
+		for handle in self[:]:
+			for variable, value in where.items():
+				if (hasattr(handle, variable) and (getattr(handle, variable) == value)):
+					continue
+				break
+			else:
+				handleList.append(handle)
+		return handleList
 
 	def getUnique(self, base = "{}", increment = 1, start = 1, exclude = []):
 		"""Returns a unique name with the given criteria.
