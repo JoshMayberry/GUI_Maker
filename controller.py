@@ -2788,6 +2788,24 @@ class handle_Base(Utilities, CommonEventFunctions):
 			elif (not self.allowBuildErrors):
 				return True
 
+	def preBuild(self, argument_catalogue):
+		"""Runs before this object is built."""
+		
+		pass
+
+	def postBuild(self, argument_catalogue):
+		"""Runs after this object is built."""
+		
+		buildSelf = argument_catalogue["self"]
+		
+		#Determine native window
+		if (isinstance(buildSelf, handle_Window)):
+			self.myWindow = buildSelf
+		elif (isinstance(buildSelf, Controller)):
+			self.myWindow = None
+		else:
+			self.myWindow = buildSelf.myWindow
+
 	def getLabel(self, event = None):
 		"""Returns the label for this object."""
 
@@ -2811,6 +2829,8 @@ class handle_Container_Base(handle_Base):
 
 	def preBuild(self, argument_catalogue):
 		"""Runs before this object is built."""
+
+		handle_Base.preBuild(self, argument_catalogue)
 
 		#Unpack arguments
 		label = argument_catalogue["label"]
@@ -2868,7 +2888,7 @@ class handle_Container_Base(handle_Base):
 	def postBuild(self, argument_catalogue):
 		"""Runs after this object is built."""
 		
-		pass
+		handle_Base.postBuild(self, argument_catalogue)
 
 	def overloadHelp(self, myFunction, label, kwargs, window = False):
 		"""Helps the overloaded functions to stay small.
@@ -3234,6 +3254,8 @@ class handle_Widget_Base(handle_Base):
 	def preBuild(self, argument_catalogue):
 		"""Runs before this object is built."""
 
+		handle_Base.preBuild(self, argument_catalogue)
+		
 		#Unpack arguments
 		label, parent, buildSelf = self.getArguments(argument_catalogue, ["label", "parent", "self"])
 
@@ -3256,7 +3278,7 @@ class handle_Widget_Base(handle_Base):
 			self.parent = parent
 		else:
 			if (not isinstance(buildSelf, Controller)):
-				if (isinstance(buildSelf, handle_Menu)):
+				if ((isinstance(buildSelf, handle_Menu) and (buildSelf.type.lower() in ["menu", "popupmenu"]))):
 					self.parent = buildSelf
 				else:
 					if (buildSelf.parent != None):
@@ -3287,6 +3309,8 @@ class handle_Widget_Base(handle_Base):
 	def postBuild(self, argument_catalogue):
 		"""Runs after this object is built."""
 		
+		handle_Base.postBuild(self, argument_catalogue)
+		
 		#Unpack arguments
 		buildSelf, selected, hidden, enabled, flags, flex = self.getArguments(argument_catalogue, ["self", "selected", "hidden", "enabled", "flags", "flex"])
 
@@ -3307,12 +3331,6 @@ class handle_Widget_Base(handle_Base):
 				self.addFinalFunction(self.setEnable, False)
 			else:
 				self.setEnable(False)
-
-		#Determine native window
-		if (isinstance(buildSelf, handle_Window)):
-			self.myWindow = buildSelf
-		else:
-			self.myWindow = buildSelf.myWindow
 		
 		#Add it to the sizer
 		self.sizer.nest(self, flex = flex, flags = flags)
@@ -3455,8 +3473,9 @@ class handle_Widget_Base(handle_Base):
 		handle = handle_MenuPopup()
 		handle.type = "MenuPopup_widget"
 		parent = self
-		handle.preBuild(locals())
-		handle.postBuild(locals())
+		text = None
+		handle.build(locals())
+		self.finalNest(handle)
 		return handle
 
 	#Change State
@@ -6684,24 +6703,6 @@ class handle_Menu(handle_Container_Base):
 		"""Runs after this object is built."""
 
 		handle_Container_Base.preBuild(self, argument_catalogue)
-		
-		#Unpack arguments
-		buildSelf = self.getArguments(argument_catalogue, "self")
-		detachable, text = self.getArguments(argument_catalogue, ["detachable", "text"])
-
-		#Make sure there is a menu bar
-		if ((not isinstance(buildSelf, handle_Menu)) and (not isinstance(buildSelf, handle_MenuPopup))):
-			menuList = buildSelf.getNested(include = handle_Menu)
-			if (len(menuList) <= 1):
-				buildSelf.addMenuBar()
-
-		#Create menu
-		if (detachable):
-			self.thing = wx.Menu(wx.MENU_TEAROFF)
-		else:
-			self.thing = wx.Menu()
-
-		self.text = text
 
 	def postBuild(self, argument_catalogue):
 		"""Runs after this object is built."""
@@ -6710,22 +6711,97 @@ class handle_Menu(handle_Container_Base):
 		
 		#Unpack arguments
 		buildSelf = argument_catalogue["self"]
+		buildSelf.finalNest(self)
 
-		if (isinstance(buildSelf, handle_Window)):
-			#Main Menu
-			self.myWindow = buildSelf
-			buildSelf.menuBar.Append(self.thing, self.text)
+	def build(self, argument_catalogue):
+		"""Determiens which build system to use for this handle."""
 
-		elif (isinstance(buildSelf, handle_MenuPopup)):
-			#Popup Menu
-			self.myWindow = buildSelf.myWindow
+		def build_menu():
+			"""Builds a wx menu control object."""
+			nonlocal self, argument_catalogue
+		
+			#Unpack arguments
+			buildSelf = self.getArguments(argument_catalogue, "self")
+			detachable, text = self.getArguments(argument_catalogue, ["detachable", "text"])
 
+			#Make sure there is a menu bar
+			if ((not isinstance(buildSelf, handle_Menu)) and (not isinstance(buildSelf, handle_MenuPopup)) and (self.type.lower() == "menu")):
+				menuList = buildSelf.getNested(include = handle_Menu)
+				if (len(menuList) <= 1):
+					buildSelf.addMenuBar()
+
+			#Create menu
+			if (detachable):
+				self.thing = wx.Menu(wx.MENU_TEAROFF)
+			else:
+				self.thing = wx.Menu()
+
+			self.text = text
+
+			#Finsih
+			if (isinstance(buildSelf, handle_Window)):
+				#Main Menu
+				self.myWindow = buildSelf
+				buildSelf.menuBar.Append(self.thing, self.text)
+
+			elif (isinstance(buildSelf, handle_MenuPopup)):
+				#Popup Menu
+				self.myWindow = buildSelf.myWindow
+
+			else:
+				#Sub Menu
+				self.myWindow = buildSelf.myWindow
+				buildSelf.thing.Append(wx.ID_ANY, self.text, self.thing)
+
+		def build_toolbar():
+			"""Builds a wx toolbar control object."""
+			nonlocal self, argument_catalogue
+
+			self.thing = wx.ToolBar(self.parent.thing)
+			self.thing.Realize()
+
+
+			# addInputBox, fontText, maxSize, myFunction = self.getArguments(argument_catalogue, ["addInputBox", "fontText", "maxSize", "myFunction"])
+
+			# #Add settings
+			# styles = ""
+			# if (addInputBox):
+			# 	styles += "|wx.FNTP_USE_TEXTCTRL"
+			
+			# if (fontText):
+			# 	styles += "|wx.FNTP_FONTDESC_AS_LABEL"
+			# 	#FNTP_USEFONT_FOR_LABEL
+
+			# if (len(styles) != 0):
+			# 	styles = styles[1:] #Remove leading line
+			# else:
+			# 	styles = "0"
+
+			# # font = self.getFont()
+			# font = wx.NullFont
+		
+			# #Create the thing to put in the grid
+			# self.thing = wx.FontPickerCtrl(self.parent.thing, font = font, style = eval(styles))
+			
+			# self.thing.SetMaxPointSize(maxSize) 
+
+			# #Bind the function(s)
+			# if (myFunction != None):
+			# 	myFunctionArgs, myFunctionKwargs = self.getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
+			# 	self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
+		
+		#########################################################
+
+		self.preBuild(argument_catalogue)
+
+		if (self.type.lower() == "menu"):
+			build_menu()
+		elif (self.type.lower() == "toolbar"):
+			build_toolbar()
 		else:
-			#Sub Menu
-			self.myWindow = buildSelf.myWindow
-			buildSelf.thing.Append(wx.ID_ANY, self.text, self.thing)
+			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
 
-		self.nested = True
+		self.postBuild(argument_catalogue)
 
 	#Getters
 	def getValue(self, event = None):
@@ -6776,7 +6852,7 @@ class handle_Menu(handle_Container_Base):
 			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Change Settings
-	def addMenuItem(self, text = "", icon = None, internal = False, 
+	def addItem(self, text = "", icon = None, internal = False, 
 		special = None, check = None, default = False, toolTip = "",
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
@@ -6823,124 +6899,34 @@ class handle_Menu(handle_Container_Base):
 		enabled (bool) - If True: The user can interact with this
 		toolTip (str)  - What the status bar will say if this is moused over
 
-		Example Input: addMenuItem(0, "Lorem")
-		Example Input: addMenuItem(0, icon = 'exit.bmp')
-		Example Input: addMenuItem(2, "Print Preview", myFunction = [self.onPrintLabelsPreview, "self.onShowPopupWindow"], myFunctionArgs = [None, 0], label = "printPreview")
+		Example Input: addItem(0, "Lorem")
+		Example Input: addItem(0, icon = 'exit.bmp')
+		Example Input: addItem(2, "Print Preview", myFunction = [self.onPrintLabelsPreview, "self.onShowPopupWindow"], myFunctionArgs = [None, 0], label = "printPreview")
 		"""
 
 		handle = handle_MenuItem()
 		handle.type = "MenuItem"
-		
-		# parent = self
-		handle.preBuild(locals())
-
-		#Determine if the id is special
-		if (special != None):
-			special = special.lower()
-			if (special[0] == "n"):
-				myId = wx.ID_NEW
-			elif (special[0] == "o"):
-				myId = wx.ID_OPEN
-			elif (special[0] == "s"):
-				myId = wx.ID_SAVE
-			elif (special[0] == "c"):
-				myId = wx.ID_EXIT
-			elif (special[0] == "q" or special[0] == "e"):
-				myId = wx.ID_CLOSE
-			elif (special[0] == "u"):
-				myId = wx.ID_UNDO
-			elif (special[0] == "r"):
-				myId = wx.ID_REDO
-			else:
-				myId = wx.ID_ANY
-		else:
-			myId = wx.ID_ANY
-
-		#Create Menu Item
-		if (check == None):
-			handle.thing = wx.MenuItem(self.thing, myId, text)
-
-			#Determine icon
-			if (icon != None):
-				image = self.getImage(icon, internal)
-				image = self.convertBitmapToImage(image)
-				image = image.Scale(16, 16, wx.IMAGE_QUALITY_HIGH)
-				image = self.convertImageToBitmap(image)
-				handle.thing.SetBitmap(image)
-		else:
-			if (check):
-				handle.thing = wx.MenuItem(self.thing, myId, text, kind = wx.ITEM_CHECK)
-			else:
-				handle.thing = wx.MenuItem(self.thing, myId, text, kind = wx.ITEM_RADIO)
-
-		#Add Menu Item
-		self.thing.Append(handle.thing)
-		handle.nested = True
-
-		#Determine initial value
-		if (check != None):
-			if (default):
-				handle.thing.Check(True)
-
-		#Determine how to do the bound function
-		if (myFunction == None):
-			if (special != None):
-				if (special[0] == "q" or special[0] == "e"):
-					self.betterBind(wx.EVT_MENU, handle.thing, "self.onExit")
-				elif (special[0] == "c"):
-					self.betterBind(wx.EVT_MENU, handle.thing, "self.onQuit")
-				elif (special[0] == "h"):
-					self.betterBind(wx.EVT_MENU, handle.thing, "self.onHide")
-				elif (special[0] == "s"):
-					self.betterBind(wx.EVT_MENU, handle.thing, "self.onToggleStatusBar")
-				elif (special[0] == "t"):
-					self.betterBind(wx.EVT_MENU, handle.thing, "self.onToggleToolBar")
-				else:
-					errorMessage = f"Unknown special function {special} for {self.__repr__()}"
-					raise KeyError(errorMessage)
-		else:
-			self.betterBind(wx.EVT_MENU, handle.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-
-		#Add help
-		if (toolTip != None):
-			#Ensure correct formatting
-			if (not isinstance(toolTip, str)):
-				toolTip = f"{toolTip}"
-
-			#Do not add empty tool tips
-			if (len(toolTip) != 0):
-				handle.thing.SetHelp(toolTip)
-
-		#Determine visibility
-		if (hidden):
-			if (isinstance(buildSelf, handle_Sizer)):
-				buildSelf.addFinalFunction(buildSelf.thing.ShowItems, False)
-			else:
-				self.thing.Hide()
-
-		handle.postBuild(locals())
+		handle.build(locals())
+		self.finalNest(handle)
 
 		return handle
 
-	def addMenuSeparator(self, 
+	def addSeparator(self, 
 		label = None, hidden = False, parent = None, handle = None):
 		"""Adds a line to a specific pre-existing menu to separate menu items.
 
-		Example Input: addMenuSeparator()
+		Example Input: addSeparator()
 		"""
 
 		handle = handle_MenuItem()
-		handle.preBuild(locals())
-
-		handle.thing = wx.MenuItem(self.thing, kind = wx.ITEM_SEPARATOR)
-		self.thing.Append(handle.thing)
-		handle.nested = True
-
-		handle.postBuild(locals())
+		handle.type = "MenuItem"
+		text = None
+		handle.build(locals())
+		self.finalNest(handle)
 
 		return handle
 
-	def addMenuSub(self, text = "", 
+	def addSub(self, text = "", 
 		label = None, hidden = False, parent = None, handle = None):
 		"""Adds a sub menu to a specific pre-existing menu.
 		To adding items to a sub menu is the same as for menus.
@@ -6948,15 +6934,14 @@ class handle_Menu(handle_Container_Base):
 		text (str)  - The text for the menu item. This is what is shown to the user
 		label (int) - The label for this menu
 
-		Example Input: addMenuSub()
-		Example Input: addMenuSub(text = "I&mport")
+		Example Input: addSub()
+		Example Input: addSub(text = "I&mport")
 		"""
 
 		handle = handle_Menu()
 		detachable = False
 
-		handle.preBuild(locals())
-		handle.postBuild(locals())
+		handle.build(locals())
 
 		return handle
 
@@ -6989,6 +6974,127 @@ class handle_MenuItem(handle_Widget_Base):
 			self.myWindow = buildSelf
 		else:
 			self.myWindow = buildSelf.myWindow
+
+	def build(self, argument_catalogue):
+		"""Determiens which build system to use for this handle."""
+
+		def build_menuItem():
+			"""Builds a wx menu item control object."""
+			nonlocal self, argument_catalogue
+		
+			#Unpack arguments
+			buildSelf, text, hidden = self.getArguments(argument_catalogue, ["self", "text", "hidden"])
+
+			#Account for separators
+			if (text == None):
+				self.thing = wx.MenuItem(self.parent.thing, kind = wx.ITEM_SEPARATOR)
+			else:
+				special, check, default = self.getArguments(argument_catalogue, ["special", "check", "default"])
+				myFunction, toolTip = self.getArguments(argument_catalogue, ["myFunction", "toolTip"])
+				
+				#Determine if the id is special
+				if (special != None):
+					special = special.lower()
+					if (special[0] == "n"):
+						myId = wx.ID_NEW
+					elif (special[0] == "o"):
+						myId = wx.ID_OPEN
+					elif (special[0] == "s"):
+						myId = wx.ID_SAVE
+					elif (special[0] == "c"):
+						myId = wx.ID_EXIT
+					elif (special[0] == "q" or special[0] == "e"):
+						myId = wx.ID_CLOSE
+					elif (special[0] == "u"):
+						myId = wx.ID_UNDO
+					elif (special[0] == "r"):
+						myId = wx.ID_REDO
+					else:
+						myId = wx.ID_ANY
+				else:
+					myId = wx.ID_ANY
+
+				#Create Menu Item
+				if (check == None):
+					self.thing = wx.MenuItem(self.parent.thing, myId, text)
+
+					#Determine icon
+					icon, internal = self.getArguments(argument_catalogue, ["icon", "internal"])
+					if (icon != None):
+						image = self.getImage(icon, internal)
+						image = self.convertBitmapToImage(image)
+						image = image.Scale(16, 16, wx.IMAGE_QUALITY_HIGH)
+						image = self.convertImageToBitmap(image)
+						self.thing.SetBitmap(image)
+				else:
+					if (check):
+						self.thing = wx.MenuItem(self.parent.thing, myId, text, kind = wx.ITEM_CHECK)
+					else:
+						self.thing = wx.MenuItem(self.parent.thing, myId, text, kind = wx.ITEM_RADIO)
+
+				#Determine initial value
+				if (check != None):
+					if (default):
+						self.thing.Check(True)
+
+				#Determine how to do the bound function
+				if (myFunction == None):
+					if (special != None):
+						if (special[0] == "q" or special[0] == "e"):
+							buildSelf.betterBind(wx.EVT_MENU, self.thing, "self.onExit")
+						elif (special[0] == "c"):
+							buildSelf.betterBind(wx.EVT_MENU, self.thing, "self.onQuit")
+						elif (special[0] == "h"):
+							buildSelf.betterBind(wx.EVT_MENU, self.thing, "self.onHide")
+						elif (special[0] == "s"):
+							buildSelf.betterBind(wx.EVT_MENU, self.thing, "self.onToggleStatusBar")
+						elif (special[0] == "t"):
+							buildSelf.betterBind(wx.EVT_MENU, self.thing, "self.onToggleToolBar")
+						else:
+							errorMessage = f"Unknown special function {special} for {self.__repr__()}"
+							raise KeyError(errorMessage)
+				else:
+					myFunctionArgs, myFunctionKwargs = self.getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
+					buildSelf.betterBind(wx.EVT_MENU, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+				#Add help
+				if (toolTip != None):
+					#Ensure correct formatting
+					if (not isinstance(toolTip, str)):
+						toolTip = f"{toolTip}"
+
+					#Do not add empty tool tips
+					if (len(toolTip) != 0):
+						self.thing.SetHelp(toolTip)
+
+			#Determine visibility
+			if (hidden):
+				if (isinstance(buildSelf, handle_Sizer)):
+					buildSelf.addFinalFunction(buildSelf.thing.ShowItems, False)
+				else:
+					self.thing.Hide()
+
+			#Add Menu Item
+			self.parent.thing.Append(self.thing)
+
+		def build_toolbarItem():
+			"""Builds a wx tool control object."""
+			nonlocal self, argument_catalogue
+
+			pass
+		
+		#########################################################
+
+		self.preBuild(argument_catalogue)
+
+		if (self.type.lower() == "menuitem"):
+			build_menuItem()
+		elif (self.type.lower() == "toolbaritem"):
+			build_toolbarItem()
+		else:
+			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
+
+		self.postBuild(argument_catalogue)
 
 	def getValue(self, event = None):
 		"""Returns what the contextual value is for the object associated with this handle."""
@@ -7085,26 +7191,8 @@ class handle_MenuPopup(handle_Container_Base):
 
 		handle_Container_Base.postBuild(self, argument_catalogue)
 
-		#Unpack arguments
-		buildSelf = argument_catalogue["self"]
-		rightClick = argument_catalogue["rightClick"]
-
-		preFunction = argument_catalogue["preFunction"]
-		preFunctionArgs = argument_catalogue["preFunctionArgs"]
-		preFunctionKwargs = argument_catalogue["preFunctionKwargs"]
-
-		postFunction = argument_catalogue["postFunction"]
-		postFunctionArgs = argument_catalogue["postFunctionArgs"]
-		postFunctionKwargs = argument_catalogue["postFunctionKwargs"]
-
-		#Bind functions
-		if (rightClick != None):
-			if (rightClick):
-				self.betterBind(wx.EVT_RIGHT_DOWN, self.parent.thing, self.onTriggerPopupMenu, [[preFunction, preFunctionArgs, preFunctionKwargs], [postFunction, postFunctionArgs, postFunctionKwargs]])
-			else:
-				self.betterBind(wx.EVT_LEFT_DOWN, self.parent.thing, self.onTriggerPopupMenu, [[preFunction, preFunctionArgs, preFunctionKwargs], [postFunction, postFunctionArgs, postFunctionKwargs]])
-
 		#Remember window handle
+		buildSelf = self.getArguments(argument_catalogue, ["self"])
 		if (isinstance(buildSelf, handle_Window)):
 			#Main Menu
 			self.myWindow = buildSelf
@@ -7112,7 +7200,45 @@ class handle_MenuPopup(handle_Container_Base):
 			#Sub Menu
 			self.myWindow = buildSelf.myWindow
 
-		self.nested = True #This is not nested. It is called by handle_MenuPopup.onTriggerPopupMenu() or handle_Window.onShow()
+	def build(self, argument_catalogue):
+		"""Determiens which build system to use for this handle."""
+
+		def build_menuPopup():
+			"""Builds a wx menu control object."""
+			nonlocal self, argument_catalogue
+		
+			#Unpack arguments
+			buildSelf, text, label, hidden, enabled, rightClick = self.getArguments(argument_catalogue, ["self", "text", "label", "hidden", "enabled", "rightClick"])
+
+			#Remember sub menu details
+			self.text = text
+			self.label = label
+			self.hidden = hidden
+			self.enabled = enabled
+
+			#Bind functions
+			if (rightClick != None):
+				preFunction, preFunctionArgs, preFunctionKwargs = argument_catalogue["preFunction", "preFunctionArgs", "preFunctionKwargs"]
+				postFunction, postFunctionArgs, postFunctionKwargs = argument_catalogue["postFunction", "postFunctionArgs", "postFunctionKwargs"]
+
+				if (rightClick):
+					self.betterBind(wx.EVT_RIGHT_DOWN, self.parent.thing, self.onTriggerPopupMenu, [[preFunction, preFunctionArgs, preFunctionKwargs], [postFunction, postFunctionArgs, postFunctionKwargs]])
+				else:
+					self.betterBind(wx.EVT_LEFT_DOWN, self.parent.thing, self.onTriggerPopupMenu, [[preFunction, preFunctionArgs, preFunctionKwargs], [postFunction, postFunctionArgs, postFunctionKwargs]])
+
+		
+		#########################################################
+
+		self.preBuild(argument_catalogue)
+
+		if (self.type.lower() == "menupopup"):
+			build_menuPopup()
+		elif (self.type.lower() == "menupopup_widget"):
+			build_menuPopup()
+		else:
+			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
+
+		self.postBuild(argument_catalogue)
 
 	def getValue(self, event = None):
 		"""Returns what the contextual value is for the object associated with this handle."""
@@ -7155,7 +7281,7 @@ class handle_MenuPopup(handle_Container_Base):
 		self.contents = []
 
 	#Add Content
-	def addMenuItem(self, text = "", icon = None, internal = False, special = None, 
+	def addItem(self, text = "", icon = None, internal = False, special = None, 
 		check = None, default = False, toolTip = "", 
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
@@ -7206,12 +7332,12 @@ class handle_MenuPopup(handle_Container_Base):
 		handle.build(locals())
 
 		self.contents.append(handle)
-		handle.nested = True
+		self.finalNest(handle)
 		handle.myMenu = self
 
 		return handle
 
-	def addMenuSeparator(self, *args, **kwargs):
+	def addSeparator(self, *args, **kwargs):
 		"""Adds an separator line to the popup menu
 		This must be done before it gets triggered.
 
@@ -7223,10 +7349,10 @@ class handle_MenuPopup(handle_Container_Base):
 		addPopupMenuSeparator(label = "menuSeparator", hidden = True)
 		"""
 
-		handle = self.addMenuItem(None, *args, **kwargs)
+		handle = self.addItem(None, *args, **kwargs)
 		return handle
 
-	def addMenuSub(self, text = None, label = None, 
+	def addSub(self, text = None, label = None, 
 		parent = None, hidden = False, enabled = False, handle = None):
 		"""Adds a sub menu to a specific pre-existing menu.
 		To adding items to a sub menu is the same as for menus.
@@ -7234,8 +7360,8 @@ class handle_MenuPopup(handle_Container_Base):
 		text (str)  - The text for the menu item. This is what is shown to the user
 		label (int) - The label for this menu
 
-		Example Input: addMenuSub()
-		Example Input: addMenuSub(text = "I&mport")
+		Example Input: addSub()
+		Example Input: addSub(text = "I&mport")
 		"""
 		
 		#Setup
@@ -7249,18 +7375,12 @@ class handle_MenuPopup(handle_Container_Base):
 
 		#Build sub menu
 		handle = handle_MenuPopup()
-		handle.preBuild(locals())
-		handle.postBuild(locals())
-
-		#Remember sub menu details
-		handle.text = text
-		handle.label = label
-		handle.hidden = hidden
-		handle.enabled = enabled
+		handle.type = "MenuPopup"
+		handle.build(locals())
 
 		#Nest handle
 		self.contents.append(handle)
-		handle.nested = True
+		self.finalNest(handle)
 		handle.myMenu = self
 
 		return handle
@@ -7403,8 +7523,7 @@ class handle_MenuPopup(handle_Container_Base):
 			kwargs = locals()
 			kwargs["self"] = self.parent
 
-			handle.preBuild(kwargs)
-			handle.postBuild(kwargs)
+			handle.build(kwargs)
 			return handle
 
 		def populateMenu(self, menu, contents):
@@ -7414,15 +7533,15 @@ class handle_MenuPopup(handle_Container_Base):
 			if (len(contents) != 0):
 				for i, handle in enumerate(contents):
 					if (isinstance(handle, handle_MenuPopup)):
-						subMenu = menu.addMenuSub(text = handle.text, label = handle.label, hidden = handle.hidden)
+						subMenu = menu.addSub(text = handle.text, label = handle.label, hidden = handle.hidden)
 						self.populateMenu(subMenu, handle.contents)
 
 					elif (handle.text != None):
-						menu.addMenuItem(text = handle.text, icon = handle.icon, internal = handle.internal, special = None, check = handle.check, default = handle.default,
+						menu.addItem(text = handle.text, icon = handle.icon, internal = handle.internal, special = None, check = handle.check, default = handle.default,
 							myFunction = handle.myFunction, myFunctionArgs = handle.myFunctionArgs, myFunctionKwargs = handle.myFunctionKwargs, 
 							label = handle.label, hidden = handle.hidden, enabled = handle.enabled)
 					else:
-						menu.addMenuSeparator(label = handle.label, hidden = handle.hidden)
+						menu.addSeparator(label = handle.label, hidden = handle.hidden)
 
 class handle_MenuPopupItem(handle_Widget_Base):
 	"""A handle for working with menu widgets."""
@@ -7465,7 +7584,7 @@ class handle_MenuPopupItem(handle_Widget_Base):
 				if (special != None):
 					#Ensure correct format
 					if ((special != None) and (not isinstance(special, str))):
-						errorMessage = f"'special' should be a string for addMenuItem() for {buildSelf.__repr__()}"
+						errorMessage = f"'special' should be a string for addItem() for {buildSelf.__repr__()}"
 						raise ValueError(errorMessage)
 
 					special = special.lower()
@@ -7534,7 +7653,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 			#Create the thing
 			panel["parent"] = buildSelf.parent
 			self.myPanel = self.readBuildInstructions_panel(buildSelf, panel)
-			self.myPanel.nested = True
+			self.finalNest(self.myPanel)
 			self.thing = self.myPanel.thing
 
 			#onSize called to make sure the buffer is initialized.
@@ -10974,7 +11093,7 @@ class handle_Sizer(handle_Container_Base):
 			sizerList = buildSelf.getNested(include = handle_Sizer)
 			if (len(sizerList) <= 1):
 				#The first sizer added to a window is automatically nested
-				self.nested = True
+				buildSelf.finalNest(self)
 		
 		#Create Sizer
 		if (sizerType == "grid"):
@@ -11381,7 +11500,6 @@ class handle_Sizer(handle_Container_Base):
 		handle.build(locals())
 
 		return handle
-
 
 	def addListFull(self, choices = [], default = False, singleSelect = False, editable = False,
 
@@ -12079,6 +12197,25 @@ class handle_Sizer(handle_Container_Base):
 
 		handle = handle_Widget_Base()
 		handle.type = "ProgressBar"
+		handle.build(locals())
+
+		return handle
+
+	def addToolBar(self, label = None, detachable = False,
+
+		parent = None, hidden = False, enabled = False, handle = None):
+		"""Adds a tool bar to the next cell on the grid.
+		Menu items can be added to this.
+
+		label (str)     - What this is called in the idCatalogue
+		detachable (bool) - If True: The menu can be undocked
+
+		Example Input: addToolBar()
+		Example Input: addToolBar(label = "first")
+		"""
+
+		handle = handle_Menu()
+		handle.type = "ToolBar"
 		handle.build(locals())
 
 		return handle
@@ -13188,9 +13325,6 @@ class handle_Window(handle_Container_Base):
 		#Prebuild
 		handle_Container_Base.preBuild(self, argument_catalogue)
 
-		#Nesting windows does not mean anything
-		self.nested = True #Turns off warning
-
 		#Determine window style
 		tabTraversal, stayOnTop, floatOnParent, resize, topBar, minimize, maximize, close, title = self.getArguments(argument_catalogue, ["tabTraversal", "stayOnTop", "floatOnParent", "resize", "topBar", "minimize", "maximize", "close", "title"])
 		flags = "wx.CLIP_CHILDREN|wx.SYSTEM_MENU"
@@ -13890,8 +14024,7 @@ class handle_Window(handle_Container_Base):
 
 		handle = handle_Menu()
 		handle.type = "Menu"
-		handle.preBuild(locals())
-		handle.postBuild(locals())
+		handle.build(locals())
 
 		return handle
 
@@ -13925,9 +14058,10 @@ class handle_Window(handle_Container_Base):
 		"""
 
 		handle = handle_MenuPopup()
+		text = None
 		handle.type = "MenuPopup"
-		handle.preBuild(locals())
-		handle.postBuild(locals())
+		handle.build(locals())
+		self.finalNest(handle)
 		return handle
 
 	#Status Bars
@@ -14257,7 +14391,7 @@ class handle_Window(handle_Container_Base):
 		#   self.addMenuBar()
 		#   if (not skipMenuExit):
 		#       self.addMenu(0, "&File")
-		#       self.addMenuItem(0, "&Exit", myFunction = "self.onExit", icon = "quit", internal = True, toolTip = "Closes this program", label = f"Frame{self.windowLabel}_typicalWindowSetup_fileExit")
+		#       self.addItem(0, "&Exit", myFunction = "self.onExit", icon = "quit", internal = True, toolTip = "Closes this program", label = f"Frame{self.windowLabel}_typicalWindowSetup_fileExit")
 
 		# #Add Status Bar
 		# if (not skipStatus):
@@ -14422,23 +14556,23 @@ class handle_Window(handle_Container_Base):
 				self.keyPressQueue[thing][key].append([myFunction, myFunctionArgs, myFunctionKwargs])
 
 	#Overloads
-	def addMenuItem(self, menuLabel, *args, **kwargs):
-		"""Overload for addMenuItem in handle_Menu()."""
+	def addItem(self, menuLabel, *args, **kwargs):
+		"""Overload for addItem in handle_Menu()."""
 
 		myMenu = self.getMenu(menuLabel)
-		myMenu.addMenuItem(*args, **kwargs)
+		myMenu.addItem(*args, **kwargs)
 
-	def addMenuSeparator(self, menuLabel, *args, **kwargs):
-		"""Overload for addMenuSeparator in handle_Menu()."""
-
-		myMenu = self.getMenu(menuLabel)
-		myMenu.addMenuSeparator(*args, **kwargs)
-
-	def addMenuSub(self, menuLabel, *args, **kwargs):
-		"""Overload for addMenuSub in handle_Menu()."""
+	def addSeparator(self, menuLabel, *args, **kwargs):
+		"""Overload for addSeparator in handle_Menu()."""
 
 		myMenu = self.getMenu(menuLabel)
-		myMenu.addMenuSub(*args, **kwargs)
+		myMenu.addSeparator(*args, **kwargs)
+
+	def addSub(self, menuLabel, *args, **kwargs):
+		"""Overload for addSub in handle_Menu()."""
+
+		myMenu = self.getMenu(menuLabel)
+		myMenu.addSub(*args, **kwargs)
 
 	def growFlexColumn(self, sizerLabel, *args, **kwargs):
 		"""Overload for growFlexColumn in handle_Sizer()."""
@@ -15071,7 +15205,7 @@ class handle_Panel(handle_Container_Base):
 			panelList = buildSelf.getNested(include = handle_Panel)
 			if (len(panelList) <= 1):
 				#The first panel added to a window is automatically nested
-				self.nested = True
+				buildSelf.finalNest(self)
 
 		#Determine border
 		border = self.getArguments(argument_catalogue, "border")
@@ -15217,7 +15351,7 @@ class handle_Splitter(handle_Container_Base):
 				panelInstructions["parent"] = self
 				panel = self.readBuildInstructions_panel(buildSelf, i, panelInstructions)
 				self.panelList.append(panel)
-				self.panelList[i].nested = True
+				self.finalNest(self.panelList[i])
 
 				sizerInstructions["parent"] = self.panelList[i]
 				sizer = self.readBuildInstructions_sizer(buildSelf, i, sizerInstructions)
@@ -15261,7 +15395,7 @@ class handle_Splitter(handle_Container_Base):
 				#Add panels to the splitter
 				self.panelList.append(self.myWindow.addPanel(parent = self, border = "raised"))
 				self.thing.AppendWindow(self.panelList[i].thing)
-				self.panelList[i].nested = True
+				self.finalNest(self.panelList[i])
 
 				#Add sizers to the panel
 				if (f"sizer_{i}" in argument_catalogue):
@@ -15293,7 +15427,7 @@ class handle_Splitter(handle_Container_Base):
 				#Add panels to the splitter
 				self.panelList.append(self.myWindow.addPanel(parent = self, border = "raised"))
 				self.thing.AppendWindow(self.panelList[i].thing)
-				self.panelList[i].nested = True
+				self.finalNest(self.panelList[i])
 
 				#Add sizers to the panel
 				if (i in sizers):
@@ -15581,9 +15715,6 @@ class handle_AuiManager(handle_Container_Base):
 
 		#Record nesting
 		self.finalNest(handle)
-		# handle.nested = True
-		# if (isinstance(handle, handle_NotebookPage)):
-		#   handle.myPanel.nested = True
 
 		return handle
 
@@ -16056,8 +16187,6 @@ class handle_Notebook(handle_Container_Base):
 
 			#Record nesting
 			self.finalNest(handle)
-			# handle.nested = True
-			# handle.myPanel.nested = True
 
 		if (len(handleList) > 1):
 			return handleList
@@ -18474,7 +18603,9 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 		"""
 
 		handle = handle_Window(self)
+		handle.type = "Frame"
 		handle.build(locals())
+		self.finalNest(handle)
 
 		return handle
 
