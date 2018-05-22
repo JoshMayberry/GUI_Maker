@@ -7956,12 +7956,12 @@ class handle_MenuPopup(handle_Container_Base):
 
 			#Run pre function(s)
 			if (preFunction[0] != None):
-				runFunctionList, runFunctionArgsList, runFunctionKwargsList = self.formatFunctionInputList(preFunction[0], preFunction[1], preFunction[2])
+				runFunctionList, runFunctionArgsList, runFunctionKwargsList = self.parent.formatFunctionInputList(preFunction[0], preFunction[1], preFunction[2])
 				#Run each function
 				for i, runFunction in enumerate(runFunctionList):
 					#Skip empty functions
 					if (runFunction != None):
-						runFunctionEvaluated, runFunctionArgs, runFunctionKwargs = self.formatFunctionInput(i, runFunctionList, runFunctionArgsList, runFunctionKwargsList)
+						runFunctionEvaluated, runFunctionArgs, runFunctionKwargs = self.parent.formatFunctionInput(i, runFunctionList, runFunctionArgsList, runFunctionKwargsList)
 						
 						#Has both args and kwargs
 						if ((runFunctionKwargs != None) and (runFunctionArgs != None)):
@@ -8027,7 +8027,7 @@ class handle_MenuPopup(handle_Container_Base):
 			kwargs["self"] = self.parent
 
 			handle.build(kwargs)
-			self.finalNest(handle)
+			self.parent.finalNest(handle)
 			return handle
 
 		def populateMenu(self, menu, contents):
@@ -9634,9 +9634,48 @@ class handle_WidgetTable(handle_Widget_Base):
 
 		self.postBuild(argument_catalogue)
 
+
+	#Getters
+	def getValue(self, row = None, column = None, event = None):
+		"""Returns what the contextual value is for the object associated with this handle."""
+
+		if (self.type.lower() == "table"):
+			if ((row == None) or (column == None)):
+				value = []
+				selection = self.getTableCurrentCell(event = event)
+				for _row, _column in selection:
+					value.append(self.getTableCellValue(_row, _column)) #(list) - What is in the selected cells
+			else:
+				value = self.getTableCellValue(row, column) #(str) - What is in the requested cell
+		else:
+			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
+			value = None
+
+		return value
+
+	def getAll(self):
+		"""Returns all the contextual values for the object associated with this handle."""
+
+		if (self.type.lower() == "table"):
+			value = []
+			for _row in range(self.thing.GetNumberRows()):
+				row = []
+				for _column in range(self.thing.GetNumberCols()):
+					row.append(self.getTableCellValue(_row, _column)) #(list) - What is in each cell
+				value.append(row)
+
+		else:
+			warnings.warn(f"Add {self.type} to getAll() for {self.__repr__()}", Warning, stacklevel = 2)
+			value = None
+
+		return value
+
 	#Change Settings
 	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		self.setFunction_selectSingle(myFunction = myFunction, myFunctionArgs = myFunctionArgs, myFunctionKwargs = myFunctionKwargs)
+
+	def setFunction_rightClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self.setFunction_rightClickCell(myFunction = myFunction, myFunctionArgs = myFunctionArgs, myFunctionKwargs = myFunctionKwargs)
 
 	def setFunction_preEdit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		self.betterBind(wx.grid.EVT_GRID_CELL_CHANGING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
@@ -9830,7 +9869,7 @@ class handle_WidgetTable(handle_Widget_Base):
 		self.columnSize = size
 		self.autoSizeColumn = autoSize
 
-	def setTablePreviousCell(self, row = None, column = None):
+	def setTablePreviousCell(self, row = None, column = None, event = None):
 		"""Sets the internal previous cell to the specified value.
 		If 'row' and 'column' are None, it will take the current cell.
 
@@ -9841,7 +9880,7 @@ class handle_WidgetTable(handle_Widget_Base):
 		if ((row != None) and (column != None)):
 			self.previousCell = (row, column)
 		else:
-			self.previousCell = self.getTableCurrentCell()[0]
+			self.previousCell = self.getTableCurrentCell(event = event)[0]
 
 	def getTablePreviousCell(self):
 		"""Returns the previous cell coordinates.
@@ -9863,7 +9902,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 	def appendRow(self, numberOf = 1, updateLabels = True):
 		"""Adds one or more new rows to the bottom of the grid.
-		The top-left corner is row (0, 0) not (1, 1).
+		The top-left corner is cell (0, 0) not (1, 1).
 
 		numberOf (int)      - How many rows to add
 		updateLabels (bool) - If True: The row labels will update
@@ -9876,7 +9915,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 	def appendColumn(self, numberOf = 1, updateLabels = True):
 		"""Adds one or more new columns to the right of the grid.
-		The top-left corner is row (0, 0) not (1, 1).
+		The top-left corner is cell (0, 0) not (1, 1).
 
 		numberOf (int)      - How many columns to add
 		updateLabels (bool) - If True: The row labels will update
@@ -10017,7 +10056,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 	def getTableReadOnly(self, row, column):
 		"""Returns if the given cell is readOnly or not.
-		The top-left corner is row (0, 0) not (1, 1).
+		The top-left corner is cell (0, 0) not (1, 1).
 
 		row (int)         - The index of the row
 		column (int)      - The index of the column
@@ -10028,14 +10067,14 @@ class handle_WidgetTable(handle_Widget_Base):
 		readOnly = self.readOnlyCatalogue[row][column]
 		return readOnly
 
-	def getTableCurrentCellReadOnly(self):
+	def getTableCurrentCellReadOnly(self, event = None):
 		"""Returns if the current cell is readOnly or not.
-		The top-left corner is row (0, 0) not (1, 1).
+		The top-left corner is cell (0, 0) not (1, 1).
 
 		Example Input: getTableCurrentCellReadOnly()
 		"""
 
-		selection = self.getTableCurrentCell()
+		selection = self.getTableCurrentCell(event = event)
 
 		#Default to the top left cell if a range is selected
 		row, column = selection[0]
@@ -10045,7 +10084,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 	def getTableCellType(self, row, column):
 		"""Returns the widget type of the given cell.
-		The top-left corner is row (0, 0) not (1, 1).
+		The top-left corner is cell (0, 0) not (1, 1).
 
 		row (int)         - The index of the row
 		column (int)      - The index of the column
@@ -10056,14 +10095,14 @@ class handle_WidgetTable(handle_Widget_Base):
 		cellType = self.cellTypeCatalogue[row][column]
 		return cellType
 
-	def getTableCurrentCellType(self):
+	def getTableCurrentCellType(self, event = None):
 		"""Returns the widget type of the current cell.
-		The top-left corner is row (0, 0) not (1, 1).
+		The top-left corner is cell (0, 0) not (1, 1).
 
 		Example Input: getTableCurrentCellType()
 		"""
 
-		selection = self.getTableCurrentCell()
+		selection = self.getTableCurrentCell(event = event)
 
 		#Default to the top left cell if a range is selected
 		row, column = selection[0]
@@ -10158,7 +10197,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 	def setTableCursor(self, row, column):
 		"""Moves the table highlight cursor to the given cell coordinates
-		The top-left corner is row (0, 0) not (1, 1).
+		The top-left corner is cell (0, 0) not (1, 1).
 
 		row (int)         - The index of the row
 		column (int)      - The index of the column
@@ -10172,7 +10211,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 	def setTableCell(self, row, column, value, noneReplace = True):
 		"""Writes something to a cell.
-		The top-left corner is row (0, 0) not (1, 1).
+		The top-left corner is cell (0, 0) not (1, 1).
 
 		row (int)         - The index of the row
 		column (int)      - The index of the column
@@ -10203,7 +10242,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 	def setTableCellList(self, row, column, listContents, noneReplace = True):
 		"""Makes a cell a dropdown list.
-		The top-left corner is row (0, 0) not (1, 1).
+		The top-left corner is cell (0, 0) not (1, 1).
 
 		row (int)          - The index of the row
 		column (int)       - The index of the column
@@ -10232,7 +10271,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 	def getTableCellValue(self, row, column):
 		"""Reads something in a cell.
-		The top-left corner is row (0, 0) not (1, 1).
+		The top-left corner is cell (0, 0) not (1, 1).
 
 		row (int)         - The index of the row
 			- If None: Will return the all values of the column if 'column' is not None
@@ -10272,7 +10311,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 	def getTableCurrentCell(self, event = None):
 		"""Returns the row and column of the currently selected cell.
-		The top-left corner is row (0, 0) not (1, 1).
+		The top-left corner is cell (0, 0) not (1, 1).
 		Modified code from http://ginstrom.com/scribbles/2008/09/07/getting-the-selected-cells-from-a-wxpython-grid/
 
 		### TO DO: Make this work with events on all three levels ###
@@ -10321,15 +10360,15 @@ class handle_WidgetTable(handle_Widget_Base):
 
 		return currentCell
 
-	def getTableCurrentCellValue(self):
+	def getTableCurrentCellValue(self, event = None):
 		"""Reads something from rhe currently selected cell.
-		The top-left corner is row (0, 0) not (1, 1).
+		The top-left corner is cell (0, 0) not (1, 1).
 
 		Example Input: getTableCurrentCellValue()
 		"""
 
 		#Get the selected cell's coordinates
-		selection = self.getTableCurrentCell()
+		selection = self.getTableCurrentCell(event = event)
 
 		#Default to the top left cell if a range is selected
 		row, column = selection[0]
@@ -10341,7 +10380,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 	def getTableEventCell(self, event):
 		"""Returns the row and column of the previously selected cell.
-		The top-left corner is row (0, 0) not (1, 1).
+		The top-left corner is cell (0, 0) not (1, 1).
 
 		Example Input: getTableEventCellValue(event)
 		"""
@@ -10353,7 +10392,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 	def getTableEventCellValue(self, event):
 		"""Reads something from the previously selected cell.
-		The top-left corner is row (0, 0) not (1, 1).
+		The top-left corner is cell (0, 0) not (1, 1).
 
 		Example Input: getTableEventCellValue(event)
 		"""
@@ -10366,60 +10405,121 @@ class handle_WidgetTable(handle_Widget_Base):
 
 		return value
 
-	def setTableRowLabel(self, row = 0, text = ""):
+	def setTableRowLabel(self, row = None, text = ""):
 		"""Changes a row's label.
-		The top-left corner is row (0, 0) not (1, 1).
+		The top-left corner is cell (0, 0) not (1, 1).
 
-		row (int)         - The index of the row
-		text (str)    - The new label for the row
+		row (int)  - The index of the row. Can be a list of rows
+			- If None: Will apply label to all rows
+		text (str) - The new label for the row
+			- If dict: {row (int): label (str)}
 
-		Example Input: setTableRowLabel(1, "Row 1")
+		Example Input: setTableRowLabel()
+		Example Input: setTableRowLabel(0, "Row 1")
 		"""
 
-		#Ensure correct data type
-		if (type(text) != str):
-			text = str(text)
+		if (row == None):
+			row = range(self.thing.GetNumberRows())
+		elif (not isinstance(row, (list, tuple, range))):
+			row = [row]
 
-		#Set the cell value
-		self.thing.SetRowLabel(row, text)
+		if (isinstance(text, dict)):
+			for key, value in text.items():
+				if (not isinstance(value, str)):
+					text[key] = f"{value}"
+		elif (not isinstance(text, str)):
+			text = f"{text}"
 
-	def setTableColumnLabel(self, column = 0, text = ""):
+		for _row in row:
+			if (isinstance(text, dict)):
+				if (_row in text):
+					self.thing.SetRowLabelValue(_row, text[_row])
+			else:
+				self.thing.SetRowLabelValue(_row, text)
+
+	def setTableColumnLabel(self, column = None, text = ""):
 		"""Changes a cell's column label.
-		The top-left corner is row (0, 0) not (1, 1).
+		The top-left corner is cell (0, 0) not (1, 1).
 
-		column (int)      - The index of the row
-		text (str) - The new label for the row
+		column (int)  - The index of the column. Can be a list of columns
+			- If None: Will apply label to all columns
+		text (str) - The new label for the column
+			- If dict: {column (int): label (str)}
 
+		Example Input: setTableColumnLabel()
 		Example Input: setTableColumnLabel(1, "Column 2")
 		"""
 
-		#Ensure correct data type
-		if (not isinstance(text, str)):
+		if (column == None):
+			column = range(self.thing.GetNumberCols())
+		elif (not isinstance(column, (list, tuple, range))):
+			column = [column]
+
+		if (isinstance(text, dict)):
+			for key, value in text.items():
+				if (not isinstance(value, str)):
+					text[key] = f"{value}"
+		elif (not isinstance(text, str)):
 			text = f"{text}"
 
-		#Set the cell value
-		self.thing.SetColLabelValue(column, text)
+		for _column in column:
+			if (isinstance(text, dict)):
+				if (_column in text):
+					self.thing.SetColLabelValue(_column, text[_column])
+			else:
+				self.thing.SetColLabelValue(_column, text)
 
-	def getTableColumnLabel(self, column):
-		"""Returns a cell's column label
-		The top-left corner is row (0, 0) not (1, 1).
+	def getTableRowLabel(self, row):
+		"""Returns a cell's row label
+		The top-left corner is cell (0, 0) not (1, 1).
 
-		column (int)      - The index of the row
+		row (int) - The index of the row. Can be a list of rows
+			- If None: Will return the labels of all rows
 
-		Example Input: setTableColumnLabel(1)
+		Example Input: getTableRowLabel()
+		Example Input: getTableRowLabel(1)
 		"""
 
-		#Ensure correct data type
-		if (not isinstance(columnLabel, str)):
-			columnLabel = f"{columnLabel}"
+		if (row == None):
+			row = range(self.thing.GetNumberRows())
+		elif (not isinstance(row, (list, tuple, range))):
+			row = [row]
 
-		#Set the cell value
-		columnLabel = self.thing.GetColLabelValue(column)
-		return columnLabel
+		value = []
+		for _row in row:
+			text = self.thing.GetRowLabelValue(_row)
+			value.append(text)
+		
+		return value
+
+	def getTableColumnLabel(self, column = None):
+		"""Returns a cell's column label
+		The top-left corner is cell (0, 0) not (1, 1).
+
+		column (int) - The index of the column. Can be a list of columns
+			- If None: Will return the labels of all columns
+
+		Example Input: getTableColumnLabel()
+		Example Input: getTableColumnLabel(1)
+		Example Input: getTableColumnLabel([1, 3, 4])
+		Example Input: getTableColumnLabel(range(5))
+		"""
+
+		if (column == None):
+			column = range(self.thing.GetNumberCols())
+		elif (not isinstance(column, (list, tuple, range))):
+			column = [column]
+
+		value = []
+		for _column in column:
+			text = self.thing.GetColLabelValue(_column)
+			value.append(text)
+		
+		return value
 
 	def setTableCellFormat(self, row, column, format):
 		"""Changes the format of the text in a cell.
-		The top-left corner is row (0, 0) not (1, 1).
+		The top-left corner is cell (0, 0) not (1, 1).
 
 		row (int)    - The index of the row
 		column (int) - The index of the column
@@ -10435,7 +10535,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 	def setTableCellColor(self, row = None, column = None, color = None):
 		"""Changes the color of the background of a cell.
-		The top-left corner is row (0, 0) not (1, 1).
+		The top-left corner is cell (0, 0) not (1, 1).
 		If both 'row' and 'column' are None, the entire table will be colored
 		Special thanks to  for how to apply changes to the table on https://stackoverflow.com/questions/14148132/wxpython-updating-grid-cell-background-colour
 
@@ -10477,7 +10577,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 	def getTableCellColor(self, row, column):
 		"""Returns the color of the background of a cell.
-		The top-left corner is row (0, 0) not (1, 1).
+		The top-left corner is cell (0, 0) not (1, 1).
 
 		row (int)     - The index of the row
 			- If None: Will color all cells of the column if 'column' is not None
@@ -10493,7 +10593,7 @@ class handle_WidgetTable(handle_Widget_Base):
 	def setTableCellFont(self, row, column, font, 
 		italic = False, bold = False):
 		"""Changes the color of the text in a cell.
-		The top-left corner is row (0, 0) not (1, 1).
+		The top-left corner is cell (0, 0) not (1, 1).
 
 		row (int)     - The index of the row
 		column (int)  - The index of the column
@@ -10526,7 +10626,7 @@ class handle_WidgetTable(handle_Widget_Base):
 	######################## FIX THIS #######################
 	def setTableMods(self, row, column, font, italic = False, bold = False):
 		"""Modifies the alignemt of a cell
-		The top-left corner is row (0, 0) not (1, 1).
+		The top-left corner is cell (0, 0) not (1, 1).
 
 		row (int)         - The index of the row
 		column (int)      - The index of the column
@@ -10561,7 +10661,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 	def hideTableRow(self, row):
 		"""Hides a row in a grid.
-		The top-left corner is row (0, 0) not (1, 1).
+		The top-left corner is cell (0, 0) not (1, 1).
 
 		row (int)         - The index of the row
 
@@ -10583,7 +10683,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 	def setTableTextColor(self, row, column, color):
 		"""Changes the color of the text in a cell.
-		The top-left corner is row (0, 0) not (1, 1).
+		The top-left corner is cell (0, 0) not (1, 1).
 
 		row (int)         - The index of the row
 		column (int)      - The index of the column
@@ -10604,7 +10704,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 	def setTableBackgroundColor(self, row, column, color):
 		"""Changes the color of the text in a cell.
-		The top-left corner is row (0, 0) not (1, 1).
+		The top-left corner is cell (0, 0) not (1, 1).
 
 		row (int)    - The index of the row
 		column (int) - The index of the column
@@ -10736,40 +10836,6 @@ class handle_WidgetTable(handle_Widget_Base):
 		#Set the text color
 		self.thing.SetColSizes(wx.grid.GridSizesInfo)
 
-	#Getters
-	def getValue(self, event = None):
-		"""Returns what the contextual value is for the object associated with this handle."""
-
-		if (self.type.lower() == "table"):
-			value = []
-			content = self.thing.GetSelectedCells()
-			if (len(content) != 0):
-				for row, column in content:
-					value.append(self.thing.GetCellValue(row, column)) #(list) - What is in the selected cells
-
-		else:
-			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
-			value = None
-
-		return value
-
-	def getAll(self):
-		"""Returns all the contextual values for the object associated with this handle."""
-
-		if (self.type.lower() == "table"):
-			value = []
-			for i in range(self.thing.GetNumberRows()):
-				row = []
-				for j in range(self.thing.GetNumberCols()):
-					row.append(self.thing.GetCellValue(i, j)) #(list) - What is in each cell
-				value.append(row)
-
-		else:
-			warnings.warn(f"Add {self.type} to getAll() for {self.__repr__()}", Warning, stacklevel = 2)
-			value = None
-
-		return value
-
 	def onTableCheckCell(self, event, *args, **kwargs):
 		"""Returns information about a specific cell on a table."""
 
@@ -10879,7 +10945,7 @@ class handle_WidgetTable(handle_Widget_Base):
 		### NOT WORKING YET ###
 		if (edit):
 			#Move editor
-			selection = self.getTableCurrentCell()
+			selection = self.getTableCurrentCell(event)
 
 			#Default to the top left cell if a range is selected
 			row, column = selection[0]
@@ -11264,7 +11330,7 @@ class handle_WidgetTable(handle_Widget_Base):
 				self.myCellControl = wx.Choice(parent, myId, (100, 50), choices = self.cellTypeValue)
 
 				#Check readOnly
-				if (self.parent.getTableCurrentCellReadOnly()):
+				if (self.parent.getTableCurrentCellReadOnly(event = event)):
 					self.myCellControl.Enable(False)
 
 			#Use a text box
@@ -11274,7 +11340,7 @@ class handle_WidgetTable(handle_Widget_Base):
 					style += "|wx.TE_PROCESS_ENTER"
 
 				#Check readOnly
-				if (self.parent.getTableCurrentCellReadOnly()):
+				if (self.parent.getTableCurrentCellReadOnly(event = event)):
 					styles += "|wx.TE_READONLY"
 
 				#Strip of extra divider
@@ -13113,15 +13179,15 @@ class handle_Sizer(handle_Container_Base):
 		To get a cell value, use: myGridId.GetCellValue(row, column).
 		For a deep tutorial: http://www.blog.pythonlibrary.org/2010/03/18/wxpython-an-introduction-to-grids/
 
-		rows (int)       - The number of rows the table has
-		columns (int)    - The number of columns the table has
+		rows (int)        - The number of rows the table has
+		columns (int)     - The number of columns the table has
 		sizerNumber (int) - The number of the sizer that this will be added to
 		tableNumber (int) - The table catalogue number for this new table
 		flags (list)      - A list of strings for which flag to add to the sizer
 		contents (list)   - Either a 2D list [[row], [column]] or a numpy array that contains the contents of each cell. If None, they will be blank.
 		gridLabels (str)  - The labels for the [[rows], [columns]]. If not enough are provided, the resst will be capital letters.
 		toolTips (list)   - The coordinates and message for all the tool tips. [[row, column, message], [row, column, message], ...]
-		label (str)     - What this is called in the idCatalogue
+		label (str)       - What this is called in the idCatalogue
 		
 		rowSize (str)           - The height of the rows
 			- If None: Will make it the default size
@@ -14682,14 +14748,17 @@ class handle_Window(handle_Container_Base):
 		"""Adds a status bar to the bottom of the window."""
 
 		self.statusBar = self.thing.CreateStatusBar()
+		self.setDefaultStatusText()
 
-	def setStatusText(self, message = " ", autoAdd = False):
+	def setStatusText(self, message = None, autoAdd = False):
 		"""Sets the text shown in the status bar.
 
 		message (str)  - What the status bar will say
 			- If dict: {What to say (str): How long to wait in ms before moving on to the next message (int). Use None for ending}
+			- If None: Will use the defaultr status message
 		autoAdd (bool) - If there is no status bar, add one
 
+		Example Input: setStatusText()
 		Example Input: setStatusText("Ready")
 		Example Input: setStatusText({"Ready": 1000, "Set": 1000, "Go!": None, "This will not appear": 1000)
 		"""
@@ -14700,7 +14769,7 @@ class handle_Window(handle_Container_Base):
 
 			for text, delay in message.items():
 				if (text == None):
-					text = " "
+					text = self.statusTextDefault
 				self.statusBar.SetStatusText(text)
 
 				if (delay == None):
@@ -14719,9 +14788,20 @@ class handle_Window(handle_Container_Base):
 			self.backgroundRun(timerMessage)
 		else:
 			if (message == None):
-				message = " "
-
+				message = self.statusTextDefault
 			self.statusBar.SetStatusText(message)
+
+	def setDefaultStatusText(self, message = " "):
+		"""Sets the default status message for the status bar.
+
+		message (str)  - What the status bar will say on default
+
+		Example Input: setDefaultStatusText("Ready")
+		"""
+
+		if (message == None):
+			message = " "
+		self.statusTextDefault = message
 
 	#Dialog Boxes
 	def makeDialogMessage(self, text = "", title = "", stayOnTop = False, icon = None, 
@@ -20026,7 +20106,7 @@ class User_Utilities():
 		errorMessage = f"There is no item labled {itemLabel} in the data catalogue for {self.__repr__()}"
 		raise KeyError(errorMessage)
 
-	def getValue(self, variable, order = True):
+	def getValue(self, variable, order = True, exclude = []):
 		"""Returns a list of all values for the requested variable.
 		Special thank to Andrew Dalke for how to sort objects by attributes on https://wiki.python.org/moin/HowTo/Sorting#Key_Functions
 
@@ -20042,17 +20122,20 @@ class User_Utilities():
 		Example Input: getValue("naed", "defaultOrder")
 		"""
 
+		if (not isinstance(exclude, (list, tuple, range))):
+			exclude = [exclude]
+
 		if ((order != None) and (not isinstance(order, bool))):
-			data = [getattr(item, variable) for item in self.getOrder(order)]
+			data = [getattr(item, variable) for item in self.getOrder(order) if (item not in exclude)]
 		else:
-			data = [getattr(item, variable) for item in self]
+			data = [getattr(item, variable) for item in self if (item not in exclude)]
 
 			if ((order != None) and (isinstance(order, bool)) and order):
 				data.sort()
 
 		return data
 
-	def getOrder(self, variable, includeMissing = True):
+	def getOrder(self, variable, includeMissing = True, reverse = False, exclude = []):
 		"""Returns a list of children in order according to the variable given.
 
 		variable (str) - what variable to use for sorting
@@ -20061,14 +20144,17 @@ class User_Utilities():
 		Example Input: getOrder("order")
 		"""
 
-		handleList = sorted([item for item in self if hasattr(item, variable)], key = lambda item: getattr(item, variable))
+		if (not isinstance(exclude, (list, tuple, range))):
+			exclude = [exclude]
+
+		handleList = sorted([item for item in self if (hasattr(item, variable) and (item not in exclude))], key = lambda item: getattr(item, variable), reverse = reverse)
 
 		if (includeMissing):
-			handleList.extend([item for item in self if not hasattr(item, variable)])
+			handleList.extend([item for item in self if (not hasattr(item, variable) and (item not in exclude))])
 
 		return handleList
 
-	def getHandle(self, where):
+	def getHandle(self, where, exclude = []):
 		"""Returns a list of children whose variables are equal to what is given.
 
 		where (dict) - {variable (str): value (any)}
@@ -20076,14 +20162,18 @@ class User_Utilities():
 		Example Input: getHandle({"order": 4})
 		"""
 
+		if (not isinstance(exclude, (list, tuple, range))):
+			exclude = [exclude]
+
 		handleList = []
 		for handle in self[:]:
-			for variable, value in where.items():
-				if (hasattr(handle, variable) and (getattr(handle, variable) == value)):
-					continue
-				break
-			else:
-				handleList.append(handle)
+			if (handle not in exclude):
+				for variable, value in where.items():
+					if (hasattr(handle, variable) and (getattr(handle, variable) == value)):
+						continue
+					break
+				else:
+					handleList.append(handle)
 		return handleList
 
 	def getUnique(self, base = "{}", increment = 1, start = 1, exclude = []):
@@ -20093,6 +20183,9 @@ class User_Utilities():
 		Example Input: getUnique("Format_{}")
 		Example Input: getUnique(exclude = [item.database_id for item in self.parent])
 		"""
+
+		if (not isinstance(exclude, (list, tuple, range))):
+			exclude = [exclude]
 
 		while True:
 			ending = start + increment - 1
