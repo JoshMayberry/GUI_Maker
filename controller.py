@@ -688,14 +688,14 @@ class Utilities():
 
 			if ((handleList != None) and (typeList != None)):
 				answer = []
-				if ((not isinstance(handleList, list)) and (not isinstance(handleList, tuple))):
+				if (not isinstance(handleList, (list, tuple, range))):
 					handleList = [handleList]
 
 				for item in handleList:
 					if (isinstance(item, typeList)):
 						answer.append(item)
 
-				if (isinstance(answer, list) or isinstance(answer, tuple)):
+				if (isinstance(answer, (list, tuple, range))):
 					if (len(answer) == 0):
 						answer = None
 			else:
@@ -704,7 +704,7 @@ class Utilities():
 
 		#Ensure correct format
 		if (typeList != None):
-			if ((not isinstance(typeList, list)) and (not isinstance(typeList, tuple))):
+			if (not isinstance(typeList, (list, tuple, range))):
 				typeList = (typeList)
 			if (len(typeList) == 0):
 				typeList = None
@@ -774,7 +774,7 @@ class Utilities():
 			answer = checkType(self.labelCatalogue[itemLabel])
 		
 		if (answer != None):
-			if (isinstance(answer, list) or isinstance(answer, tuple)):
+			if (isinstance(answer, (list, tuple, range))):
 				if (len(answer) == 1):
 					answer = answer[0]
 
@@ -783,7 +783,7 @@ class Utilities():
 		if (isinstance(itemLabel, wx.Event)):
 			errorMessage = f"There is no item associated with the event {itemLabel} in the label catalogue for {self.__repr__()}"
 		elif (typeList != None):
-			if (isinstance(answer, list) or isinstance(answer, tuple)):
+			if (isinstance(answer, (list, tuple, range))):
 				errorMessage = f"There is no item labled {itemLabel} in the label catalogue for {self.__repr__()} that is a {[item.__name__ for item in typeList]}"
 			else:
 				errorMessage = f"There is no item labled {itemLabel} in the label catalogue for {self.__repr__()} that is a {typeList.__name__}"
@@ -1508,7 +1508,7 @@ class Utilities():
 		"""
 		global nestingCatalogue
 
-		if ((not isinstance(address, list)) and (not isinstance(address, tuple))):
+		if (not isinstance(address, (list, tuple, range))):
 			address = [address]
 
 		#Search through catalogue
@@ -1524,7 +1524,7 @@ class Utilities():
 		"""
 		global nestingCatalogue
 
-		if ((not isinstance(address, list)) and (not isinstance(address, tuple))):
+		if (not isinstance(address, (list, tuple, range))):
 			address = [address]
 
 		catalogue = nestingCatalogue
@@ -1553,12 +1553,12 @@ class Utilities():
 		#Ensure correct format
 		if (include == None):
 			include = []
-		elif ((not isinstance(include, list)) and (not isinstance(include, tuple))):
+		elif (not isinstance(include, (list, tuple, range))):
 			include = [include]
 
 		if (exclude == None):
 			exclude = []
-		elif ((not isinstance(exclude, list)) and (not isinstance(exclude, tuple))):
+		elif (not isinstance(exclude, (list, tuple, range))):
 			exclude = [exclude]
 
 
@@ -2121,7 +2121,7 @@ class Utilities():
 				else:
 					warnings.warn(f"Unknown color {color} given to getColor in {self.__repr__()}", Warning, stacklevel = 2)
 					return
-			elif (not isinstance(color, (list, tuple))):
+			elif (not isinstance(color, (list, tuple, range))):
 					warnings.warn(f"'color' must be a tuple or string, not a {type(color)}, for getColor in {self.__repr__()}", Warning, stacklevel = 2)
 					return
 			elif (len(color) != 3):
@@ -2322,7 +2322,7 @@ class Utilities():
 		"""
 
 		#Ensure correct format
-		if ((not isinstance(desiredArgs, list)) and (not isinstance(desiredArgs, tuple))):
+		if (not isinstance(desiredArgs, (list, tuple, range))):
 			desiredArgs = [desiredArgs]
 
 		argList = []
@@ -2359,7 +2359,7 @@ class Utilities():
 
 		#Ensure correct format
 		if (desiredArgs != None):
-			if ((not isinstance(desiredArgs, list)) and (not isinstance(desiredArgs, tuple))):
+			if (not isinstance(desiredArgs, (list, tuple, range))):
 				desiredArgs = [desiredArgs]
 
 		arguments = {}
@@ -2406,7 +2406,7 @@ class Utilities():
 
 	def checkHandleType(self, typeNeeded, function):
 		#Ensure correct format
-		if ((not isinstance(typeNeeded, list)) and (not isinstance(typeNeeded, tuple))):
+		if (not isinstance(typeNeeded, (list, tuple, range))):
 			typeNeeded = [typeNeeded]
 
 		#Error check
@@ -2425,7 +2425,7 @@ class Utilities():
 		Example Input: getArgument_event([label, event], args, kwargs)
 		"""
 		#Ensure correct format
-		if ((not isinstance(arguments, list)) and (not isinstance(arguments, tuple))):
+		if (not isinstance(arguments, (list, tuple, range))):
 			arguments = [arguments]
 
 		#Search for event
@@ -2950,7 +2950,7 @@ class handle_Container_Base(handle_Base):
 				return answerList
 		else:
 			#Account for multiple objects
-			if ((not isinstance(label, list)) and (not isinstance(label, tuple))):
+			if (not isinstance(label, (list, tuple, range))):
 				labelList = [label]
 			else:
 				labelList = label
@@ -3859,7 +3859,7 @@ class handle_WidgetText(handle_Widget_Base):
 			#Ensure correct format
 			if (not isinstance(text, str)):
 				text = f"{text}"
-			if (not isinstance(argument_catalogue["flags"], (list, tuple))):
+			if (not isinstance(argument_catalogue["flags"], (list, tuple, range))):
 				argument_catalogue["flags"] = [argument_catalogue["flags"]]
 
 			#Apply Settings
@@ -4499,12 +4499,12 @@ class handle_WidgetList(handle_Widget_Base):
 				self.boldHeader = boldHeader
 
 			#Error Check
-			if (not isinstance(newValue, (list, tuple, dict))):
+			if (not isinstance(newValue, (list, tuple, range, dict))):
 				newValue = [newValue]
 
 			if (columns != 1):
-				if ((isinstance(newValue, (list, tuple))) and (len(newValue) != 0)):
-					if (not isinstance(newValue[0], (list, tuple))):
+				if ((isinstance(newValue, (list, tuple, range))) and (len(newValue) != 0)):
+					if (not isinstance(newValue[0], (list, tuple, range))):
 						newValue = [newValue]
 
 			if (filterNone != None):
@@ -4649,7 +4649,7 @@ class handle_WidgetList(handle_Widget_Base):
 				pass
 
 			#Account for multiple items on the same level
-			if (isinstance(newValue, (list, tuple))):
+			if (isinstance(newValue, (list, tuple, range))):
 				for item in newValue:
 					self.appendValue(item, where)
 			else:
@@ -5530,7 +5530,7 @@ class handle_WidgetInput(handle_Widget_Base):
 					changeTextFunctionArgs, changeTextFunctionKwargs = self.getArguments(argument_catalogue, ["changeTextFunctionArgs", "changeTextFunctionKwargs"])
 					self.betterBind(wx.EVT_TEXT, self.thing, changeTextFunction, changeTextFunctionArgs, changeTextFunctionKwargs)
 
-			if (not ((self.exclude == None) or (isinstance(self.exclude, (list, tuple)) and (len(self.exclude) == 0)))):
+			if (not ((self.exclude == None) or (isinstance(self.exclude, (list, tuple, range)) and (len(self.exclude) == 0)))):
 				self.betterBind(wx.EVT_KILL_FOCUS, self.thing, self.onCheckValue_exclude)
 		
 		#########################################################
@@ -5624,7 +5624,7 @@ class handle_WidgetInput(handle_Widget_Base):
 		elif (self.type.lower() == "inputspinner"):
 			self.betterBind(wx.EVT_KILL_FOCUS, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
-			if (not ((self.exclude == None) or (isinstance(self.exclude, (list, tuple)) and (len(self.exclude) == 0)))):
+			if (not ((self.exclude == None) or (isinstance(self.exclude, (list, tuple, range)) and (len(self.exclude) == 0)))):
 				self.betterBind(wx.EVT_KILL_FOCUS, self.thing, self.onCheckValue_exclude, rebind = True)
 
 		elif (self.type.lower() == "inputsearch"):
@@ -5689,7 +5689,7 @@ class handle_WidgetInput(handle_Widget_Base):
 		if (self.type.lower() == "inputspinner"):
 			if (self.exclude != None):
 				#Error Check
-				if (not isinstance(self.exclude, (list, tuple))):
+				if (not isinstance(self.exclude, (list, tuple, range))):
 					warnings.warn(f"'exclude' must be a list or tuple for {self.__repr__()}", Warning, stacklevel = 2)
 					event.Skip()
 					return
@@ -5809,8 +5809,8 @@ class handle_WidgetButton(handle_Widget_Base):
 			choices, multiple, sort, myFunction = self.getArguments(argument_catalogue, ["choices", "multiple", "sort", "myFunction"])
 
 			#Ensure that the choices given are a list or tuple
-			if ((not isinstance(choices, list)) and (not isinstance(choices, tuple))):
-				choices = list(choices)
+			if (not isinstance(choices, (list, tuple, range))):
+				choices = [choices]
 
 			#Ensure that the choices are all strings
 			choices = [str(item) for item in choices]
@@ -5862,8 +5862,8 @@ class handle_WidgetButton(handle_Widget_Base):
 			choices, vertical, title, default, maximum, myFunction = self.getArguments(argument_catalogue, ["choices", "vertical", "title", "default", "maximum", "myFunction"])
 
 			#Ensure that the choices given are a list or tuple
-			if ((not isinstance(choices, list)) and (not isinstance(choices, tuple))):
-				choices = list(choices)
+			if (not isinstance(choices, (list, tuple, range))):
+				choices = [choices]
 
 			#Ensure that the choices are all strings
 			choices = [str(item) for item in choices]
@@ -9434,35 +9434,6 @@ class handle_WidgetTable(handle_Widget_Base):
 	def build(self, argument_catalogue):
 		"""Determiens which build system to use for this handle."""
 
-		def addEditor(cellType, row = None, column = None, enterKeyExitEdit = False):
-			"""Adds the requested editor to the provided cell.
-			Creates the requested editor if it does not exist.
-			Special thanks to RobinD42 for how to fix an error when closing the window on https://github.com/wxWidgets/Phoenix/issues/627
-
-			cellType (str) - What type of editor to add
-			row (int)      - Which row to add this to
-				- If None: Will make this the default editor instead
-			column (int)   - Which column to add this to
-				- If None: Will make this the default editor instead
-
-			Example Input: addEditor(cellTypeDefault)
-			Example Input: addEditor(cellType[row][column], row, column)
-			"""
-			nonlocal self
-
-			#Create editor if needed
-			if (str(cellType) not in self.cellTypeCatalogue):
-				self.cellTypeCatalogue[str(cellType)] = self.TableCellEditor(self, downOnEnter = enterKeyExitEdit, cellType = cellType)
-
-			#Assign editor to grid
-			if ((row == None) or (column == None)):
-				self.thing.SetDefaultEditor(self.cellTypeCatalogue[str(cellType)])
-			else:
-				self.thing.SetCellEditor(row, column, self.cellTypeCatalogue[str(cellType)])
-
-			#Increment the reference variable for managing clones
-			self.cellTypeCatalogue[str(cellType)].IncRef()
-
 		def build_table():
 			"""Builds a wx grid object."""
 			nonlocal self, argument_catalogue
@@ -9560,6 +9531,8 @@ class handle_WidgetTable(handle_Widget_Base):
 
 			##Set Editability for Cells
 			self.readOnlyCatalogue = {}
+			self.readOnlyDefault = readOnlyDefault
+			self.disableTableEditing(readOnly)
 			for row in range(self.thing.GetNumberRows()):
 				for column in range(self.thing.GetNumberCols()):
 					if (row not in self.readOnlyCatalogue):
@@ -9592,27 +9565,15 @@ class handle_WidgetTable(handle_Widget_Base):
 					else:
 						self.readOnlyCatalogue[row][column] = readOnlyDefault
 
-			##Cell Editor
-			self.cellTypeCatalogue = {}
-			addEditor(cellTypeDefault, enterKeyExitEdit = enterKeyExitEdit)
-
 			##Set Cell Type for Cells
+			self.cellTypeCatalogue = {}
+			self.enterKeyExitEdit = enterKeyExitEdit
+			self.cellTypeDefault = cellTypeDefault
+			self.setTableCellType()
+
 			for row in range(self.thing.GetNumberRows()):
 				for column in range(self.thing.GetNumberCols()):
-					if (cellType != None):
-						if (row in cellType):
-							if (isinstance(cellType[row], str)):
-								#Define for whole row
-								addEditor(cellType[row], row, column, enterKeyExitEdit = enterKeyExitEdit)
-							else:
-								if (column in cellType[row]):
-									#Define for individual cell
-									addEditor(cellType[row][column], row, column, enterKeyExitEdit = enterKeyExitEdit)
-
-						elif (None in cellType):
-							if (column in cellType[None]):
-								#Define for whole column
-								addEditor(cellType[None][column], row, column, enterKeyExitEdit = enterKeyExitEdit)
+					self.setTableCellType(cellType, row, column)
 
 			##Default Cell Selection
 			if ((default != None) and (default != (0, 0))):
@@ -9714,6 +9675,7 @@ class handle_WidgetTable(handle_Widget_Base):
 		if (number != current):
 			if (number > current):
 				self.thing.AppendCols(number - current)
+				self.disableTableEditing(column = range(current - 1, number))
 			else:
 				self.thing.DeleteCols(number, current - number)
 
@@ -9733,6 +9695,7 @@ class handle_WidgetTable(handle_Widget_Base):
 		if (number != current):
 			if (number > current):
 				self.thing.AppendRows(number - current)
+				self.disableTableEditing(row = range(current - 1, number))
 			else:
 				self.thing.DeleteRows(number, current - number)
 
@@ -9924,16 +9887,23 @@ class handle_WidgetTable(handle_Widget_Base):
 
 		self.thing.AppendCols(numberOf, updateLabels)
 
-	def enableTableEditing(self, row = -1, column = -1, state = True):
+	def enableTableEditing(self, state = True, row = None, column = None):
 		"""Allows the user to edit the table.
 
-		row (int)         - Which row this applies to
-		column (int)      - Which column this applies to
-			If both 'row' and 'column' are -1, the whole table will diabled
-			If both 'row' and 'column' are given, that one cell will be disabled
-			If 'row' is given and 'column is -1', that one row will be disabled
-			If 'row' is -1 and 'column' is given, that one column will be disabled
-
+		row (int)    - Which row this applies to
+		column (int) - Which column this applies to
+			- If both 'row' and 'column' are None, the whole table will enabled
+			- If both 'row' and 'column' are given, that one cell will be enabled
+			- If 'row' is given and 'column' is None', that one row will be enabled
+			- If 'row' is None and 'column' is given, that one column will be enabled
+		state (bool) - Determines the editability of the table
+			- If True: The user will be able to edit all cells.
+			- If False: The user will not be able to edit the cells. If an edit function is provided, this cell will be ignored
+			- If None: Will use the default
+			- A dictionary can be given to single out specific cells, rows, or columns
+				~ {row number (int): {column number (int): editability for the cell (bool)}}
+				~ {row number (int): editability for the whole row (bool)}
+				~ {None: {column number (int): editability for the whole column (bool)}}
 
 		Example Input: enableTableEditing(0)
 		Example Input: enableTableEditing(0, row = 0)
@@ -9941,45 +9911,50 @@ class handle_WidgetTable(handle_Widget_Base):
 		Example Input: enableTableEditing(0, row = 0, column = 0)
 		"""
 
-		#Account for multiple rows and columns
-		if ((type(row) != list) and (type(row) != tuple)):
-			rowList = [row]
+		if (state == None):
+			newState = state
+		elif (isinstance(state, bool)):
+			newState = not state
+		elif (isinstance(state, dict)):
+			newState = {}
+			for key, value in state.items():
+				if (not isinstance(value, dict)):
+					if (state == None):
+						newState[key] = value
+					else:
+						newState[key] = not value
+				else:
+					if (key not in newState):
+						newState[key] = {}
+					for subKey, subValue in value.items():
+						if (not isinstance(subValue, dict)):
+							if (subValue == None):
+								newState[key][subKey] = subValue
+							else:
+								newState[key][subKey] = not subValue
 		else:
-			rowList = row
+			errorMessage = f"'state' must be a bool or a dict, not {type(state)} for enableTableEditing() in {self.__repr__()}"
+			raise KeyError(errorMessage)
 
-		if ((type(column) != list) and (type(column) != tuple)):
-			columnList = [column]
-		else:
-			columnList = column
+		self.disableTableEditing(row = row, column = column,  state = newState)
 
-		for column in columnList:
-			for row in rowList:
-				#Determine if only 1 cell will be changed
-				if ((row != -1) and (column != -1)):
-					self.readOnlyCatalogue[row][column] = not state
-
-				elif ((row == -1) and (column == -1)):
-					for i in range(self.thing.GetNumberRows()):
-						for j in range(self.thing.GetNumberCols()):
-							self.readOnlyCatalogue[i][j] = not state
-
-				elif (row != -1):
-					for j in range(self.thing.GetNumberCols()):
-						self.readOnlyCatalogue[row][j] = not state
-
-				elif (column != -1):
-					for i in range(self.thing.GetNumberRows()):
-						self.readOnlyCatalogue[i][column] = not state
-
-	def disableTableEditing(self, row = -1, column = -1, state = False):
+	def disableTableEditing(self, state = False, row = None, column = None):
 		"""Allows the user to edit the table.
 
-		row (int)         - Which row this applies to
-		column (int)      - Which column this applies to
-			If both 'row' and 'column' are -1, the whole table will diabled
+		row (int)    - Which row this applies to
+		column (int) - Which column this applies to
+			If both 'row' and 'column' are None, the whole table will disabled
 			If both 'row' and 'column' are given, that one cell will be disabled
-			If 'row' is given and 'column is -1', that one row will be disabled
-			If 'row' is -1 and 'column' is given, that one column will be disabled
+			If 'row' is given and 'column' is None, that one row will be disabled
+			If 'row' is None and 'column' is given, that one column will be disabled
+		state (bool) - Determines the editability of the table
+			- If True: The user will not be able to edit the cells. If an edit function is provided, this cell will be ignored
+			- If False: The user will be able to edit all cells.
+			- If None: Will use the default
+			- A dictionary can be given to single out specific cells, rows, or columns
+				~ {row number (int): {column number (int): editability for the cell (bool)}}
+				~ {row number (int): editability for the whole row (bool)}
+				~ {None: {column number (int): editability for the whole column (bool)}}
 
 		Example Input: disableTableEditing(0)
 		Example Input: disableTableEditing(0, row = 0)
@@ -9987,7 +9962,58 @@ class handle_WidgetTable(handle_Widget_Base):
 		Example Input: disableTableEditing(0, row = 0, column = 0)
 		"""
 
-		self.enableTableEditing(row = row, column = column,  state = not state)
+		def modifyReadonly(state, row = None, column = None):
+			"""Modifies the readOnly catalogue
+
+			state (str)  - Determines the editability of the table
+			row (int)    - Which row to add this to
+				- If None: Will apply to all rows
+			column (int) - Which column to add this to
+				- If None: Will apply to all columns
+
+			Example Input: modifyReadonly(state[_row][_column], _row, _column)
+			"""
+			nonlocal self
+
+			#Determine affected cells
+			rowList = range(self.thing.GetNumberRows()) if (row == None) else [row]
+			columnList = range(self.thing.GetNumberCols()) if (column == None) else [column]
+
+			#Apply readOnly
+			for _row in rowList:
+				if (_row not in self.readOnlyCatalogue):
+					self.readOnlyCatalogue[_row] = {}
+				for _column in columnList:
+					self.readOnlyCatalogue[_row][_column] = state
+			
+		#########################################################	
+
+		if (state == None):
+			state = self.readOnlyDefault
+
+		if (row == None):
+			row = range(self.thing.GetNumberRows())
+		elif (not isinstance(row, (list, tuple, range))):
+			row = [row]
+		
+		if (column == None):
+			column = range(self.thing.GetNumberCols())
+		elif (not isinstance(column, (list, tuple, range))):
+			column = [column]
+		
+		for _row in row:
+			for _column in column:
+				if (not isinstance(state, dict)):
+					modifyReadonly(state, _row, _column)
+				else:
+					if (_row in state):
+						if (isinstance(state[_row], str)):
+							#Define for whole row
+							modifyReadonly(state[_row], _row, _column)
+						else:
+							if (_column in state[_row]):
+								#Define for individual cell or whole column if _row is None
+								modifyReadonly(state[_row][_column], _row, _column)
 
 	def getTableReadOnly(self, row, column):
 		"""Returns if the given cell is readOnly or not.
@@ -10044,6 +10070,83 @@ class handle_WidgetTable(handle_Widget_Base):
 
 		readOnly = self.getTableCellType(row, column)
 		return readOnly
+
+	def setTableCellType(self, cellType = None, row = None, column = None):
+		"""Changes the cell types for the table.
+
+		cellType (dict) - Determines the widget type used for a specific cell in the table
+			~ {row number (int): {column number (int): cell type for the cell (str)}}
+			~ {row number (int): cell type for the whole row (str)}
+			~ {None: {column number (int): cell type for the whole column (str)}}
+			- Can be a string that applies to the given row and column
+			- Possible Inputs: "inputBox", "dropList"
+			- If None: will apply the default cell type
+		row (int) - Which row to apply this cell type to. Can be a list. Must be in the dict for 'cellType' or 'cellType' must be a string
+		column (int) - Which column to apply this cell type to. Can be a list. Must be in the dict for 'cellType' or 'cellType' must be a string
+
+		Example Input: setTableCellType()
+		Example Input: setTableCellType("dropList")
+		Example Input: setTableCellType("dropList", column = 1)
+		Example Input: setTableCellType({None: {1: "dropList"}})
+		Example Input: setTableCellType("dropList", row = [1, 2, 5])
+		"""
+
+		def addEditor(cellType, row = None, column = None):
+			"""Adds the requested editor to the provided cell.
+			Creates the requested editor if it does not exist.
+			Special thanks to RobinD42 for how to fix an error when closing the window on https://github.com/wxWidgets/Phoenix/issues/627
+
+			cellType (str) - What type of editor to add
+			row (int)      - Which row to add this to
+				- If None: Will apply to all rows
+			column (int)   - Which column to add this to
+				- If None: Will apply to all columns
+
+			Example Input: addEditor(cellType[_row][_column], _row, _column)
+			"""
+			nonlocal self
+
+			#Create editor if needed
+			if (str(cellType) not in self.cellTypeCatalogue):
+				self.cellTypeCatalogue[str(cellType)] = self.TableCellEditor(self, downOnEnter = self.enterKeyExitEdit, cellType = cellType)
+
+			#Determine affected cells
+			if ((row == None) and (column == None)):
+				self.thing.SetDefaultEditor(self.cellTypeCatalogue[str(cellType)])
+
+			rowList = range(self.thing.GetNumberRows()) if (row == None) else [row]
+			columnList = range(self.thing.GetNumberCols()) if (column == None) else [column]
+
+			#Assign editor to grid
+			for _row in rowList:
+				for _column in columnList:
+					self.thing.SetCellEditor(_row, _column, self.cellTypeCatalogue[str(cellType)])
+
+			#Increment the reference variable for managing clones
+			self.cellTypeCatalogue[str(cellType)].IncRef()
+			
+		#########################################################	
+
+		if (cellType == None):
+			cellType = self.cellTypeDefault
+		if (not isinstance(row, (list, tuple, range))):
+			row = [row]
+		if (not isinstance(column, (list, tuple, range))):
+			column = [column]
+		
+		for _row in row:
+			for _column in column:
+				if (not isinstance(cellType, dict)):
+					addEditor(cellType, _row, _column)
+				else:
+					if (_row in cellType):
+						if (isinstance(cellType[_row], str)):
+							#Define for whole row
+							addEditor(cellType[_row], _row, _column)
+						else:
+							if (_column in cellType[_row]):
+								#Define for individual cell or whole column if _row is None
+								addEditor(cellType[_row][_column], _row, _column)
 
 	def clearTable(self):
 		"""Clears all cells in the table
@@ -11152,8 +11255,8 @@ class handle_WidgetTable(handle_Widget_Base):
 			#Account for special styles
 			if (self.cellType.lower() == "droplist"):
 				#Ensure that the choices given are a list or tuple
-				if (not isinstance(self.cellTypeValue, (list, tuple))):
-					self.cellTypeValue = list(self.cellTypeValue)
+				if (not isinstance(self.cellTypeValue, (list, tuple, range))):
+					self.cellTypeValue = [self.cellTypeValue]
 
 				#Ensure that the choices are all strings
 				self.cellTypeValue = [str(item) for item in self.cellTypeValue]
@@ -13059,13 +13162,13 @@ class handle_Sizer(handle_Container_Base):
 			- A dictionary can be given to single out specific cells, rows, or columns
 				~ {row number (int): {column number (int): readOnly for the cell (bool)}}
 				~ {row number (int): readOnly for the whole row (bool)}
-				~ {None: column number (int): readOnly for the whole column (bool)}
+				~ {None: {column number (int): readOnly for the whole column (bool)}}
 		readOnlyDefault (bool)  - What readOnly value to give a cell if the user does not provide one
 		default (tuple)         - Which cell the table starts out with selected. (row, column)
 		cellType (dict)         - Determines the widget type used for a specific cell in the table
 				~ {row number (int): {column number (int): cell type for the cell (str)}}
 				~ {row number (int): cell type for the whole row (str)}
-				~ {None: column number (int): cell type for the whole column (str)}
+				~ {None: {column number (int): cell type for the whole column (str)}}
 		cellTypeDefault (str)   - What the cells default to as a widget
 			- Possible Inputs: "inputbox", "droplist"
 
@@ -16640,18 +16743,18 @@ class handle_Notebook(handle_Container_Base):
 		"""
 
 		#Error Check
-		if ((isinstance(label, list) or isinstance(label, tuple)) and (isinstance(text, list) or isinstance(text, tuple))):
+		if (isinstance(label, (list, tuple, range)) and isinstance(text, (list, tuple, range))):
 			if (len(label) != len(text)):
 				errorMessage = f"'label' and 'text' must be the same length for {self.__repr__()}"
 				raise ValueError(errorMessage)
 
 		#Account for multiple objects
-		if ((not isinstance(label, list)) and (not isinstance(label, tuple))):
+		if (not isinstance(label, (list, tuple, range))):
 			labelList = [label]
 		else:
 			labelList = label
 
-		if ((not isinstance(text, list)) and (not isinstance(text, tuple))):
+		if (not isinstance(text, (list, tuple, range))):
 			textList = [text]
 		else:
 			textList = text
@@ -19915,7 +20018,7 @@ class User_Utilities():
 			answer = itemCatalogue[itemLabel]
 
 		if (answer != None):
-			if (isinstance(answer, list) or isinstance(answer, tuple)):
+			if (isinstance(answer, (list, tuple, range))):
 				if (len(answer) == 1):
 					answer = answer[0]
 			return answer
