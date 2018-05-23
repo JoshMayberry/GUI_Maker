@@ -830,6 +830,27 @@ class Utilities():
 					myFunctionEvaluated, myFunctionArgs, myFunctionKwargs = self.formatFunctionInput(i, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
 					runFunction(myFunctionEvaluated, myFunctionArgs, myFunctionKwargs)
 
+	def removeDuplicates(self, sequence, idFunction=None):
+		"""Removes duplicates from a list while preserving order.
+		Created by Alex Martelli. From https://www.peterbe.com/plog/uniqifiers-benchmark
+
+		Example Input: removeDuplicates()
+		"""
+
+		if idFunction is None:
+			def idFunction(x): 
+				return x
+
+		seen = {}
+		result = []
+		for item in sequence:
+			marker = idFunction(item)
+			if marker in seen: 
+				continue
+			seen[marker] = 1
+			result.append(item)
+		return result
+
 	#Binding Functions
 	def formatFunctionInputList(self, myFunctionList, myFunctionArgsList, myFunctionKwargsList):
 		"""Formats the args and kwargs for various internal functions."""
@@ -10377,6 +10398,26 @@ class handle_WidgetTable(handle_Widget_Base):
 		value = self.getTableCellValue(row, column)
 
 		return value
+
+	def getTableCurrentCellRow(self, event = None):
+		"""Returns the row of the currently selected cells.
+
+		Example Inputs: getTableCurrentCellRow()
+		"""
+
+		selection = self.getTableCurrentCell(event = event)
+		rowList = self.removeDuplicates([row for row, column in selection])
+		return rowList
+
+	def getTableCurrentCellColumn(self, event = None):
+		"""Returns the column of the currently selected cells.
+
+		Example Inputs: getTableCurrentCellColumn()
+		"""
+
+		selection = self.getTableCurrentCell(event = event)
+		columnList = self.removeDuplicates([column for row, column in selection])
+		return columnList
 
 	def getTableEventCell(self, event):
 		"""Returns the row and column of the previously selected cell.
