@@ -2866,6 +2866,16 @@ class handle_Base(Utilities, CommonEventFunctions):
 
 		return self.label
 
+	def getType(self, event = None):
+		"""Returns the type for this object."""
+
+		data = {}
+		data["type"] = self.type
+		data["self"] = type(self).__name__
+		data["thing"] = type(self.thing).__name__
+
+		return data
+
 class handle_Container_Base(handle_Base):
 	"""The base handler for all GUI handlers.
 	Meant to be inherited.
@@ -14125,6 +14135,11 @@ class handle_Window(handle_Container_Base):
 		if (panel):
 			self.mainPanel = self.addPanel()#"-1", parent = handle, size = (10, 10), tabTraversal = tabTraversal, useDefaultSize = False)
 
+	def getTitle(self):
+		"""Returns the title for this window."""
+
+		return self.thing.GetTitle()
+
 	def getValue(self, label, *args, **kwargs):
 		"""Overload for getValue for handle_Widget_Base."""
 
@@ -14157,9 +14172,11 @@ class handle_Window(handle_Container_Base):
 		value = handle.getSelection(event = event)
 		return value
 
-	def getLabel(self, label, *args, **kwargs):
+	def getLabel(self, *args, label = None, **kwargs):
 		"""Overload for getLabel for handle_Widget_Base."""
 
+		if (label == None):
+			return self.label
 		handle = self.get(label, *args, **kwargs)
 		event = self.getArgument_event(label, args, kwargs)
 		value = handle.getLabel(event = event)
@@ -14187,15 +14204,20 @@ class handle_Window(handle_Container_Base):
 		self.betterBind(wx.EVT_MOVE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
 	#Change Settings
-	def setWindowSize(self, x, y = None):
+	def setWindowSize(self, x = None, y = None):
 		"""Re-defines the size of the window.
 
 		x (int)     - The width of the window
 		y (int)     - The height of the window
 
+		Example Input: setWindowSize()
 		Example Input: setWindowSize(350, 250)
 		Example Input: setWindowSize((350, 250))
 		"""
+
+		if (x == None):
+			self.thing.SetSize(wx.DefaultSize)
+			return
 
 		if (isinstance(x, str)):
 			if (x.lower() == "default"):
@@ -14218,18 +14240,23 @@ class handle_Window(handle_Container_Base):
 		Example Input: getWindowSize()
 		"""
 
-		size = self.thing.GetSize()
+		size = tuple(self.thing.GetSize())
 		return size
 
-	def setWindowPosition(self, x, y = None):
+	def setWindowPosition(self, x = None, y = None):
 		"""Re-defines the position of the window.
 
 		x (int)     - The width of the window
 		y (int)     - The height of the window
 
+		Example Input: setWindowPosition()
 		Example Input: setWindowPosition(350, 250)
 		Example Input: setWindowPosition((350, 250))
 		"""
+
+		if (x == None):
+			self.thing.SetPosition(wx.DefaultPosition)
+			return
 
 		if (isinstance(x, str)):
 			if (x.lower() == "center"):
@@ -14254,7 +14281,7 @@ class handle_Window(handle_Container_Base):
 		Example Input: getWindowPosition()
 		"""
 
-		position = self.thing.GetPosition()
+		position = tuple(self.thing.GetPosition())
 		return position
 
 	def setMinimumFrameSize(self, x = (100, 100), y = None):
@@ -14789,7 +14816,7 @@ class handle_Window(handle_Container_Base):
 		"""Adds a status bar to the bottom of the window."""
 
 		self.statusBar = self.thing.CreateStatusBar()
-		self.setDefaultStatusText()
+		self.setStatusTextDefault()
 
 	def setStatusText(self, message = None, autoAdd = False):
 		"""Sets the text shown in the status bar.
@@ -14802,6 +14829,7 @@ class handle_Window(handle_Container_Base):
 		Example Input: setStatusText()
 		Example Input: setStatusText("Ready")
 		Example Input: setStatusText({"Ready": 1000, "Set": 1000, "Go!": None, "This will not appear": 1000)
+		Example Input: setStatusText({"Changes Saved": 3000, None: None)
 		"""
 
 		def timerMessage():
@@ -14832,12 +14860,12 @@ class handle_Window(handle_Container_Base):
 				message = self.statusTextDefault
 			self.statusBar.SetStatusText(message)
 
-	def setDefaultStatusText(self, message = " "):
+	def setStatusTextDefault(self, message = " "):
 		"""Sets the default status message for the status bar.
 
-		message (str)  - What the status bar will say on default
+		message (str) - What the status bar will say on default
 
-		Example Input: setDefaultStatusText("Ready")
+		Example Input: setStatusTextDefault("Ready")
 		"""
 
 		if (message == None):
@@ -19286,8 +19314,11 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 		value = handle.getAll(event = event)
 		return value
 
-	def getLabel(self, label, *args, **kwargs):
+	def getLabel(self, *args, label = None, **kwargs):
 		"""Overload for getLabel for handle_Widget_Base."""
+
+		if (label == None):
+			return self.label
 
 		handle = self.get(label, *args, **kwargs)
 		event = self.getArgument_event(label, args, kwargs)
