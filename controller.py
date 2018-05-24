@@ -649,7 +649,7 @@ class Utilities():
 			"special+11": 203, "special+12": 204, "special+13": 205, "special+14": 206, "special+15": 207,
 			"special+16": 208, "special+17": 209, "special+18": 210, "special+19": 211, "special+20": 212}
 
-	def get(self, itemLabel = None, includeUnnamed = True, checkNested = True, typeList = None):
+	def get(self, itemLabel = None, includeUnnamed = True, checkNested = True, typeList = None, returnExists = False):
 		"""Searches the label catalogue for the requested object.
 
 		itemLabel (any) - What the object is labled as in the catalogue
@@ -664,6 +664,7 @@ class Utilities():
 		Example Input: get(slice(None, None, None))
 		Example Input: get(slice(2, "text", None))
 		Example Input: get(event)
+		Example Input: get(event, returnExists = True)
 		"""
 
 		def nestCheck(itemList, itemLabel):
@@ -762,7 +763,8 @@ class Utilities():
 				for item in self.unnamedList:
 					handleList.append(item)
 
-			answer = checkType(handleList)
+			# answer = checkType(handleList)
+			# answer = handleList
 			return handleList
 
 		elif (itemLabel not in self.labelCatalogue):
@@ -773,6 +775,9 @@ class Utilities():
 				answer = None
 		else:
 			answer = checkType(self.labelCatalogue[itemLabel])
+
+		if (returnExists):
+			return answer != None
 		
 		if (answer != None):
 			if (isinstance(answer, (list, tuple, range))):
@@ -2855,6 +2860,8 @@ class handle_Base(Utilities, CommonEventFunctions):
 			return True
 		elif (key in [item.label for item in self[:]]):
 			return True
+		elif (isinstance(key, wx.Event)):
+			return self.get(key, returnExists = True)
 		return False
 
 	def __enter__(self):
@@ -14412,9 +14419,12 @@ class handle_Window(handle_Container_Base):
 
 		return self.thing.GetTitle()
 	
-	def checkActive(self):
+	def checkActive(self, event = None):
 		"""Returns if the window is active or not."""
 
+		if (event != None):
+			if (isinstance(event, wx._core.ActivateEvent)):
+				return event.GetActive()
 		return self.thing.IsActive()
 
 	def getValue(self, label, *args, **kwargs):
@@ -19507,6 +19517,17 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 
 		return representation
 
+	def __contains__(self, key):
+		"""Allows the user to use get() when using 'in'."""
+
+		if (key in self[:]):
+			return True
+		elif (key in [item.label for item in self[:]]):
+			return True
+		elif (isinstance(key, wx.Event)):
+			return self.get(key, returnExists = True)
+		return False
+
 	def __enter__(self):
 		"""Allows the user to use a with statement to build the GUI."""
 
@@ -19555,35 +19576,20 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 
 		del self.labelCatalogue[key]
 
-	def get(self, itemLabel = None, includeUnnamed = True, checkNested = True, typeList = None):
-		"""Searches the label catalogue for the requested object.
-
-		itemLabel (any) - What the object is labled as in the catalogue
-			- If slice: objects will be returned from between the given spots 
-			- If wxEvent: Will get the object that triggered the event
-			- If None: Will return all that would be in an unbound slice
-
-		Example Input: get()
-		Example Input: get(0)
-		Example Input: get(1.1)
-		Example Input: get("text")
-		Example Input: get(slice(None, None, None))
-		Example Input: get(slice(2, "text", None))
-		Example Input: get(event)
-		"""
+	def get(self, *args, **kwargs):
+		"""Overload for get() in Utilities."""
 
 		#Check nested windows first
 		windowList = Utilities.get(self, None, typeList = [handle_Window])
 		for window in windowList:
-			try:
-				handle = window.get(itemLabel = itemLabel, includeUnnamed = includeUnnamed, checkNested = checkNested, typeList = typeList)
-				return handle
-			except:
-				pass
+			if (("returnExists" in kwargs) or (len(args) == 5)):
+				if (window.get(*args, **kwargs)):
+					return True
+			elif (window.get(*args, returnExists = True, **kwargs)):
+				return window.get(*args, **kwargs)
 
 		#It is not a window item, so check inside of self
-		handle = Utilities.get(self, itemLabel = itemLabel, includeUnnamed = includeUnnamed, checkNested = checkNested, typeList = typeList)
-		return handle
+		return Utilities.get(self, *args, **kwargs)
 
 	def getValue(self, label, *args, **kwargs):
 		"""Overload for getValue for handle_Widget_Base."""
