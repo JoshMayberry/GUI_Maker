@@ -590,6 +590,7 @@ class Utilities():
 		"""
 
 		self.listeningCatalogue = {}
+		self.oneShotCatalogue = {}
 		self.keyOptions = {
 			"0": 48, "1": 49, "2": 50, "3": 51, "4": 52, "5": 53, "6": 54,  "7": 55, "8": 56, "9": 57,
 			"numpad+0": 324, "numpad+1": 325, "numpad+2": 326, "numpad+3": 327, "numpad+4": 328, 
@@ -1526,13 +1527,15 @@ class Utilities():
 			warnings.warn(f"myFunctionList == None for autoRun() in {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Listen Functions
-	def listen(self, conditionFunction, resultFunction = None, delay = 1000, shown = False, makeThread = True):
+	def listen(self, myFunction, myFunctionArgs = None, myFunctionKwargs = None,
+		resultFunction = None, resultFunctionArgs = None, resultFunctionKwargs = None, 
+		delay = 1000, shown = False, makeThread = True):
 		"""Triggers the listen routine.
 
-		conditionFunction (function) - A function that checks certain conditions
-		resultFunction (function)    - A funftion that runs when 'conditionFunction' returns True
+		myFunction (function) - A function that checks certain conditions
+		resultFunction (function)    - A funftion that runs when 'myFunction' returns True
 
-		delay (int)       - How long to wait before running 'conditionFunction' in milliseconds
+		delay (int)       - How long to wait in milliseconds before running 'myFunction'
 		shown (bool)      - Determines when to run the function
 			- If True: The function will only run if the window is being shown. If the window is not shown, it will terminate the function. It will wait for the window to first be shown to run
 			- If False: The function will run regardless of whether the window is being shown or not
@@ -1540,51 +1543,129 @@ class Utilities():
 			- If True: A new thread will be created to run the function
 			- If False: The function will only run while the GUI is idle. Note: This can cause lag. Use this for operations that must be in the main thread.
 
-		Example Input: trigger_listen()
+		Example Input: listen(self.checkCapsLock, shown = True)
+		Example Input: listen(self.checkAutoLogout, resultFunction = self.logout)
 		"""
 
 		def listenFunction():
-			"""Listens for the conditionFunction to be true, then runs the resultFunction."""
-			nonlocal self, conditionFunction, resultFunction, delay
+			"""Listens for the myFunction to be true, then runs the resultFunction."""
+			nonlocal self, myFunction, myFunctionArgs, myFunctionKwargs, resultFunction, resultFunctionArgs, resultFunctionKwargs, delay
 
 			#Account for other thread running this
-			while self.listeningCatalogue[conditionFunction]["stop"]:
+			while self.listeningCatalogue[myFunction]["stop"]:
 				time.sleep(1)
 
-			self.listeningCatalogue[conditionFunction]["listening"] += 1
+			self.listeningCatalogue[myFunction]["listening"] += 1
 			while True:
 				#Listen for break
-				if (self.listeningCatalogue[conditionFunction]["stop"]):
-					self.listeningCatalogue[conditionFunction]["stop"] = False
+				if (self.listeningCatalogue[myFunction]["stop"]):
+					self.listeningCatalogue[myFunction]["stop"] = False
 					break
 
-				if (conditionFunction()):
-					resultFunction()
+				answer = self.runMyFunction(myFunction, myFunctionArgs, myFunctionKwargs)
+				if (answer):
+					if (resultFunction != None):
+						self.runMyFunction(resultFunction, resultFunctionArgs, resultFunctionKwargs)
 
 				time.sleep(delay / 1000)
 
-			self.listeningCatalogue[conditionFunction]["listening"] -= 1
+			self.listeningCatalogue[myFunction]["listening"] -= 1
 
 		#########################################################
 
-		if (conditionFunction in self.listeningCatalogue):
-			while (self.listeningCatalogue[conditionFunction]["listening"] > 0):
-				self.listeningCatalogue[conditionFunction]["stop"] = True
+		if (myFunction in self.listeningCatalogue):
+			while (self.listeningCatalogue[myFunction]["listening"] > 0):
+				self.listeningCatalogue[myFunction]["stop"] = True
 		else:
-			self.listeningCatalogue[conditionFunction] = {"listening": 0, "stop": False}
+			self.listeningCatalogue[myFunction] = {"listening": 0, "stop": False}
 	
 		self.backgroundRun(listenFunction, shown = shown, makeThread = makeThread)
 
-	def stop_listen(self, conditionFunction):
+	def stop_listen(self, myFunction):
 		"""Stops the listen routine.
 
-		conditionFunction (function) - A function that checks certain conditions
+		myFunction (function) - A function that checks certain conditions
 
-		Example Input: stop_listen()
+		Example Input: stop_listen(self.checkAutoLogout)
 		"""
 
-		if (conditionFunction in self.listeningCatalogue):
-			self.listeningCatalogue[conditionFunction]["stop"] = True
+		if (myFunction in self.listeningCatalogue):
+			self.listeningCatalogue[myFunction]["stop"] = True
+
+	#One-shot Functions
+	def oneShot(self, myFunction, myFunctionArgs = None, myFunctionKwargs = None,
+		alternativeFunction = None, alternativeFunctionArgs = None, alternativeFunctionKwargs = None, 
+		delay = 0, delayAfter = True, allowAgain = True, shown = False, makeThread = True):
+		"""Runs this function in the background only once.
+		Returns if 'myFunction' ran or not.
+
+		myFunction (function)     - A function that will run once
+		alternativeFunction (function) - A funftion that runs instead of 'myFunction' if the one-shot is already made
+
+		delay (int)       - How long to wait in milliseconds before allowing 'myFunction' to run again
+		delayAfter (bool) - Determines when the delay is processed
+			- If True: Delays after 'myFunction' runs
+			- If False: Delays before 'myFunction' runs
+		allowAgain (bool) - Determines if the 'myFunction' can run again after it has finished
+			- If True: 'myFunction' can run again after it has finished
+			- If False: 'myFunction' cannot run again after it has finished
+
+		shown (bool)      - Determines when to run the function
+			- If True: The function will only run if the window is being shown. If the window is not shown, it will terminate the function. It will wait for the window to first be shown to run
+			- If False: The function will run regardless of whether the window is being shown or not
+		makeThread (bool) - Determines if this function runs on a different thread
+			- If True: A new thread will be created to run the function
+			- If False: The function will only run while the GUI is idle. Note: This can cause lag. Use this for operations that must be in the main thread.
+
+		Example Input: oneShot()
+		"""
+
+		def runOneShotFunction():
+			nonlocal self, myFunction, myFunctionArgs, myFunctionKwargs, delay, allowAgain
+
+			self.oneShotCatalogue[myFunction]["running"] = True
+
+			if ((not delayAfter) and (delay != 0) and (delay != None)):
+				time.sleep(delay / 1000)
+
+			self.runMyFunction(myFunction, myFunctionArgs, myFunctionKwargs)
+
+			if ((delayAfter) and (delay != 0) and (delay != None)):
+				time.sleep(delay / 1000)
+
+			if (not allowAgain):
+				self.oneShotCatalogue[myFunction]["canRun"] = False
+
+			self.oneShotCatalogue[myFunction]["running"] = False
+
+		def runAlternativeFunction():
+			nonlocal self, alternativeFunction, alternativeFunctionArgs, alternativeFunctionKwargs
+
+			self.runMyFunction(alternativeFunction, alternativeFunctionArgs, alternativeFunctionKwargs)
+
+		#########################################################
+
+		if (myFunction in self.oneShotCatalogue):
+			if ((self.oneShotCatalogue[myFunction]["running"]) or (not self.oneShotCatalogue[myFunction]["canRun"])):
+				if (runAlternativeFunction != None):
+					self.backgroundRun(runAlternativeFunction, shown = shown, makeThread = makeThread)
+				return False
+		else:
+			self.oneShotCatalogue[myFunction] = {"running": False, "canRun": True}
+	
+		self.backgroundRun(runOneShotFunction, shown = shown, makeThread = makeThread)
+		return True
+
+	def reset_oneShot(self, myFunction):
+		"""Allows the oneShot function to run again.
+
+		myFunction (function) - A function that will run once
+
+		Example Input: stop_oneShot()
+		"""
+
+		if (myFunction in self.oneShotCatalogue):
+			self.oneShotCatalogue[myFunction]["canRun"] = True
 
 	#Nesting Catalogue
 	def getAddressValue(self, address):
@@ -3066,6 +3147,49 @@ class handle_Container_Base(handle_Base):
 				answerList.extend(answer)
 
 			return answerList
+
+	#Standard Functions
+	def getValue(self, label = None, window = False, **kwargs):
+		"""Overload for getValue for handle_Widget_Base."""
+
+		answer = self.overloadHelp("getValue", label, kwargs, window = window)
+		return answer
+
+	def getIndex(self, label = None, window = False, **kwargs):
+		"""Overload for getIndex for handle_Widget_Base."""
+
+		answer = self.overloadHelp("getIndex", label, kwargs, window = window)
+		return answer
+
+	def getAll(self, label = None, window = False, **kwargs):
+		"""Overload for getAll for handle_Widget_Base."""
+
+		answer = self.overloadHelp("getAll", label, kwargs, window = window)
+		return answer
+
+	def getSelection(self, label = None, window = False, **kwargs):
+		"""Overload for getSelection for handle_Widget_Base."""
+
+		answer = self.overloadHelp("getSelection", label, kwargs, window = window)
+		return answer
+
+	def getLabel(self, label = None, window = False, **kwargs):
+		"""Overload for getLabel for handle_Widget_Base."""
+
+		answer = self.overloadHelp("getLabel", label, kwargs, window = window)
+		return answer
+
+	def setValue(self, label = None, window = False, **kwargs):
+		"""Overload for setValue for handle_Widget_Base."""
+
+		answer = self.overloadHelp("setValue", label, kwargs, window = window)
+		return answer
+
+	def setSelection(self, label = None, window = False, **kwargs):
+		"""Overload for setSelection for handle_Widget_Base."""
+
+		answer = self.overloadHelp("setSelection", label, kwargs, window = window)
+		return answer
 
 	#Change State
 	##Enable / Disable
@@ -14423,61 +14547,62 @@ class handle_Window(handle_Container_Base):
 				return event.GetActive()
 		return self.thing.IsActive()
 
-	def getValue(self, label, *args, **kwargs):
-		"""Overload for getValue for handle_Widget_Base."""
+	# def getValue(self, label, *args, **kwargs):
+	# 	"""Overload for getValue for handle_Widget_Base."""
 
-		handle = self.get(label, *args, **kwargs)
-		event = self.getArgument_event(label, args, kwargs)
-		value = handle.getValue(event = event)
-		return value
+	# 	handle = self.get(label, *args, **kwargs)
+	# 	event = self.getArgument_event(label, args, kwargs)
+	# 	value = handle.getValue(event = event)
+	# 	return value
 
-	def getIndex(self, label, *args, **kwargs):
-		"""Overload for getIndex for handle_Widget_Base."""
+	# def getIndex(self, label, *args, **kwargs):
+	# 	"""Overload for getIndex for handle_Widget_Base."""
 
-		handle = self.get(label, *args, **kwargs)
-		event = self.getArgument_event(label, args, kwargs)
-		value = handle.getIndex(event = event)
-		return value
+	# 	handle = self.get(label, *args, **kwargs)
+	# 	event = self.getArgument_event(label, args, kwargs)
+	# 	value = handle.getIndex(event = event)
+	# 	return value
 
-	def getAll(self, label, *args, **kwargs):
-		"""Overload for getAll for handle_Widget_Base."""
+	# def getAll(self, label, *args, **kwargs):
+	# 	"""Overload for getAll for handle_Widget_Base."""
 
-		handle = self.get(label, *args, **kwargs)
-		event = self.getArgument_event(label, args, kwargs)
-		value = handle.getAll(event = event)
-		return value
+	# 	handle = self.get(label, *args, **kwargs)
+	# 	event = self.getArgument_event(label, args, kwargs)
+	# 	value = handle.getAll(event = event)
+	# 	return value
 
-	def getSelection(self, label, *args, **kwargs):
-		"""Overload for getSelection for handle_Widget_Base."""
+	# def getSelection(self, label, *args, **kwargs):
+	# 	"""Overload for getSelection for handle_Widget_Base."""
 
-		handle = self.get(label, *args, **kwargs)
-		event = self.getArgument_event(label, args, kwargs)
-		value = handle.getSelection(event = event)
-		return value
+	# 	handle = self.get(label, *args, **kwargs)
+	# 	event = self.getArgument_event(label, args, kwargs)
+	# 	value = handle.getSelection(event = event)
+	# 	return value
 
-	def getLabel(self, *args, label = None, **kwargs):
-		"""Overload for getLabel for handle_Widget_Base."""
+	# def getLabel(self, *args, label = None, **kwargs):
+	# 	"""Overload for getLabel for handle_Widget_Base."""
 
-		if (label == None):
-			return self.label
-		handle = self.get(label, *args, **kwargs)
-		event = self.getArgument_event(label, args, kwargs)
-		value = handle.getLabel(event = event)
-		return value
+	# 	if (label == None):
+	# 		handle = self
+	# 	else:
+	# 		handle = self.get(label, *args, **kwargs)
+	# 	event = self.getArgument_event(label, args, kwargs)
+	# 	value = handle.getLabel(event = event)
+	# 	return value
 
-	def setValue(self, label, newValue, *args, **kwargs):
-		"""Overload for setValue for handle_Widget_Base."""
+	# def setValue(self, label, newValue, *args, **kwargs):
+	# 	"""Overload for setValue for handle_Widget_Base."""
 
-		handle = self.get(label, *args, **kwargs)
-		event = self.getArgument_event(label, args, kwargs)
-		handle.setValue(newValue, event = event)
+	# 	handle = self.get(label, *args, **kwargs)
+	# 	event = self.getArgument_event(label, args, kwargs)
+	# 	handle.setValue(newValue, event = event)
 
-	def setSelection(self, label, newValue, *args, **kwargs):
-		"""Overload for setSelection for handle_Widget_Base."""
+	# def setSelection(self, label, newValue, *args, **kwargs):
+	# 	"""Overload for setSelection for handle_Widget_Base."""
 
-		handle = self.get(label, *args, **kwargs)
-		event = self.getArgument_event(label, args, kwargs)
-		handle.setSelection(newValue, event = event)
+	# 	handle = self.get(label, *args, **kwargs)
+	# 	event = self.getArgument_event(label, args, kwargs)
+	# 	handle.setSelection(newValue, event = event)
 
 	#Event Functions
 	def setFunction_size(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
@@ -19609,9 +19734,6 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def getLabel(self, *args, label = None, **kwargs):
 		"""Overload for getLabel for handle_Widget_Base."""
 
-		if (label == None):
-			return self.label
-
 		handle = self.get(label, *args, **kwargs)
 		event = self.getArgument_event(label, args, kwargs)
 		value = handle.getLabel(event = event)
@@ -20564,3 +20686,32 @@ class User_Utilities():
 			else:
 				break
 		return base.format(ending)
+
+	def getNumber(self, itemList = None, depthMax = None, _currentDepth = 1):
+		"""Returns the number of items in 'itemList'.
+		Special thanks to stonesam92 for how to check nested items on https://stackoverflow.com/questions/27761463/how-can-i-get-the-total-number-of-elements-in-my-arbitrarily-nested-list-of-list
+
+		itemList (any)      - What to check the number of
+			- If None: Will return the number of children in self
+		_currentDepth (int) - How many recursions have been done on this branch
+		depthMax (int)      - The max number of recursions to do
+			- If None: Will not limit the number of recursions
+
+		Example Input:: getNumber()
+		Example Input:: getNumber([1, 2, 3])
+		Example Input:: getNumber({1: 2, 3: {4: 5}})
+		"""
+
+		if ((depthMax != None) and (_currentDepth > depthMax)):
+			return 0
+		elif (isinstance(itemList, str)):
+			return 1
+		elif (isinstance(itemList, dict)):
+			count = 0
+			for key, value in itemList.items():
+				count += 1 + self.getNumber(value, depthMax = depthMax, _currentDepth = _currentDepth + 1)
+			return count
+		elif (isinstance(itemList, (list, tuple, range)) or hasattr(itemList, '__iter__')):
+			return sum(self.getNumber(item, depthMax = depthMax, _currentDepth = _currentDepth + 1) for item in itemList)
+		else:
+			return 1
