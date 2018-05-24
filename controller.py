@@ -931,7 +931,7 @@ class Utilities():
 				myFunctionEvaluated = myFunction
 			else:
 				#Get the address of myFunction
-				myFunctionEvaluated = eval(myFunction)
+				myFunctionEvaluated = eval(myFunction, {'__builtins__': None}, {})
 
 			#Ensure the *args and **kwargs are formatted correctly 
 			if (myFunctionArgs != None):
@@ -1342,7 +1342,7 @@ class Utilities():
 							myFunctionEvaluated = myFunction
 						else:
 							#Get the address of myFunction
-							myFunctionEvaluated = eval(myFunction)
+							myFunctionEvaluated = eval(myFunction, {'__builtins__': None}, {})
 
 						runFunction(event, myFunctionEvaluated, myFunctionArgs, myFunctionKwargs, includeEvent)
 
@@ -2856,13 +2856,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 	def __contains__(self, key):
 		"""Allows the user to use get() when using 'in'."""
 
-		if (key in self[:]):
-			return True
-		elif (key in [item.label for item in self[:]]):
-			return True
-		elif (isinstance(key, wx.Event)):
-			return self.get(key, returnExists = True)
-		return False
+		return self.get(key, returnExists = True)
 
 	def __enter__(self):
 		"""Allows the user to use a with statement to build the GUI."""
@@ -3486,12 +3480,12 @@ class handle_Widget_Base(handle_Base):
 
 			vertical, myMax, myInitial = self.getArguments(argument_catalogue, ["vertical", "myMax", "myInitial"])
 			if (vertical):
-				styles = wx.GA_VERTICAL
+				style = wx.GA_VERTICAL
 			else:
-				styles = wx.GA_HORIZONTAL
+				style = wx.GA_HORIZONTAL
 		
 			#Create the thing to put in the grid
-			self.thing = wx.Gauge(self.parent.thing, range = myMax, style = styles)
+			self.thing = wx.Gauge(self.parent.thing, range = myMax, style = style)
 
 			#Set Initial Conditions
 			self.thing.SetValue(myInitial)
@@ -4000,7 +3994,7 @@ class handle_WidgetText(handle_Widget_Base):
 					style += "|wx.ST_ELLIPSIZE_END"
 
 			#Create the thing to put in the grid
-			self.thing = wx.StaticText(self.parent.thing, label = text, style = eval(style))
+			self.thing = wx.StaticText(self.parent.thing, label = text, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 			# font = self.getFont(size = size, bold = bold, italic = italic, color = color, family = family)
 			# self.thing.SetFont(font)
@@ -4021,11 +4015,11 @@ class handle_WidgetText(handle_Widget_Base):
 			# wx.adv.HL_ALIGN_CENTRE: Center the text (horizontally). This style is not supported by the native MSW implementation used under Windows XP and later.
 			# wx.adv.HL_CONTEXTMENU: Pop up a context menu when the hyperlink is right-clicked. The context menu contains a “Copy URL” menu item which is automatically handled by the hyperlink and which just copies in the clipboard the URL (not the label) of the control.
 			# wx.adv.HL_DEFAULT_STYLE: The default style for wx.adv.HyperlinkCtrl: BORDER_NONE|wxHL_CONTEXTMENU|wxHL_ALIGN_CENTRE.
-			styles = "wx.adv.HL_DEFAULT_STYLE"
+			style = "wx.adv.HL_DEFAULT_STYLE"
 
 
 			#Create the thing to put in the grid
-			self.thing = wx.adv.HyperlinkCtrl(self.parent.thing, label = text, url = myWebsite, style = eval(styles))
+			self.thing = wx.adv.HyperlinkCtrl(self.parent.thing, label = text, url = myWebsite, style =  eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 			#Apply colors
 			# SetHoverColour
@@ -4222,37 +4216,37 @@ class handle_WidgetList(handle_Widget_Base):
 
 			#Determine style
 			if (report):
-				styleList = "wx.LC_REPORT"
+				style = "wx.LC_REPORT"
 			else:
-				styleList = "wx.LC_LIST" #Auto calculate columns and rows
+				style = "wx.LC_LIST" #Auto calculate columns and rows
 
 			if (border):
-				styleList += "|wx.BORDER_SUNKEN"
+				style += "|wx.BORDER_SUNKEN"
 			if (rowLines):
-				styleList += "|wx.LC_HRULES"
+				style += "|wx.LC_HRULES"
 			if (columnLines):
-				styleList += "|wx.LC_VRULES"
+				style += "|wx.LC_VRULES"
 
 			if (singleSelect):
-				styleList += "|wx.LC_SINGLE_SEL" #Default: Can select multiple with shift
+				style += "|wx.LC_SINGLE_SEL" #Default: Can select multiple with shift
 
 			#Determine if it is editable or not
 			mixin_editable = False
 			if (type(editable) != dict):
 				if (editable):
 					mixin_editable = True
-					styleList += "|wx.LC_EDIT_LABELS" #Editable
+					style += "|wx.LC_EDIT_LABELS" #Editable
 
 			elif (len(editable) != 0):
 				mixin_editable = True
-				styleList += "|wx.LC_EDIT_LABELS" #Editable
+				style += "|wx.LC_EDIT_LABELS" #Editable
 
 			#Create the thing to put in the grid
 			if (mixin_editable):
-				self.thing = self.ListFull_Editable(self.parent.thing, style = styleList)
+				self.thing = self.ListFull_Editable(self.parent.thing, style = style)
 				self.thing.editable = editable
 			else:
-				self.thing = wx.ListCtrl(self.parent.thing, style = eval(styleList))
+				self.thing = wx.ListCtrl(self.parent.thing, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 			#Remember key variables
 			self.columns = columns
@@ -4355,7 +4349,7 @@ class handle_WidgetList(handle_Widget_Base):
 				style += "|wx.TR_SINGLE"
 
 			#Create the thing to put in the grid
-			self.thing = wx.TreeCtrl(self.parent.thing, style = eval(style))
+			self.thing = wx.TreeCtrl(self.parent.thing, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 			
 			self.setValue({root: choices})
 
@@ -5112,7 +5106,7 @@ class handle_WidgetList(handle_Widget_Base):
 			"""Creates the editable list object"""
 
 			#Load in modules
-			wx.ListCtrl.__init__(self, parent, id = myId, pos = pos, size = size, style = eval(style))
+			wx.ListCtrl.__init__(self, parent, id = myId, pos = pos, size = size, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 			wx.lib.mixins.listctrl.TextEditMixin.__init__(self)
 
 			#Fix class type
@@ -5424,9 +5418,9 @@ class handle_WidgetInput(handle_Widget_Base):
 
 			#Apply settings
 			if (vertical):
-				styles = "wx.SL_HORIZONTAL"
+				style = "wx.SL_HORIZONTAL"
 			else:
-				styles = "wx.SL_VERTICAL"
+				style = "wx.SL_VERTICAL"
 
 			# wx.SL_MIN_MAX_LABELS: Displays minimum, maximum labels (new since wxWidgets 2.9.1).
 			# wx.SL_VALUE_LABEL: Displays value label (new since wxWidgets 2.9.1).
@@ -5441,7 +5435,7 @@ class handle_WidgetInput(handle_Widget_Base):
 			# wx.SL_INVERSE: Inverses the minimum and maximum endpoints on the slider. Not compatible with wx.SL_SELRANGE.
 
 			#Create the thing to put in the grid
-			self.thing = wx.Slider(self.parent.thing, value = myInitial, minValue = myMin, maxValue = myMax, style = eval(styles))
+			self.thing = wx.Slider(self.parent.thing, value = myInitial, minValue = myMin, maxValue = myMax, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 			#Bind the function(s)
 			myFunction = self.getArguments(argument_catalogue, "myFunction")
@@ -5466,38 +5460,38 @@ class handle_WidgetInput(handle_Widget_Base):
 			text, ipAddress, maxLength = self.getArguments(argument_catalogue, ["text", "ipAddress", "maxLength"])
 
 			#Prepare style attributes
-			styles = ""
+			style = ""
 			if (password):
-				styles += "|wx.TE_PASSWORD"
+				style += "|wx.TE_PASSWORD"
 
 			if (alpha):
-				styles += "|wx.CB_SORT"
+				style += "|wx.CB_SORT"
 
 			if (readOnly):
-				styles += "|wx.TE_READONLY"
+				style += "|wx.TE_READONLY"
 
 			if (tab):
 				#Interpret 'Tab' as 4 spaces
-				styles += "|wx.TE_PROCESS_TAB"
+				style += "|wx.TE_PROCESS_TAB"
 
 			if (wrap != None):
 				if (wrap > 0):
-					styles += "|wx.TE_MULTILINE|wx.TE_WORDWRAP"
+					style += "|wx.TE_MULTILINE|wx.TE_WORDWRAP"
 				else:
-					styles += "|wx.TE_CHARWRAP|wx.TE_MULTILINE"
+					style += "|wx.TE_CHARWRAP|wx.TE_MULTILINE"
 
 			# if (enterFunction != None):
 				#Interpret 'Enter' as \n
-			#   styles += "|wx.TE_PROCESS_ENTER"
+			#   style += "|wx.TE_PROCESS_ENTER"
 
-			#styles = "|wx.EXPAND"
+			#style = "|wx.EXPAND"
 
 			#Strip of extra divider
-			if (styles != ""):
-				if (styles[0] == "|"):
-					styles = styles[1:]
+			if (style != ""):
+				if (style[0] == "|"):
+					style = style[1:]
 			else:
-				styles = "wx.DEFAULT"
+				style = "wx.DEFAULT"
 
 			#Account for empty text
 			if (text == None):
@@ -5505,12 +5499,12 @@ class handle_WidgetInput(handle_Widget_Base):
 
 			#Create the thing to put in the grid
 			if (ipAddress):
-				self.thing = wx.lib.masked.ipaddrctrl.IpAddrCtrl(self.parent.thing, wx.ID_ANY, style = eval(styles))
+				self.thing = wx.lib.masked.ipaddrctrl.IpAddrCtrl(self.parent.thing, wx.ID_ANY, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 				if (text != wx.EmptyString):
 					self.thing.SetValue(text)
 			else:
-				self.thing = wx.TextCtrl(self.parent.thing, value = text, style = eval(styles))
+				self.thing = wx.TextCtrl(self.parent.thing, value = text, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 				#Set maximum length
 				if (maxLength != None):
@@ -5579,7 +5573,7 @@ class handle_WidgetInput(handle_Widget_Base):
 
 			#wx.SP_ARROW_KEYS: The user can use arrow keys to change the value.
 			#wx.SP_WRAP: The value wraps at the minimum and maximum.
-			styles = "wx.SP_ARROW_KEYS|wx.SP_WRAP"
+			style = "wx.SP_ARROW_KEYS|wx.SP_WRAP"
 
 			#Create the thing to put in the grid
 			if (useFloat):
@@ -5593,14 +5587,14 @@ class handle_WidgetInput(handle_Widget_Base):
 				if (digits == None):
 					digits = 1
 
-				self.thing = wx.lib.agw.floatspin.FloatSpin(self.parent.thing, wx.ID_ANY, wx.DefaultPosition, size, wx.SP_ARROW_KEYS|wx.SP_WRAP, myInitial, myMin, myMax, increment, digits, eval(style))
+				self.thing = wx.lib.agw.floatspin.FloatSpin(self.parent.thing, wx.ID_ANY, wx.DefaultPosition, size, wx.SP_ARROW_KEYS|wx.SP_WRAP, myInitial, myMin, myMax, increment, digits, eval(style, {'__builtins__': None, "wx.lib.agw.floatspin": wx.lib.agw.floatspin}, {}))
 			else:
 				if (increment != None):
 					style = "wx.lib.agw.floatspin.FS_LEFT"
-					self.thing = wx.lib.agw.floatspin.FloatSpin(self.parent.thing, wx.ID_ANY, wx.DefaultPosition, size, wx.SP_ARROW_KEYS|wx.SP_WRAP, myInitial, myMin, myMax, increment, -1, eval(style))
+					self.thing = wx.lib.agw.floatspin.FloatSpin(self.parent.thing, wx.ID_ANY, wx.DefaultPosition, size, wx.SP_ARROW_KEYS|wx.SP_WRAP, myInitial, myMin, myMax, increment, -1, eval(style, {'__builtins__': None, "wx.lib.agw.floatspin": wx.lib.agw.floatspin}, {}))
 					self.thing.SetDigits(0)
 				else:
-					self.thing = wx.SpinCtrl(self.parent.thing, value = wx.EmptyString, size = size, style = eval(styles), min = myMin, max = myMax, initial = myInitial)
+					self.thing = wx.SpinCtrl(self.parent.thing, value = wx.EmptyString, size = size, style = eval(style, {'__builtins__': None, "wx": wx}, {}), min = myMin, max = myMax, initial = myInitial)
 
 				if (readOnly):
 					self.thing.SetReadOnly()
@@ -5920,16 +5914,16 @@ class handle_WidgetButton(handle_Widget_Base):
 			choices = [str(item) for item in choices]
 
 			#Apply settings
-			styles = "wx.LB_NEEDED_SB"
+			style = "wx.LB_NEEDED_SB"
 
 			if (multiple):
-				styles += "|wx.LB_MULTIPLE"
+				style += "|wx.LB_MULTIPLE"
 			
 			if (sort):
-				styles += "|wx.LB_SORT"
+				style += "|wx.LB_SORT"
 		
 			#Create the thing to put in the grid
-			self.thing = wx.CheckListBox(self.parent.thing, choices = choices, style = eval(styles))
+			self.thing = wx.CheckListBox(self.parent.thing, choices = choices, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 			#Bind the function(s)
 			if (myFunction != None):
@@ -6293,18 +6287,18 @@ class handle_WidgetPicker(handle_Widget_Base):
 			changeCurrentDirectory, fileMustExist, smallButton, addInputBox = self.getArguments(argument_catalogue, ["changeCurrentDirectory", "fileMustExist", "smallButton", "addInputBox"])
 
 			#Picker configurations
-			config = ""
+			style = ""
 
 			if (directoryOnly):
 				##Determine which configurations to add
 				if (changeCurrentDirectory):
-					config += "wx.DIRP_CHANGE_DIR|"
+					style += "wx.DIRP_CHANGE_DIR|"
 				if (fileMustExist):
-					config += "wx.DIRP_DIR_MUST_EXIST|"
+					style += "wx.DIRP_DIR_MUST_EXIST|"
 				if (smallButton):
-					config += "wx.DIRP_SMALL|"
+					style += "wx.DIRP_SMALL|"
 				if (addInputBox):
-					config += "wx.DIRP_USE_TEXTCTRL|"
+					style += "wx.DIRP_USE_TEXTCTRL|"
 			else:
 				##Make sure conflicting configurations are not given
 				if ((openFile or fileMustExist) and (saveFile or saveConfirmation)):
@@ -6317,30 +6311,30 @@ class handle_WidgetPicker(handle_Widget_Base):
 
 				##Determine which configurations to add
 				if (changeCurrentDirectory):
-					config += "wx.FLP_CHANGE_DIR|"
+					style += "wx.FLP_CHANGE_DIR|"
 				if (fileMustExist):
-					config += "wx.FLP_FILE_MUST_EXIST|"
+					style += "wx.FLP_FILE_MUST_EXIST|"
 				if (openFile):
-					config += "wx.FLP_OPEN|"
+					style += "wx.FLP_OPEN|"
 				if (saveConfirmation):
-					config += "wx.FLP_OVERWRITE_PROMPT|"
+					style += "wx.FLP_OVERWRITE_PROMPT|"
 				if (saveFile):
-					config += "wx.FLP_SAVE|"
+					style += "wx.FLP_SAVE|"
 				if (smallButton):
-					config += "wx.FLP_SMALL|"
+					style += "wx.FLP_SMALL|"
 				if (addInputBox):
-					config += "wx.FLP_USE_TEXTCTRL|"
+					style += "wx.FLP_USE_TEXTCTRL|"
 
-			if (config != ""):
-				config = config[:-1]
+			if (style != ""):
+				style = style[:-1]
 			else:
-				config = "0"
+				style = "0"
 		
 			#Create the thing to put in the grid
 			if (directoryOnly):
-				self.thing = wx.DirPickerCtrl(self.parent.thing, path = default, message = text, style = eval(config))
+				self.thing = wx.DirPickerCtrl(self.parent.thing, path = default, message = text, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 			else:
-				self.thing = wx.FilePickerCtrl(self.parent.thing, path = default, message = text, wildcard = initialDir, style = eval(config))
+				self.thing = wx.FilePickerCtrl(self.parent.thing, path = default, message = text, wildcard = initialDir, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 			#Set Initial directory
 			self.thing.SetInitialDirectory(initialDir)
@@ -6358,16 +6352,16 @@ class handle_WidgetPicker(handle_Widget_Base):
 			directoryOnly, selectMultiple, initialDir, showHidden = self.getArguments(argument_catalogue, ["directoryOnly", "selectMultiple", "initialDir", "showHidden"])
 
 			#Apply settings
-			styles = "wx.DIRCTRL_3D_INTERNAL|wx.SUNKEN_BORDER"
+			style = "wx.DIRCTRL_3D_INTERNAL|wx.SUNKEN_BORDER"
 
 			if (directoryOnly):
-				styles += "|wx.DIRCTRL_DIR_ONLY"
+				style += "|wx.DIRCTRL_DIR_ONLY"
 
 			if (editLabelFunction != None):
-				styles += "|wx.DIRCTRL_EDIT_LABELS"
+				style += "|wx.DIRCTRL_EDIT_LABELS"
 
 			if (selectMultiple):
-				styles += "|wx.DIRCTRL_MULTIPLE"
+				style += "|wx.DIRCTRL_MULTIPLE"
 
 			# wx.DIRCTRL_SELECT_FIRST: When setting the default path, select the first file in the directory.
 			# wx.DIRCTRL_SHOW_FILTERS: Show the drop-down filter list.
@@ -6376,7 +6370,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			filterList = wx.EmptyString
 		
 			#Create the thing to put in the grid
-			self.thing = wx.GenericDirCtrl(self.parent.thing, dir = initialDir, style = eval(styles), filter = filterList)
+			self.thing = wx.GenericDirCtrl(self.parent.thing, dir = initialDir, style = eval(style, {'__builtins__': None, "wx": wx}, {}), filter = filterList)
 
 			#Determine if it is hidden
 			if (showHidden):
@@ -6423,12 +6417,12 @@ class handle_WidgetPicker(handle_Widget_Base):
 			# wx.adv.DP_SHOWCENTURY: Forces display of the century in the default date format. Without this style the century could be displayed, or not, depending on the default date representation in the system. This style is not supported in OSX/Cocoa native version currently.
 
 			if (dropDown):
-				styles = wx.adv.DP_DROPDOWN
+				style = wx.adv.DP_DROPDOWN
 			else:
-				styles = wx.adv.DP_SPIN
+				style = wx.adv.DP_SPIN
 
 			#Create the thing to put in the grid
-			self.thing = wx.adv.DatePickerCtrl(self.parent.thing, dt = date, style = styles)
+			self.thing = wx.adv.DatePickerCtrl(self.parent.thing, dt = date, style = style)
 
 			#Bind the function(s)
 			if (myFunction != None):
@@ -6454,7 +6448,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 				date = wx.DateTime().SetToCurrent()
 
 			#Apply settings
-			styles = ""
+			style = ""
 
 			# wx.adv.CAL_SUNDAY_FIRST: Show Sunday as the first day in the week (not in wxGTK)
 			# wx.adv.CAL_MONDAY_FIRST: Show Monday as the first day in the week (not in wxGTK)
@@ -6464,18 +6458,18 @@ class handle_WidgetPicker(handle_Widget_Base):
 			# wx.adv.CAL_SHOW_WEEK_NUMBERS: Show week numbers on the left side of the calendar. (not in generic)
 
 			if (showHolidays):
-				styles += "|wx.adv.CAL_SHOW_HOLIDAYS"
+				style += "|wx.adv.CAL_SHOW_HOLIDAYS"
 			
 			if (showOther):
-				styles += "|wx.adv.CAL_SHOW_SURROUNDING_WEEKS"
+				style += "|wx.adv.CAL_SHOW_SURROUNDING_WEEKS"
 
-			if (len(styles) != 0):
-				styles = styles[1:] #Remove leading line
+			if (len(style) != 0):
+				style = style[1:] #Remove leading line
 			else:
-				styles = "0"
+				style = "0"
 		
 			#Create the thing to put in the grid
-			self.thing = wx.adv.CalendarCtrl(self.parent.thing, date = date, style = eval(styles))
+			self.thing = wx.adv.CalendarCtrl(self.parent.thing, date = date, style = eval(style, {'__builtins__': None, "wx.adv": wx.adv}, {}))
 
 			#Bind the function(s)
 			if (myFunction != None):
@@ -6537,19 +6531,19 @@ class handle_WidgetPicker(handle_Widget_Base):
 
 			addInputBox, colorText, initial, myFunction = self.getArguments(argument_catalogue, ["addInputBox", "colorText", "initial", "myFunction"])
 
-			styles = ""
+			style = ""
 
 			#Add settings
 			if (addInputBox):
-				styles += "|wx.CLRP_USE_TEXTCTRL"
+				style += "|wx.CLRP_USE_TEXTCTRL"
 			
 			if (colorText):
-				styles += "|wx.CLRP_SHOW_LABEL"
+				style += "|wx.CLRP_SHOW_LABEL"
 
-			if (len(styles) == 0):
-				styles = "0"
+			if (len(style) == 0):
+				style = "0"
 			else:
-				styles = styles[1:] #Remove leading line
+				style = style[1:] #Remove leading line
 
 			if (initial == None):
 				initial = wx.BLACK
@@ -6557,7 +6551,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 				initial = wx.BLACK
 		
 			#Create the thing to put in the grid
-			self.thing = wx.ColourPickerCtrl(self.parent.thing, colour = initial, style = eval(styles))
+			self.thing = wx.ColourPickerCtrl(self.parent.thing, colour = initial, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 			#Bind the function(s)
 			if (myFunction != None):
@@ -6571,24 +6565,24 @@ class handle_WidgetPicker(handle_Widget_Base):
 			addInputBox, fontText, maxSize, myFunction = self.getArguments(argument_catalogue, ["addInputBox", "fontText", "maxSize", "myFunction"])
 
 			#Add settings
-			styles = ""
+			style = ""
 			if (addInputBox):
-				styles += "|wx.FNTP_USE_TEXTCTRL"
+				style += "|wx.FNTP_USE_TEXTCTRL"
 			
 			if (fontText):
-				styles += "|wx.FNTP_FONTDESC_AS_LABEL"
+				style += "|wx.FNTP_FONTDESC_AS_LABEL"
 				#FNTP_USEFONT_FOR_LABEL
 
-			if (len(styles) != 0):
-				styles = styles[1:] #Remove leading line
+			if (len(style) != 0):
+				style = style[1:] #Remove leading line
 			else:
-				styles = "0"
+				style = "0"
 
 			# font = self.getFont()
 			font = wx.NullFont
 		
 			#Create the thing to put in the grid
-			self.thing = wx.FontPickerCtrl(self.parent.thing, font = font, style = eval(styles))
+			self.thing = wx.FontPickerCtrl(self.parent.thing, font = font, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 			
 			self.thing.SetMaxPointSize(maxSize) 
 
@@ -6955,7 +6949,7 @@ class handle_Menu(handle_Container_Base):
 				if (vertical_text):
 					style += "wx.TB_HORZ_LAYOUT"
 			
-			self.thing = wx.ToolBar(self.parent.thing, style = eval(style))
+			self.thing = wx.ToolBar(self.parent.thing, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 			self.thing.Realize()
 
 			self.mySizer.nest(self, flex = flex, flags = flags)
@@ -7814,7 +7808,7 @@ class handle_MenuItem(handle_Widget_Base):
 					else:
 						kind = "wx.ITEM_RADIO"
 
-				self.thing = self.parent.thing.AddTool(wx.ID_ANY, text, image, imageDisabled, kind = eval(kind), shortHelp = toolTip, longHelp = toolTip)
+				self.thing = self.parent.thing.AddTool(wx.ID_ANY, text, image, imageDisabled, kind = eval(kind, {'__builtins__': None, "wx": wx}, {}), shortHelp = toolTip, longHelp = toolTip)
 
 				if (default):
 					self.thing.SetToggle(True)#Determine how to do the bound function
@@ -7888,6 +7882,8 @@ class handle_MenuItem(handle_Widget_Base):
 
 		if (self.type.lower() == "menuitem"):
 			if ((self.thing.GetKind() == wx.ITEM_CHECK) or (self.thing.GetKind() == wx.ITEM_RADIO)):
+				if (isinstance(newValue, str)):
+					newValue = ast.literal_eval(newValue)
 				self.thing.Check(newValue) #(bool) - True: selected; False: un-selected
 			else:
 				errorMessage = f"Only a menu 'Check Box' or 'Radio Button' can be set to a different value for setValue() for {self.__repr__()}"
@@ -8615,7 +8611,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		#Draw items in queue
 		for item in self.drawQueue:
 			#Unpack variables
-			myFunction = eval(item[0])
+			myFunction = eval(item[0], {'__builtins__': None}, {"self": self})
 			myFunctionArgs = item[1]
 			myFunctionKwargs = item[2]
 
@@ -11646,9 +11642,9 @@ class handle_WidgetTable(handle_Widget_Base):
 				print(f"TableCellEditor.Create(parent = {parent}, myId = {myId}, event = {event})")
 
 			#Prepare widget control
-			styles = ""
+			style = ""
 
-			#Account for special styles
+			#Account for special style
 			if (self.cellType.lower() == "droplist"):
 				#Ensure that the choices given are a list or tuple
 				if (not isinstance(self.cellTypeValue, (list, tuple, range))):
@@ -11671,17 +11667,17 @@ class handle_WidgetTable(handle_Widget_Base):
 
 				#Check readOnly
 				if (self.parent.getTableCurrentCellReadOnly(event = event)):
-					styles += "|wx.TE_READONLY"
+					style += "|wx.TE_READONLY"
 
 				#Strip of extra divider
-				if (styles != ""):
-					if (styles[0] == "|"):
-						styles = styles[1:]
+				if (style != ""):
+					if (style[0] == "|"):
+						style = style[1:]
 				else:
-					styles = "wx.DEFAULT"
+					style = "wx.DEFAULT"
 
 				#Create text control
-				self.myCellControl = wx.TextCtrl(parent, myId, "", style = eval(styles))
+				self.myCellControl = wx.TextCtrl(parent, myId, "", style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 				self.myCellControl.SetInsertionPoint(0)
 			
 			self.SetControl(self.myCellControl)
@@ -12130,7 +12126,7 @@ class handle_Sizer(handle_Container_Base):
 				else:
 					flags = "wx.WRAPSIZER_DEFAULT_FLAGS"
 
-				self.thing = wx.WrapSizer(direction, eval(flags))
+				self.thing = wx.WrapSizer(direction, eval(flags, {'__builtins__': None, "wx": wx}, {}))
 
 			else:
 				rows, columns, rowGap, colGap = self.getArguments(argument_catalogue, ["rows", "columns", "rowGap", "colGap"])
@@ -12298,25 +12294,25 @@ class handle_Sizer(handle_Container_Base):
 		#Perform Nesting
 		if (isinstance(handle, handle_Widget_Base)):
 			#Nesting a widget
-			self.thing.Add(handle.thing, int(flex), eval(flags), border)
+			self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
 		
 		elif (isinstance(handle, handle_NotebookPage)):
-			self.thing.Add(handle.mySizer.thing, int(flex), eval(flags), border)
+			self.thing.Add(handle.mySizer.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
 		
 		elif (isinstance(handle, handle_Sizer)):
-			self.thing.Add(handle.thing, int(flex), eval(flags), border)
+			self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
 		
 		elif (isinstance(handle, handle_Splitter)):
-			self.thing.Add(handle.thing, int(flex), eval(flags), border)
+			self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
 
 		elif (isinstance(handle, handle_Notebook)):
-			self.thing.Add(handle.thing, int(flex), eval(flags), border)
+			self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
 
 		elif (isinstance(handle, handle_Menu) and (handle.type.lower() == "toolbar")):
-			self.thing.Add(handle.thing, int(flex), eval(flags), border)
+			self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
 
 		elif (isinstance(handle, handle_AuiManager)):
-			# self.thing.Add(handle.mySizer.thing, int(flex), eval(flags), border)
+			# self.thing.Add(handle.mySizer.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
 			pass
 
 		else:
@@ -14078,7 +14074,7 @@ class handle_Dialog(handle_Base):
 				style += "|wx.ICON_NONE"
 
 			#Create object
-			self.thing = wx.MessageDialog(parent = None, message = text, caption = title, style = eval(style))
+			self.thing = wx.MessageDialog(parent = None, message = text, caption = title, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 		def build_scroll():
 			"""Builds a wx scroll dialog object."""
@@ -14368,7 +14364,7 @@ class handle_Window(handle_Container_Base):
 
 		#Make the frame
 		size, position = self.getArguments(argument_catalogue, ["size", "position"])
-		self.thing = wx.Frame(None, title = title, size = size, pos = position, style = eval(flags))
+		self.thing = wx.Frame(None, title = title, size = size, pos = position, style = eval(flags, {'__builtins__': None, "wx": wx}, {}))
 		
 		#Add Properties
 		icon, internal = self.getArguments(argument_catalogue, ["icon", "internal"])
@@ -16308,7 +16304,8 @@ class handle_Panel(handle_Container_Base):
 			flags += "|wx.TAB_TRAVERSAL"
 
 		#Create the panel
-		self.thing = wx.Panel(self.parent.thing, style = eval(f"{border}|{flags}"))
+		style = f"{border}|{flags}"
+		self.thing = wx.Panel(self.parent.thing, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 		autoSize = self.getArguments(argument_catalogue, "autoSize")
 		self.autoSize = autoSize
@@ -16694,7 +16691,7 @@ class handle_AuiManager(handle_Container_Base):
 		if (reduceFlicker):
 			style += "|wx.lib.agw.aui.AUI_MGR_LIVE_RESIZE"
 
-		self.thing = wx.lib.agw.aui.AuiManager(self.myWindow.thing, eval(style))
+		self.thing = wx.lib.agw.aui.AuiManager(self.myWindow.thing, eval(style, {'__builtins__': None, "wx.lib.agw.aui": wx.lib.agw.aui}, {}))
 		self.thing.SetManagedWindow(self.myWindow.thing)
 
 		# self.mySizer = self.readBuildInstructions_sizer(self.myWindow, 0, {})
@@ -16977,7 +16974,7 @@ class handle_Notebook(handle_Container_Base):
 				flags += "|wx.NB_MULTILINE"
 
 			#Create notebook object
-			self.thing = wx.Notebook(self.parent.thing, style = eval(flags))
+			self.thing = wx.Notebook(self.parent.thing, style = eval(flags, {'__builtins__': None, "wx": wx}, {}))
 
 			#Bind Functions
 			if (initFunction != None):
@@ -17031,64 +17028,64 @@ class handle_Notebook(handle_Container_Base):
 			#Create Styles
 			if (tabSide != None):
 				if (tabSide[0] == "t"):
-					styles = "wx.lib.agw.aui.AUI_NB_TOP"
+					style = "wx.lib.agw.aui.AUI_NB_TOP"
 				elif (tabSide[0] == "b"):
-					styles = "wx.lib.agw.aui.AUI_NB_BOTTOM"
+					style = "wx.lib.agw.aui.AUI_NB_BOTTOM"
 				elif (tabSide[0] == "l"):
-					styles = "wx.lib.agw.aui.AUI_NB_LEFT"
+					style = "wx.lib.agw.aui.AUI_NB_LEFT"
 				else:
-					styles = "wx.lib.agw.aui.AUI_NB_RIGHT"
+					style = "wx.lib.agw.aui.AUI_NB_RIGHT"
 			else:
-				styles = "wx.lib.agw.aui.AUI_NB_TOP"
+				style = "wx.lib.agw.aui.AUI_NB_TOP"
 
 			if (tabSplit):
-				styles += "|wx.lib.agw.aui.AUI_NB_TAB_SPLIT"
+				style += "|wx.lib.agw.aui.AUI_NB_TAB_SPLIT"
 
 			if (tabMove):
-				styles += "|wx.lib.agw.aui.AUI_NB_TAB_MOVE"
+				style += "|wx.lib.agw.aui.AUI_NB_TAB_MOVE"
 
 			if (tabBump):
-				styles += "|wx.lib.agw.aui.AUI_NB_TAB_EXTERNAL_MOVE"
+				style += "|wx.lib.agw.aui.AUI_NB_TAB_EXTERNAL_MOVE"
 
 			if (tabSmart):
-				# styles += "|wx.lib.agw.aui.AUI_NB_HIDE_ON_SINGLE_TAB"
-				styles += "|wx.lib.agw.aui.AUI_NB_SMART_TABS"
-				styles += "|wx.lib.agw.aui.AUI_NB_DRAW_DND_TAB"
+				# style += "|wx.lib.agw.aui.AUI_NB_HIDE_ON_SINGLE_TAB"
+				style += "|wx.lib.agw.aui.AUI_NB_SMART_TABS"
+				style += "|wx.lib.agw.aui.AUI_NB_DRAW_DND_TAB"
 
 			if (tabOrderAccess):
-				styles += "|wx.lib.agw.aui.AUI_NB_ORDER_BY_ACCESS"
+				style += "|wx.lib.agw.aui.AUI_NB_ORDER_BY_ACCESS"
 
 			if (tabFloat):
-				styles += "|wx.lib.agw.aui.AUI_NB_TAB_FLOAT"
+				style += "|wx.lib.agw.aui.AUI_NB_TAB_FLOAT"
 
 			if (fixedWidth):
-				styles += "|wx.lib.agw.aui.AUI_NB_TAB_FIXED_WIDTH"
+				style += "|wx.lib.agw.aui.AUI_NB_TAB_FIXED_WIDTH"
 
 			if (addScrollButton):
-				styles += "|wx.lib.agw.aui.AUI_NB_SCROLL_BUTTONS"
+				style += "|wx.lib.agw.aui.AUI_NB_SCROLL_BUTTONS"
 
 			if (addListDrop != None):
 				if (addListDrop):
-					styles += "|wx.lib.agw.aui.AUI_NB_WINDOWLIST_BUTTON"
+					style += "|wx.lib.agw.aui.AUI_NB_WINDOWLIST_BUTTON"
 				else:
-					styles += "|wx.lib.agw.aui.AUI_NB_USE_IMAGES_DROPDOWN"
+					style += "|wx.lib.agw.aui.AUI_NB_USE_IMAGES_DROPDOWN"
 
 			if (addCloseButton != None):
 				if (addCloseButton):
-					styles += "|wx.lib.agw.aui.AUI_NB_CLOSE_ON_ALL_TABS"
+					style += "|wx.lib.agw.aui.AUI_NB_CLOSE_ON_ALL_TABS"
 				else:
-					styles += "|wx.lib.agw.aui.AUI_NB_CLOSE_ON_ACTIVE_TAB"
+					style += "|wx.lib.agw.aui.AUI_NB_CLOSE_ON_ACTIVE_TAB"
 
 				if (closeOnLeft):
-					styles += "|wx.lib.agw.aui.AUI_NB_CLOSE_ON_TAB_LEFT"
+					style += "|wx.lib.agw.aui.AUI_NB_CLOSE_ON_TAB_LEFT"
 
 			if (middleClickClose):
-				styles += "|wx.lib.agw.aui.AUI_NB_MIDDLE_CLICK_CLOSE"
+				style += "|wx.lib.agw.aui.AUI_NB_MIDDLE_CLICK_CLOSE"
 
 			if (not drawFocus):
-				styles += "|wx.lib.agw.aui.AUI_NB_NO_TAB_FOCUS"
+				style += "|wx.lib.agw.aui.AUI_NB_NO_TAB_FOCUS"
 
-			self.thing = wx.lib.agw.aui.auibook.AuiNotebook(self.parent.thing, agwStyle = eval(styles))
+			self.thing = wx.lib.agw.aui.auibook.AuiNotebook(self.parent.thing, agwStyle = eval(style, {'__builtins__': None, "wx.lib.agw.aui": wx.lib.agw.aui}, {}))
 
 			#Set values
 			if (isinstance(self, handle_Window)):
@@ -19520,13 +19517,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def __contains__(self, key):
 		"""Allows the user to use get() when using 'in'."""
 
-		if (key in self[:]):
-			return True
-		elif (key in [item.label for item in self[:]]):
-			return True
-		elif (isinstance(key, wx.Event)):
-			return self.get(key, returnExists = True)
-		return False
+		return self.get(key, returnExists = True)
 
 	def __enter__(self):
 		"""Allows the user to use a with statement to build the GUI."""
@@ -20343,15 +20334,18 @@ class User_Utilities():
 			if (isinstance(self._catalogue_variable, Controller)):
 				return self._catalogue_variable.__contains__(key)
 
-		if (key in self[:]):
-			return True
-		else:
-			if (hasattr(self, "_catalogue_variable") and (self._label_variable != None)):
-				for item in self[:]:
-					if (hasattr(item, self._label_variable)):
-						if (key == getattr(item, self._label_variable)):
-							return True
-		return False
+		dataCatalogue = self._getDataCatalogue()
+		return self._get(dataCatalogue, key, returnExists = True)
+
+		# if (key in self[:]):
+		# 	return True
+		# else:
+		# 	if (hasattr(self, "_catalogue_variable") and (self._label_variable != None)):
+		# 		for item in self[:]:
+		# 			if (hasattr(item, self._label_variable)):
+		# 				if (key == getattr(item, self._label_variable)):
+		# 					return True
+		# return False
 
 	def __iter__(self):
 		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable != None)):
@@ -20421,7 +20415,7 @@ class User_Utilities():
 
 		return dataCatalogue
 
-	def _get(self, itemCatalogue, itemLabel = None):
+	def _get(self, itemCatalogue, itemLabel = None, returnExists = False):
 		"""Searches the label catalogue for the requested object.
 
 		itemLabel (any) - What the object is labled as in the catalogue
@@ -20469,6 +20463,9 @@ class User_Utilities():
 			answer = None
 		else:
 			answer = itemCatalogue[itemLabel]
+
+		if (returnExists):
+			return answer != None
 
 		if (answer != None):
 			if (isinstance(answer, (list, tuple, range))):
