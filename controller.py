@@ -6982,20 +6982,6 @@ class handle_Menu(handle_Container_Base):
 		#Initialize inherited classes
 		handle_Container_Base.__init__(self)
 
-	# def preBuild(self, argument_catalogue):
-	# 	"""Runs after this object is built."""
-
-	# 	handle_Container_Base.preBuild(self, argument_catalogue)
-
-	# def postBuild(self, argument_catalogue):
-	# 	"""Runs after this object is built."""
-
-	# 	handle_Container_Base.postBuild(self, argument_catalogue)
-		
-	# 	#Unpack arguments
-	# 	buildSelf = argument_catalogue["self"]
-	# 	buildSelf.finalNest(self)
-
 	def build(self, argument_catalogue):
 		"""Determiens which build system to use for this handle."""
 
@@ -7360,7 +7346,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addSub(self, text = "", flex = 0, flags = "c1", 
-		label = None, hidden = False, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
 		"""Adds a sub menu to a specific pre-existing menu.
 		To adding items to a sub menu is the same as for menus.
 
@@ -7387,364 +7373,416 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addText(self, *args, **kwargs):
+	def addText(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a text widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
-			subHandle = handle_Sizer.addText(self, *args, mySizer = self, **kwargs)
-			handle = self.thing.AddControl(subHandle.thing)
+			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			self.thing.Realize()
+			handle.subHandle = handle_Sizer.addText(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			selected = False
+			mySizer = self
+			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addText() for {self.__repr__()}", Warning, stacklevel = 2)
-			handle = None
+			return
 
 		return handle
 
-	def addHyperlink(self, *args, **kwargs):
+	def addHyperlink(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a hyperlink widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
-			subHandle = handle_Sizer.addHyperlink(self, *args, mySizer = self, **kwargs)
-			handle = self.thing.AddControl(subHandle.thing)
+			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			self.thing.Realize()
+			handle.subHandle = handle_Sizer.addHyperlink(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			selected = False
+			mySizer = self
+			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addHyperlink() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
 
-	def addLine(self, *args, **kwargs):
+	def addLine(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a line widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
-			subHandle = handle_Sizer.addLine(self, *args, mySizer = self, **kwargs)
-			handle = self.thing.AddControl(subHandle.thing)
+			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			self.thing.Realize()
+			handle.subHandle = handle_Sizer.addLine(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			selected = False
+			mySizer = self
+			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addLine() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
 
-	def addListDrop(self, *args, **kwargs):
+	def addListDrop(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a drop list widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
-			subHandle = handle_Sizer.addListDrop(self, *args, mySizer = self, **kwargs)
-			handle = self.thing.AddControl(subHandle.thing)
+			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			self.thing.Realize()
+			handle.subHandle = handle_Sizer.addListDrop(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			selected = False
+			mySizer = self
+			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addListDrop() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
 
-	def addListFull(self, *args, **kwargs):
+	def addListFull(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a full list widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
-			subHandle = handle_Sizer.addListFull(self, *args, mySizer = self, **kwargs)
-			handle = self.thing.AddControl(subHandle.thing)
+			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			self.thing.Realize()
+			handle.subHandle = handle_Sizer.addListFull(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			selected = False
+			mySizer = self
+			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addListFull() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
 
-	def addInputSlider(self, *args, **kwargs):
+	def addInputSlider(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds an input slider widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
-			subHandle = handle_Sizer.addInputSlider(self, *args, mySizer = self, **kwargs)
-			handle = self.thing.AddControl(subHandle.thing)
+			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			self.thing.Realize()
+			handle.subHandle = handle_Sizer.addInputSlider(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			selected = False
+			mySizer = self
+			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addInputSlider() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
 
-	def addInputBox(self, *args, **kwargs):
+	def addInputBox(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds an input box widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
-			subHandle = handle_Sizer.addInputBox(self, *args, mySizer = self, **kwargs)
-			handle = self.thing.AddControl(subHandle.thing)
+			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			self.thing.Realize()
+			handle.subHandle = handle_Sizer.addInputBox(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			selected = False
+			mySizer = self
+			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addInputBox() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
 
-	def addInputSearch(self, *args, **kwargs):
+	def addInputSearch(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a search box widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
-			subHandle = handle_Sizer.addInputSearch(self, *args, mySizer = self, **kwargs)
-			handle = self.thing.AddControl(subHandle.thing)
+			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			self.thing.Realize()
+			handle.subHandle = handle_Sizer.addInputSearch(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			selected = False
+			mySizer = self
+			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addInputSearch() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
 
-	def addInputSpinner(self, *args, **kwargs):
+	def addInputSpinner(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds an input spinner widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
-			subHandle = handle_Sizer.addInputSpinner(self, *args, mySizer = self, **kwargs)
-			handle = self.thing.AddControl(subHandle.thing)
+			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			self.thing.Realize()
+			handle.subHandle = handle_Sizer.addInputSpinner(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			selected = False
+			mySizer = self
+			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addInputSpinner() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
 
-	def addButton(self, *args, **kwargs):
+	def addButton(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a button widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
-			subHandle = handle_Sizer.addButton(self, *args, mySizer = self, **kwargs)
-			handle = self.thing.AddControl(subHandle.thing)
+			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			self.thing.Realize()
+			handle.subHandle = handle_Sizer.addButton(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			selected = False
+			mySizer = self
+			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addButton() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
 
-	def addButtonToggle(self, *args, **kwargs):
+	def addButtonToggle(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a toggle button widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
-			subHandle = handle_Sizer.addButtonToggle(self, *args, mySizer = self, **kwargs)
-			handle = self.thing.AddControl(subHandle.thing)
+			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			self.thing.Realize()
+			handle.subHandle = handle_Sizer.addButtonToggle(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			selected = False
+			mySizer = self
+			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addButtonToggle() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
 
-	def addButtonCheck(self, *args, **kwargs):
+	def addButtonCheck(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a check button widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
-			subHandle = handle_Sizer.addButtonCheck(self, *args, mySizer = self, **kwargs)
-			handle = self.thing.AddControl(subHandle.thing)
+			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			self.thing.Realize()
+			handle.subHandle = handle_Sizer.addButtonCheck(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			selected = False
+			mySizer = self
+			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addButtonCheck() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
 
-	def addButtonCheckList(self, *args, **kwargs):
+	def addButtonCheckList(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a check list widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
-			subHandle = handle_Sizer.addButtonCheckList(self, *args, mySizer = self, **kwargs)
-			handle = self.thing.AddControl(subHandle.thing)
+			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			self.thing.Realize()
+			handle.subHandle = handle_Sizer.addButtonCheckList(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			selected = False
+			mySizer = self
+			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addButtonCheckList() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
 
-	def addButtonRadio(self, *args, **kwargs):
+	def addButtonRadio(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a radio button widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
-			subHandle = handle_Sizer.addButtonRadio(self, *args, mySizer = self, **kwargs)
-			handle = self.thing.AddControl(subHandle.thing)
+			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			self.thing.Realize()
+			handle.subHandle = handle_Sizer.addButtonRadio(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			selected = False
+			mySizer = self
+			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addButtonRadio() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
 
-	def addButtonRadioBox(self, *args, **kwargs):
+	def addButtonRadioBox(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a radio button box widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
-			subHandle = handle_Sizer.addButtonRadioBox(self, *args, mySizer = self, **kwargs)
-			handle = self.thing.AddControl(subHandle.thing)
+			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			self.thing.Realize()
+			handle.subHandle = handle_Sizer.addButtonRadioBox(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			selected = False
+			mySizer = self
+			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addButtonRadioBox() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
 
-	def addButtonImage(self, *args, **kwargs):
+	def addButtonImage(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds an image button widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
-			subHandle = handle_Sizer.addButtonImage(self, *args, mySizer = self, **kwargs)
-			handle = self.thing.AddControl(subHandle.thing)
+			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			self.thing.Realize()
+			handle.subHandle = handle_Sizer.addButtonImage(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			selected = False
+			mySizer = self
+			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addButtonImage() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
 
-	def addImage(self, *args, **kwargs):
+	def addImage(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds an image widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
-			subHandle = handle_Sizer.addImage(self, *args, mySizer = self, **kwargs)
-			handle = self.thing.AddControl(subHandle.thing)
+			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			self.thing.Realize()
+			handle.subHandle = handle_Sizer.addImage(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			selected = False
+			mySizer = self
+			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addImage() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
 
-	def addProgressBar(self, *args, **kwargs):
+	def addProgressBar(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a progress bar widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
-			subHandle = handle_Sizer.addProgressBar(self, *args, mySizer = self, **kwargs)
-			handle = self.thing.AddControl(subHandle.thing)
+			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			self.thing.Realize()
+			handle.subHandle = handle_Sizer.addProgressBar(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			selected = False
+			mySizer = self
+			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addProgressBar() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
 
-	def addPickerColor(self, *args, **kwargs):
+	def addPickerColor(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a color picker widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
-			subHandle = handle_Sizer.addPickerColor(self, *args, mySizer = self, **kwargs)
-			handle = self.thing.AddControl(subHandle.thing)
+			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			self.thing.Realize()
+			handle.subHandle = handle_Sizer.addPickerColor(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			selected = False
+			mySizer = self
+			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addPickerColor() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
 
-	def addPickerFont(self, *args, **kwargs):
+	def addPickerFont(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a font picker widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
-			subHandle = handle_Sizer.addPickerFont(self, *args, mySizer = self, **kwargs)
-			handle = self.thing.AddControl(subHandle.thing)
+			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			self.thing.Realize()
+			handle.subHandle = handle_Sizer.addPickerFont(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			selected = False
+			mySizer = self
+			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addPickerFont() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
 
-	def addPickerFile(self, *args, **kwargs):
+	def addPickerFile(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a file picker widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
-			subHandle = handle_Sizer.addPickerFile(self, *args, mySizer = self, **kwargs)
-			handle = self.thing.AddControl(subHandle.thing)
+			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			self.thing.Realize()
+			handle.subHandle = handle_Sizer.addPickerFile(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			selected = False
+			mySizer = self
+			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addPickerFile() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
 
-	def addPickerFileWindow(self, *args, **kwargs):
+	def addPickerFileWindow(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a file window picker widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
-			subHandle = handle_Sizer.addPickerFileWindow(self, *args, mySizer = self, **kwargs)
-			handle = self.thing.AddControl(subHandle.thing)
+			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			self.thing.Realize()
+			handle.subHandle = handle_Sizer.addPickerFileWindow(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			selected = False
+			mySizer = self
+			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addPickerFileWindow() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
 
-	def addPickerTime(self, *args, **kwargs):
+	def addPickerTime(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a time picker widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
-			subHandle = handle_Sizer.addPickerTime(self, *args, mySizer = self, **kwargs)
-			handle = self.thing.AddControl(subHandle.thing)
+			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			self.thing.Realize()
+			handle.subHandle = handle_Sizer.addPickerTime(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			selected = False
+			mySizer = self
+			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addPickerTime() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
 
-	def addPickerDate(self, *args, **kwargs):
+	def addPickerDate(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a date picker widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
-			subHandle = handle_Sizer.addPickerDate(self, *args, mySizer = self, **kwargs)
-			handle = self.thing.AddControl(subHandle.thing)
+			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			self.thing.Realize()
+			handle.subHandle = handle_Sizer.addPickerDate(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			selected = False
+			mySizer = self
+			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addPickerDate() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
 
-	def addPickerDateWindow(self, *args, **kwargs):
+	def addPickerDateWindow(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a text date window picker to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
-			subHandle = handle_Sizer.addPickerDateWindow(self, *args, mySizer = self, **kwargs)
-			handle = self.thing.AddControl(subHandle.thing)
+			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			self.thing.Realize()
+			handle.subHandle = handle_Sizer.addPickerDateWindow(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			selected = False
+			mySizer = self
+			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addPickerDateWindow() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
 
-	def addCanvas(self, *args, **kwargs):
+	def addCanvas(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a canvas widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
-			subHandle = handle_Sizer.addCanvas(self, *args, mySizer = self, **kwargs)
-			handle = self.thing.AddControl(subHandle.thing)
+			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			self.thing.Realize()
+			handle.subHandle = handle_Sizer.addCanvas(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			selected = False
+			mySizer = self
+			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addCanvas() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
@@ -7762,6 +7800,7 @@ class handle_MenuItem(handle_Widget_Base):
 
 		#Internal Variables
 		self.shown = True
+		self.subHandle = None
 
 	def __len__(self):
 		"""Returns what the contextual length is for the object associated with this handle."""
@@ -7892,69 +7931,72 @@ class handle_MenuItem(handle_Widget_Base):
 			"""Builds a wx tool control object."""
 			nonlocal self, argument_catalogue
 
-			text = self.getArguments(argument_catalogue, ["text"])
-			if (text == None):
-				stretchable = self.getArguments(argument_catalogue, ["stretchable"])
-				if (stretchable):
-					self.thing = self.parent.AddStretchableSpace()
-				else:
-					self.thing = self.parent.AddSeparator()
+			if (self.subHandle != None):
+				self.thing = self.parent.thing.AddControl(self.subHandle.thing)
 			else:
-				icon, internal, toolTip = self.getArguments(argument_catalogue, ["icon", "internal", "toolTip"])
-				disabled_icon, disabled_internal = self.getArguments(argument_catalogue, ["disabled_icon", "disabled_internal"])
-				check, default, myFunction, special = self.getArguments(argument_catalogue, ["check", "default", "myFunction", "special"])
-				
-				#Get Images
-				if (icon == None):
-					warnings.warn(f"No icon provided for {self.__repr__()}", Warning, stacklevel = 2)
-					icon = "error"
-					internal = True
-				image = self.getImage(icon, internal)
-
-				if (disabled_icon == None):
-					imageDisabled = wx.NullBitmap
-				else:
-					if (disabled_internal == None):
-						disabled_internal = internal
-					imageDisabled = self.getImage(disabled_icon, disabled_internal)
-
-				#Configure Settings
-				if (toolTip == None):
-					toolTip = ""
-				elif (not isinstance(toolTip, str)):
-					toolTip = f"{toolTip}"
-
-				if (check == None):
-					kind = "wx.ITEM_NORMAL"
-				else:
-					if (check):
-						kind = "wx.ITEM_CHECK"
+				text = self.getArguments(argument_catalogue, ["text"])
+				if (text == None):
+					stretchable = self.getArguments(argument_catalogue, ["stretchable"])
+					if (stretchable):
+						self.thing = self.parent.AddStretchableSpace()
 					else:
-						kind = "wx.ITEM_RADIO"
-
-				self.thing = self.parent.thing.AddTool(wx.ID_ANY, text, image, imageDisabled, kind = eval(kind, {'__builtins__': None, "wx": wx}, {}), shortHelp = toolTip, longHelp = toolTip)
-
-				if (default):
-					self.thing.SetToggle(True)#Determine how to do the bound function
-				
-				if (myFunction == None):
-					if (special != None):
-						if (special[0] == "q" or special[0] == "e"):
-							self.parent.betterBind(wx.EVT_TOOL, self.thing, "self.onExit")
-						elif (special[0] == "c"):
-							self.parent.betterBind(wx.EVT_TOOL, self.thing, "self.onQuit")
-						elif (special[0] == "h"):
-							self.parent.betterBind(wx.EVT_TOOL, self.thing, "self.onHide")
-						elif (special[0] == "s"):
-							self.parent.betterBind(wx.EVT_TOOL, self.thing, "self.onToggleStatusBar")
-						elif (special[0] == "t"):
-							self.parent.betterBind(wx.EVT_TOOL, self.thing, "self.onToggleToolBar")
-						else:
-							errorMessage = f"Unknown special function {special} for {self.__repr__()}"
-							raise KeyError(errorMessage)
+						self.thing = self.parent.AddSeparator()
 				else:
-					myFunctionArgs, myFunctionKwargs = self.getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
-					self.parent.betterBind(wx.EVT_TOOL, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+					icon, internal, toolTip = self.getArguments(argument_catalogue, ["icon", "internal", "toolTip"])
+					disabled_icon, disabled_internal = self.getArguments(argument_catalogue, ["disabled_icon", "disabled_internal"])
+					check, default, myFunction, special = self.getArguments(argument_catalogue, ["check", "default", "myFunction", "special"])
+					
+					#Get Images
+					if (icon == None):
+						warnings.warn(f"No icon provided for {self.__repr__()}", Warning, stacklevel = 2)
+						icon = "error"
+						internal = True
+					image = self.getImage(icon, internal)
+
+					if (disabled_icon == None):
+						imageDisabled = wx.NullBitmap
+					else:
+						if (disabled_internal == None):
+							disabled_internal = internal
+						imageDisabled = self.getImage(disabled_icon, disabled_internal)
+
+					#Configure Settings
+					if (toolTip == None):
+						toolTip = ""
+					elif (not isinstance(toolTip, str)):
+						toolTip = f"{toolTip}"
+
+					if (check == None):
+						kind = "wx.ITEM_NORMAL"
+					else:
+						if (check):
+							kind = "wx.ITEM_CHECK"
+						else:
+							kind = "wx.ITEM_RADIO"
+
+					self.thing = self.parent.thing.AddTool(wx.ID_ANY, text, image, imageDisabled, kind = eval(kind, {'__builtins__': None, "wx": wx}, {}), shortHelp = toolTip, longHelp = toolTip)
+
+					if (default):
+						self.thing.SetToggle(True)#Determine how to do the bound function
+					
+					if (myFunction == None):
+						if (special != None):
+							if (special[0] == "q" or special[0] == "e"):
+								self.parent.betterBind(wx.EVT_TOOL, self.thing, "self.onExit")
+							elif (special[0] == "c"):
+								self.parent.betterBind(wx.EVT_TOOL, self.thing, "self.onQuit")
+							elif (special[0] == "h"):
+								self.parent.betterBind(wx.EVT_TOOL, self.thing, "self.onHide")
+							elif (special[0] == "s"):
+								self.parent.betterBind(wx.EVT_TOOL, self.thing, "self.onToggleStatusBar")
+							elif (special[0] == "t"):
+								self.parent.betterBind(wx.EVT_TOOL, self.thing, "self.onToggleToolBar")
+							else:
+								errorMessage = f"Unknown special function {special} for {self.__repr__()}"
+								raise KeyError(errorMessage)
+					else:
+						myFunctionArgs, myFunctionKwargs = self.getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
+						self.parent.betterBind(wx.EVT_TOOL, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
 			self.parent.thing.Realize()
 		
@@ -7979,6 +8021,10 @@ class handle_MenuItem(handle_Widget_Base):
 				value = self.thing.IsChecked() #(bool) - True: Selected; False: Un-Selected
 			else:
 				value = self.thing.GetText() #(str) - What the selected item says
+				
+		elif ((self.type.lower() == "toolbaritem") and (self.subHandle != None)):
+			value = self.subHandle.getValue(event = event)
+			
 		else:
 			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
@@ -7994,6 +8040,10 @@ class handle_MenuItem(handle_Widget_Base):
 			else:
 				errorMessage = "Pass the event parameter to getIndex() when working with menu items"
 				raise SyntaxError(errorMessage)
+				
+		elif ((self.type.lower() == "toolbaritem") and (self.subHandle != None)):
+			value = self.subHandle.setValue(event = event)
+
 		else:
 			warnings.warn(f"Add {self.type} to getIndex() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
@@ -8012,6 +8062,9 @@ class handle_MenuItem(handle_Widget_Base):
 			else:
 				errorMessage = f"Only a menu 'Check Box' or 'Radio Button' can be set to a different value for setValue() for {self.__repr__()}"
 				raise SyntaxError(errorMessage)
+
+		elif ((self.type.lower() == "toolbaritem") and (self.subHandle != None)):
+			self.subHandle.setValue(newValue, event = event)
 
 		else:
 			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -8107,7 +8160,13 @@ class handle_MenuItem(handle_Widget_Base):
 
 			#Do not add empty tool tips
 			if (len(text) != 0):
-				self.thing.SetHelp(text)
+				if (self.type.lower() == "menuitem"):
+					self.thing.SetHelp(text)
+				elif (self.type.lower() == "toolbaritem"):
+					self.thing.SetShortHelp(text)
+					self.thing.SetLongHelp(text)
+				else:
+					warnings.warn(f"Add {self.type} to addToolTip() for {self.__repr__()}", Warning, stacklevel = 2)
 
 class handle_MenuPopup(handle_Container_Base):
 	"""A handle for working with popup menus."""
@@ -14100,7 +14159,7 @@ class handle_Dialog(handle_Base):
 		#Defaults
 		self.answer = None
 		self.data = None
-		self.subType = ""
+		self.subType = None
 
 	def __enter__(self):
 		"""Allows the user to use a with statement to build the GUI."""
@@ -14306,7 +14365,7 @@ class handle_Dialog(handle_Base):
 		elif (self.type.lower() == "choice"):
 			self.answer = self.thing.ShowModal()
 
-			if (self.subType.lower() == "single"):
+			if ((self.subType != None) and (self.subType.lower() == "single")):
 				self.data = self.thing.GetSelection()
 			else:
 				self.data = self.thing.GetSelections()
@@ -14347,7 +14406,7 @@ class handle_Dialog(handle_Base):
 		"""Returns what the contextual value is for the object associated with this handle."""
 
 		if (self.type.lower() == "choice"):
-			if (self.subType.lower() == "single"):
+			if ((self.subType != None) and (self.subType.lower() == "single")):
 				value = self.choices[self.data]
 			else:
 				value = [self.choices[i] for i in self.data]
@@ -14426,9 +14485,9 @@ class handle_Window(handle_Container_Base):
 		self.statusBar = None
 		self.auiManager = None
 
-		self.refreshFunction = None
-		self.refreshFunctionArgs = None
-		self.refreshFunctionKwargs = None
+		self.refreshFunction = []
+		self.refreshFunctionArgs = []
+		self.refreshFunctionKwargs = []
 
 		self.finalFunctionList = []
 		self.sizersIterating = {} #Keeps track of which sizers have been used in a while loop, as well as if they are still in the while loop {sizer (handle): [currently in a while loop (bool), order entered (int)]}
@@ -15651,9 +15710,9 @@ class handle_Window(handle_Container_Base):
 	def setRefresh(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Sets the functions to call for refresh()."""
 
-		self.refreshFunction = myFunction
-		self.refreshFunctionArgs = myFunctionArgs
-		self.refreshFunctionKwargs = myFunctionKwargs
+		self.refreshFunction.append(myFunction)
+		self.refreshFunctionArgs.append(myFunctionArgs)
+		self.refreshFunctionKwargs.append(myFunctionKwargs)
 
 	def refresh(self):
 		"""Runs the user defined refresh function.
@@ -15662,11 +15721,12 @@ class handle_Window(handle_Container_Base):
 		Example Input: refresh()
 		"""
 
-		if (self.refreshFunction == None):
+		if (len(self.refreshFunction) == 0):
 			warnings.warn(f"The refresh function for {self.__repr__()} has not been set yet\nUse setRefresh() during window creation first to set the refresh function", Warning, stacklevel = 2)
 			return
 
-		self.runMyFunction(self.refreshFunction, self.refreshFunctionArgs, self.refreshFunctionKwargs)
+		for i in range(len(self.refreshFunction)):
+			self.runMyFunction(self.refreshFunction[i], self.refreshFunctionArgs[i], self.refreshFunctionKwargs[i])
 
 	def nest(self, inside, outside):
 		"""Nests an object in another object.
