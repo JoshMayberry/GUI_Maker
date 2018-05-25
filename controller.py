@@ -693,10 +693,14 @@ class Utilities():
 				answer = []
 				if (not isinstance(handleList, (list, tuple, range))):
 					handleList = [handleList]
+				if (not isinstance(typeList, (list, tuple))):
+					typeList = [typeList]
 
 				for item in handleList:
-					if (isinstance(item, typeList)):
-						answer.append(item)
+					for itemType in typeList:
+						if (isinstance(item, itemType)):
+							answer.append(item)
+							break
 
 				if (isinstance(answer, (list, tuple, range))):
 					if (len(answer) == 0):
@@ -766,7 +770,8 @@ class Utilities():
 
 			# answer = checkType(handleList)
 			# answer = handleList
-			return handleList
+			# return handleList
+			return checkType(handleList)
 
 		elif (itemLabel not in self.labelCatalogue):
 			if (checkNested):
@@ -2573,6 +2578,14 @@ class Utilities():
 				i = arg_indexList.index(item)
 				arguments[item] = argList[i]
 
+		for key, value in kwargDict.items():
+			if (key not in arguments):
+				arguments[key] = value
+
+		if (containsSelf and ("self" not in arguments)):
+			errorMessage = f"'self' not defined for arguments in arrangeArguments() for {self.__repr__()}"
+			raise KeyError(errorMessage)
+
 		return arguments
 
 	def checkHandleType(self, typeNeeded, function):
@@ -2756,9 +2769,1292 @@ class Utilities():
 		return popupMenu
 
 	#Make Functions
-	# def makeText(self, ):
-	# 	handle.subHandle = handle_Sizer.addText(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+	def makeText(self, text = "", wrap = None, ellipsize = False, alignment = None,
+		size = None, bold = False, italic = False, color = None, family = None, 
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Creates a wx text object.
+		If you want to update this text, you will need to run the function setObjectValue() or setObjectValueWithLabel().
+		If you provide a variable to this function and that variable changes- the text on the GUI will not update.
+		It must be told to do so explicitly by using one of the functions mentioned above.
+		Note: If you change the text, any word wrap will be removed. To wrap it again, call the function textWrap().
+
+		text (str)    - The text that will be added to the next cell on the grid.
+		label (any)   - What this is catalogued as
+		selected (bool) - If True: This is the default thing selected
+		hidden (bool)   - If True: The widget is hidden from the user, but it is still created
+		wrap (int)      - How many pixels wide the line will be before it wraps. If negative: no wrapping is done
+		
+		ellipsize (bool) - Determines what happens if the text exceeds the alloted space
+			- If True: Will cut the text with a '...' at the end
+			- If False: Will adjust the alloted space to fit the text
+			- If None: Will adjust the alloted space to fit the text
+			- If 0: Will cut the text with a '...' at the beginning
+			- If 1: Will cut the text with a '...' in the middle
+			- If 2: Will cut the text with a '...' at the end
+		alignment (int) - Determines how the text is aligned in its alloted space
+			- If True: Will align text to the left
+			- If False: Will align text to the center
+			- If None: Will align text to the center
+			- If 0: Will align text to the left
+			- If 1: Will align text to the right
+			- If 2: Will align text to the center
+
+		size (int)    - The font size of the text  
+		bold (bool)   - If True: the font will be bold
+		italic (bool) - If True: the font will be italicized
+		color (str)   - The color of the text. Can be an RGB tuple (r, g, b) or hex value
+		family (str)  - What font family it is.
+			~ "times new roman"         
+
+		Example Input: makeText()
+		Example Input: makeText(text = "Lorem Ipsum")
+		Example Input: makeText(text = "Change Me", label = "changableText")
+		Example Input: makeText(text = "Part Type", flags = "c2")
+		Example Input: makeText(text = "Part Type", flags = ["at", "c2"])
+		Example Input: makeText(text = "This line will wrap", wrap = 10)
+		Example Input: makeText(text = "BIG TEXT", bold = True, size = 72, color = "red")
+		Example Input: makeText(text = "Really long text", ellipsize = True)
+		Example Input: makeText(text = "Really long text", ellipsize = 0)
+		Example Input: makeText(text = "Really long text", ellipsize = 1)
+		"""
+
+		handle = handle_WidgetText()
+		handle.type = "Text"
+		handle.build(locals())
+
+		return handle
+
+	def makeHyperlink(self, text = "", myWebsite = "",
+
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds a hyperlink text to the next cell on the grid.
+
+		text (str)            - What text is shown
+		myWebsite (str)         - The address of the website to open
+		myFunction (str)        - What function will be ran when the link is clicked
+		flags (list)            - A list of strings for which flag to add to the sizer
+		label (any)           - What this is catalogued as
+		myFunctionArgs (any)    - The arguments for 'myFunction'
+		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
+
+		Example Input: makeHyperlink("wxFB Website", "http://www.wxformbuilder.org", "siteVisited")
+		"""
+
+		handle = handle_WidgetText()
+		handle.type = "Hyperlink"
+		handle.build(locals())
+
+		return handle
+
+	def makeEmpty(self, 
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds an empty space to the next cell on the grid.
+
+		label (any)     - What this is catalogued as
+		selected (bool)   - If True: This is the default thing selected
+		hidden (bool)     - If True: The widget is hidden from the user, but it is still created
+
+		Example Input: makeEmpty()
+		Example Input: makeEmpty(label = "spacer")
+		"""
+
+		handle = handle_WidgetText()
+		handle.type = "Empty"
+		handle.build(locals())
+
+		return handle
+
+	def makeLine(self, vertical = False,
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds a simple line to the window.
+		It can be horizontal or vertical.
+
+		vertical (bool)   - Whether the line is vertical or horizontal
+		flags (list)      - A list of strings for which flag to add to the sizer
+		label (any)     - What this is catalogued as
+		hidden (bool)     - If True: The widget is hidden from the user, but it is still created
+
+		Example Input: makeLine()
+		Example Input: makeLine(vertical = True)
+		"""
+
+		handle = handle_Widget_Base()
+		handle.type = "Line"
+		handle.build(locals())
+
+		return handle
+
+	def makeListDrop(self, choices = [], default = None, alphabetic = False,
+
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds a dropdown list with choices to the next cell on the grid.
+
+		choices (list)          - A list of the choices as strings
+		myFunction (str)        - The function that is ran when the user chooses something from the list. If a list is given, each function will be bound.
+		flags (list)            - A list of strings for which flag to add to the sizer
+		label (any)           - What this is catalogued as
+		myFunctionArgs (any)    - The arguments for 'myFunction'
+		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
+		default (int)           - Which item in the droplist is selected
+			- If a string is given, it will select the first item in the list that matches that string. If noting matches, it will default to the first element
+		enabled (bool)          - If True: The user can interact with this
+		alphabetic (bool)      - Determines if the list is automatically sorted alphabetically
+			- If True: The list is sorted alphabetically
+			- If False: The list is presented in the order given
+
+		Example Input: makeListDrop(choices = ["Lorem", "Ipsum", "Dolor"])
+		Example Input: makeListDrop(choices = ["Lorem", "Ipsum", "Dolor"], label = "chosen")
+		Example Input: makeListDrop(choices = ["Lorem", "Ipsum", "Dolor"], alphabetic = True)
+		"""
+
+		handle = handle_WidgetList()
+		handle.type = "ListDrop"
+		handle.build(locals())
+
+		return handle
+
+	def makeListFull(self, choices = [], default = False, singleSelect = False, editable = False,
+
+		report = False, columns = 1, columnNames = {}, columnWidth = {},
+		border = True, rowLines = True, columnLines = True, boldHeader = True,
+		drag = False, dragDelete = False, dragCopyOverride = False, 
+		allowExternalAppDelete = True, dragLabel = None, drop = False, dropIndex = 0,
+
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
+		preEditFunction = None, preEditFunctionArgs = None, preEditFunctionKwargs = None, 
+		postEditFunction = None, postEditFunctionArgs = None, postEditFunctionKwargs = None, 
+		preDragFunction = None, preDragFunctionArgs = None, preDragFunctionKwargs = None, 
+		postDragFunction = None, postDragFunctionArgs = None, postDragFunctionKwargs = None, 
+		preDropFunction = None, preDropFunctionArgs = None, preDropFunctionKwargs = None, 
+		postDropFunction = None, postDropFunctionArgs = None, postDropFunctionKwargs = None, 
+		dragOverFunction = None, dragOverFunctionArgs = None, dragOverFunctionKwargs = None, 
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds a full list with choices to the next cell on the grid.
+		https://wxpython.org/Phoenix/docs/html/wx.ListCtrl.html
+
+		choices (list - A list of the choices as strings
+			- If 'report' is True: Can be given as either [[row 1 column 1, row 2 column 1], [row 1 column 2, row 2 column 2]] or {column name 1: [row 1, row 2], column name 2: [row 1, row 2]}
+				- If an integer is given instead of a string for the column name, it will use that as the column index
+				- If more than one column have the same header, it will be added to the left most one
+		label (any) - What this is catalogued as
+		flags (list)  - A list of strings for which flag to add to the sizer
+
+		default (bool)      - If True: This is the default thing selected
+		enabled (bool)      - If True: The user can interact with this
+		singleSelect (bool) - Determines how many things the user can select
+			- If True: The user can only select one thing
+			- If False: The user can select multiple things using the shift key
+		editable (bool)     - Determines if the user can edit the first item in the list
+			- If True: The user can edit all items in the list
+
+		report (bool)      - Determines how the list is set up
+			- If True: The list will be arranged in a grid
+			- If False: Rows and columns will be dynamically calculated
+		columns (int)      - How many columns the report will have
+		columnNames (dict) - What the column headers will say. If not given, the column will be blank. {row index: name}
+		
+		drag (bool)       - If True: The user can drag text away from this list
+		dragDelete (bool) - If True: Text dragged away from this list will be deleted after dropping
+		dragLabel (bool)  - What the text dragging object being dropped into this list is called in the idCatalogue
+		drop (bool)       - If True: Text dropped on this list will be inserted
+		dropIndex (int)   - Where to insert the text dropped into this list. Works like a python list index
+		
+		dragCopyOverride (bool)       - If False: Holding [ctrl] will copy the text, not delete it
+		allowExternalAppDelete (bool) - If False: The text will not be deleted if it is dragged into an external application 
+		
+		myFunction (str)       - The function that is ran when the user chooses something from the list
+		myFunctionArgs (any)   - The arguments for 'myFunction'
+		myFunctionKwargs (any) - The keyword arguments for 'myFunction'function
+		
+		preEditFunction (str)       - The function that is ran when the user edits something from the list
+		preEditFunctionArgs (any)   - The arguments for 'preEditFunction'
+		preEditFunctionKwargs (any) - The keyword arguments for 'preEditFunction'function
+		
+		postEditFunction (str)       - The function that is ran when the user edits something from the list
+		postEditFunctionArgs (any)   - The arguments for 'postEditFunction'
+		postEditFunctionKwargs (any) - The keyword arguments for 'postEditFunction'function
+		
+		preDragFunction (str)       - The function that is ran when the user tries to drag something from the list; before it begins to drag
+		preDragFunctionArgs (any)   - The arguments for 'preDragFunction'
+		preDragFunctionKwargs (any) - The keyword arguments for 'preDragFunction'function
+		
+		postDragFunction (str)       - The function that is ran when the user tries to drag something from the list; after it begins to drag
+		postDragFunctionArgs (any)   - The arguments for 'postDragFunction'
+		postDragFunctionKwargs (any) - The keyword arguments for 'postDragFunction'function
+		
+		preDropFunction (str)       - The function that is ran when the user tries to drop something from the list; before it begins to drop
+		preDropFunctionArgs (any)   - The arguments for 'preDropFunction'
+		preDropFunctionKwargs (any) - The keyword arguments for 'preDropFunction'function
+		
+		postDropFunction (str)       - The function that is ran when the user tries to drop something from the list; after it drops
+		postDropFunctionArgs (any)   - The arguments for 'postDropFunction'
+		postDropFunctionKwargs (any) - The keyword arguments for 'postDropFunction'function
+		
+		dragOverFunction (str)       - The function that is ran when the user drags something over this object
+		dragOverFunctionArgs (any)   - The arguments for 'dragOverFunction'
+		dragOverFunctionKwargs (any) - The keyword arguments for 'dragOverFunction'function
+		
+
+		Example Input: makeListFull(["Lorem", "Ipsum", "Dolor"])
+		Example Input: makeListFull(["Lorem", "Ipsum", "Dolor"], myFunction = self.onChosen)
+
+		Example Input: makeListFull(["Lorem", "Ipsum", "Dolor"], report = True)
+		Example Input: makeListFull([["Lorem", "Ipsum"], ["Dolor"]], report = True, columns = 2)
+		Example Input: makeListFull([["Lorem", "Ipsum"], ["Dolor"]], report = True, columns = 2, columnNames = {0: "Sit", 1: "Amet"})
+		Example Input: makeListFull({"Sit": ["Lorem", "Ipsum"], "Amet": ["Dolor"]], report = True, columns = 2, columnNames = {0: "Sit", 1: "Amet"})
+		Example Input: makeListFull({"Sit": ["Lorem", "Ipsum"], 1: ["Dolor"]], report = True, columns = 2, columnNames = {0: "Sit"})
+
+		Example Input: makeListFull([["Lorem", "Ipsum"], ["Dolor"]], report = True, columns = 2, columnNames = {0: "Sit", 1: "Amet"}, editable = True)
+
+		Example Input: makeListFull(["Lorem", "Ipsum", "Dolor"], drag = True)
+		Example Input: makeListFull(["Lorem", "Ipsum", "Dolor"], drag = True, dragDelete = True)
+		Example Input: makeListFull(["Lorem", "Ipsum", "Dolor"], drag = True, dragDelete = True, allowExternalAppDelete = False)
+
+		Example Input: makeListFull(["Lorem", "Ipsum", "Dolor"], drop = True)
+		Example Input: makeListFull(["Lorem", "Ipsum", "Dolor"], drop = True, drag = True)
+
+		Example Input: makeListFull(["Lorem", "Ipsum", "Dolor"], drop = True, dropIndex = 2)
+		Example Input: makeListFull(["Lorem", "Ipsum", "Dolor"], drop = True, dropIndex = -1)
+		Example Input: makeListFull(["Lorem", "Ipsum", "Dolor"], drop = True, dropIndex = -2)
+
+		Example Input: makeListFull(["Lorem", "Ipsum", "Dolor"], drop = True, dropLabel = "text", preDropFunction = self.checkText)
+		"""
+
+		handle = handle_WidgetList()
+		handle.type = "ListFull"
+		handle.build(locals())
+
+		return handle
+
+	def makeListTree(self, choices = [], default = None, root = None,
+		addButton = True, editable = False, rowHighlight = True, drag = False, drop = False,
+		rowLines = True, rootLines = True, variableHeight = True, selectMultiple = False,
+
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
+		preEditFunction = None, preEditFunctionArgs = None, preEditFunctionKwargs = None,
+		postEditFunction = None, postEditFunctionArgs = None, postEditFunctionKwargs = None,
+
+		preRightDragFunction = None, preRightDragFunctionArgs = None, preRightDragFunctionKwargs = None, 
+		postRightDragFunction = None, postRightDragFunctionArgs = None, postRightDragFunctionKwargs = None, 
+		preDropFunction = None, preDropFunctionArgs = None, preDropFunctionKwargs = None, 
+		postDropFunction = None, postDropFunctionArgs = None, postDropFunctionKwargs = None, 
+		dragOverFunction = None, dragOverFunctionArgs = None, dragOverFunctionKwargs = None, 
+
+		preCollapseFunction = None, preCollapseFunctionArgs = None, preCollapseFunctionKwargs = None, 
+		postCollapseFunction = None, postCollapseFunctionArgs = None, postCollapseFunctionKwargs = None, 
+		preExpandFunction = None, preExpandFunctionArgs = None, preExpandFunctionKwargs = None, 
+		postExpandFunction = None, postExpandFunctionArgs = None, postExpandFunctionKwargs = None, 
+
+		rightClickFunction = None, rightClickFunctionArgs = None, rightClickFunctionKwargs = None, 
+		middleClickFunction = None, middleClickFunctionArgs = None, middleClickFunctionKwargs = None, 
+		doubleClickFunction = None, doubleClickFunctionArgs = None, doubleClickFunctionKwargs = None, 
+		
+		keyDownFunction = None, keyDownFunctionArgs = None, keyDownFunctionKwargs = None, 
+		toolTipFunction = None, toolTipFunctionArgs = None, toolTipFunctionKwargs = None, 
+		itemMenuFunction = None, itemMenuFunctionArgs = None, itemMenuFunctionKwargs = None, 
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds a tree list to the next cell on the grid.
+
+		choices (list)          - A list of the choices as strings
+		flags (list)            - A list of strings for which flag to add to the sizer
+		label (any)           - What this is catalogued as
+		default (int)           - Which item in the droplist is selected
+			- If a string is given, it will select the first item in the list that matches that string. If noting matches, it will default to the first element
+		enabled (bool)          - If True: The user can interact with this
+
+		myFunction (str)        - The function that is ran when the user chooses something from the list. If a list is given, each function will be bound.
+		myFunctionArgs (any)    - The arguments for 'myFunction'
+		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
+		
+		preEditFunction (str)       - The function that is ran when the user edits something from the list
+		preEditFunctionArgs (any)   - The arguments for 'preEditFunction'
+		preEditFunctionKwargs (any) - The keyword arguments for 'preEditFunction'function
+		
+		postEditFunction (str)       - The function that is ran when the user edits something from the list
+		postEditFunctionArgs (any)   - The arguments for 'postEditFunction'
+		postEditFunctionKwargs (any) - The keyword arguments for 'postEditFunction'function
+		
+		preRightDragFunction (str)       - The function that is ran when the user tries to right-click drag something from the list; before it begins to drag
+		preRightDragFunctionArgs (any)   - The arguments for 'preRightDragFunction'
+		preRightDragFunctionKwargs (any) - The keyword arguments for 'preRightDragFunction' function
+		
+		postRightDragFunction (str)       - The function that is ran when the user tries to right-click drag something from the list; after it begins to drag
+		postRightDragFunctionArgs (any)   - The arguments for 'postRightDragFunction'
+		postRightDragFunctionKwargs (any) - The keyword arguments for 'postRightDragFunction' function
+		
+		preDropFunction (str)       - The function that is ran when the user tries to drop something from the list; before it begins to drop
+		preDropFunctionArgs (any)   - The arguments for 'preDropFunction'
+		preDropFunctionKwargs (any) - The keyword arguments for 'preDropFunction'function
+		
+		postDropFunction (str)       - The function that is ran when the user tries to drop something from the list; after it drops
+		postDropFunctionArgs (any)   - The arguments for 'postDropFunction'
+		postDropFunctionKwargs (any) - The keyword arguments for 'postDropFunction'function
+		
+		dragOverFunction (str)       - The function that is ran when the user drags something over this object
+		dragOverFunctionArgs (any)   - The arguments for 'dragOverFunction'
+		dragOverFunctionKwargs (any) - The keyword arguments for 'dragOverFunction'function
+		
+		itemCollapseFunction (str)       - The function that is ran when the user collapses an item
+		itemCollapseFunctionArgs (any)   - The arguments for 'itemCollapseFunction'
+		itemCollapseFunctionKwargs (any) - The keyword arguments for 'itemCollapseFunction' function
+		
+		itemExpandFunction (str)       - The function that is ran when the user expands an item
+		itemExpandFunctionArgs (any)   - The arguments for 'itemExpandFunction'
+		itemExpandFunctionKwargs (any) - The keyword arguments for 'itemExpandFunction'function
+
+		itemRightClickFunction (str)       - The function that is ran when the user right clicks on an item
+		itemRightClickFunctionArgs (any)   - The arguments for 'itemRightClickFunction'
+		itemRightClickFunctionKwargs (any) - The keyword arguments for 'itemRightClickFunction' function
+
+		itemMiddleClickFunction (str)       - The function that is ran when the user expands an item
+		itemMiddleClickFunctionArgs (any)   - The arguments for 'itemMiddleClickFunction'
+		itemMiddleClickFunctionKwargs (any) - The keyword arguments for 'itemMiddleClickFunction'function
+
+		keyDownFunction (str)       - The function that is ran when the user uses the arrow keys to select an item
+		keyDownFunctionArgs (any)   - The arguments for 'keyDownFunction'
+		keyDownFunctionKwargs (any) - The keyword arguments for 'keyDownFunction'function
+
+		toolTipFunction (str)       - The function that is ran when the user requests a tool tip
+		toolTipFunctionArgs (any)   - The arguments for 'toolTipFunction'
+		toolTipFunctionKwargs (any) - The keyword arguments for 'toolTipFunction'function
+
+		Example Input: makeListTree(choices = {"Lorem": [{"Ipsum": "Dolor"}, "Sit"], "Amet": None})
+		Example Input: makeListTree(choices = {"Lorem": [{"Ipsum": "Dolor"}, "Sit"], "Amet": None}, label = "chosen")
+		"""
+
+		handle = handle_WidgetList()
+		handle.type = "ListTree"
+		handle.build(locals())
+
+		return handle
+
+	def makeInputSlider(self, myMin = 0, myMax = 100, myInitial = 0, vertical = False,
+
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds a slider bar to the next cell on the grid.
+
+		myMin (int)             - The minimum value of the slider bar
+		myMax (int)             - The maximum value of the slider bar
+		myInitial (int)         - The initial value of the slider bar's position
+		myFunction (str)        - The function that is ran when the user enters text and presses enter
+		flags (list)            - A list of strings for which flag to add to the sizer
+		label (any)           - What this is catalogued as
+		myFunctionArgs (any)    - The arguments for 'myFunction'
+		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
+
+		Example Input: makeInputSlider(0, 100, 50, "initialTemperature")
+		"""
+
+		handle = handle_WidgetInput()
+		handle.type = "Slider"
+		handle.build(locals())
+
+		return handle
+	
+	def makeInputBox(self, text = None, maxLength = None, 
+		password = False, alpha = False, readOnly = False, tab = True, wrap = None, ipAddress = False,
+		
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
+		enterFunction = None, enterFunctionArgs = None, enterFunctionKwargs = None, 
+		postEditFunction = None, postEditFunctionArgs = None, postEditFunctionKwargs = None,  
+		preEditFunction = None, preEditFunctionArgs = None, preEditFunctionKwargs = None,  
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds an input box to the next cell on the grid.
+
+		myFunction (str)       - The function that is ran when the user enters text
+		flags (list)           - A list of strings for which flag to add to the sizer
+		label (any)          - What this is catalogued as
+		myFunctionArgs (any)   - The arguments for 'myFunction'
+		myFunctionKwargs (any) - The keyword arguments for 'myFunction'
+		text (str)             - What is initially in the box
+		maxLength (int)        - If not None: The maximum length of text that can be added
+		
+		selected (bool)  - If True: This is the default thing selected
+		enabled (bool)   - If True: The user can interact with this
+		hidden (bool)    - If True: The widget is hidden from the user, but it is still created
+		password (bool)  - If True: The text within is shown as dots
+		alpha (bool)     - If True: The items will be sorted alphabetically
+		readOnly (bool)  - If True: The user cannot change the text
+		tab (bool)       - If True: The 'Tab' key will move the focus to the next widget
+		wrap (int)       - How many pixels wide the line will be before it wraps. 
+		  If None: no wrapping is done
+		  If positive: Will not break words
+		  If negative: Will break words
+		ipAddress (bool) - If True: The input will accept and understand the semantics of an ip address
+
+		enterFunction (str)       - The function that is ran when the user presses enter while in the input box
+		enterFunctionArgs (any)   - The arguments for 'enterFunction'
+		enterFunctionKwargs (any) - the keyword arguments for 'enterFunction'
+
+		postEditFunction (str)       - The function that is ran after the user clicks out (or tabs out, moves out, etc.) of the input box
+		postEditFunctionArgs (any)   - The arguments for 'postEditFunction'
+		postEditFunctionKwargs (any) - the keyword arguments for 'postEditFunction'
+
+		preEditFunction (str)       - The function that is ran after the user clicks into (or tabs into, moves into, etc.) the input box
+		preEditFunctionArgs (any)   - The arguments for 'preEditFunction'
+		preEditFunctionKwargs (any) - the keyword arguments for 'preEditFunction'
+
+
+		Example Input: makeInputBox("initialTemperature", 0)
+		Example Input: makeInputBox("connect", 0, text = "127.0.0.0", ipAddress = True)
+		"""
+
+		handle = handle_WidgetInput()
+		handle.type = "InputBox"
+		handle.build(locals())
+
+		return handle
+	
+	def makeInputSearch(self, text = None, 
+
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
+		searchFunction = None, searchFunctionArgs = None, searchFunctionKwargs = None, 
+		cancelFunction = None, cancelFunctionArgs = None, cancelFunctionKwargs = None, 
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds an input box to the next cell on the grid.
+
+		myFunction (str)       - The function that is ran when the user enters text and presses enter
+		flags (list)           - A list of strings for which flag to add to the sizer
+		label (any)          - What this is catalogued as
+		myFunctionArgs (any)   - The arguments for 'myFunction'
+		myFunctionKwargs (any) - The keyword arguments for 'myFunction'function
+		text (str)             - What is initially in the box
+		
+		searchFunction (str)       - If provided, this is what will be ran when the search button to the left is pressed
+		searchFunctionArgs (any)   - The arguments for 'searchFunction'
+		searchFunctionKwargs (any) - The keyword arguments for 'searchFunction'function
+		cancelFunction (str)       - If provided, this is what will be ran when the cancel button to the right is pressed
+		cancelFunctionArgs (any)   - The arguments for 'cancelFunction'
+		cancelFunctionKwargs (any) - The keyword arguments for 'cancelFunction'function
+		
+		selected (bool)         - If True: This is the default thing selected
+		enabled (bool)          - If True: The user can interact with this
+
+		Example Input: makeInputSearch("initialTemperature")
+		"""
+
+		handle = handle_WidgetInput()
+		handle.type = "InputSearch"
+		handle.build(locals())
+
+		return handle
+	
+	def makeInputSpinner(self, myMin = 0, myMax = 100, myInitial = 0, size = wx.DefaultSize, maxSize = None, minSize = None,
+		increment = None, digits = None, useFloat = False, readOnly = False, exclude = [],
+
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
+		changeTextFunction = True, changeTextFunctionArgs = None, changeTextFunctionKwargs = None,
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds a spin control to the next cell on the grid. This is an input box for numbers.
+
+		myMin (int)       - The minimum value of the input spinner
+		myMax (int)       - The maximum value of the input spinner
+		myInitial (int)   - The initial value of the input spinner's position
+		myFunction (str)  - The function that is ran when the user scrolls through the numbers
+		flags (list)      - A list of strings for which flag to add to the sizer
+		label (any)     - What this is catalogued as
+
+		maxSize (tuple)   - If not None: The maximum size that the input spinner can be in pixels in the form (x, y) as integers
+		minSize (tuple)   - If not None: The minimum size that the input spinner can be in pixels in the form (x, y) as integers
+		increment (float) - If not None: Will increment by this value
+		digits (float)    - If not None: Will show this many digits past the decimal point. Only applies if 'useFloat' is True
+
+		useFloat (bool) - If True: Will increment decimal numbers instead of integers
+		readOnly (bool) - If True: The user will not be able to change the value
+		exclude (list)  - A list of integers/floats to exclude from the spinner
+		
+		myFunctionArgs (any)           - The arguments for 'myFunction'
+		myFunctionKwargs (any)         - The keyword arguments for 'myFunction'function
+		changeTextFunction (str)       - The function that is ran when the user changes the text in the box directly. If True: Will be the same as myFunction
+		changeTextFunctionArgs (any)   - The arguments for 'changeTextFunction'
+		changeTextFunctionKwargs (any) - The key word arguments for 'changeTextFunction'
+		
+
+		Example Input: makeInputSpinner(0, 100, 50, "initialTemperature")
+		Example Input: makeInputSpinner(0, 100, 50, "initialTemperature", maxSize = (100, 100))
+		Example Input: makeInputSpinner(0, 100, 50, "initialTemperature", exclude = [1,2,3])
+		"""
+
+		handle = handle_WidgetInput()
+		handle.type = "InputSpinner"
+		handle.build(locals())
+
+		return handle
+	
+	def makeButton(self, text = "", valueLabel = None,
+
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds a button to the next cell on the grid.
+
+		text (str)            - What will be written on the button
+		flags (list)            - A list of strings for which flag to add to the sizer
+		myFunction (str)        - What function will be ran when the button is pressed
+		label (any)           - What this is catalogued as
+		valueLabel (str)        - If not None: Which label to get a value from. Ie: TextCtrl, FilePickerCtrl, etc.
+		myFunctionArgs (any)    - The arguments for 'myFunction'
+		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
+		default (bool)          - If True: This is the default thing selected
+		enabled (bool)          - If True: The user can interact with this
+		hidden (bool)           - If True: The widget is hidden from the user, but it is still created
+
+		Example Input: makeButton("Go!", "computeFinArray", 0)
+		"""
+
+		handle = handle_WidgetButton()
+		handle.type = "Button"
+		handle.build(locals())
+
+		return handle
+	
+	def makeButtonToggle(self, text = "", 
+
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds a toggle button to the next cell on the grid.
+
+		text (str)             - What will be written on the button
+		myFunction (str)        - What function will be ran when the button is pressed
+		flags (list)            - A list of strings for which flag to add to the sizer
+		label (any)           - What this is catalogued as
+		myFunctionArgs (any)    - The arguments for 'myFunction'
+		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
+		default (bool)          - If True: This is the default thing selected
+		enabled (bool)          - If True: The user can interact with this
+
+		Example Input: makeButtonToggle("Go!", "computeFinArray")
+		"""
+
+		handle = handle_WidgetButton()
+		handle.type = "ButtonToggle"
+		handle.build(locals())
+
+		return handle
+	
+	def makeButtonCheck(self, text = "", default = False,
+
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds a check box to the next cell on the grid.
+		Event fires every time the check box is clicked
+
+		text (str)             - What will be written to the right of the button
+		myFunction (str)       - What function will be ran when the button is pressed
+		flags (list)           - A list of strings for which flag to add to the sizer
+		label (any)            - What this is catalogued as
+		myFunctionArgs (any)   - The arguments for 'myFunction'
+		myFunctionKwargs (any) - The keyword arguments for 'myFunction'function
+		selected (bool)        - If True: This is the default thing selected
+		enabled (bool)         - If True: The user can interact with this
+		hidden (bool)          - If True: The widget is hidden from the user, but it is still created
+
+		Example Input: makeButtonCheck("compute?", "computeFinArray", 0)
+		"""
+
+		handle = handle_WidgetButton()
+		handle.type = "ButtonCheck"
+		handle.build(locals())
+
+		return handle
+	
+	def makeButtonCheckList(self, choices = [], multiple = True, sort = False,
+
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds a checklist to the next cell on the grid.
+
+		choices (list)          - A list of strings that are the choices for the check boxes
+		myFunction (str)        - What function will be ran when the date is changed
+		flags (list)            - A list of strings for which flag to add to the sizer
+		label (any)           - What this is catalogued as
+		myFunctionArgs (any)    - The arguments for 'myFunction'
+		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
+		multiple (bool)         - True if the user can check off multiple check boxes
+		sort (bool)             - True if the checklist will be sorted alphabetically or numerically
+
+		Example Input: makeButtonCheckList(["Milk", "Eggs", "Bread"], 0, sort = True)
+		"""
+
+		handle = handle_WidgetButton()
+		handle.type = "CheckList"
+		handle.build(locals())
+
+		return handle
+	
+	def makeButtonRadio(self, text = "", groupStart = False, default = False,
+
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds a radio button to the next cell on the grid. If default, it will disable the other
+		radio buttons of the same group.
+
+		text (str)            - What will be written to the right of the button
+		myFunction (str)        - What function will be ran when the button is pressed
+		flags (list)            - A list of strings for which flag to add to the sizer
+		label (int)           - What this is catalogued as
+		myFunctionArgs (any)    - The arguments for 'myFunction'
+		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
+		selected (bool)          - If True: This is the default thing selected
+		enabled (bool)          - If True: The user can interact with this
+		groupStart (bool)       - True if this is the start of a new radio button group.
+
+		Example Input: makeButtonRadio("compute?", "computeFinArray", 0, groupStart = True)
+		"""
+
+		handle = handle_WidgetButton()
+		handle.type = "ButtonRadio"
+		handle.build(locals())
+
+		return handle
+	
+	def makeButtonRadioBox(self, choices = [], title = "", vertical = False, default = 0, maximum = 1,
+
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds a box filled with grouped radio buttons to the next cell on the grid.
+		Because these buttons are grouped, only one can be selected
+
+		choices (list)           - What will be written to the right of the button. ["Button 1", "Button 2", "Button 3"]
+		myFunction (int)        - What function will be ran when the button is pressed
+		title (str)             - What will be written above the box
+		flags (list)            - A list of strings for which flag to add to the sizer
+		label (int)           - What this is catalogued as
+		myFunctionArgs (any)    - The arguments for 'myFunction'
+		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
+		horizontal (bool)       - If True: The box will be oriented horizontally
+								  If False: The box will be oriented vertically
+		default (int)           - Which of the radio buttons will be selected by default
+		enabled (bool)          - If True: The user can interact with this
+		maximum (int)           - The maximum number of rows or columns (defined by 'vertical') the box can have
+
+		Example Input: makeButtonRadioBox(["Button 1", "Button 2", "Button 3"], "self.onQueueValue", 0)
+		"""
+
+		handle = handle_WidgetButton()
+		handle.type = "ButtonRadioBox"
+		handle.build(locals())
+
+		return handle
+	
+	def makeButtonHelp(self, 
+
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds a context help button to the next cell on the grid.
+
+		flags (list)            - A list of strings for which flag to add to the sizer
+		myFunction (str)        - What function will be ran when the button is pressed
+		label (any)           - What this is catalogued as
+		myFunctionArgs (any)    - The arguments for 'myFunction'
+		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
+		default (bool)          - If True: This is the default thing selected
+		enabled (bool)          - If True: The user can interact with this
+		hidden (bool)           - If True: The widget is hidden from the user, but it is still created
+
+		Example Input: makeButtonHelp(label = "myHelpButton")
+		"""
+
+		handle = handle_WidgetButton()
+		handle.type = "ButtonHelp"
+		handle.build(locals())
+
+		return handle
+	
+	def makeButtonImage(self, idlePath = "", disabledPath = "", selectedPath = "", 
+		focusPath = "", hoverPath = "", text = None,
+
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
+
+		label = None, hidden = False, enabled = True, selected = False, toggle = False, default = False,
+		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+		"""Adds a button to the next cell on the grid. You design what the button looks like yourself.
+
+		idlePath (str)         - Where the image of the button idling is on the computer
+		disabledPath (str)     - Where the image of the button disabled is on the computer
+		selectedPath (str)     - Where the image of the button selected is on the computer
+		focusPath (str)        - Where the image of the button focused is on the computer
+		hoverPath (str)        - Where the image of the button hovered is on the computer
+		myFunction (str)       - What function will be ran when the button is pressed
+		flags (list)           - A list of strings for which flag to add to the sizer
+		label (any)            - What this is catalogued as
+		myFunctionArgs (any)   - The arguments for 'myFunction'
+		myFunctionKwargs (any) - The keyword arguments for 'myFunction'function
+		default (bool)         - If True: This is the default thing selected
+		enabled (bool)         - If True: The user can interact with this
+
+		Example Input: makeButtonImage("1.bmp", "2.bmp", "3.bmp", "4.bmp", "5.bmp", "computeFinArray")
+		"""
+
+		handle = handle_WidgetButton()
+		handle.type = "ButtonImage"
+		handle.build(locals())
+
+		return handle
+	
+	def makeImage(self, imagePath = "", internal = False, size = wx.DefaultSize,
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds an embeded image to the next cell on the grid.
+
+		imagePath (str) - Where the image is on the computer. Can be a PIL image. If None, it will be a blank image
+			If 'internal' is on, it is the name of an icon as a string. Here is a list of the icon names:
+				"error"       - A red circle with an 'x' in it
+				"question"    - A white speach bubble with a '?' in it
+				"question2"   - A white speach bubble with a '?' in it. Looks different from "question"
+				"warning"     - A yellow yield sign with a '!' in it
+				"info"        - A white circle with an 'i' in it
+				"font"        - A times new roman 'A'
+				"arrowLeft"   - A white arrow pointing left
+				"arrowRight"  - A white arrow pointing right
+				"arrowUp"     - A white arrow pointing up
+				"arrowDown"   - A white arrow pointing down
+				"arrowCurve"  - A white arrow that moves left and then up
+				"home"        - A white house
+				"print"       - A printer
+				"open"        - "folderOpen" with a green arrow curiving up and then down inside it
+				"save"        - A blue floppy disk
+				"saveAs"      - "save" with a yellow spark in the top right corner
+				"delete"      - "markX" in a different style
+				"copy"        - Two "page" stacked on top of each other with a southeast offset
+				"cut"         - A pair of open scissors with red handles
+				"paste"       - A tan clipboard with a blank small version of "page2" overlapping with an offset to the right
+				"undo"        - A blue arrow that goes to the right and turns back to the left
+				"redo"        - A blue arrow that goes to the left and turns back to the right
+				"lightBulb"   - A yellow light bulb with a '!' in it
+				"folder"      - A blue folder
+				"folderNew"   - "folder" with a yellow spark in the top right corner
+				"folderOpen"  - An opened version of "folder"
+				"folderUp"    - "folderOpen" with a green arrow pointing up inside it
+				"page"        - A blue page with lines on it
+				"page2"       - "page" in a different style
+				"pageNew"     - "page" with a green '+' in the top left corner
+				"pageGear"    - "page" with a blue gear in the bottom right corner
+				"pageTorn"    - A grey square with a white border torn in half lengthwise
+				"markCheck"   - A black check mark
+				"markX"       - A black 'X'
+				"plus"        - A blue '+'
+				"minus"       - A blue '-'
+				"close"       - A black 'X'
+				"quit"        - A door opening to the left with a green arrow coming out of it to the right
+				"find"        - A magnifying glass
+				"findReplace" - "find" with a double sided arrow in the bottom left corner pointing left and right
+				"first"       - A green arrow pointing left with a green vertical line
+				"last"        - A green arrow pointing right with a green vertical line
+				"diskHard"    - ?
+				"diskFloppy"  - ?
+				"diskCd"      - ?
+				"book"        - A blue book with white pages
+				"addBookmark" - A green banner with a '+' by it
+				"delBookmark" - A red banner with a '-' by it
+				"sidePanel"   - A grey box with lines in with a white box to the left with arrows pointing left and right
+				"viewReport"  - A white box with lines in it with a grey box with lines in it on top
+				"viewList"    - A white box with squiggles in it with a grey box with dots in it to the left
 			
+		flags (list)            - A list of strings for which flag to add to the sizer
+		label (any)           - What this is catalogued as
+		internal (bool)         - If True: The 'filePath' provided will represent an internal image
+
+		Example Input: makeImage("1.bmp", 0)
+		Example Input: makeImage(image, 0)
+		Example Input: makeImage("error", 0, internal = True)
+		Example Input: makeImage(image, 0, size = (32, 32))
+		"""
+
+		handle = handle_WidgetImage()
+		handle.type = "Image"
+		handle.build(locals())
+
+		return handle
+	
+	def makeProgressBar(self, myInitial = 0, myMax = 100, vertical = False,
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds progress bar to the next cell on the grid.
+
+		myInitial (int)         - The value that the progress bar starts at
+		myMax (int)             - The value that the progress bar is full at
+		flags (list)            - A list of strings for which flag to add to the sizer
+		label (any)           - What this is catalogued as
+
+		Example Input: makeProgressBar(0, 100)
+		"""
+
+		handle = handle_Widget_Base()
+		handle.type = "ProgressBar"
+		handle.build(locals())
+
+		return handle
+
+	def makeToolBar(self, showText = False, showIcon = True, showDivider = True,
+		detachable = False, flat = False, vertical = False, align = True,
+		vertical_text = False, showToolTip = True, top = True,
+
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds a tool bar to the next cell on the grid.
+		Menu items can be added to this.
+
+		label (str)     - What this is called in the idCatalogue
+		detachable (bool) - If True: The menu can be undocked
+
+		Example Input: makeToolBar()
+		Example Input: makeToolBar(label = "first")
+		"""
+
+		handle = handle_Menu()
+		handle.type = "ToolBar"
+		handle.build(locals())
+
+		return handle
+	
+	def makePickerColor(self, initial = None, addInputBox = False, colorText = False,
+
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds a color picker to the next cell on the grid.
+		It can display the name or RGB of the color as well.
+
+		myFunction (str)        - What function will be ran when the color is chosen
+		flags (list)            - A list of strings for which flag to add to the sizer
+		label (any)           - What this is catalogued as
+		myFunctionArgs (any)    - The arguments for 'myFunction'
+		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
+
+		Example Input: makePickerColor(label = "changeColor")
+		"""
+
+		handle = handle_WidgetPicker()
+		handle.type = "PickerColor"
+		handle.build(locals())
+
+		return handle
+	
+	def makePickerFont(self, maxSize = 72, addInputBox = False, fontText = False,
+
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds a color picker to the next cell on the grid.
+		It can display the name or RGB of the color as well.
+
+		maxSize (int)           - The maximum font size that can be chosen
+		myFunction (str)        - What function will be ran when the color is chosen
+		flags (list)            - A list of strings for which flag to add to the sizer
+		label (any)           - What this is catalogued as
+		myFunctionArgs (any)    - The arguments for 'myFunction'
+		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
+		fontText (str)          - True if it should show the name of the font picked
+
+		Example Input: makePickerFont(32, "changeFont")
+		"""
+
+		handle = handle_WidgetPicker()
+		handle.type = "PickerFont"
+		handle.build(locals())
+
+		return handle
+	
+	def makePickerFile(self, text = "Select a File", default = "", initialDir = "*.*", 
+		directoryOnly = False, changeCurrentDirectory = False, fileMustExist = False, openFile = False, 
+		saveConfirmation = False, saveFile = False, smallButton = False, addInputBox = False, 
+
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds a file picker to the next cell on the grid.
+
+		flags (list)      - A list of strings for which flag to add to the sizer
+		label (any)     - What this is catalogued as
+		text (str)        - What is shown on the top of the popout window
+		default (str)     - What the default value will be for the input box
+
+		initialDir (str)              - Which directory it will start at. By default this is the directory that the program is in
+		directoryOnly (bool)          - If True: Only the directory will be shown; no files will be shown
+		changeCurrentDirectory (bool) - If True: Changes the current working directory on each user file selection change
+		fileMustExist (bool)          - If True: When a file is opened, it must exist
+		openFile (bool)               - If True: The file picker is configured to open a file
+		saveConfirmation (bool)       - If True: When a file is saved over an existing file, it makes sure you want to do that
+		saveFile (bool)               - If True: The file picker is configured to save a file
+		smallButton (bool)            - If True: The file picker button will be small
+		addInputBox (bool)            - If True: The file picker will have an input box that updates with the chosen directory. A chosen directory can be pasted/typed into this box as well
+		hidden (bool)                 - If True: The widget is hidden from the user, but it is still created
+
+		myFunction (str)       - What function will be ran when the file is chosen
+		myFunctionArgs (any)   - The arguments for 'myFunction'
+		myFunctionKwargs (any) - The keyword arguments for 'myFunction'function
+		
+
+		Example Input: makePickerFile(myFunction = self.openFile, addInputBox = True)
+		Example Input: makePickerFile(saveFile = True, myFunction = self.saveFile, saveConfirmation = True, directoryOnly = True)
+		"""
+
+		handle = handle_WidgetPicker()
+		handle.type = "PickerFile"
+		handle.build(locals())
+
+		return handle
+	
+	def makePickerFileWindow(self, initialDir = "*.*", 
+		directoryOnly = True, selectMultiple = False, showHidden = True,
+
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
+		editLabelFunction = None, editLabelFunctionArgs = None, editLabelFunctionKwargs = None, 
+		rightClickFunction = None, rightClickFunctionArgs = None, rightClickFunctionKwargs = None, 
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds a file picker window to the next cell on the grid.
+
+		myFunction (str)               - What function will be ran when the file is chosen
+		flags (list)                   - A list of strings for which flag to add to the sizer
+		label (any)                  - What this is catalogued as
+		myFunctionArgs (any)           - The arguments for 'myFunction'
+		myFunctionKwargs (any)         - The keyword arguments for 'myFunction'function
+		initialDir (str)               - Which directory it will start at. By default this is the directory that the program is in.
+		editLabelFunction (str)        - What function will be ran when a label is edited
+		editLabelFunctionArgs (any)    - The arguments for 'myFunction'
+		editLabelFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
+		rightClickFunction (str)       - What function will be ran when an item is right clicked
+		rightClickFunctionArgs (any)   - The arguments for 'myFunction'
+		rightClickFunctionKwargs (any) - The keyword arguments for 'myFunction'function
+		directoryOnly (bool)           - If True: Only the directory will be shown; no files will be shown
+		selectMultiple (bool)          - If True: It is possible to select multiple files by using the [ctrl] key while clicking
+
+		Example Input: makePickerFileWindow("changeDirectory")
+		"""
+
+		handle = handle_WidgetPicker()
+		handle.type = "PickerFileWindow"
+		handle.build(locals())
+
+		return handle
+	
+	def makePickerTime(self, time = None,
+
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds a time picker to the next cell on the grid.
+		The input time is in military time.
+
+		myFunction (str)        - What function will be ran when the time is changed
+		time (str)              - What the currently selected time is as 'hh:mm:ss'
+								  If None: The current time will be used
+		flags (list)            - A list of strings for which flag to add to the sizer
+		label (any)           - What this is catalogued as
+		myFunctionArgs (any)    - The arguments for 'myFunction'
+		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
+		hidden (bool)           - If True: The widget is hidden from the user, but it is still created
+
+		Example Input: makePickerTime()
+		Example Input: makePickerTime("17:30")
+		Example Input: makePickerTime("12:30:20")
+		"""
+
+		handle = handle_WidgetPicker()
+		handle.type = "PickerTime"
+		handle.build(locals())
+
+		return handle
+	
+	def makePickerDate(self, date = None, dropDown = False, 
+
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds a date picker to the next cell on the grid.
+
+		myFunction (str)        - What function will be ran when the date is changed
+		date (str)              - What the currently selected date is
+								  If None: The current date will be used
+		flags (list)            - A list of strings for which flag to add to the sizer
+		label (any)           - What this is catalogued as
+		myFunctionArgs (any)    - The arguments for 'myFunction'
+		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
+		dropDown (bool)         - True if a calandar dropdown should be displayed instead of just the arrows
+		hidden (bool)           - If True: The widget is hidden from the user, but it is still created
+
+		Example Input: makePickerDate()
+		Example Input: makePickerDate("10/16/2000")
+		Example Input: makePickerDate(dropDown = True)
+		"""
+
+		handle = handle_WidgetPicker()
+		handle.type = "PickerDate"
+		handle.build(locals())
+
+		return handle
+	
+	def makePickerDateWindow(self, date = None, showHolidays = False, showOther = False,
+		
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
+		dayFunction = None, dayFunctionArgs = None, dayFunctionKwargs = None, 
+		monthFunction = None, monthFunctionArgs = None, monthFunctionKwargs = None, 
+		yearFunction = None, yearFunctionArgs = None, yearFunctionArgsKwargs = None, 
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Adds a date picker to the next cell on the grid.
+
+		myFunction (str)          - What function will be ran when the date is changed
+		date (str)                - What the currently selected date is
+									If None: The current date will be used
+		flags (list)              - A list of strings for which flag to add to the sizer
+		label (any)             - What this is catalogued as
+		myFunctionArgs (any)      - The arguments for 'myFunction'
+		myFunctionKwargs (any)    - The keyword arguments for 'myFunction'function
+		showHoliday (bool)        - True if the holidays, weekends, and sunday will be bolded
+		showOther (bool)          - True if the surrounding week's days will be shown
+		hidden (bool)             - If True: The widget is hidden from the user, but it is still created
+
+		dayFunction (str)         - What function will be ran when day is changed
+		dayFunctionArgs (any)     - The arguments for 'dayFunction'
+		dayFunctionKwargs (any)   - The keyword arguments for 'dayFunction'function
+
+		monthFunction (str)       - What function will be ran when month is changed
+		monthFunctionArgs (any)   - The arguments for 'monthFunction'
+		monthFunctionKwargs (any) - The keyword arguments for 'monthFunction'function
+
+		yearFunction (str)        - What function will be ran when year is changed
+		yearFunctionArgs (any)    - The arguments for 'yearFunction'
+		yearFunctionKwargs (any)  - The keyword arguments for 'yearFunction'function
+
+
+		Example Input: makePickerDateWindow()
+		"""
+
+		handle = handle_WidgetPicker()
+		handle.type = "PickerDateWindow"
+		handle.build(locals())
+
+		return handle
+
+	def makeCanvas(self, size = wx.DefaultSize, position = wx.DefaultPosition, 
+		panel = {},
+
+		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Creates a blank canvas window.
+
+		size (int tuple)  - The size of the canvas. (length, width)
+		label (str)     - What this is called in the idCatalogue
+		border (str)      - What style the border has. "simple", "raised", "sunken" or "none". Only the first two letters are necissary
+		
+		tabTraversal (bool)   - If True: Pressing [tab] will move the cursor to the next widget
+		useDefaultSize (bool) - If True: The xSize and ySize will be overridden to fit as much of the widgets as it can. Will lock the canvas size from re-sizing
+
+		initFunction (str)       - The function that is ran when the canvas first appears
+		initFunctionArgs (any)   - The arguments for 'initFunction'
+		initFunctionKwargs (any) - The keyword arguments for 'initFunction'function
+
+		Example Input: makeCanvas()
+		"""
+
+		handle = handle_WidgetCanvas()
+		handle.type = "Canvas"
+		handle.build(locals())
+
+		return handle
+
+	def makeTable(self, rows = 1, columns = 1,
+		contents = None, gridLabels = [[],[]], toolTips = None, autoSizeRow = False, autoSizeColumn = False,
+		rowSize = None, columnSize = None, rowLabelSize = None, columnLabelSize = None, 
+		rowSizeMinimum = None, columnSizeMinimum = None, rowSizeMaximum = None, columnSizeMaximum = None,
+
+		showGrid = True, dragableRows = False, dragableColumns = False, arrowKeyExitEdit = False, enterKeyExitEdit = False, editOnEnter = False, 
+		readOnly = False, readOnlyDefault = False, default = (0, 0), cellType = None, cellTypeDefault = "inputbox",
+
+		preEditFunction = None, preEditFunctionArgs = None, preEditFunctionKwargs = None, 
+		postEditFunction = None, postEditFunctionArgs = None, postEditFunctionKwargs = None, 
+		dragFunction = None, dragFunctionArgs = None, dragFunctionKwargs = None, 
+		selectManyFunction = None, selectManyFunctionArgs = None, selectManyFunctionKwargs = None, 
+		selectSingleFunction = None, selectSingleFunctionArgs = None, selectSingleFunctionKwargs = None, 
+		rightClickCellFunction = None, rightClickCellFunctionArgs = None, rightClickCellFunctionKwargs = None, 
+		rightClickLabelFunction = None, rightClickLabelFunctionArgs = None, rightClickLabelFunctionKwargs = None,
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+
+		"""Adds a table to the next cell on the grid. 
+		If enabled, it can be edited; the column &  sizerNumber, size can be changed.
+		To get a cell value, use: myGridId.GetCellValue(row, column).
+		For a deep tutorial: http://www.blog.pythonlibrary.org/2010/03/18/wxpython-an-introduction-to-grids/
+
+		rows (int)        - The number of rows the table has
+		columns (int)     - The number of columns the table has
+		sizerNumber (int) - The number of the sizer that this will be added to
+		tableNumber (int) - The table catalogue number for this new table
+		flags (list)      - A list of strings for which flag to add to the sizer
+		contents (list)   - Either a 2D list [[row], [column]] or a numpy array that contains the contents of each cell. If None, they will be blank.
+		gridLabels (str)  - The labels for the [[rows], [columns]]. If not enough are provided, the resst will be capital letters.
+		toolTips (list)   - The coordinates and message for all the tool tips. [[row, column, message], [row, column, message], ...]
+		label (str)       - What this is called in the idCatalogue
+		
+		rowSize (str)           - The height of the rows
+			- If None: Will make it the default size
+			- If dict: {row (int): size (int)}. Use None to define the default size
+		columnSize (str)        - The width of the columns
+			- If None: Will make it the default size
+			- If dict: {column (int): size (int)}. Use None to define the default size
+		rowLabelSize (int)      - The width of the row labels
+			- If None: Will make it the default size
+		columnLabelSize (int)   - The height of the column labels
+			- If None: Will make it the default size
+
+		rowSizeMinimum (str)    - The minimum height for the rows
+			- If None: Will not restrict minimum row size
+		columnSizeMinimum (str) - The minimum width for the columns
+			- If None: Will not restrict minimum column size
+		rowSizeMaximum (str)    - The maximum height for the rows. Does not apply to the user, only when the program is setting the size
+			- If None: Will not restrict maximum row size
+		columnSizeMaximum (str) - The maximum width for the columns. Does not apply to the user, only when the program is setting the size
+			- If None: Will not restrict maximum column size
+
+		autoSizeRow (bool)      - Determines the size of the rows based on the sizer element. 'rowSize' will override this
+			- If dict: {row (int): autoSize (int)}. Use None to define the default state
+		autoSizeColumn (bool)   - Determines the size of the columns based on the sizer element. 'columnSize' will override this
+			- If dict: {column (int): autoSize (int)}. Use None to define the default state
+		
+		showGrid (bool)         - If True: the grid lines will be visible
+		dragableRows (bool)     - If True: The user can drag the row lines of the cells
+		dragableColumns (bool)  - If True: The user can drag the column lines of the cells
+		editOnEnter (bool)      - Determiens the default behavior for the enter key
+			- If True: The user will begin editing the cell when enter is pressed
+			- If False: The cursor will move down to the next row
+		arrowKeyExitEdit (bool) - If True: The user will stop editing and navigate the grid if they use the arrow keys while editing instead of navigating the editor box
+		enterKeyExitEdit (bool) - If True: If the user presses enter while editing a cell, the cursor will move down
+		readOnly (bool)         - Determines the editability of the table
+			- If True: The user will not be able to edit the cells. If an edit function is provided, this cell will be ignored
+			- If False: The user will be able to edit all cells.
+			- A dictionary can be given to single out specific cells, rows, or columns
+				~ {row number (int): {column number (int): readOnly for the cell (bool)}}
+				~ {row number (int): readOnly for the whole row (bool)}
+				~ {None: {column number (int): readOnly for the whole column (bool)}}
+		readOnlyDefault (bool)  - What readOnly value to give a cell if the user does not provide one
+		default (tuple)         - Which cell the table starts out with selected. (row, column)
+		cellType (dict)         - Determines the widget type used for a specific cell in the table
+				~ {row number (int): {column number (int): cell type for the cell (str)}}
+				~ {row number (int): cell type for the whole row (str)}
+				~ {None: {column number (int): cell type for the whole column (str)}}
+		cellTypeDefault (str)   - What the cells default to as a widget
+			- Possible Inputs: "inputbox", "droplist"
+
+		preEditFunction (str)               - The function that is ran when the user edits a cell. If None: the user cannot edit cells. Accessed cells are before the edit
+		preEditFunctionArgs (any)           - The arguments for 'preEditFunction'
+		preEditFunctionKwargs (any)         - The keyword arguments for 'preEditFunction'
+		postEditFunction (str)              - The function that is ran when the user edits a cell. If None: the user cannot edit cells. Accessed cells are after the edit
+		postEditFunctionArgs (any)          - The arguments for 'postEditFunction'
+		postEditFunctionKwargs (any)        - The keyword arguments for 'postEditFunction'
+		
+		dragFunction (str)                  - The function that is ran when the user drags a row or column. If None: the user cannot drag rows or columns
+		dragFunctionArgs (any)              - The arguments for 'dragFunction'
+		dragFunctionKwargs (any)            - The keyword arguments for 'dragFunction'
+		selectManyFunction (str)            - The function that is ran when the user selects a group of continuous cells
+		selectManyFunctionArgs (any)        - The arguments for 'selectManyFunction'
+		selectManyFunctionKwargs (any)      - The keyword arguments for 'selectManyFunction'
+		selectSingleFunction (str)          - The function that is ran when the user selects a single cell
+		selectSingleFunctionArgs (any)      - The arguments for 'selectSingleFunction'
+		selectSingleFunctionKwargs (any)    - The keyword arguments for 'selectSingleFunction'
+		
+		rightClickCellFunction (str)        - What function will be ran when a cell is right clicked
+		rightClickCellFunctionArgs (any)    - The arguments for 'rightClickCellFunction'
+		rightClickCellFunctionKwargs (any)  - The keyword arguments for 'rightClickCellFunction'function
+		rightClickLabelFunction (str)       - What function will be ran when a column or row label is right clicked
+		rightClickLabelFunctionArgs (any)   - The arguments for 'rightClickLabelFunction'
+		rightClickLabelFunctionKwargs (any) - The keyword arguments for 'rightClickLabelFunction'function
+
+		wizardFrameNumber (int) - The number of the wizard page. If None, it assumes either a frame or a panel
+
+		Example Input: makeTable()
+		Example Input: makeTable(rows = 3, columns = 4)
+		Example Input: makeTable(rows = 3, columns = 4, contents = [[1, 2, 3], [a, b, c], [4, 5, 6], [d, e, f]])
+		Example Input: makeTable(rows = 3, columns = 4, contents = myArray)
+
+		Example Input: makeTable(rows = 3, columns = 4, readOnly = True)
+		Example Input: makeTable(rows = 3, columns = 4, readOnly = {1: True})
+		Example Input: makeTable(rows = 3, columns = 4, readOnly = {1: {1: True, 3: True}})
+		Example Input: makeTable(rows = 3, columns = 4, readOnly = {None: {1: True})
+
+		Example Input: makeTable(rows = 3, columns = 4, cellType = {1: "droplist"})
+		Example Input: makeTable(rows = 3, columns = 4, cellType = {1: {1: "droplist", 3: "droplist"}})
+		Example Input: makeTable(rows = 3, columns = 4, cellType = {None: {1: "droplist"}})
+
+		Example Input: makeTable(rows = 3, columns = 4, columnSize = 20)
+		Example Input: makeTable(rows = 3, columns = 4, columnSize = {0: 50, None: 20})
+		Example Input: makeTable(rows = 3, columns = 4, columnSize = {0: 50}, autoSizeColumn = True)
+		Example Input: makeTable(rows = 3, columns = 4, columnSize = {0: 50, None: 20}, autoSizeColumn = {1: True})
+		"""
+
+		handle = handle_WidgetTable()
+		handle.type = "Table"
+		handle.build(locals())
+
+		return handle
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class CommonEventFunctions():
 	"""Contains common functions used for events bound to wxObjects.
@@ -2986,6 +4282,14 @@ class handle_Base(Utilities, CommonEventFunctions):
 			self.myWindow = None
 		else:
 			self.myWindow = buildSelf.myWindow
+		
+		#Determine controller
+		if (isinstance(buildSelf, Controller)):
+			self.controller = buildSelf
+		elif (not isinstance(buildSelf, handle_Window)):
+			self.controller = buildSelf.myWindow.controller
+		else:
+			self.controller = buildSelf.controller
 
 	def postBuild(self, argument_catalogue):
 		"""Runs after this object is built."""
@@ -3102,11 +4406,6 @@ class handle_Container_Base(handle_Base):
 
 			buildSelf.allowBuildErrors = nestingCatalogue[buildSelf.nestingAddress[0]][None].allowBuildErrors
 			self.allowBuildErrors = buildSelf.allowBuildErrors
-
-	def postBuild(self, argument_catalogue):
-		"""Runs after this object is built."""
-		
-		handle_Base.postBuild(self, argument_catalogue)
 
 	def overloadHelp(self, myFunction, label, kwargs, window = False):
 		"""Helps the overloaded functions to stay small.
@@ -3443,7 +4742,7 @@ class handle_Container_Base(handle_Base):
 			sizerFunction = handle_Window.addSizerText
 		else:
 			sizerFunction = handle_Window.addSizerWrap
-		kwargs = {item.name: item.default for item in inspect.signature(sizerFunction).parameters.values()}
+		kwargs = self.arrangeArguments(sizerFunction, kwargDict = {"self": parent})
 
 		#Create Handler
 		sizer = handle_Sizer()
@@ -3469,7 +4768,7 @@ class handle_Container_Base(handle_Base):
 			raise ValueError(errorMessage)
 
 		#Overwrite default with user given data
-		kwargs = {item.name: item.default for item in inspect.signature(handle_Window.addPanel).parameters.values()}
+		kwargs = self.arrangeArguments(handle_Window.addPanel, kwargDict = {"self": parent})
 		for key, value in instructions.items():
 			kwargs[key] = value
 
@@ -3567,23 +4866,6 @@ class handle_Widget_Base(handle_Base):
 
 			buildSelf.allowBuildErrors = nestingCatalogue[buildSelf.nestingAddress[0]][None].allowBuildErrors
 			self.allowBuildErrors = buildSelf.allowBuildErrors
-
-	def postBuild(self, argument_catalogue):
-		"""Runs after this object is built."""
-		
-		handle_Base.postBuild(self, argument_catalogue)
-		
-		#Unpack arguments
-		selected, flags, flex, mySizer = self.getArguments(argument_catalogue, ["selected", "flags", "flex", "mySizer"])
-
-		#Determine if it is selected by default
-		if (selected):
-			self.thing.SetDefault()
-		
-		#Add it to the sizer
-		if (mySizer == None):
-			mySizer = self.mySizer
-		mySizer.nest(self, flex = flex, flags = flags)
 
 	def build(self, argument_catalogue):
 		"""Determiens which build system to use for this handle."""
@@ -4086,30 +5368,31 @@ class handle_WidgetText(handle_Widget_Base):
 			#Ensure correct format
 			if (not isinstance(text, str)):
 				text = f"{text}"
-			if (not isinstance(argument_catalogue["flags"], (list, tuple, range))):
-				argument_catalogue["flags"] = [argument_catalogue["flags"]]
+			# if (not isinstance(argument_catalogue["flags"], (list, tuple, range))):
+			# 	argument_catalogue["flags"] = [argument_catalogue["flags"]]
 
-			#Apply Settings
-			if (alignment != None):
-				if (isinstance(alignment, bool)):
-					if (alignment):
-						style = "wx.ALIGN_LEFT"
-						argument_catalogue["flags"].append("al")
-					else:
-						style = "wx.ALIGN_CENTRE"
-						argument_catalogue["flags"].append("ac")
-				elif (alignment == 0):
-					style = "wx.ALIGN_LEFT"
-					argument_catalogue["flags"].append("al")
-				elif (alignment == 1):
-					style = "wx.ALIGN_RIGHT"
-					argument_catalogue["flags"].append("ar")
-				else:
-					style = "wx.ALIGN_CENTRE"
-					argument_catalogue["flags"].append("ac")
-			else:
-				style = "wx.ALIGN_CENTRE"
-				argument_catalogue["flags"].append("ac")
+			# #Apply Settings
+			# if (alignment != None):
+			# 	if (isinstance(alignment, bool)):
+			# 		if (alignment):
+			# 			style = "wx.ALIGN_LEFT"
+			# 			argument_catalogue["flags"].append("al")
+			# 		else:
+			# 			style = "wx.ALIGN_CENTRE"
+			# 			argument_catalogue["flags"].append("ac")
+			# 	elif (alignment == 0):
+			# 		style = "wx.ALIGN_LEFT"
+			# 		argument_catalogue["flags"].append("al")
+			# 	elif (alignment == 1):
+			# 		style = "wx.ALIGN_RIGHT"
+			# 		argument_catalogue["flags"].append("ar")
+			# 	else:
+			# 		style = "wx.ALIGN_CENTRE"
+			# 		argument_catalogue["flags"].append("ac")
+			# else:
+			# 	style = "wx.ALIGN_CENTRE"
+			# 	argument_catalogue["flags"].append("ac")
+			style = "wx.ALIGN_CENTRE"
 			
 			if (ellipsize != None):
 				if (isinstance(ellipsize, bool)):
@@ -7034,7 +8317,7 @@ class handle_Menu(handle_Container_Base):
 
 			vertical, detachable, flat, align, top = self.getArguments(argument_catalogue, ["vertical", "detachable", "flat", "align", "top"])
 			showIcon, showDivider, showToolTip, showText = self.getArguments(argument_catalogue, ["showIcon", "showDivider", "showToolTip", "showText"])
-			flags, flex, vertical_text, myFunction = self.getArguments(argument_catalogue, ["flags", "flex", "vertical_text", "myFunction"])
+			vertical_text, myFunction = self.getArguments(argument_catalogue, ["vertical_text", "myFunction"])
 
 			if (vertical):
 				style = "wx.TB_VERTICAL"
@@ -7066,8 +8349,6 @@ class handle_Menu(handle_Container_Base):
 			
 			self.thing = wx.ToolBar(self.parent.thing, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 			self.thing.Realize()
-
-			self.mySizer.nest(self, flex = flex, flags = flags)
 
 			#Bind the function(s)
 			if (myFunction != None):
@@ -7384,7 +8665,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type.lower() == "toolbar"):
 			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			handle.subHandle = handle_Sizer.addText(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			handle.subHandle = self.makeText(*args, **kwargs)
 			selected = False
 			mySizer = self
 			handle.build(locals())
@@ -7400,7 +8681,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type.lower() == "toolbar"):
 			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			handle.subHandle = handle_Sizer.addHyperlink(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			handle.subHandle = self.makeHyperlink(*args, **kwargs)
 			selected = False
 			mySizer = self
 			handle.build(locals())
@@ -7416,7 +8697,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type.lower() == "toolbar"):
 			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			handle.subHandle = handle_Sizer.addLine(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			handle.subHandle = self.makeLine(*args, **kwargs)
 			selected = False
 			mySizer = self
 			handle.build(locals())
@@ -7432,7 +8713,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type.lower() == "toolbar"):
 			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			handle.subHandle = handle_Sizer.addListDrop(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			handle.subHandle = self.makeListDrop(*args, **kwargs)
 			selected = False
 			mySizer = self
 			handle.build(locals())
@@ -7448,7 +8729,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type.lower() == "toolbar"):
 			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			handle.subHandle = handle_Sizer.addListFull(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			handle.subHandle = self.makeListFull(*args, **kwargs)
 			selected = False
 			mySizer = self
 			handle.build(locals())
@@ -7464,7 +8745,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type.lower() == "toolbar"):
 			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			handle.subHandle = handle_Sizer.addInputSlider(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			handle.subHandle = self.makeInputSlider(*args, **kwargs)
 			selected = False
 			mySizer = self
 			handle.build(locals())
@@ -7480,7 +8761,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type.lower() == "toolbar"):
 			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			handle.subHandle = handle_Sizer.addInputBox(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			handle.subHandle = self.makeInputBox(*args, **kwargs)
 			selected = False
 			mySizer = self
 			handle.build(locals())
@@ -7496,7 +8777,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type.lower() == "toolbar"):
 			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			handle.subHandle = handle_Sizer.addInputSearch(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			handle.subHandle = self.makeInputSearch(*args, **kwargs)
 			selected = False
 			mySizer = self
 			handle.build(locals())
@@ -7512,7 +8793,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type.lower() == "toolbar"):
 			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			handle.subHandle = handle_Sizer.addInputSpinner(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			handle.subHandle = self.makeInputSpinner(*args, **kwargs)
 			selected = False
 			mySizer = self
 			handle.build(locals())
@@ -7528,7 +8809,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type.lower() == "toolbar"):
 			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			handle.subHandle = handle_Sizer.addButton(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			handle.subHandle = self.makeButton(*args, **kwargs)
 			selected = False
 			mySizer = self
 			handle.build(locals())
@@ -7544,7 +8825,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type.lower() == "toolbar"):
 			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			handle.subHandle = handle_Sizer.addButtonToggle(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			handle.subHandle = self.makeButtonToggle(*args, **kwargs)
 			selected = False
 			mySizer = self
 			handle.build(locals())
@@ -7560,7 +8841,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type.lower() == "toolbar"):
 			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			handle.subHandle = handle_Sizer.addButtonCheck(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			handle.subHandle = self.makeButtonCheck(*args, **kwargs)
 			selected = False
 			mySizer = self
 			handle.build(locals())
@@ -7576,7 +8857,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type.lower() == "toolbar"):
 			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			handle.subHandle = handle_Sizer.addButtonCheckList(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			handle.subHandle = self.makeButtonCheckList(*args, **kwargs)
 			selected = False
 			mySizer = self
 			handle.build(locals())
@@ -7592,7 +8873,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type.lower() == "toolbar"):
 			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			handle.subHandle = handle_Sizer.addButtonRadio(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			handle.subHandle = self.makeButtonRadio(*args, **kwargs)
 			selected = False
 			mySizer = self
 			handle.build(locals())
@@ -7608,7 +8889,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type.lower() == "toolbar"):
 			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			handle.subHandle = handle_Sizer.addButtonRadioBox(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			handle.subHandle = self.makeButtonRadioBox(*args, **kwargs)
 			selected = False
 			mySizer = self
 			handle.build(locals())
@@ -7624,7 +8905,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type.lower() == "toolbar"):
 			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			handle.subHandle = handle_Sizer.addButtonImage(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			handle.subHandle = self.makeButtonImage(*args, **kwargs)
 			selected = False
 			mySizer = self
 			handle.build(locals())
@@ -7640,7 +8921,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type.lower() == "toolbar"):
 			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			handle.subHandle = handle_Sizer.addImage(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			handle.subHandle = self.makeImage(*args, **kwargs)
 			selected = False
 			mySizer = self
 			handle.build(locals())
@@ -7656,7 +8937,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type.lower() == "toolbar"):
 			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			handle.subHandle = handle_Sizer.addProgressBar(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			handle.subHandle = self.makeProgressBar(*args, **kwargs)
 			selected = False
 			mySizer = self
 			handle.build(locals())
@@ -7672,7 +8953,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type.lower() == "toolbar"):
 			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			handle.subHandle = handle_Sizer.addPickerColor(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			handle.subHandle = self.makePickerColor(*args, **kwargs)
 			selected = False
 			mySizer = self
 			handle.build(locals())
@@ -7688,7 +8969,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type.lower() == "toolbar"):
 			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			handle.subHandle = handle_Sizer.addPickerFont(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			handle.subHandle = self.makePickerFont(*args, **kwargs)
 			selected = False
 			mySizer = self
 			handle.build(locals())
@@ -7704,7 +8985,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type.lower() == "toolbar"):
 			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			handle.subHandle = handle_Sizer.addPickerFile(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			handle.subHandle = self.makePickerFile(*args, **kwargs)
 			selected = False
 			mySizer = self
 			handle.build(locals())
@@ -7720,7 +9001,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type.lower() == "toolbar"):
 			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			handle.subHandle = handle_Sizer.addPickerFileWindow(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			handle.subHandle = self.makePickerFileWindow(*args, **kwargs)
 			selected = False
 			mySizer = self
 			handle.build(locals())
@@ -7736,7 +9017,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type.lower() == "toolbar"):
 			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			handle.subHandle = handle_Sizer.addPickerTime(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			handle.subHandle = self.makePickerTime(*args, **kwargs)
 			selected = False
 			mySizer = self
 			handle.build(locals())
@@ -7752,7 +9033,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type.lower() == "toolbar"):
 			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			handle.subHandle = handle_Sizer.addPickerDate(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			handle.subHandle = self.makePickerDate(*args, **kwargs)
 			selected = False
 			mySizer = self
 			handle.build(locals())
@@ -7768,7 +9049,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type.lower() == "toolbar"):
 			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			handle.subHandle = handle_Sizer.addPickerDateWindow(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			handle.subHandle = self.makePickerDateWindow(*args, **kwargs)
 			selected = False
 			mySizer = self
 			handle.build(locals())
@@ -7784,7 +9065,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type.lower() == "toolbar"):
 			handle = handle_MenuItem()
 			handle.type = "ToolBarItem"
-			handle.subHandle = handle_Sizer.addCanvas(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			handle.subHandle = self.makeCanvas(*args, **kwargs)
 			selected = False
 			mySizer = self
 			handle.build(locals())
@@ -7818,17 +9099,6 @@ class handle_MenuItem(handle_Widget_Base):
 			value = 0
 
 		return value
-
-	# def postBuild(self, argument_catalogue):
-	# 	buildSelf = self.getArguments(argument_catalogue, "self")
-
-	# 	handle_Widget_Base.postBuild(self, argument_catalogue)
-
-	# 	# #Determine native window
-	# 	# if (isinstance(buildSelf, handle_Window)):
-	# 	# 	self.myWindow = buildSelf
-	# 	# else:
-	# 	# 	self.myWindow = buildSelf.myWindow
 
 	def build(self, argument_catalogue):
 		"""Determiens which build system to use for this handle."""
@@ -8190,20 +9460,6 @@ class handle_MenuPopup(handle_Container_Base):
 		"""Returns what the contextual length is for the object associated with this handle."""
 
 		return len(self.contents)
-
-	def postBuild(self, argument_catalogue):
-		"""Runs after this object is built."""
-
-		handle_Container_Base.postBuild(self, argument_catalogue)
-
-		# #Remember window handle
-		# buildSelf = self.getArguments(argument_catalogue, ["self"])
-		# if (isinstance(buildSelf, handle_Window)):
-		# 	#Main Menu
-		# 	self.myWindow = buildSelf
-		# else:
-		# 	#Sub Menu
-		# 	self.myWindow = buildSelf.myWindow
 
 	def build(self, argument_catalogue):
 		"""Determiens which build system to use for this handle."""
@@ -8694,7 +9950,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 			raise ValueError(errorMessage)
 
 		#Overwrite default with user given data
-		kwargs = {item.name: item.default for item in inspect.signature(handle_Window.addPanel).parameters.values()}
+		kwargs = self.arrangeArguments(handle_Window.addPanel, kwargDict = {"self": parent})
 		for key, value in instructions.items():
 			kwargs[key] = value
 
@@ -12263,12 +13519,11 @@ class handle_Sizer(handle_Container_Base):
 			sizerFunction = handle_Window.addSizerText
 		else:
 			sizerFunction = handle_Window.addSizerWrap
-		for item in inspect.signature(sizerFunction).parameters.values():
-			if (item.name not in argument_catalogue):
-				argument_catalogue[item.name] = item.default
+
+		argument_catalogue = self.arrangeArguments(sizerFunction, kwargDict = argument_catalogue)
 
 		#Pre Build
-		handle_Container_Base.preBuild(self, argument_catalogue)
+		self.preBuild(argument_catalogue)
 
 		#Unpack arguments
 		buildSelf, text = self.getArguments(argument_catalogue, ["self", "text"])
@@ -12351,7 +13606,7 @@ class handle_Sizer(handle_Container_Base):
 				argument_catalogue[key] = value
 		
 		#Post Build
-		handle_Container_Base.postBuild(self, argument_catalogue)
+		self.postBuild(argument_catalogue)
 
 		#Unpack arguments
 		hidden = self.getArguments(argument_catalogue, "hidden")
@@ -12369,7 +13624,7 @@ class handle_Sizer(handle_Container_Base):
 				subHandle = handle_Sizer()
 				subHandle.type = "text"
 
-				argument_catalogue = self.arrangeArguments(handle_Window.addSizerText)
+				argument_catalogue = self.arrangeArguments(handle_Window.addSizerText, kwargDict = {"self": self})
 				argument_catalogue["self"] = self
 				argument_catalogue["text"] = text
 				subHandle.build(argument_catalogue)
@@ -12449,7 +13704,7 @@ class handle_Sizer(handle_Container_Base):
 			self.growFlexRow(row, proportion = proportion)
 	
 	#Etc
-	def nest(self, handle = None, flex = 0, flags = "c1"):
+	def nest(self, handle = None, flex = 0, flags = "c1", selected = False):
 		"""Nests an object inside of this Sizer.
 
 		handle (handle) - What to place in this object
@@ -12507,6 +13762,10 @@ class handle_Sizer(handle_Container_Base):
 			warnings.warn(f"Add {handle.__class__} to nest() for {self.__repr__()}", Warning, stacklevel = 2)
 			return
 
+		#Select if needed
+		if (selected):
+			handle.thing.SetDefault()
+
 		#Remember Values
 		if (isinstance(self, handle_Sizer) and (not isinstance(handle, handle_Sizer))):
 			for item in self.thing.GetChildren():
@@ -12527,48 +13786,14 @@ class handle_Sizer(handle_Container_Base):
 		self.myWindow.addKeyPress(*args, **kwargs)
 
 	#Add Widgets
-	def addText(self, text = "", wrap = None, ellipsize = False, alignment = None,
-		size = None, bold = False, italic = False, color = None, family = None, 
-
-		label = None, hidden = False, enabled = True, selected = False,
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addText(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds text to the grid.
-		If you want to update this text, you will need to run the function setObjectValue() or setObjectValueWithLabel().
-		If you provide a variable to this function and that variable changes- the text on the GUI will not update.
-		It must be told to do so explicitly by using one of the functions mentioned above.
-		Note: If you change the text, any word wrap will be removed. To wrap it again, call the function textWrap().
 
-		text (str)    - The text that will be added to the next cell on the grid.
 		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
-		label (any)   - What this is catalogued as
 		selected (bool) - If True: This is the default thing selected
-		hidden (bool)   - If True: The widget is hidden from the user, but it is still created
-		wrap (int)      - How many pixels wide the line will be before it wraps. If negative: no wrapping is done
 		flex (int)      - Only for Box Sizers:
 			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
 			~ If not 0: The cell will grow and shrink to match the cells that have the same number
-		
-		ellipsize (bool) - Determines what happens if the text exceeds the alloted space
-			- If True: Will cut the text with a '...' at the end
-			- If False: Will adjust the alloted space to fit the text
-			- If None: Will adjust the alloted space to fit the text
-			- If 0: Will cut the text with a '...' at the beginning
-			- If 1: Will cut the text with a '...' in the middle
-			- If 2: Will cut the text with a '...' at the end
-		alignment (int) - Determines how the text is aligned in its alloted space
-			- If True: Will align text to the left
-			- If False: Will align text to the center
-			- If None: Will align text to the center
-			- If 0: Will align text to the left
-			- If 1: Will align text to the right
-			- If 2: Will align text to the center
-
-		size (int)    - The font size of the text  
-		bold (bool)   - If True: the font will be bold
-		italic (bool) - If True: the font will be italicized
-		color (str)   - The color of the text. Can be an RGB tuple (r, g, b) or hex value
-		family (str)  - What font family it is.
-			~ "times new roman"         
 
 		Example Input: addText()
 		Example Input: addText(text = "Lorem Ipsum")
@@ -12582,195 +13807,92 @@ class handle_Sizer(handle_Container_Base):
 		Example Input: addText(text = "Really long text", ellipsize = 1)
 		"""
 
-		handle = handle_WidgetText()
-		handle.type = "Text"
-		handle.build(locals())
+		handle = self.makeText(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 		
 		return handle
 
-	def addHyperlink(self, text = "", myWebsite = "",
-
-		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addHyperlink(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds a hyperlink text to the next cell on the grid.
 
-		text (str)            - What text is shown
-		myWebsite (str)         - The address of the website to open
-		myFunction (str)        - What function will be ran when the link is clicked
-		flags (list)            - A list of strings for which flag to add to the sizer
-		label (any)           - What this is catalogued as
-		myFunctionArgs (any)    - The arguments for 'myFunction'
-		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
 		Example Input: addHyperlink("wxFB Website", "http://www.wxformbuilder.org", "siteVisited")
 		"""
 
-		handle = handle_WidgetText()
-		handle.type = "Hyperlink"
-		handle.build(locals())
+		handle = self.makeHyperlink(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 
-	def addEmpty(self, 
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = ["ex", "ba"], parent = None, handle = None, mySizer = None):
+	def addEmpty(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds an empty space to the next cell on the grid.
 
-		label (any)     - What this is catalogued as
-		selected (bool)   - If True: This is the default thing selected
-		hidden (bool)     - If True: The widget is hidden from the user, but it is still created
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
 		Example Input: addEmpty()
 		Example Input: addEmpty(label = "spacer")
 		"""
 
-		handle = handle_WidgetText()
-		handle.type = "Empty"
-		handle.build(locals())
-
+		handle = self.makeEmpty(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 		return handle
 
-	def addLine(self, vertical = False,
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = ["ex", "ba"], parent = None, handle = None, mySizer = None):
+	def addLine(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds a simple line to the window.
 		It can be horizontal or vertical.
 
-		vertical (bool)   - Whether the line is vertical or horizontal
-		flags (list)      - A list of strings for which flag to add to the sizer
-		label (any)     - What this is catalogued as
-		hidden (bool)     - If True: The widget is hidden from the user, but it is still created
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
 		Example Input: addLine()
 		Example Input: addLine(vertical = True)
 		"""
 
-		handle = handle_Widget_Base()
-		handle.type = "Line"
-		handle.build(locals())
+		handle = self.makeLine(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 
-	def addListDrop(self, choices = [], default = None, alphabetic = False,
-
-		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addListDrop(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds a dropdown list with choices to the next cell on the grid.
 
-		choices (list)          - A list of the choices as strings
-		myFunction (str)        - The function that is ran when the user chooses something from the list. If a list is given, each function will be bound.
-		flags (list)            - A list of strings for which flag to add to the sizer
-		label (any)           - What this is catalogued as
-		myFunctionArgs (any)    - The arguments for 'myFunction'
-		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
-		default (int)           - Which item in the droplist is selected
-			- If a string is given, it will select the first item in the list that matches that string. If noting matches, it will default to the first element
-		enabled (bool)          - If True: The user can interact with this
-		alphabetic (bool)      - Determines if the list is automatically sorted alphabetically
-			- If True: The list is sorted alphabetically
-			- If False: The list is presented in the order given
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
 		Example Input: addListDrop(choices = ["Lorem", "Ipsum", "Dolor"])
 		Example Input: addListDrop(choices = ["Lorem", "Ipsum", "Dolor"], label = "chosen")
 		Example Input: addListDrop(choices = ["Lorem", "Ipsum", "Dolor"], alphabetic = True)
 		"""
 
-		handle = handle_WidgetList()
-		handle.type = "ListDrop"
-		handle.build(locals())
+		handle = self.makeListDrop(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 
-	def addListFull(self, choices = [], default = False, singleSelect = False, editable = False,
-
-		report = False, columns = 1, columnNames = {}, columnWidth = {},
-		border = True, rowLines = True, columnLines = True, boldHeader = True,
-		drag = False, dragDelete = False, dragCopyOverride = False, 
-		allowExternalAppDelete = True, dragLabel = None, drop = False, dropIndex = 0,
-
-		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
-		preEditFunction = None, preEditFunctionArgs = None, preEditFunctionKwargs = None, 
-		postEditFunction = None, postEditFunctionArgs = None, postEditFunctionKwargs = None, 
-		preDragFunction = None, preDragFunctionArgs = None, preDragFunctionKwargs = None, 
-		postDragFunction = None, postDragFunctionArgs = None, postDragFunctionKwargs = None, 
-		preDropFunction = None, preDropFunctionArgs = None, preDropFunctionKwargs = None, 
-		postDropFunction = None, postDropFunctionArgs = None, postDropFunctionKwargs = None, 
-		dragOverFunction = None, dragOverFunctionArgs = None, dragOverFunctionKwargs = None, 
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addListFull(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds a full list with choices to the next cell on the grid.
-		https://wxpython.org/Phoenix/docs/html/wx.ListCtrl.html
 
-		choices (list - A list of the choices as strings
-			- If 'report' is True: Can be given as either [[row 1 column 1, row 2 column 1], [row 1 column 2, row 2 column 2]] or {column name 1: [row 1, row 2], column name 2: [row 1, row 2]}
-				- If an integer is given instead of a string for the column name, it will use that as the column index
-				- If more than one column have the same header, it will be added to the left most one
-		label (any) - What this is catalogued as
-		flags (list)  - A list of strings for which flag to add to the sizer
-
-		default (bool)      - If True: This is the default thing selected
-		enabled (bool)      - If True: The user can interact with this
-		singleSelect (bool) - Determines how many things the user can select
-			- If True: The user can only select one thing
-			- If False: The user can select multiple things using the shift key
-		editable (bool)     - Determines if the user can edit the first item in the list
-			- If True: The user can edit all items in the list
-
-		report (bool)      - Determines how the list is set up
-			- If True: The list will be arranged in a grid
-			- If False: Rows and columns will be dynamically calculated
-		columns (int)      - How many columns the report will have
-		columnNames (dict) - What the column headers will say. If not given, the column will be blank. {row index: name}
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 		
-		drag (bool)       - If True: The user can drag text away from this list
-		dragDelete (bool) - If True: Text dragged away from this list will be deleted after dropping
-		dragLabel (bool)  - What the text dragging object being dropped into this list is called in the idCatalogue
-		drop (bool)       - If True: Text dropped on this list will be inserted
-		dropIndex (int)   - Where to insert the text dropped into this list. Works like a python list index
-		
-		dragCopyOverride (bool)       - If False: Holding [ctrl] will copy the text, not delete it
-		allowExternalAppDelete (bool) - If False: The text will not be deleted if it is dragged into an external application 
-		
-		myFunction (str)       - The function that is ran when the user chooses something from the list
-		myFunctionArgs (any)   - The arguments for 'myFunction'
-		myFunctionKwargs (any) - The keyword arguments for 'myFunction'function
-		
-		preEditFunction (str)       - The function that is ran when the user edits something from the list
-		preEditFunctionArgs (any)   - The arguments for 'preEditFunction'
-		preEditFunctionKwargs (any) - The keyword arguments for 'preEditFunction'function
-		
-		postEditFunction (str)       - The function that is ran when the user edits something from the list
-		postEditFunctionArgs (any)   - The arguments for 'postEditFunction'
-		postEditFunctionKwargs (any) - The keyword arguments for 'postEditFunction'function
-		
-		preDragFunction (str)       - The function that is ran when the user tries to drag something from the list; before it begins to drag
-		preDragFunctionArgs (any)   - The arguments for 'preDragFunction'
-		preDragFunctionKwargs (any) - The keyword arguments for 'preDragFunction'function
-		
-		postDragFunction (str)       - The function that is ran when the user tries to drag something from the list; after it begins to drag
-		postDragFunctionArgs (any)   - The arguments for 'postDragFunction'
-		postDragFunctionKwargs (any) - The keyword arguments for 'postDragFunction'function
-		
-		preDropFunction (str)       - The function that is ran when the user tries to drop something from the list; before it begins to drop
-		preDropFunctionArgs (any)   - The arguments for 'preDropFunction'
-		preDropFunctionKwargs (any) - The keyword arguments for 'preDropFunction'function
-		
-		postDropFunction (str)       - The function that is ran when the user tries to drop something from the list; after it drops
-		postDropFunctionArgs (any)   - The arguments for 'postDropFunction'
-		postDropFunctionKwargs (any) - The keyword arguments for 'postDropFunction'function
-		
-		dragOverFunction (str)       - The function that is ran when the user drags something over this object
-		dragOverFunctionArgs (any)   - The arguments for 'dragOverFunction'
-		dragOverFunctionKwargs (any) - The keyword arguments for 'dragOverFunction'function
-		
-
 		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"])
 		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], myFunction = self.onChosen)
 
@@ -12796,565 +13918,245 @@ class handle_Sizer(handle_Container_Base):
 		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], drop = True, dropLabel = "text", preDropFunction = self.checkText)
 		"""
 
-		handle = handle_WidgetList()
-		handle.type = "ListFull"
-		handle.build(locals())
+		handle = self.makeListFull(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 
-	def addListTree(self, choices = [], default = None, root = None,
-		addButton = True, editable = False, rowHighlight = True, drag = False, drop = False,
-		rowLines = True, rootLines = True, variableHeight = True, selectMultiple = False,
-
-		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
-		preEditFunction = None, preEditFunctionArgs = None, preEditFunctionKwargs = None,
-		postEditFunction = None, postEditFunctionArgs = None, postEditFunctionKwargs = None,
-
-		preRightDragFunction = None, preRightDragFunctionArgs = None, preRightDragFunctionKwargs = None, 
-		postRightDragFunction = None, postRightDragFunctionArgs = None, postRightDragFunctionKwargs = None, 
-		preDropFunction = None, preDropFunctionArgs = None, preDropFunctionKwargs = None, 
-		postDropFunction = None, postDropFunctionArgs = None, postDropFunctionKwargs = None, 
-		dragOverFunction = None, dragOverFunctionArgs = None, dragOverFunctionKwargs = None, 
-
-		preCollapseFunction = None, preCollapseFunctionArgs = None, preCollapseFunctionKwargs = None, 
-		postCollapseFunction = None, postCollapseFunctionArgs = None, postCollapseFunctionKwargs = None, 
-		preExpandFunction = None, preExpandFunctionArgs = None, preExpandFunctionKwargs = None, 
-		postExpandFunction = None, postExpandFunctionArgs = None, postExpandFunctionKwargs = None, 
-
-		rightClickFunction = None, rightClickFunctionArgs = None, rightClickFunctionKwargs = None, 
-		middleClickFunction = None, middleClickFunctionArgs = None, middleClickFunctionKwargs = None, 
-		doubleClickFunction = None, doubleClickFunctionArgs = None, doubleClickFunctionKwargs = None, 
-		
-		keyDownFunction = None, keyDownFunctionArgs = None, keyDownFunctionKwargs = None, 
-		toolTipFunction = None, toolTipFunctionArgs = None, toolTipFunctionKwargs = None, 
-		itemMenuFunction = None, itemMenuFunctionArgs = None, itemMenuFunctionKwargs = None, 
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addListTree(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds a tree list to the next cell on the grid.
 
-		choices (list)          - A list of the choices as strings
-		flags (list)            - A list of strings for which flag to add to the sizer
-		label (any)           - What this is catalogued as
-		default (int)           - Which item in the droplist is selected
-			- If a string is given, it will select the first item in the list that matches that string. If noting matches, it will default to the first element
-		enabled (bool)          - If True: The user can interact with this
-
-		myFunction (str)        - The function that is ran when the user chooses something from the list. If a list is given, each function will be bound.
-		myFunctionArgs (any)    - The arguments for 'myFunction'
-		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
-		
-		preEditFunction (str)       - The function that is ran when the user edits something from the list
-		preEditFunctionArgs (any)   - The arguments for 'preEditFunction'
-		preEditFunctionKwargs (any) - The keyword arguments for 'preEditFunction'function
-		
-		postEditFunction (str)       - The function that is ran when the user edits something from the list
-		postEditFunctionArgs (any)   - The arguments for 'postEditFunction'
-		postEditFunctionKwargs (any) - The keyword arguments for 'postEditFunction'function
-		
-		preRightDragFunction (str)       - The function that is ran when the user tries to right-click drag something from the list; before it begins to drag
-		preRightDragFunctionArgs (any)   - The arguments for 'preRightDragFunction'
-		preRightDragFunctionKwargs (any) - The keyword arguments for 'preRightDragFunction' function
-		
-		postRightDragFunction (str)       - The function that is ran when the user tries to right-click drag something from the list; after it begins to drag
-		postRightDragFunctionArgs (any)   - The arguments for 'postRightDragFunction'
-		postRightDragFunctionKwargs (any) - The keyword arguments for 'postRightDragFunction' function
-		
-		preDropFunction (str)       - The function that is ran when the user tries to drop something from the list; before it begins to drop
-		preDropFunctionArgs (any)   - The arguments for 'preDropFunction'
-		preDropFunctionKwargs (any) - The keyword arguments for 'preDropFunction'function
-		
-		postDropFunction (str)       - The function that is ran when the user tries to drop something from the list; after it drops
-		postDropFunctionArgs (any)   - The arguments for 'postDropFunction'
-		postDropFunctionKwargs (any) - The keyword arguments for 'postDropFunction'function
-		
-		dragOverFunction (str)       - The function that is ran when the user drags something over this object
-		dragOverFunctionArgs (any)   - The arguments for 'dragOverFunction'
-		dragOverFunctionKwargs (any) - The keyword arguments for 'dragOverFunction'function
-		
-		itemCollapseFunction (str)       - The function that is ran when the user collapses an item
-		itemCollapseFunctionArgs (any)   - The arguments for 'itemCollapseFunction'
-		itemCollapseFunctionKwargs (any) - The keyword arguments for 'itemCollapseFunction' function
-		
-		itemExpandFunction (str)       - The function that is ran when the user expands an item
-		itemExpandFunctionArgs (any)   - The arguments for 'itemExpandFunction'
-		itemExpandFunctionKwargs (any) - The keyword arguments for 'itemExpandFunction'function
-
-		itemRightClickFunction (str)       - The function that is ran when the user right clicks on an item
-		itemRightClickFunctionArgs (any)   - The arguments for 'itemRightClickFunction'
-		itemRightClickFunctionKwargs (any) - The keyword arguments for 'itemRightClickFunction' function
-
-		itemMiddleClickFunction (str)       - The function that is ran when the user expands an item
-		itemMiddleClickFunctionArgs (any)   - The arguments for 'itemMiddleClickFunction'
-		itemMiddleClickFunctionKwargs (any) - The keyword arguments for 'itemMiddleClickFunction'function
-
-		keyDownFunction (str)       - The function that is ran when the user uses the arrow keys to select an item
-		keyDownFunctionArgs (any)   - The arguments for 'keyDownFunction'
-		keyDownFunctionKwargs (any) - The keyword arguments for 'keyDownFunction'function
-
-		toolTipFunction (str)       - The function that is ran when the user requests a tool tip
-		toolTipFunctionArgs (any)   - The arguments for 'toolTipFunction'
-		toolTipFunctionKwargs (any) - The keyword arguments for 'toolTipFunction'function
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
 		Example Input: addListTree(choices = {"Lorem": [{"Ipsum": "Dolor"}, "Sit"], "Amet": None})
 		Example Input: addListTree(choices = {"Lorem": [{"Ipsum": "Dolor"}, "Sit"], "Amet": None}, label = "chosen")
 		"""
 
-		handle = handle_WidgetList()
-		handle.type = "ListTree"
-		handle.build(locals())
+		handle = self.makeListTree(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 
-	def addInputSlider(self, myMin = 0, myMax = 100, myInitial = 0, vertical = False,
-
-		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addInputSlider(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds a slider bar to the next cell on the grid.
 
-		myMin (int)             - The minimum value of the slider bar
-		myMax (int)             - The maximum value of the slider bar
-		myInitial (int)         - The initial value of the slider bar's position
-		myFunction (str)        - The function that is ran when the user enters text and presses enter
-		flags (list)            - A list of strings for which flag to add to the sizer
-		label (any)           - What this is catalogued as
-		myFunctionArgs (any)    - The arguments for 'myFunction'
-		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
 		Example Input: addInputSlider(0, 100, 50, "initialTemperature")
 		"""
 
-		handle = handle_WidgetInput()
-		handle.type = "Slider"
-		handle.build(locals())
+		handle = self.makeInputSlider(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 	
-	def addInputBox(self, text = None, maxLength = None, 
-		password = False, alpha = False, readOnly = False, tab = True, wrap = None, ipAddress = False,
-		
-		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
-		enterFunction = None, enterFunctionArgs = None, enterFunctionKwargs = None, 
-		postEditFunction = None, postEditFunctionArgs = None, postEditFunctionKwargs = None,  
-		preEditFunction = None, preEditFunctionArgs = None, preEditFunctionKwargs = None,  
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addInputBox(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds an input box to the next cell on the grid.
 
-		myFunction (str)       - The function that is ran when the user enters text
-		flags (list)           - A list of strings for which flag to add to the sizer
-		label (any)          - What this is catalogued as
-		myFunctionArgs (any)   - The arguments for 'myFunction'
-		myFunctionKwargs (any) - The keyword arguments for 'myFunction'
-		text (str)             - What is initially in the box
-		maxLength (int)        - If not None: The maximum length of text that can be added
-		
-		selected (bool)  - If True: This is the default thing selected
-		enabled (bool)   - If True: The user can interact with this
-		hidden (bool)    - If True: The widget is hidden from the user, but it is still created
-		password (bool)  - If True: The text within is shown as dots
-		alpha (bool)     - If True: The items will be sorted alphabetically
-		readOnly (bool)  - If True: The user cannot change the text
-		tab (bool)       - If True: The 'Tab' key will move the focus to the next widget
-		wrap (int)       - How many pixels wide the line will be before it wraps. 
-		  If None: no wrapping is done
-		  If positive: Will not break words
-		  If negative: Will break words
-		ipAddress (bool) - If True: The input will accept and understand the semantics of an ip address
-
-		enterFunction (str)       - The function that is ran when the user presses enter while in the input box
-		enterFunctionArgs (any)   - The arguments for 'enterFunction'
-		enterFunctionKwargs (any) - the keyword arguments for 'enterFunction'
-
-		postEditFunction (str)       - The function that is ran after the user clicks out (or tabs out, moves out, etc.) of the input box
-		postEditFunctionArgs (any)   - The arguments for 'postEditFunction'
-		postEditFunctionKwargs (any) - the keyword arguments for 'postEditFunction'
-
-		preEditFunction (str)       - The function that is ran after the user clicks into (or tabs into, moves into, etc.) the input box
-		preEditFunctionArgs (any)   - The arguments for 'preEditFunction'
-		preEditFunctionKwargs (any) - the keyword arguments for 'preEditFunction'
-
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
 		Example Input: addInputBox("initialTemperature", 0)
 		Example Input: addInputBox("connect", 0, text = "127.0.0.0", ipAddress = True)
 		"""
 
-		handle = handle_WidgetInput()
-		handle.type = "InputBox"
-		handle.build(locals())
-
+		handle = self.makeInputBox(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 		return handle
 	
-	def addInputSearch(self, text = None, 
-
-		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
-		searchFunction = None, searchFunctionArgs = None, searchFunctionKwargs = None, 
-		cancelFunction = None, cancelFunctionArgs = None, cancelFunctionKwargs = None, 
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addInputSearch(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds an input box to the next cell on the grid.
 
-		myFunction (str)       - The function that is ran when the user enters text and presses enter
-		flags (list)           - A list of strings for which flag to add to the sizer
-		label (any)          - What this is catalogued as
-		myFunctionArgs (any)   - The arguments for 'myFunction'
-		myFunctionKwargs (any) - The keyword arguments for 'myFunction'function
-		text (str)             - What is initially in the box
-		
-		searchFunction (str)       - If provided, this is what will be ran when the search button to the left is pressed
-		searchFunctionArgs (any)   - The arguments for 'searchFunction'
-		searchFunctionKwargs (any) - The keyword arguments for 'searchFunction'function
-		cancelFunction (str)       - If provided, this is what will be ran when the cancel button to the right is pressed
-		cancelFunctionArgs (any)   - The arguments for 'cancelFunction'
-		cancelFunctionKwargs (any) - The keyword arguments for 'cancelFunction'function
-		
-		selected (bool)         - If True: This is the default thing selected
-		enabled (bool)          - If True: The user can interact with this
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
 		Example Input: addInputSearch("initialTemperature")
 		"""
 
-		handle = handle_WidgetInput()
-		handle.type = "InputSearch"
-		handle.build(locals())
+		handle = self.makeInputSearch(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 	
-	def addInputSpinner(self, myMin = 0, myMax = 100, myInitial = 0, size = wx.DefaultSize, maxSize = None, minSize = None,
-		increment = None, digits = None, useFloat = False, readOnly = False, exclude = [],
-
-		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
-		changeTextFunction = True, changeTextFunctionArgs = None, changeTextFunctionKwargs = None,
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addInputSpinner(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds a spin control to the next cell on the grid. This is an input box for numbers.
 
-		myMin (int)       - The minimum value of the input spinner
-		myMax (int)       - The maximum value of the input spinner
-		myInitial (int)   - The initial value of the input spinner's position
-		myFunction (str)  - The function that is ran when the user scrolls through the numbers
-		flags (list)      - A list of strings for which flag to add to the sizer
-		label (any)     - What this is catalogued as
-
-		maxSize (tuple)   - If not None: The maximum size that the input spinner can be in pixels in the form (x, y) as integers
-		minSize (tuple)   - If not None: The minimum size that the input spinner can be in pixels in the form (x, y) as integers
-		increment (float) - If not None: Will increment by this value
-		digits (float)    - If not None: Will show this many digits past the decimal point. Only applies if 'useFloat' is True
-
-		useFloat (bool) - If True: Will increment decimal numbers instead of integers
-		readOnly (bool) - If True: The user will not be able to change the value
-		exclude (list)  - A list of integers/floats to exclude from the spinner
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 		
-		myFunctionArgs (any)           - The arguments for 'myFunction'
-		myFunctionKwargs (any)         - The keyword arguments for 'myFunction'function
-		changeTextFunction (str)       - The function that is ran when the user changes the text in the box directly. If True: Will be the same as myFunction
-		changeTextFunctionArgs (any)   - The arguments for 'changeTextFunction'
-		changeTextFunctionKwargs (any) - The key word arguments for 'changeTextFunction'
-		
-
 		Example Input: addInputSpinner(0, 100, 50, "initialTemperature")
 		Example Input: addInputSpinner(0, 100, 50, "initialTemperature", maxSize = (100, 100))
 		Example Input: addInputSpinner(0, 100, 50, "initialTemperature", exclude = [1,2,3])
 		"""
 
-		handle = handle_WidgetInput()
-		handle.type = "InputSpinner"
-		handle.build(locals())
+		handle = self.makeInputSpinner(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 	
-	def addButton(self, text = "", valueLabel = None,
-
-		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addButton(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds a button to the next cell on the grid.
 
-		text (str)            - What will be written on the button
-		flags (list)            - A list of strings for which flag to add to the sizer
-		myFunction (str)        - What function will be ran when the button is pressed
-		label (any)           - What this is catalogued as
-		valueLabel (str)        - If not None: Which label to get a value from. Ie: TextCtrl, FilePickerCtrl, etc.
-		myFunctionArgs (any)    - The arguments for 'myFunction'
-		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
-		default (bool)          - If True: This is the default thing selected
-		enabled (bool)          - If True: The user can interact with this
-		hidden (bool)           - If True: The widget is hidden from the user, but it is still created
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
-		Example Input: addButton("Go!", "computeFinArray", 0)
+		Example Input: addButton("Go!", "computeFinArray")
 		"""
 
-		handle = handle_WidgetButton()
-		handle.type = "Button"
-		handle.build(locals())
+		handle = self.makeButton(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 	
-	def addButtonToggle(self, text = "", 
-
-		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addButtonToggle(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds a toggle button to the next cell on the grid.
 
-		text (str)             - What will be written on the button
-		myFunction (str)        - What function will be ran when the button is pressed
-		flags (list)            - A list of strings for which flag to add to the sizer
-		label (any)           - What this is catalogued as
-		myFunctionArgs (any)    - The arguments for 'myFunction'
-		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
-		default (bool)          - If True: This is the default thing selected
-		enabled (bool)          - If True: The user can interact with this
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
 		Example Input: addButtonToggle("Go!", "computeFinArray")
 		"""
 
-		handle = handle_WidgetButton()
-		handle.type = "ButtonToggle"
-		handle.build(locals())
+		handle = self.makeButtonToggle(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 	
-	def addButtonCheck(self, text = "", default = False,
-
-		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addButtonCheck(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds a check box to the next cell on the grid.
 		Event fires every time the check box is clicked
 
-		text (str)             - What will be written to the right of the button
-		myFunction (str)       - What function will be ran when the button is pressed
-		flags (list)           - A list of strings for which flag to add to the sizer
-		label (any)            - What this is catalogued as
-		myFunctionArgs (any)   - The arguments for 'myFunction'
-		myFunctionKwargs (any) - The keyword arguments for 'myFunction'function
-		selected (bool)        - If True: This is the default thing selected
-		enabled (bool)         - If True: The user can interact with this
-		hidden (bool)          - If True: The widget is hidden from the user, but it is still created
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
 		Example Input: addButtonCheck("compute?", "computeFinArray", 0)
 		"""
 
-		handle = handle_WidgetButton()
-		handle.type = "ButtonCheck"
-		handle.build(locals())
-
+		handle = self.makeButtonCheck(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 		return handle
 	
-	def addButtonCheckList(self, choices = [], multiple = True, sort = False,
-
-		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addButtonCheckList(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds a checklist to the next cell on the grid.
 
-		choices (list)          - A list of strings that are the choices for the check boxes
-		myFunction (str)        - What function will be ran when the date is changed
-		flags (list)            - A list of strings for which flag to add to the sizer
-		label (any)           - What this is catalogued as
-		myFunctionArgs (any)    - The arguments for 'myFunction'
-		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
-		multiple (bool)         - True if the user can check off multiple check boxes
-		sort (bool)             - True if the checklist will be sorted alphabetically or numerically
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
 		Example Input: addButtonCheckList(["Milk", "Eggs", "Bread"], 0, sort = True)
 		"""
 
-		handle = handle_WidgetButton()
-		handle.type = "CheckList"
-		handle.build(locals())
+		handle = self.makeButtonCheckList(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 	
-	def addButtonRadio(self, text = "", groupStart = False, default = False,
-
-		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addButtonRadio(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds a radio button to the next cell on the grid. If default, it will disable the other
 		radio buttons of the same group.
 
-		text (str)            - What will be written to the right of the button
-		myFunction (str)        - What function will be ran when the button is pressed
-		flags (list)            - A list of strings for which flag to add to the sizer
-		label (int)           - What this is catalogued as
-		myFunctionArgs (any)    - The arguments for 'myFunction'
-		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
-		selected (bool)          - If True: This is the default thing selected
-		enabled (bool)          - If True: The user can interact with this
-		groupStart (bool)       - True if this is the start of a new radio button group.
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
 		Example Input: addButtonRadio("compute?", "computeFinArray", 0, groupStart = True)
 		"""
 
-		handle = handle_WidgetButton()
-		handle.type = "ButtonRadio"
-		handle.build(locals())
+		handle = self.makeButtonRadio(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 	
-	def addButtonRadioBox(self, choices = [], title = "", vertical = False, default = 0, maximum = 1,
-
-		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addButtonRadioBox(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds a box filled with grouped radio buttons to the next cell on the grid.
 		Because these buttons are grouped, only one can be selected
 
-		choices (list)           - What will be written to the right of the button. ["Button 1", "Button 2", "Button 3"]
-		myFunction (int)        - What function will be ran when the button is pressed
-		title (str)             - What will be written above the box
-		flags (list)            - A list of strings for which flag to add to the sizer
-		label (int)           - What this is catalogued as
-		myFunctionArgs (any)    - The arguments for 'myFunction'
-		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
-		horizontal (bool)       - If True: The box will be oriented horizontally
-								  If False: The box will be oriented vertically
-		default (int)           - Which of the radio buttons will be selected by default
-		enabled (bool)          - If True: The user can interact with this
-		maximum (int)           - The maximum number of rows or columns (defined by 'vertical') the box can have
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
 		Example Input: addButtonRadioBox(["Button 1", "Button 2", "Button 3"], "self.onQueueValue", 0)
 		"""
 
-		handle = handle_WidgetButton()
-		handle.type = "ButtonRadioBox"
-		handle.build(locals())
+		handle = self.makeButtonRadioBox(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 	
-	def addButtonHelp(self, 
-
-		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addButtonHelp(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds a context help button to the next cell on the grid.
 
-		flags (list)            - A list of strings for which flag to add to the sizer
-		myFunction (str)        - What function will be ran when the button is pressed
-		label (any)           - What this is catalogued as
-		myFunctionArgs (any)    - The arguments for 'myFunction'
-		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
-		default (bool)          - If True: This is the default thing selected
-		enabled (bool)          - If True: The user can interact with this
-		hidden (bool)           - If True: The widget is hidden from the user, but it is still created
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
 		Example Input: addButtonHelp(label = "myHelpButton")
 		"""
 
-		handle = handle_WidgetButton()
-		handle.type = "ButtonHelp"
-		handle.build(locals())
+		handle = self.makeButtonHelp(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 	
-	def addButtonImage(self, idlePath = "", disabledPath = "", selectedPath = "", 
-		focusPath = "", hoverPath = "", text = None,
-
-		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
-
-		label = None, hidden = False, enabled = True, selected = False, toggle = False, default = False,
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addButtonImage(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds a button to the next cell on the grid. You design what the button looks like yourself.
 
-		idlePath (str)         - Where the image of the button idling is on the computer
-		disabledPath (str)     - Where the image of the button disabled is on the computer
-		selectedPath (str)     - Where the image of the button selected is on the computer
-		focusPath (str)        - Where the image of the button focused is on the computer
-		hoverPath (str)        - Where the image of the button hovered is on the computer
-		myFunction (str)       - What function will be ran when the button is pressed
-		flags (list)           - A list of strings for which flag to add to the sizer
-		label (any)            - What this is catalogued as
-		myFunctionArgs (any)   - The arguments for 'myFunction'
-		myFunctionKwargs (any) - The keyword arguments for 'myFunction'function
-		default (bool)         - If True: This is the default thing selected
-		enabled (bool)         - If True: The user can interact with this
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
 		Example Input: addButtonImage("1.bmp", "2.bmp", "3.bmp", "4.bmp", "5.bmp", "computeFinArray")
 		"""
 
-		handle = handle_WidgetButton()
-		handle.type = "ButtonImage"
-		handle.build(locals())
+		handle = self.makeButtonImage(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 	
-	def addImage(self, imagePath = "", internal = False, size = wx.DefaultSize,
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addImage(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds an embeded image to the next cell on the grid.
 
-		imagePath (str) - Where the image is on the computer. Can be a PIL image. If None, it will be a blank image
-			If 'internal' is on, it is the name of an icon as a string. Here is a list of the icon names:
-				"error"       - A red circle with an 'x' in it
-				"question"    - A white speach bubble with a '?' in it
-				"question2"   - A white speach bubble with a '?' in it. Looks different from "question"
-				"warning"     - A yellow yield sign with a '!' in it
-				"info"        - A white circle with an 'i' in it
-				"font"        - A times new roman 'A'
-				"arrowLeft"   - A white arrow pointing left
-				"arrowRight"  - A white arrow pointing right
-				"arrowUp"     - A white arrow pointing up
-				"arrowDown"   - A white arrow pointing down
-				"arrowCurve"  - A white arrow that moves left and then up
-				"home"        - A white house
-				"print"       - A printer
-				"open"        - "folderOpen" with a green arrow curiving up and then down inside it
-				"save"        - A blue floppy disk
-				"saveAs"      - "save" with a yellow spark in the top right corner
-				"delete"      - "markX" in a different style
-				"copy"        - Two "page" stacked on top of each other with a southeast offset
-				"cut"         - A pair of open scissors with red handles
-				"paste"       - A tan clipboard with a blank small version of "page2" overlapping with an offset to the right
-				"undo"        - A blue arrow that goes to the right and turns back to the left
-				"redo"        - A blue arrow that goes to the left and turns back to the right
-				"lightBulb"   - A yellow light bulb with a '!' in it
-				"folder"      - A blue folder
-				"folderNew"   - "folder" with a yellow spark in the top right corner
-				"folderOpen"  - An opened version of "folder"
-				"folderUp"    - "folderOpen" with a green arrow pointing up inside it
-				"page"        - A blue page with lines on it
-				"page2"       - "page" in a different style
-				"pageNew"     - "page" with a green '+' in the top left corner
-				"pageGear"    - "page" with a blue gear in the bottom right corner
-				"pageTorn"    - A grey square with a white border torn in half lengthwise
-				"markCheck"   - A black check mark
-				"markX"       - A black 'X'
-				"plus"        - A blue '+'
-				"minus"       - A blue '-'
-				"close"       - A black 'X'
-				"quit"        - A door opening to the left with a green arrow coming out of it to the right
-				"find"        - A magnifying glass
-				"findReplace" - "find" with a double sided arrow in the bottom left corner pointing left and right
-				"first"       - A green arrow pointing left with a green vertical line
-				"last"        - A green arrow pointing right with a green vertical line
-				"diskHard"    - ?
-				"diskFloppy"  - ?
-				"diskCd"      - ?
-				"book"        - A blue book with white pages
-				"addBookmark" - A green banner with a '+' by it
-				"delBookmark" - A red banner with a '-' by it
-				"sidePanel"   - A grey box with lines in with a white box to the left with arrows pointing left and right
-				"viewReport"  - A white box with lines in it with a grey box with lines in it on top
-				"viewList"    - A white box with squiggles in it with a grey box with dots in it to the left
-			
-		flags (list)            - A list of strings for which flag to add to the sizer
-		label (any)           - What this is catalogued as
-		internal (bool)         - If True: The 'filePath' provided will represent an internal image
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
 		Example Input: addImage("1.bmp", 0)
 		Example Input: addImage(image, 0)
@@ -13362,421 +14164,201 @@ class handle_Sizer(handle_Container_Base):
 		Example Input: addImage(image, 0, size = (32, 32))
 		"""
 
-		handle = handle_WidgetImage()
-		handle.type = "Image"
-		handle.build(locals())
+		handle = self.makeImage(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 	
-	def addProgressBar(self, myInitial = 0, myMax = 100, vertical = False,
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addProgressBar(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds progress bar to the next cell on the grid.
 
-		myInitial (int)         - The value that the progress bar starts at
-		myMax (int)             - The value that the progress bar is full at
-		flags (list)            - A list of strings for which flag to add to the sizer
-		label (any)           - What this is catalogued as
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
 		Example Input: addProgressBar(0, 100)
 		"""
 
-		handle = handle_Widget_Base()
-		handle.type = "ProgressBar"
-		handle.build(locals())
+		handle = self.makeProgressBar(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 
-	def addToolBar(self, showText = False, showIcon = True, showDivider = True,
-		detachable = False, flat = False, vertical = False, align = True,
-		vertical_text = False, showToolTip = True, top = True,
-
-		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addToolBar(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds a tool bar to the next cell on the grid.
 		Menu items can be added to this.
 
-		label (str)     - What this is called in the idCatalogue
-		detachable (bool) - If True: The menu can be undocked
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
 		Example Input: addToolBar()
 		Example Input: addToolBar(label = "first")
 		"""
 
-		handle = handle_Menu()
-		handle.type = "ToolBar"
-		handle.build(locals())
+		handle = self.makeToolBar(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 	
-	def addPickerColor(self, initial = None, addInputBox = False, colorText = False,
-
-		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addPickerColor(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds a color picker to the next cell on the grid.
 		It can display the name or RGB of the color as well.
 
-		myFunction (str)        - What function will be ran when the color is chosen
-		flags (list)            - A list of strings for which flag to add to the sizer
-		label (any)           - What this is catalogued as
-		myFunctionArgs (any)    - The arguments for 'myFunction'
-		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
 		Example Input: addPickerColor(label = "changeColor")
 		"""
 
-		handle = handle_WidgetPicker()
-		handle.type = "PickerColor"
-		handle.build(locals())
+		handle = self.makePickerColor(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 	
-	def addPickerFont(self, maxSize = 72, addInputBox = False, fontText = False,
-
-		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addPickerFont(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds a color picker to the next cell on the grid.
 		It can display the name or RGB of the color as well.
 
-		maxSize (int)           - The maximum font size that can be chosen
-		myFunction (str)        - What function will be ran when the color is chosen
-		flags (list)            - A list of strings for which flag to add to the sizer
-		label (any)           - What this is catalogued as
-		myFunctionArgs (any)    - The arguments for 'myFunction'
-		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
-		fontText (str)          - True if it should show the name of the font picked
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
 		Example Input: addPickerFont(32, "changeFont")
 		"""
 
-		handle = handle_WidgetPicker()
-		handle.type = "PickerFont"
-		handle.build(locals())
+		handle = self.makePickerFont(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 	
-	def addPickerFile(self, text = "Select a File", default = "", initialDir = "*.*", 
-		directoryOnly = False, changeCurrentDirectory = False, fileMustExist = False, openFile = False, 
-		saveConfirmation = False, saveFile = False, smallButton = False, addInputBox = False, 
-
-		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addPickerFile(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds a file picker to the next cell on the grid.
 
-		flags (list)      - A list of strings for which flag to add to the sizer
-		label (any)     - What this is catalogued as
-		text (str)        - What is shown on the top of the popout window
-		default (str)     - What the default value will be for the input box
-
-		initialDir (str)              - Which directory it will start at. By default this is the directory that the program is in
-		directoryOnly (bool)          - If True: Only the directory will be shown; no files will be shown
-		changeCurrentDirectory (bool) - If True: Changes the current working directory on each user file selection change
-		fileMustExist (bool)          - If True: When a file is opened, it must exist
-		openFile (bool)               - If True: The file picker is configured to open a file
-		saveConfirmation (bool)       - If True: When a file is saved over an existing file, it makes sure you want to do that
-		saveFile (bool)               - If True: The file picker is configured to save a file
-		smallButton (bool)            - If True: The file picker button will be small
-		addInputBox (bool)            - If True: The file picker will have an input box that updates with the chosen directory. A chosen directory can be pasted/typed into this box as well
-		hidden (bool)                 - If True: The widget is hidden from the user, but it is still created
-
-		myFunction (str)       - What function will be ran when the file is chosen
-		myFunctionArgs (any)   - The arguments for 'myFunction'
-		myFunctionKwargs (any) - The keyword arguments for 'myFunction'function
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 		
-
 		Example Input: addPickerFile(myFunction = self.openFile, addInputBox = True)
 		Example Input: addPickerFile(saveFile = True, myFunction = self.saveFile, saveConfirmation = True, directoryOnly = True)
 		"""
 
-		handle = handle_WidgetPicker()
-		handle.type = "PickerFile"
-		handle.build(locals())
+		handle = self.makePickerFile(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 	
-	def addPickerFileWindow(self, initialDir = "*.*", 
-		directoryOnly = True, selectMultiple = False, showHidden = True,
-
-		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
-		editLabelFunction = None, editLabelFunctionArgs = None, editLabelFunctionKwargs = None, 
-		rightClickFunction = None, rightClickFunctionArgs = None, rightClickFunctionKwargs = None, 
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addPickerFileWindow(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds a file picker window to the next cell on the grid.
 
-		myFunction (str)               - What function will be ran when the file is chosen
-		flags (list)                   - A list of strings for which flag to add to the sizer
-		label (any)                  - What this is catalogued as
-		myFunctionArgs (any)           - The arguments for 'myFunction'
-		myFunctionKwargs (any)         - The keyword arguments for 'myFunction'function
-		initialDir (str)               - Which directory it will start at. By default this is the directory that the program is in.
-		editLabelFunction (str)        - What function will be ran when a label is edited
-		editLabelFunctionArgs (any)    - The arguments for 'myFunction'
-		editLabelFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
-		rightClickFunction (str)       - What function will be ran when an item is right clicked
-		rightClickFunctionArgs (any)   - The arguments for 'myFunction'
-		rightClickFunctionKwargs (any) - The keyword arguments for 'myFunction'function
-		directoryOnly (bool)           - If True: Only the directory will be shown; no files will be shown
-		selectMultiple (bool)          - If True: It is possible to select multiple files by using the [ctrl] key while clicking
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
 		Example Input: addPickerFileWindow("changeDirectory")
 		"""
 
-		handle = handle_WidgetPicker()
-		handle.type = "PickerFileWindow"
-		handle.build(locals())
+		handle = self.makePickerFileWindow(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 	
-	def addPickerTime(self, time = None,
-
-		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addPickerTime(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds a time picker to the next cell on the grid.
 		The input time is in military time.
 
-		myFunction (str)        - What function will be ran when the time is changed
-		time (str)              - What the currently selected time is as 'hh:mm:ss'
-								  If None: The current time will be used
-		flags (list)            - A list of strings for which flag to add to the sizer
-		label (any)           - What this is catalogued as
-		myFunctionArgs (any)    - The arguments for 'myFunction'
-		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
-		hidden (bool)           - If True: The widget is hidden from the user, but it is still created
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
 		Example Input: addPickerTime()
 		Example Input: addPickerTime("17:30")
 		Example Input: addPickerTime("12:30:20")
 		"""
 
-		handle = handle_WidgetPicker()
-		handle.type = "PickerTime"
-		handle.build(locals())
+		handle = self.makePickerTime(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 	
-	def addPickerDate(self, date = None, dropDown = False, 
-
-		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addPickerDate(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds a date picker to the next cell on the grid.
 
-		myFunction (str)        - What function will be ran when the date is changed
-		date (str)              - What the currently selected date is
-								  If None: The current date will be used
-		flags (list)            - A list of strings for which flag to add to the sizer
-		label (any)           - What this is catalogued as
-		myFunctionArgs (any)    - The arguments for 'myFunction'
-		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
-		dropDown (bool)         - True if a calandar dropdown should be displayed instead of just the arrows
-		hidden (bool)           - If True: The widget is hidden from the user, but it is still created
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
 		Example Input: addPickerDate()
 		Example Input: addPickerDate("10/16/2000")
 		Example Input: addPickerDate(dropDown = True)
 		"""
 
-		handle = handle_WidgetPicker()
-		handle.type = "PickerDate"
-		handle.build(locals())
+		handle = self.makePickerDate(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 	
-	def addPickerDateWindow(self, date = None, showHolidays = False, showOther = False,
-		
-		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
-		dayFunction = None, dayFunctionArgs = None, dayFunctionKwargs = None, 
-		monthFunction = None, monthFunctionArgs = None, monthFunctionKwargs = None, 
-		yearFunction = None, yearFunctionArgs = None, yearFunctionArgsKwargs = None, 
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addPickerDateWindow(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds a date picker to the next cell on the grid.
 
-		myFunction (str)          - What function will be ran when the date is changed
-		date (str)                - What the currently selected date is
-									If None: The current date will be used
-		flags (list)              - A list of strings for which flag to add to the sizer
-		label (any)             - What this is catalogued as
-		myFunctionArgs (any)      - The arguments for 'myFunction'
-		myFunctionKwargs (any)    - The keyword arguments for 'myFunction'function
-		showHoliday (bool)        - True if the holidays, weekends, and sunday will be bolded
-		showOther (bool)          - True if the surrounding week's days will be shown
-		hidden (bool)             - If True: The widget is hidden from the user, but it is still created
-
-		dayFunction (str)         - What function will be ran when day is changed
-		dayFunctionArgs (any)     - The arguments for 'dayFunction'
-		dayFunctionKwargs (any)   - The keyword arguments for 'dayFunction'function
-
-		monthFunction (str)       - What function will be ran when month is changed
-		monthFunctionArgs (any)   - The arguments for 'monthFunction'
-		monthFunctionKwargs (any) - The keyword arguments for 'monthFunction'function
-
-		yearFunction (str)        - What function will be ran when year is changed
-		yearFunctionArgs (any)    - The arguments for 'yearFunction'
-		yearFunctionKwargs (any)  - The keyword arguments for 'yearFunction'function
-
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
 		Example Input: addPickerDateWindow()
 		"""
 
-		handle = handle_WidgetPicker()
-		handle.type = "PickerDateWindow"
-		handle.build(locals())
+		handle = self.makePickerDateWindow(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 
-	def addCanvas(self, size = wx.DefaultSize, position = wx.DefaultPosition, 
-		panel = {},
-
-		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+	def addCanvas(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Creates a blank canvas window.
 
-		size (int tuple)  - The size of the canvas. (length, width)
-		label (str)     - What this is called in the idCatalogue
-		border (str)      - What style the border has. "simple", "raised", "sunken" or "none". Only the first two letters are necissary
-		
-		tabTraversal (bool)   - If True: Pressing [tab] will move the cursor to the next widget
-		useDefaultSize (bool) - If True: The xSize and ySize will be overridden to fit as much of the widgets as it can. Will lock the canvas size from re-sizing
-
-		initFunction (str)       - The function that is ran when the canvas first appears
-		initFunctionArgs (any)   - The arguments for 'initFunction'
-		initFunctionKwargs (any) - The keyword arguments for 'initFunction'function
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
 		Example Input: addCanvas()
 		"""
 
-		handle = handle_WidgetCanvas()
-		handle.type = "Canvas"
-		handle.build(locals())
+		handle = self.makeCanvas(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 
-	def addTable(self, rows = 1, columns = 1,
-		contents = None, gridLabels = [[],[]], toolTips = None, autoSizeRow = False, autoSizeColumn = False,
-		rowSize = None, columnSize = None, rowLabelSize = None, columnLabelSize = None, 
-		rowSizeMinimum = None, columnSizeMinimum = None, rowSizeMaximum = None, columnSizeMaximum = None,
-
-		showGrid = True, dragableRows = False, dragableColumns = False, arrowKeyExitEdit = False, enterKeyExitEdit = False, editOnEnter = False, 
-		readOnly = False, readOnlyDefault = False, default = (0, 0), cellType = None, cellTypeDefault = "inputbox",
-
-		preEditFunction = None, preEditFunctionArgs = None, preEditFunctionKwargs = None, 
-		postEditFunction = None, postEditFunctionArgs = None, postEditFunctionKwargs = None, 
-		dragFunction = None, dragFunctionArgs = None, dragFunctionKwargs = None, 
-		selectManyFunction = None, selectManyFunctionArgs = None, selectManyFunctionKwargs = None, 
-		selectSingleFunction = None, selectSingleFunctionArgs = None, selectSingleFunctionKwargs = None, 
-		rightClickCellFunction = None, rightClickCellFunctionArgs = None, rightClickCellFunctionKwargs = None, 
-		rightClickLabelFunction = None, rightClickLabelFunctionArgs = None, rightClickLabelFunctionKwargs = None,
-
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
-
+	def addTable(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds a table to the next cell on the grid. 
 		If enabled, it can be edited; the column &  sizerNumber, size can be changed.
 		To get a cell value, use: myGridId.GetCellValue(row, column).
-		For a deep tutorial: http://www.blog.pythonlibrary.org/2010/03/18/wxpython-an-introduction-to-grids/
 
-		rows (int)        - The number of rows the table has
-		columns (int)     - The number of columns the table has
-		sizerNumber (int) - The number of the sizer that this will be added to
-		tableNumber (int) - The table catalogue number for this new table
-		flags (list)      - A list of strings for which flag to add to the sizer
-		contents (list)   - Either a 2D list [[row], [column]] or a numpy array that contains the contents of each cell. If None, they will be blank.
-		gridLabels (str)  - The labels for the [[rows], [columns]]. If not enough are provided, the resst will be capital letters.
-		toolTips (list)   - The coordinates and message for all the tool tips. [[row, column, message], [row, column, message], ...]
-		label (str)       - What this is called in the idCatalogue
-		
-		rowSize (str)           - The height of the rows
-			- If None: Will make it the default size
-			- If dict: {row (int): size (int)}. Use None to define the default size
-		columnSize (str)        - The width of the columns
-			- If None: Will make it the default size
-			- If dict: {column (int): size (int)}. Use None to define the default size
-		rowLabelSize (int)      - The width of the row labels
-			- If None: Will make it the default size
-		columnLabelSize (int)   - The height of the column labels
-			- If None: Will make it the default size
-
-		rowSizeMinimum (str)    - The minimum height for the rows
-			- If None: Will not restrict minimum row size
-		columnSizeMinimum (str) - The minimum width for the columns
-			- If None: Will not restrict minimum column size
-		rowSizeMaximum (str)    - The maximum height for the rows. Does not apply to the user, only when the program is setting the size
-			- If None: Will not restrict maximum row size
-		columnSizeMaximum (str) - The maximum width for the columns. Does not apply to the user, only when the program is setting the size
-			- If None: Will not restrict maximum column size
-
-		autoSizeRow (bool)      - Determines the size of the rows based on the sizer element. 'rowSize' will override this
-			- If dict: {row (int): autoSize (int)}. Use None to define the default state
-		autoSizeColumn (bool)   - Determines the size of the columns based on the sizer element. 'columnSize' will override this
-			- If dict: {column (int): autoSize (int)}. Use None to define the default state
-		
-		showGrid (bool)         - If True: the grid lines will be visible
-		dragableRows (bool)     - If True: The user can drag the row lines of the cells
-		dragableColumns (bool)  - If True: The user can drag the column lines of the cells
-		editOnEnter (bool)      - Determiens the default behavior for the enter key
-			- If True: The user will begin editing the cell when enter is pressed
-			- If False: The cursor will move down to the next row
-		arrowKeyExitEdit (bool) - If True: The user will stop editing and navigate the grid if they use the arrow keys while editing instead of navigating the editor box
-		enterKeyExitEdit (bool) - If True: If the user presses enter while editing a cell, the cursor will move down
-		readOnly (bool)         - Determines the editability of the table
-			- If True: The user will not be able to edit the cells. If an edit function is provided, this cell will be ignored
-			- If False: The user will be able to edit all cells.
-			- A dictionary can be given to single out specific cells, rows, or columns
-				~ {row number (int): {column number (int): readOnly for the cell (bool)}}
-				~ {row number (int): readOnly for the whole row (bool)}
-				~ {None: {column number (int): readOnly for the whole column (bool)}}
-		readOnlyDefault (bool)  - What readOnly value to give a cell if the user does not provide one
-		default (tuple)         - Which cell the table starts out with selected. (row, column)
-		cellType (dict)         - Determines the widget type used for a specific cell in the table
-				~ {row number (int): {column number (int): cell type for the cell (str)}}
-				~ {row number (int): cell type for the whole row (str)}
-				~ {None: {column number (int): cell type for the whole column (str)}}
-		cellTypeDefault (str)   - What the cells default to as a widget
-			- Possible Inputs: "inputbox", "droplist"
-
-		preEditFunction (str)               - The function that is ran when the user edits a cell. If None: the user cannot edit cells. Accessed cells are before the edit
-		preEditFunctionArgs (any)           - The arguments for 'preEditFunction'
-		preEditFunctionKwargs (any)         - The keyword arguments for 'preEditFunction'
-		postEditFunction (str)              - The function that is ran when the user edits a cell. If None: the user cannot edit cells. Accessed cells are after the edit
-		postEditFunctionArgs (any)          - The arguments for 'postEditFunction'
-		postEditFunctionKwargs (any)        - The keyword arguments for 'postEditFunction'
-		
-		dragFunction (str)                  - The function that is ran when the user drags a row or column. If None: the user cannot drag rows or columns
-		dragFunctionArgs (any)              - The arguments for 'dragFunction'
-		dragFunctionKwargs (any)            - The keyword arguments for 'dragFunction'
-		selectManyFunction (str)            - The function that is ran when the user selects a group of continuous cells
-		selectManyFunctionArgs (any)        - The arguments for 'selectManyFunction'
-		selectManyFunctionKwargs (any)      - The keyword arguments for 'selectManyFunction'
-		selectSingleFunction (str)          - The function that is ran when the user selects a single cell
-		selectSingleFunctionArgs (any)      - The arguments for 'selectSingleFunction'
-		selectSingleFunctionKwargs (any)    - The keyword arguments for 'selectSingleFunction'
-		
-		rightClickCellFunction (str)        - What function will be ran when a cell is right clicked
-		rightClickCellFunctionArgs (any)    - The arguments for 'rightClickCellFunction'
-		rightClickCellFunctionKwargs (any)  - The keyword arguments for 'rightClickCellFunction'function
-		rightClickLabelFunction (str)       - What function will be ran when a column or row label is right clicked
-		rightClickLabelFunctionArgs (any)   - The arguments for 'rightClickLabelFunction'
-		rightClickLabelFunctionKwargs (any) - The keyword arguments for 'rightClickLabelFunction'function
-
-		wizardFrameNumber (int) - The number of the wizard page. If None, it assumes either a frame or a panel
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
 
 		Example Input: addTable()
 		Example Input: addTable(rows = 3, columns = 4)
@@ -13798,9 +14380,8 @@ class handle_Sizer(handle_Container_Base):
 		Example Input: addTable(rows = 3, columns = 4, columnSize = {0: 50, None: 20}, autoSizeColumn = {1: True})
 		"""
 
-		handle = handle_WidgetTable()
-		handle.type = "Table"
-		handle.build(locals())
+		handle = self.makeTable(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
 
@@ -14060,6 +14641,7 @@ class handle_Sizer(handle_Container_Base):
 		handle = handle_Sizer()
 		handle.type = "Box"
 
+		kwargs["self"] = self
 		argument_catalogue = self.arrangeArguments(handle_Window.addSizerBox, args, kwargs)
 		argument_catalogue["self"] = self
 
@@ -14076,6 +14658,7 @@ class handle_Sizer(handle_Container_Base):
 		handle = handle_Sizer()
 		handle.type = "Text"
 
+		kwargs["self"] = self
 		argument_catalogue = self.arrangeArguments(handle_Window.addSizerText, args, kwargs)
 		argument_catalogue["self"] = self
 
@@ -14092,6 +14675,7 @@ class handle_Sizer(handle_Container_Base):
 		handle = handle_Sizer()
 		handle.type = "Grid"
 
+		kwargs["self"] = self
 		argument_catalogue = self.arrangeArguments(handle_Window.addSizerGrid, args, kwargs)
 		argument_catalogue["self"] = self
 
@@ -14108,6 +14692,7 @@ class handle_Sizer(handle_Container_Base):
 		handle = handle_Sizer()
 		handle.type = "Flex"
 
+		kwargs["self"] = self
 		argument_catalogue = self.arrangeArguments(handle_Window.addSizerGridFlex, args, kwargs)
 		argument_catalogue["self"] = self
 
@@ -14124,6 +14709,7 @@ class handle_Sizer(handle_Container_Base):
 		handle = handle_Sizer()
 		handle.type = "Bag"
 
+		kwargs["self"] = self
 		argument_catalogue = self.arrangeArguments(handle_Window.addSizerGridBag, args, kwargs)
 		argument_catalogue["self"] = self
 
@@ -14140,6 +14726,7 @@ class handle_Sizer(handle_Container_Base):
 		handle = handle_Sizer()
 		handle.type = "Wrap"
 
+		kwargs["self"] = self
 		argument_catalogue = self.arrangeArguments(handle_Window.addSizerWrap, args, kwargs)
 		argument_catalogue["self"] = self
 
@@ -14396,6 +14983,10 @@ class handle_Dialog(handle_Base):
 		
 		#########################################################
 
+		argument_catalogue["hidden"] = False
+		argument_catalogue["enabled"] = True
+		self.preBuild(argument_catalogue)
+
 		if (self.type.lower() == "message"):
 			build_message()
 		elif (self.type.lower() == "process"):
@@ -14432,6 +15023,8 @@ class handle_Dialog(handle_Base):
 			build_printPreview()
 		else:
 			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
+
+		self.postBuild(argument_catalogue)
 
 	def show(self):
 		"""Shows the dialog box for this handle."""
@@ -14657,57 +15250,18 @@ class handle_Dialog(handle_Base):
 			myPrintout.Destroy()
 
 		elif (self.type.lower() == "printpreview"):
-			printout_1 = self.MyPrintout(self, self.title)
-			printout_2 = self.MyPrintout(self, self.title)
+			printout = self.MyPrintout(self, self.title)
 			
-			printPreview = wx.PrintPreview(printout_1, printout_2)#, self.dialogData)
+			handle = handle_Window(self.myWindow.controller)
+			handle.type = "Preview"
+			handle.build({"canvas": printout, "endProgram": None})
 
-			# Initial zoom value.
-			if "__WXMAC__" in wx.PlatformInfo:
-				printPreview.SetZoom(50)
-			else:
-				printPreview.SetZoom(35)
+			handle.setWindowSize(self.size)
+			handle.setWindowPosition(self.position)
 
-			print("@1", printPreview)
+			handle.showWindow()#asDialog = True)
 
-			if not printPreview.IsOk():
-				wx.MessageBox(("There was a problem printing.\nPerhaps your current printer is \nnot set correctly ?"), ("Printing"), wx.OK)
-				self.thing = None
-				return
 
-			else:
-				self.thing = wx.PreviewFrame(printPreview, None, "Print Preview")
-
-				#Icon
-				image = self.getImage("print", internal = True)
-				self.thing.SetIcon(wx.Icon(image))
-
-				#Settings
-				self.thing.Initialize()
-
-				if (self.size == None):
-					self.size = wx.DefaultSize
-				elif (isinstance(self.size, str)):
-					if (self.size.lower() == "default"):
-						self.size = wx.DefaultSize
-					else:
-						self.size = ast.literal_eval(self.size)
-
-				if (self.position == None):
-					self.position = wx.DefaultPosition
-				elif (isinstance(self.position, str)):
-					if (self.position.lower() == "default"):
-						self.position = wx.DefaultPosition
-					else:
-						self.position = ast.literal_eval(self.position)
-
-				self.thing.SetPosition(self.position)
-				self.thing.SetSize(self.size)
-
-				#Show
-				self.thing.Layout()
-				self.thing.Show(True)
-				wx.WindowDisabler(self.thing) #Show as modal
 		else:
 			warnings.warn(f"Add {self.type} to send() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -14782,94 +15336,140 @@ class handle_Window(handle_Container_Base):
 		return output
 
 	def build(self, argument_catalogue):
-		#Fill in default values
-		for item in inspect.signature(Controller.addWindow).parameters.values():
-			if (item.name not in argument_catalogue):
-				argument_catalogue[item.name] = item.default
+		"""Determiens which build system to use for this handle."""
 
-		#Prebuild
-		handle_Container_Base.preBuild(self, argument_catalogue)
+		def build_frame():
+			"""Builds a wx frame object."""
 
-		#Determine window style
-		tabTraversal, stayOnTop, floatOnParent, resize, topBar, minimize, maximize, close, title = self.getArguments(argument_catalogue, ["tabTraversal", "stayOnTop", "floatOnParent", "resize", "topBar", "minimize", "maximize", "close", "title"])
-		flags = "wx.CLIP_CHILDREN|wx.SYSTEM_MENU"
-		if (tabTraversal):
-			flags += "|wx.TAB_TRAVERSAL"
+			#Determine window style
+			tabTraversal, stayOnTop, floatOnParent, resize, topBar, minimize, maximize, close, title = self.getArguments(argument_catalogue, ["tabTraversal", "stayOnTop", "floatOnParent", "resize", "topBar", "minimize", "maximize", "close", "title"])
+			flags = "wx.CLIP_CHILDREN|wx.SYSTEM_MENU"
+			if (tabTraversal):
+				flags += "|wx.TAB_TRAVERSAL"
 
-		if (stayOnTop):
-			flags += "|wx.STAY_ON_TOP"
+			if (stayOnTop):
+				flags += "|wx.STAY_ON_TOP"
 
-		if (floatOnParent):
-			flags += "|wx.FRAME_FLOAT_ON_PARENT"
+			if (floatOnParent):
+				flags += "|wx.FRAME_FLOAT_ON_PARENT"
 
-		if (resize):
-			flags += "|wx.RESIZE_BORDER"
+			if (resize):
+				flags += "|wx.RESIZE_BORDER"
 
-		if (topBar != None):
-			if (topBar):
-				flags += "|wx.MINIMIZE_BOX|wx.MAXIMIZE_BOX|wx.CLOSE_BOX"
-		else:
-			if (minimize):
-				flags += "|wx.MINIMIZE_BOX"
+			if (topBar != None):
+				if (topBar):
+					flags += "|wx.MINIMIZE_BOX|wx.MAXIMIZE_BOX|wx.CLOSE_BOX"
+			else:
+				if (minimize):
+					flags += "|wx.MINIMIZE_BOX"
 
-			if (maximize):
-				flags += "|wx.MAXIMIZE_BOX"
+				if (maximize):
+					flags += "|wx.MAXIMIZE_BOX"
 
-			if (close):
-				flags += "|wx.CLOSE_BOX"
+				if (close):
+					flags += "|wx.CLOSE_BOX"
 
-		if (title != None):
-			flags += "|wx.CAPTION"
-		else:
-			title = ""
+			if (title != None):
+				flags += "|wx.CAPTION"
+			else:
+				title = ""
 
-		#Make the frame
-		size, position = self.getArguments(argument_catalogue, ["size", "position"])
-		self.thing = wx.Frame(None, title = title, size = size, pos = position, style = eval(flags, {'__builtins__': None, "wx": wx}, {}))
-		
-		#Add Properties
-		icon, internal = self.getArguments(argument_catalogue, ["icon", "internal"])
-		if (icon != None):
-			self.setIcon(icon, internal)
+			#Make the frame
+			size, position = self.getArguments(argument_catalogue, ["size", "position"])
+			self.thing = wx.Frame(None, title = title, size = size, pos = position, style = eval(flags, {'__builtins__': None, "wx": wx}, {}))
+			
+			#Add Properties
+			icon, internal = self.getArguments(argument_catalogue, ["icon", "internal"])
+			if (icon != None):
+				self.setIcon(icon, internal)
 
-		#Bind functions
-		delFunction, delFunctionArgs, delFunctionKwargs = self.getArguments(argument_catalogue, ["delFunction", "delFunctionArgs", "delFunctionKwargs"])
-		initFunction, initFunctionArgs, initFunctionKwargs = self.getArguments(argument_catalogue, ["initFunction", "initFunctionArgs", "initFunctionKwargs"])
-		idleFunction, idleFunctionArgs, idleFunctionKwargs = self.getArguments(argument_catalogue, ["idleFunction", "idleFunctionArgs", "idleFunctionKwargs"])
-		controller = self.getAddressValue(self.nestingAddress[0])[None]
-		
-		if (initFunction != None):
-			self.setFunction_init(initFunction, initFunctionArgs, initFunctionKwargs)
+			#Bind functions
+			delFunction, delFunctionArgs, delFunctionKwargs = self.getArguments(argument_catalogue, ["delFunction", "delFunctionArgs", "delFunctionKwargs"])
+			initFunction, initFunctionArgs, initFunctionKwargs = self.getArguments(argument_catalogue, ["initFunction", "initFunctionArgs", "initFunctionKwargs"])
+			idleFunction, idleFunctionArgs, idleFunctionKwargs = self.getArguments(argument_catalogue, ["idleFunction", "idleFunctionArgs", "idleFunctionKwargs"])
+			controller = self.getAddressValue(self.nestingAddress[0])[None]
+			
+			if (initFunction != None):
+				self.setFunction_init(initFunction, initFunctionArgs, initFunctionKwargs)
 
-		if (delFunction != None):
-			self.setFunction_close(delFunction, delFunctionArgs, delFunctionKwargs)
-		else:
+			if (delFunction != None):
+				self.setFunction_close(delFunction, delFunctionArgs, delFunctionKwargs)
+			else:
+				endProgram = self.getArguments(argument_catalogue, ["endProgram"])
+				if (endProgram != None):
+					if (endProgram):
+						delFunction = controller.onExit
+					else:
+						delFunction = controller.onQuit
+				else:
+					delFunction = self.onHideWindow
+
+				self.setFunction_close(delFunction)
+
+			if (idleFunction != None):
+				self.idleQueue = None
+				self.betterBind(wx.EVT_IDLE, self.thing, idleFunction, idleFunctionArgs, idleFunctionKwargs)
+			else:
+				self.betterBind(wx.EVT_IDLE, self.thing, controller.onIdle)
+
+			#Unpack arguments
+			panel = argument_catalogue["panel"]
+
+			#Make the main panel
+			if (panel):
+				self.mainPanel = self.addPanel()#"-1", parent = handle, size = (10, 10), tabTraversal = tabTraversal, useDefaultSize = False)
+
+		def build_preview():
+			"""Builds a wx preview frame object."""
+
+			canvas = self.getArguments(argument_catalogue, ["canvas"])
+			preview = wx.PrintPreview(canvas)#, canvas)
+
+			#Pre Settings
+			if ("__WXMAC__" in wx.PlatformInfo):
+				preview.SetZoom(50)
+			else:
+				preview.SetZoom(35)
+
+			if (not preview.IsOk()):
+				warnings.warn(f"'canvas' {canvas.__repr__()} was not created correctly for {self.__repr__()}", Warning, stacklevel = 2)
+				self.thing = None
+				return
+
+			self.thing = wx.PreviewFrame(preview, None, "Print Preview")
+
+			#Post Settings
+			image = self.getImage("print", internal = True)
+			self.thing.SetIcon(wx.Icon(image))
+			# self.thing.Initialize()
+
 			endProgram = self.getArguments(argument_catalogue, ["endProgram"])
 			if (endProgram != None):
 				if (endProgram):
-					delFunction = controller.onExit
+					delFunction = self.controller.onExit
 				else:
-					delFunction = controller.onQuit
+					delFunction = self.controller.onQuit
 			else:
-				delFunction = controller.onHide
+				delFunction = self.onHideWindow
 
 			self.setFunction_close(delFunction)
 
-		if (idleFunction != None):
-			self.idleQueue = None
-			self.betterBind(wx.EVT_IDLE, self.thing, idleFunction, idleFunctionArgs, idleFunctionKwargs)
+		#########################################################
+
+		#Fill in default values
+		argument_catalogue["self"] = self.controller
+		argument_catalogue = self.arrangeArguments(Controller.addWindow, kwargDict = argument_catalogue)
+
+		self.preBuild(argument_catalogue)
+
+		if (self.type.lower() == "frame"):
+			build_frame()
+		elif (self.type.lower() == "preview"):
+			build_preview()
 		else:
-			self.betterBind(wx.EVT_IDLE, self.thing, controller.onIdle)
+			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
 
-		#Post build
-		handle_Container_Base.postBuild(self, argument_catalogue)
-
-		#Unpack arguments
-		panel = argument_catalogue["panel"]
-
-		#Make the main panel
-		if (panel):
-			self.mainPanel = self.addPanel()#"-1", parent = handle, size = (10, 10), tabTraversal = tabTraversal, useDefaultSize = False)
+		self.postBuild(argument_catalogue)
 
 	def getTitle(self):
 		"""Returns the title for this window."""
@@ -15193,6 +15793,8 @@ class handle_Window(handle_Container_Base):
 		if (self.controller.windowDisabler != None):
 			if (self.controller.windowDisabler[0] == self.thing):
 				# del self.controller.windowDisabler[1]
+				self.controller.windowDisabler[0] = None
+			if (len(self.controller.windowDisabler) == 0):
 				self.controller.windowDisabler = None
 
 		if (self.visible):
@@ -15205,7 +15807,9 @@ class handle_Window(handle_Container_Base):
 		"""Event function for hideWindow()"""
 		
 		self.hideWindow(*args, **kwargs)
-		event.Skip()
+
+		if (event.GetClassName() != "wxCloseEvent"):
+			event.Skip()
 
 	def onSwitchWindow(self, event, *args, **kwargs):
 		"""Event function for switchWindow()"""
@@ -16770,12 +17374,10 @@ class handle_Panel(handle_Container_Base):
 
 	def build(self, argument_catalogue):
 		#Fill in default values
-		for item in inspect.signature(handle_Window.addPanel).parameters.values():
-			if (item.name not in argument_catalogue):
-				argument_catalogue[item.name] = item.default
+		argument_catalogue = self.arrangeArguments(handle_Window.addPanel, kwargDict = argument_catalogue)
 
 		#Prebuild
-		handle_Container_Base.preBuild(self, argument_catalogue)
+		self.preBuild(argument_catalogue)
 
 		#Unpack arguments
 		buildSelf = self.getArguments(argument_catalogue, "self")
@@ -16843,7 +17445,7 @@ class handle_Panel(handle_Container_Base):
 				argument_catalogue[key] = value
 
 		#Postbuild
-		handle_Container_Base.postBuild(self, argument_catalogue)
+		self.postBuild(argument_catalogue)
 
 	#Etc
 	def nest(self, handle = None):
@@ -16911,7 +17513,7 @@ class handle_Splitter(handle_Container_Base):
 		"""Determiens which build system to use for this handle."""
 
 		def build_double():
-			"""Builds a wx  object."""
+			"""Builds a wx double splitter object."""
 			nonlocal self, argument_catalogue
 
 			vertical, minimumSize, dividerPosition, buildSelf = self.getArguments(argument_catalogue, ["vertical", "minimumSize", "dividerPosition", "self"])
@@ -16970,7 +17572,7 @@ class handle_Splitter(handle_Container_Base):
 				self.setFunction_init(initFunction, initFunctionArgs, initFunctionKwargs)
 
 		def build_quad():
-			"""Builds a wx  object."""
+			"""Builds a wx quad splitter object."""
 			nonlocal self, argument_catalogue
 
 			buildSelf = self.getArguments(argument_catalogue, "self")
@@ -17002,7 +17604,7 @@ class handle_Splitter(handle_Container_Base):
 				self.setFunction_init(initFunction, initFunctionArgs, initFunctionKwargs)
 
 		def build_poly():
-			"""Builds a wx  object."""
+			"""Builds a wx poly splitter object."""
 			nonlocal self, argument_catalogue
 
 			minimumSize, vertical, buildSelf = self.getArguments(argument_catalogue, ["minimumSize", "vertical", "self"])
@@ -17114,76 +17716,6 @@ class handle_Splitter(handle_Container_Base):
 				self.thing.SetSashPosition(newValue)
 		else:
 			warnings.warn(f"Add {self.type} to setSashPosition() for {self.__repr__()}", Warning, stacklevel = 2)
-
-	# def readBuildInstructions_sizer(self, parent, i, instructions):
-	#   """Interprets instructions given by the user for what sizer to make and how to make it."""
-
-	#   if (not isinstance(instructions, dict)):
-	#       errorMessage = f"sizer_{i} must be a dictionary for {self.__repr__()}"
-	#       raise ValueError(errorMessage)
-
-	#   if (len(instructions) == 1):
-	#       instructions["type"] = "Box"
-	#   else:
-	#       if ("type" not in instructions):
-	#           errorMessage = "Must supply which sizer type to make. The key should be 'type'. The value should be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
-	#           raise ValueError(errorMessage)
-
-	#   sizerType = instructions["type"].lower()
-	#   if (sizerType not in ["grid", "flex", "bag", "box", "text", "wrap"]):
-	#       errorMessage = f"There is no 'type' {instructions['type']}. The value should be be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
-	#       raise KeyError(errorMessage)
-
-	#   #Get Default build arguments
-	#   if (sizerType == "grid"):
-	#       sizerFunction = handle_Window.addSizerGrid
-	#   elif (sizerType == "flex"):
-	#       sizerFunction = handle_Window.addSizerGridFlex
-	#   elif (sizerType == "bag"):
-	#       sizerFunction = handle_Window.addSizerGridBag
-	#   elif (sizerType == "box"):
-	#       sizerFunction = handle_Window.addSizerBox
-	#   elif (sizerType == "text"):
-	#       sizerFunction = handle_Window.addSizerText
-	#   else:
-	#       sizerFunction = handle_Window.addSizerWrap
-	#   kwargs = {item.name: item.default for item in inspect.signature(sizerFunction).parameters.values()}
-
-	#   #Create Handler
-	#   sizer = handle_Sizer()
-	#   sizer.type = instructions["type"]
-	#   del instructions["type"]
-
-	#   #Overwrite default with user given data
-	#   for key, value in instructions.items():
-	#       kwargs[key] = value
-
-	#   #Finish building sizer
-	#   kwargs["self"] = parent
-	#   sizer.build(kwargs)
-
-	#   return sizer
-
-	# def readBuildInstructions_panel(self, parent, i, instructions):
-	#   """Interprets instructions given by the user for what panel to make and how to make it."""
-
-	#   if (not isinstance(instructions, dict)):
-	#       errorMessage = f"panel_{i} must be a dictionary for {self.__repr__()}"
-	#       raise ValueError(errorMessage)
-
-	#   #Overwrite default with user given data
-	#   kwargs = {item.name: item.default for item in inspect.signature(handle_Window.addPanel).parameters.values()}
-	#   for key, value in instructions.items():
-	#       kwargs[key] = value
-
-	#   #Create Handler
-	#   panel = handle_Panel()
-
-	#   #Finish building panel
-	#   kwargs["self"] = parent
-	#   panel.build(kwargs)
-
-	#   return panel
 
 class handle_AuiManager(handle_Container_Base):
 	"""The manager for dockable windows.
@@ -17305,7 +17837,7 @@ class handle_AuiManager(handle_Container_Base):
 		return handle
 
 	def nest(self, handle, *args, **kwargs):
-		print(f"@1 nesting {type(handle)} in {self.__repr__()}")
+		print(f"nesting {type(handle)} in {self.__repr__()}")
 
 		self.finalNest(handle)
 
@@ -20287,6 +20819,10 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 		icon (str)          - The file path to the icon for the window
 			If None: No icon will be shown
 		internal (bool)     - If True: The icon provided is an internal icon, not an external file
+		endProgram (bool)   - Determines what happens when the close button is pressed
+			- If True: runs onExit()
+			- If False: runs onQuit()
+			- If None: runs onHideWindow()
 		
 		Example Input: addWindow()
 		Example Input: addWindow(0)
