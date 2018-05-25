@@ -76,7 +76,7 @@ import netaddr
 import serial.tools.list_ports
 
 #Import barcode software for drawing and decoding barcodes
-# import elaphe
+import elaphe
 
 
 #Import multi-threading to run functions as background processes
@@ -113,7 +113,7 @@ import re
 	# pillow
 	# pycryptodomex
 	# atexit
-	# elaphe
+	# elaphe3
 	# python3-ghostscript "https://pypi.python.org/pypi/python3-ghostscript/0.5.0#downloads"
 	# sqlite3
 
@@ -2755,6 +2755,11 @@ class Utilities():
 		popupMenu = self.get(label, typeList = [handle_MenuPopup])
 		return popupMenu
 
+	#Make Functions
+	# def makeText(self, ):
+	# 	handle.subHandle = handle_Sizer.addText(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = flex, flags = flags, mySizer = self, **kwargs)
+			
+
 class CommonEventFunctions():
 	"""Contains common functions used for events bound to wxObjects.
 	This is here for convenience in programming.
@@ -3665,12 +3670,12 @@ class handle_Widget_Base(handle_Base):
 
 	#Setters
 	def setValue(self, newValue, event = None):
-		"""Returns what the contextual value is for the object associated with this handle."""
+		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
 		warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setSelection(self, newValue, event = None):
-		"""Returns what the contextual value is for the object associated with this handle."""
+		"""Sets the contextual selection for the object associated with this handle to what the user supplies."""
 
 		warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -14272,19 +14277,6 @@ class handle_Dialog(handle_Base):
 
 			self.thing = self.getArguments(argument_catalogue, ["text"])
 
-		def build_color():
-			"""Builds a wx color dialog object."""
-			nonlocal self, argument_catalogue
-
-			simple = self.getArguments(argument_catalogue, ["simple"])
-
-			if (simple != None):
-				self.subType = "simple"
-				self.thing = wx.ColourDialog(self)
-				self.thing.GetColourData().SetChooseFull(not simple)
-			else:
-				self.thing = wx.lib.agw.cubecolourdialog.CubeColourDialog(self)
-
 		def build_choice():
 			"""Builds a wx choice dialog object."""
 			nonlocal self, argument_catalogue
@@ -14304,6 +14296,103 @@ class handle_Dialog(handle_Base):
 					self.thing.SetSelection(default)
 				else:
 					self.thing.SetSelections(default)
+
+		def build_color():
+			"""Builds a wx color dialog object."""
+			nonlocal self, argument_catalogue
+
+			simple = self.getArguments(argument_catalogue, ["simple"])
+
+			if (simple != None):
+				self.subType = "simple"
+				self.thing = wx.ColourDialog(None)
+				self.thing.GetColourData().SetChooseFull(not simple)
+			else:
+				self.thing = wx.lib.agw.cubecolourdialog.CubeColourDialog(None)
+
+		def build_print():
+			"""Builds a wx print dialog object."""
+			nonlocal self, argument_catalogue
+
+			pageNumbers, helpButton, printToFile, selection = self.getArguments(argument_catalogue, ["pageNumbers", "helpButton", "printToFile", "selection"])
+			pageFrom, pageTo, pageMin, pageMax, collate, copies = self.getArguments(argument_catalogue, ["pageFrom", "pageTo", "pageMin", "pageMax", "collate", "copies"])
+
+			#Configure settings
+			# pd = wx.PrintData()
+			# pd.SetPrinterName("")
+			# pd.SetOrientation(wx.PORTRAIT)
+			# pd.SetPaperId(wx.PAPER_A4)
+			# pd.SetQuality(wx.PRINT_QUALITY_DRAFT)
+			# pd.SetColour(True) # Black and white printing if False.
+			# pd.SetNoCopies(1)
+			# pd.SetCollate(True)
+			# self.data = wx.PrintDialogData(pd)
+			self.data = wx.PrintDialogData()
+
+			self.data.EnablePageNumbers(pageNumbers)
+			self.data.EnableHelp(helpButton)
+
+			if (printToFile != None):
+				self.data.EnablePrintToFile(True)
+				self.data.SetPrintToFile(printToFile)
+			else:
+				self.data.EnablePrintToFile(False)
+
+			if (selection != None):
+				self.data.EnableSelection(True)
+				self.data.SetSelection(selection)
+			else:
+				self.data.EnableSelection(True)
+
+			if (pageFrom != None):
+				self.data.SetFromPage(pageFrom)
+	
+			if (pageTo != None):
+				self.data.SetToPage(pageTo)
+			
+			if (pageMin != None):
+				self.data.SetMinPage(pageMin)
+	
+			if (pageMax != None):
+				self.data.SetMaxPage(pageMax)
+			
+			if (collate != None):
+				self.data.SetCollate(collate)
+			
+			if (copies != None):
+				self.data.SetNoCopies(copies)
+			
+			# self.thing.SetAllPages(True)
+			# self.thing.SetSetupDialog(True)
+
+			self.thing = wx.PrintDialog(None, self.data)
+
+			#Set Defaults
+			self.title = "GUI_Maker Page"
+			self.content = None
+
+		def build_printPreview():
+			"""Builds a wx print dialog object."""
+			nonlocal self, argument_catalogue
+
+			#Configure settings
+			# pd = wx.PrintData()
+			# pd.SetPrinterName("")
+			# pd.SetOrientation(wx.PORTRAIT)
+			# pd.SetPaperId(wx.PAPER_A4)
+			# pd.SetQuality(wx.PRINT_QUALITY_DRAFT)
+			# pd.SetColour(True) # Black and white printing if False.
+			# pd.SetNoCopies(1)
+			# pd.SetCollate(True)
+			# self.data = wx.PrintPreview(data = pd)
+			# self.data = wx.PrintPreview(None)
+			self.thing = -1
+
+			#Set Defaults
+			self.title = "GUI_Maker Page"
+			self.position = None
+			self.content = None
+			self.size = None
 		
 		#########################################################
 
@@ -14313,7 +14402,7 @@ class handle_Dialog(handle_Base):
 			build_process()
 		elif (self.type.lower() == "scroll"):
 			build_scroll()
-		elif (self.type.lower() == "inputBox"):
+		elif (self.type.lower() == "inputbox"):
 			build_inputBox()
 		elif (self.type.lower() == "busy"):
 			build_busyInfo()
@@ -14335,10 +14424,12 @@ class handle_Dialog(handle_Base):
 			build_list()
 		elif (self.type.lower() == "choice"):
 			build_choice()
-		elif (self.type.lower() == "printSetup"):
-			build_pageSetup()
 		elif (self.type.lower() == "print"):
 			build_print()
+		elif (self.type.lower() == "printsetup"):
+			build_pageSetup()
+		elif (self.type.lower() == "printpreview"):
+			build_printPreview()
 		else:
 			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -14382,6 +14473,21 @@ class handle_Dialog(handle_Base):
 		elif (self.type.lower() == "busyinfo"):
 			self.thing = wx.BusyInfo(self.thing)
 
+		elif (self.type.lower() == "print"):
+			self.answer = self.thing.ShowModal()
+			self.dialogData = self.thing.GetPrintDialogData()
+
+			self.thing.Destroy()
+			self.thing = None
+
+		elif (self.type.lower() == "printpreview"):
+			pass
+			# self.answer = self.thing.ShowModal()
+			# self.data = [self.thing.GetPrintData(), self.thing.GetPrintDialogData()]
+
+			# self.thing.Destroy()
+			# self.thing = None
+
 		elif (self.type.lower() == "color"):
 			self.answer = self.thing.ShowModal()
 			self.data = self.thing.GetColourData()
@@ -14398,6 +14504,9 @@ class handle_Dialog(handle_Base):
 		if (self.type.lower() == "busyinfo"):
 			del self.thing
 			self.thing = None
+		elif (self.type.lower() == "printpreview"):
+			self.thing.hide
+			self.thing = None
 		else:
 			warnings.warn(f"Add {self.type} to hide() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -14410,6 +14519,12 @@ class handle_Dialog(handle_Base):
 				value = self.choices[self.data]
 			else:
 				value = [self.choices[i] for i in self.data]
+
+		elif (self.type.lower() == "print"):
+			value = [self.data, self.dialogData, self.content]
+
+		elif (self.type.lower() == "printPreview"):
+			value = self.content
 
 		elif (self.type.lower() == "color"):
 			color = self.data.GetColour().Get()
@@ -14460,6 +14575,169 @@ class handle_Dialog(handle_Base):
 		if (self.answer == wx.ID_NO):
 			return True
 		return False
+
+	#Setters
+	def setValue(self, value, event = None):
+		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
+
+		if (self.type.lower() == "print"):
+			self.content = value
+		
+		elif (self.type.lower() == "printpreview"):
+			self.content = value
+		
+		else:
+			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setTitle(self, text = None, event = None):
+		"""Sets the title."""
+
+		if (self.type.lower() == "print"):
+			if (text == None):
+				text = "GUI_Maker Page"
+			self.title = text
+		else:
+			warnings.warn(f"Add {self.type} to setTitle() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setSize(self, size = None, event = None):
+		"""Sets the size."""
+
+		if (self.type.lower() == "print"):
+			self.size = size
+		else:
+			warnings.warn(f"Add {self.type} to setTitle() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	#Etc
+	def send(self, event = None):
+		"""Returns what the contextual valueDoes the contextual send command for the object associated with this handle.
+		Modified code from: https://wiki.wxpython.org/Printing
+		"""
+
+		# def arrangeContent():
+		# 	nonlocal self, dc
+
+		# 	if (isinstance(self.content, str)):
+		# 		metric = False
+		# 		if (metric):
+		# 			dc.SetMapMode(wx.MM_METRIC)
+		# 		else:
+		# 			dc.SetMapMode(wx.MM_POINTS)
+
+		# 		dc.SetTextForeground("black")
+		# 		dc.SetFont(wx.Font(20, wx.SWISS, wx.NORMAL, wx.BOLD))
+		# 		dc.DrawText(self.content, 0, 0)
+		# 	else:
+		# 		image = self.getImage(self.content)
+		# 		dc.DrawBitmap(image, 0, 0)
+
+		#########################################################
+
+
+		if (self.type.lower() == "print"):
+			# dc = dlg.GetPrintDC()
+
+			# dc.StartDoc(self.title)
+			# dc.StartPage()
+
+			# arrangeContent()
+
+			# dc.EndPage()
+			# dc.EndDoc()
+			# del dc
+
+			printer = wx.Printer(self.dialogData)
+			myPrintout = self.MyPrintout(self)
+
+			if (not printer.Print(self, myPrintout, True)):
+				wx.MessageBox(("There was a problem printing.\nPerhaps your current printer is \nnot set correctly ?"), ("Printing"), wx.OK)
+				return
+
+			else:
+				self.printData = wx.PrintData(printer.GetPrintDialogData().GetPrintData())
+			myPrintout.Destroy()
+
+		elif (self.type.lower() == "printpreview"):
+			printout_1 = self.MyPrintout(self, self.title)
+			printout_2 = self.MyPrintout(self, self.title)
+			
+			printPreview = wx.PrintPreview(printout_1, printout_2)#, self.dialogData)
+
+			# Initial zoom value.
+			if "__WXMAC__" in wx.PlatformInfo:
+				printPreview.SetZoom(50)
+			else:
+				printPreview.SetZoom(35)
+
+			print("@1", printPreview)
+
+			if not printPreview.IsOk():
+				wx.MessageBox(("There was a problem printing.\nPerhaps your current printer is \nnot set correctly ?"), ("Printing"), wx.OK)
+				self.thing = None
+				return
+
+			else:
+				self.thing = wx.PreviewFrame(printPreview, None, "Print Preview")
+
+				#Icon
+				image = self.getImage("print", internal = True)
+				self.thing.SetIcon(wx.Icon(image))
+
+				#Settings
+				self.thing.Initialize()
+
+				if (self.size == None):
+					self.size = wx.DefaultSize
+				elif (isinstance(self.size, str)):
+					if (self.size.lower() == "default"):
+						self.size = wx.DefaultSize
+					else:
+						self.size = ast.literal_eval(self.size)
+
+				if (self.position == None):
+					self.position = wx.DefaultPosition
+				elif (isinstance(self.position, str)):
+					if (self.position.lower() == "default"):
+						self.position = wx.DefaultPosition
+					else:
+						self.position = ast.literal_eval(self.position)
+
+				self.thing.SetPosition(self.position)
+				self.thing.SetSize(self.size)
+
+				#Show
+				self.thing.Layout()
+				self.thing.Show(True)
+				wx.WindowDisabler(self.thing) #Show as modal
+		else:
+			warnings.warn(f"Add {self.type} to send() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	class MyPrintout(wx.Printout):
+		def __init__(self, parent, title = "GUI_Maker Page"):
+			wx.Printout.__init__(self, title)
+
+			self.parent = parent
+
+		def OnPrintPage(self, page):
+			"""Arranges the stuff on the page."""
+
+			dc = self.GetDC()
+
+			if (isinstance(self.parent.content, str)):
+				metric = False
+				# metric = True
+				if (metric):
+					dc.SetMapMode(wx.MM_METRIC)
+				else:
+					dc.SetMapMode(wx.MM_POINTS)
+
+				dc.SetTextForeground("black")
+				dc.SetFont(wx.Font(11, wx.SWISS, wx.NORMAL, wx.BOLD))
+				dc.DrawText(self.parent.content, 0, 0)
+			else:
+				image = self.parent.getImage(self.parent.content)
+				dc.DrawBitmap(image, 0, 0)
+
+			return True
 
 class handle_Window(handle_Container_Base):
 	"""A handle for working with a wxWindow."""
@@ -15468,6 +15746,36 @@ class handle_Window(handle_Container_Base):
 		handle.build(locals())
 		return handle
 
+	def makeDialogChoice(self, choices = [], text = "", title = "", single = True, default = None):
+		"""Pauses the running code and shows a dialog box that scrolls.
+
+		choices (list) - What can be chosen from
+		default (int) - The index of what to select by default
+			- If None: Will not set the default
+			- If 'single' is False: Provide a list of what indexes to set by default
+		_________________________________________________________________________
+
+		Example Use:
+			with myFrame.makeDialogChoice(["Lorem", "Ipsum"]) as myDialog:
+				choices = myDialog.getValue()
+		_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+		Example Use:
+			myDialog = myFrame.makeDialogChoice(["Lorem", "Ipsum"])
+			choices = myDialog.getValue()
+		_________________________________________________________________________
+
+		Example Input: makeDialogChoice()
+		Example Input: makeDialogChoice(["Lorem", "Ipsum"])
+		Example Input: makeDialogChoice(["Lorem", "Ipsum"], default = 1)
+		Example Input: makeDialogChoice(["Lorem", "Ipsum"], single = False, default = [0, 1])
+		"""
+
+		handle = handle_Dialog()
+		handle.type = "choice"
+		handle.build(locals())
+		return handle
+
 	def makeDialogColor(self, simple = True):
 		"""Pauses the running code and shows a dialog box to get input from the user about color.
 
@@ -15498,33 +15806,62 @@ class handle_Window(handle_Container_Base):
 		handle.build(locals())
 		return handle
 
-	def makeDialogChoice(self, choices = [], text = "", title = "", single = True, default = None):
-		"""Pauses the running code and shows a dialog box that scrolls.
+	def makeDialogPrint(self, pageNumbers = True, helpButton = False, printToFile = None, selection = None, 
+		pageFrom = None, pageTo = None, pageMin = None, pageMax = None, collate = None, copies = None):
+		"""Pauses the running code and shows a dialog box to get input from the user about printing.
 
-		choices (list) - What can be chosen from
-		default (int) - The index of what to select by default
-			- If None: Will not set the default
-			- If 'single' is False: Provide a list of what indexes to set by default
+		pageNumbers (bool) - Determines the state of the 'page numbers' control box
+			- If True: Enables the control box
+			- If False: Disables the control box
+		helpButton (bool) - Determines the state of the 'help' button
+			- If True: Enables the help button
+			- If False: Disables the help button
+
+		printToFile (str) - What file to print this to
+			- If None: Disables the 'print to file' check box
+
+		selection (bool) - ?
+			- If None: Disables the 'selection' radio button?
+
+		pageFrom (int) - Sets the 'Pages' from field
+		pageTo (int)   - Sets the 'Pages' to field
+		pageMin (int)  - Sets the minimum number of copies
+		pageMax (int)  - Sets the maximum number of copies
+		copies (int)   - Sets the 'Number of copies' input spinner
+
+		collate (bool) - Sets the 'Collate' check box
+
 		_________________________________________________________________________
 
 		Example Use:
-			with myFrame.makeDialogChoice(["Lorem", "Ipsum"]) as myDialog:
-				choices = myDialog.getValue()
-		_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-
-		Example Use:
-			myDialog = myFrame.makeDialogChoice(["Lorem", "Ipsum"])
-			choices = myDialog.getValue()
+			with myFrame.makeDialogPrint() as myDialog:
+				myDialog.setValue(text)
+				myDialog.send()
 		_________________________________________________________________________
 
-		Example Input: makeDialogChoice()
-		Example Input: makeDialogChoice(["Lorem", "Ipsum"])
-		Example Input: makeDialogChoice(["Lorem", "Ipsum"], default = 1)
-		Example Input: makeDialogChoice(["Lorem", "Ipsum"], single = False, default = [0, 1])
+		Example Input: makeDialogPrint()
 		"""
 
 		handle = handle_Dialog()
-		handle.type = "choice"
+		handle.type = "print"
+		handle.build(locals())
+		return handle
+
+	def makeDialogPrintPreview(self):
+		"""Pauses the running code and shows a dialog box to get input from the user about printing.
+		_________________________________________________________________________
+
+		Example Use:
+			with myFrame.makeDialogPrintPreview() as myDialog:
+				myDialog.setValue(text)
+				myDialog.send()
+		_________________________________________________________________________
+
+		Example Input: makeDialogPrint()
+		"""
+
+		handle = handle_Dialog()
+		handle.type = "printPreview"
 		handle.build(locals())
 		return handle
 
@@ -17953,24 +18290,50 @@ class Communication():
 	def __init__(self):
 		"""Initialized internal variables."""
 
-		self.comDict    = {} #A dictionary that contains all of the created COM ports
-		self.socketDict = {} #A dictionary that contains all of the created socket connections
+		self.comDict     = {} #A dictionary that contains all of the created COM ports
+		self.socketDict  = {} #A dictionary that contains all of the created socket connections
+		self.barcodeDict = {} #A dictionary that contains all of the created barcodes
 
 	#Barcodes
-	def getBarcodeTypes(self):
+	def getBarcodeTypes(self, *args, **kwargs):
 		"""Convenience Function"""
 
-		return self.Barcodes.getTypes(self)
+		return self.Barcode.getTypes(self, *args, **kwargs)
 
-	def createBarcode(self, codeType, text, fileName = None, saveFormat = None, dpi = 300):
-		"""Convenience Function"""
+	def makeBarcode(self, which = None):
+		"""Creates a new barcode object.
 
-		return self.Barcodes.create(self, codeType, text, fileName = fileName, saveFormat = saveFormat, dpi = dpi)
+		Example Input: makeBarcode()
+		Example Input: makeBarcode(0)
+		"""
 
-	def readBarcode(self):
-		"""Convenience Function"""
+		#Create barcode object
+		barcode = self.Barcode()
+		if (which in self.barcodeDict):
+			warnings.warn(f"Overwriting Barcode {which}", Warning, stacklevel = 2)
 
-		return Barcodes.read(self)
+		#Catalogue the barcode
+		if (which != None):
+			self.barcodeDict[which] = barcode
+		else:
+			index = 0
+			while index in self.barcodeDict:
+				index += 1
+			self.barcodeDict[index] = barcode
+
+		return barcode
+
+	def getBarcode(self, which):
+		"""Returns the requested barcode object.
+
+		Example Input: getBarcode(0)
+		"""
+
+		if (which in self.barcodeDict):
+			return self.barcodeDict[which]
+		else:
+			warnings.warn(f"There is no barcode object {which}", Warning, stacklevel = 2)
+			return None
 
 	#COM port
 	def getComPortList(self):
@@ -17984,17 +18347,26 @@ class Communication():
 
 		return ports
 
-	def makeComPort(self, which):
+	def makeComPort(self, which = None):
 		"""Creates a new COM Port object.
 
+		Example Input: makeComPort()
 		Example Input: makeComPort(0)
 		"""
 
 		#Create COM object
 		comPort = self.ComPort()
+		if (which in self.comDict):
+			warnings.warn(f"Overwriting COM Port {which}", Warning, stacklevel = 2)
 
 		#Catalogue the COM port
-		self.comDict[which] = comPort
+		if (which != None):
+			self.comDict[which] = comPort
+		else:
+			index = 0
+			while index in self.comDict:
+				index += 1
+			self.comDict[index] = comPort
 
 		return comPort
 
@@ -18011,20 +18383,26 @@ class Communication():
 			return None
 
 	#Ethernet
-	def makeSocket(self, which):
+	def makeSocket(self, which = None):
 		"""Creates a new Ethernet object.
 
+		Example Input: makeSocket()
 		Example Input: makeSocket(0)
 		"""
 
 		#Create Ethernet object
 		mySocket = self.Ethernet(self)
-
 		if (which in self.socketDict):
 			warnings.warn(f"Overwriting Socket {which}", Warning, stacklevel = 2)
 
 		#Catalogue the COM port
-		self.socketDict[which] = mySocket
+		if (which != None):
+			self.socketDict[which] = mySocket
+		else:
+			index = 0
+			while index in self.socketDict:
+				index += 1
+			self.socketDict[index] = mySocket
 
 		return mySocket
 
@@ -19174,13 +19552,32 @@ class Communication():
 			else:
 				warnings.warn(f"No message to send for comWrite() in {self.__repr__()}", Warning, stacklevel = 2)
 
-	class Barcodes():
+	class Barcode():
 		"""Allows the user to create and read barcodes."""
 
 		def __init__(self):
 			"""Initializes internal variables."""
 
-			pass
+			self.myBarcode = None
+			self.type = None
+
+		def getType(self, formatted = False):
+			"""Returns the barcode type."""
+
+			if (formatted):
+				return self.getTypes(5)[self.type]
+			else:
+				return self.type
+
+		def setType(self, newType):
+			"""Sets the default barcode type."""
+
+			if (newType in self.getTypes(5)):
+				self.type = newType
+			elif (newType in self.getTypes(4)):
+				self.type = self.getTypes(4)[newType]
+			else:
+				warnings.warn(f"Unknown type {newType} in setType() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		def getTypes(self, grouped = 0):
 			"""Returns the possible barcode types to the user as a list.
@@ -19191,6 +19588,7 @@ class Communication():
 				2: The same barcodes with different names will be grouped as a single string
 				3: Barcodes of similar names will be grouped as sub-lists (Some are duplicated)
 				4: A dictionary where the key is the readable name for it, and the value is the correct arg 'codeType' for create()
+				5: A dictionary where the key is the correct arg 'codeType' for create(), and the value is a list of readable names for it
 
 			Example Input: getTypes()
 			Example Input: getTypes(1)
@@ -19368,81 +19766,117 @@ class Communication():
 					"BC412": "bc412", "BC412 SEMI": "bc412", "BC412 IBM": "bc412",
 					"GS1 Composite Symbols": "ean13composite", "EAN-13 Composite": "ean13composite", "EAN-8 Composite": "ean13composite", "UPC-A Composite": "ean13composite", "UPC-E Composite": "ean13composite", "GS1 DataBar Omnidirectional Composite": "ean13composite", "GS1 DataBar Stacked Composite": "ean13composite", "GS1 DataBar Stacked Omni Composite": "ean13composite", "GS1 DataBar Truncated Composite": "ean13composite", "GS1 DataBar Limited Composite": "ean13composite", "GS1 DataBar Expanded Composite": "ean13composite", "GS1 DataBar Expanded Stacked Composite": "ean13composite", "GS1-128 Composite": "ean13composite",
 					"HIBC barcodes": "hibccode39", "HIBC Code 39": "hibccode39", "HIBC Code 128": "hibccode39", "HIBC Data Matrix": "hibccode39", "HIBC PDF417": "hibccode39", "HIBC MicroPDF417": "hibccode39", "HIBC QR Code": "hibccode39", "HIBC Codablock F": "hibccode39"}
-			# qrcode
-			# code128
-			# pdf417
-			# royalmail
-			# datamatrix
-			# code11
-			# code25
-			# code39
-			# code93
-			# japanpost
-			# azteccode
-			# auspost
-			# interleaved2of5
-			# raw
-			# kix
-			# postnet
-			# pharmacode
-			# plessey
-			# symbol
-			# onecode
-			# maxicode
-			# msi
-			# rss14
-			# rationalizedCodabar
+
+			elif (grouped == 5):
+				typeList = {'ean13': ['EAN-13', 'EAN', 'UCC-13', 'JAN', 'JAN-13', 'EAN-13+2', 'EAN-13+5', 'EAN-99'], 
+					'ean8': ['EAN-8', 'UCC-8', 'JAN-8', 'EAN-8+2', 'EAN-8+5', 'EAN-Velocity'], 
+					'upca': ['UPC-A', 'UPC', 'UCC-12', 'UPC-A+2', 'UPC-A+5'], 
+					'upce': ['UPC-E', 'UPC-E0', 'UPC-E1', 'UPC-E+2', 'UPC-E+5'], 
+					'isbn': ['ISBN', 'ISBN-13', 'ISBN-10', 'Bookland EAN-13'], 
+					'ismn': ['ISMN'], 
+					'issn': ['ISSN'], 
+					'ean5': ['EAN-5'], 
+					'ean2': ['EAN-2'], 
+					'databaromni': ['GS1 DataBar Omnidirectional', 'RSS-14'], 
+					'databarstacked': ['GS1 DataBar Stacked', 'RSS-14 Stacked'], 
+					'databarstackedomni': ['GS1 DataBar Stacked Omnidirectional', 'RSS-14 Stacked Omnidirectional'], 
+					'databartruncated': ['GS1 DataBar Truncated', 'RSS-14 Truncated'], 
+					'databarlimited': ['GS1 DataBar Limited', 'RSS Limited'], 
+					'databarexpanded': ['GS1 DataBar Expanded', 'RSS Expanded'], 
+					'databarexpandedstacked': ['GS1 DataBar Expanded Stacked', 'RSS Expanded Stacked'], 
+					'gs1-128': ['GS1-128', 'UCC/EAN-128', 'EAN-128', 'UCC-128'], 
+					'sscc18': ['SSCC-18', 'EAN-18', 'NVE'], 
+					'ean14': ['EAN-14', 'UCC-14'], 
+					'itf14': ['ITF-14', 'UPC SCS'], 
+					'qrcode': ['QR Code'], 
+					'microqrcode': ['Micro QR Code'], 
+					'gs1qrcode': ['GS1 QR Code'], 
+					'datamatrix': ['Data Matrix', 'Data Matrix ECC 200', 'Data Matrix Rectangular Extension'], 
+					'gs1datamatrix': ['GS1 DataMatrix'], 
+					'azteccode': ['Aztec Code', 'Compact Aztec Code'], 
+					'aztecrune': ['Aztec Runes'], 
+					'pdf417': ['PDF417'], 
+					'pdf417compact': ['Compact PDF417', 'Truncated PDF417'], 
+					'micropdf417': ['MicroPDF417'], 
+					'hanxin': ['Han Xin Code', 'Chinese Sensible'], 
+					'maxicode': ['MaxiCode', 'UPS Code', 'Code 6'], 
+					'codablockf': ['Codablock F'], 
+					'code16k': ['Code 16K', 'USS-16K'], 
+					'code49': ['Code 49', 'USS-49'], 
+					'codeone': ['Code 1', 'Code 1S'], 
+					'postnet': ['USPS POSTNET'], 
+					'planet': ['USPS PLANET'], 
+					'onecode': ['USPS Intelligent Mail', 'USPS OneCode'], 
+					'symbol': ['USPS FIM'], 
+					'royalmail': ['Royal Mail', 'RM4SCC', 'CBC'], 
+					'kix': ['Royal TNT Post', 'KIX'], 
+					'japanpost': ['Japan Post'], 
+					'auspost': ['Australia Post'], 
+					'identcode': ['Deutsche Post Identcode', 'DHL Identcode'], 
+					'leitcode': ['Deutsche Post Leitcode', 'DHL Leitcode'], 
+					'pharmacode': ['Pharmacode', 'Pharmaceutical Binary Code'], 
+					'pharmacode2': ['Two-track Pharmacode', 'Two-track Pharmaceutical Binary Code'], 
+					'code32': ['Code 32', 'Italian-Pharmacode', 'IMH'], 
+					'pzn': ['PZN', 'Pharmazentralnummer', 'PZN-8', 'PZN-7'], 
+					'code39': ['Code 39', 'Code 3 of 9', 'LOGMARS', 'Alpha39', 'USD-3', 'USD-2', 'USS-39'], 
+					'code39ext': ['Code 39 Extended', 'Code 39 Full ASCII'], 
+					'code93': ['Code 93', 'USD-7', 'USS-93'], 
+					'code93ext': ['Code 93 Extended', 'Code 93 Full ASCII'], 
+					'code128': ['Code 128', 'Code 128A', 'Code 128B', 'Code 128C', 'USD-6', 'USS-128'], 
+					'code2of5': ['Code 25', 'Code 2 of 5', 'Industrial 2 of 5'], 
+					'iata2of5': ['IATA-2 of 5'], 
+					None: ['Datalogic 2 of 5', 'Matrix 2 of 5', 'COOP 2 of 5'], 
+					'interleaved2of5': ['Interleaved 2 of 5', 'ITF', 'Code 2 of 5 Interleaved', 'USD-1', 'USS-Interleaved 2 of 5'], 
+					'code11': ['Code 11', 'USD-8'], 
+					'rationalizedCodabar': ['Codabar', 'Rationalized Codabar', 'Ames Code', 'NW-7', 'USD-4', 'USS-Codabar', 'Monarch', 'Code 2 of 7'], 
+					'plessey': ['Plessey', 'Anker Code'], 
+					'msi': ['MSI Plessey', 'MSI', 'MSI Modified Plessey'], 
+					'telepen': ['Telepen', 'Telepen Alpha', 'Telepen Full ASCII'], 
+					'telepennumeric': ['Telepen Numeric'], 
+					'channelcode': ['Channel Code'], 
+					'posicode': ['PosiCode', 'PosiCode A', 'PosiCode B'], 
+					'bc412': ['BC412', 'BC412 SEMI', 'BC412 IBM'], 
+					'ean13composite': ['GS1 Composite Symbols', 'EAN-13 Composite', 'EAN-8 Composite', 'UPC-A Composite', 'UPC-E Composite', 'GS1 DataBar Omnidirectional Composite', 
+						'GS1 DataBar Stacked Composite', 'GS1 DataBar Stacked Omni Composite', 'GS1 DataBar Truncated Composite', 'GS1 DataBar Limited Composite', 
+						'GS1 DataBar Expanded Composite', 'GS1 DataBar Expanded Stacked Composite', 'GS1-128 Composite'], 
+					'hibccode39': ['HIBC barcodes', 'HIBC Code 39', 'HIBC Code 128', 'HIBC Data Matrix', 'HIBC PDF417', 'HIBC MicroPDF417', 'HIBC QR Code', 'HIBC Codablock F']}
 
 			return typeList
 
-		def create(self, codeType, text, fileName = None, saveFormat = None, dpi = 300):
+		def create(self, text, codeType = None):
 			"""Returns a PIL image of the barcode for the user or saves it somewhere as an image.
 
-			codeType (str)   - What type of barcode will be made
-			text (str)       - What the barcode will say
-			fileName (str)   - If not None: Where an image of the barcode will be saved
-			saveFormat (str) - What image format to save it as (All PIL formats are valid)
-				If None: The image will be saved as a png
-			dpi (int)        - How many dots per inch to draw the label at
+			text (str)     - What the barcode will say
+			codeType (str) - What type of barcode will be made
+				- If None: Will use self.type
 
-			Example Input: create("code128", 1234567890)
-			Example Input: create("code128", 1234567890, "barcode", "bmp")
+			Example Input: create(1234567890)
+			Example Input: create(1234567890, "code128")
 			"""
 
-			#Configure settings
-			myWriter = {}
-			if (saveFormat != None):
-				myWriter["format"] = saveFormat
-
-			if (dpi != 300):
-				myWriter["dpi"] = dpi
+			if (codeType == None):
+				codeType = self.type
+			elif (codeType not in self.getTypes(5)):
+				if (codeType in self.getTypes(4)):
+					codeType = self.getTypes(4)[codeType]
+				else:
+					warnings.warn(f"Unknown type {codeType} in create() for {self.__repr__()}", Warning, stacklevel = 2)
+					return
 
 			#Create barcode
-			myBarcode = elaphe.barcode(codeType, text, options=dict(version=9, eclevel='M'), margin=10, data_mode='8bits')
+			self.myBarcode = elaphe.barcode(codeType, f"{text}", options = dict(version = 9, eclevel = 'M'), margin = 10, data_mode = '8bits')
 
+			return self.myBarcode
 
+		def show(self):
+			"""Shows the barcode to the user."""
 
+			self.myBarcode.show()
 
+		def get(self):
+			"""Returns the barcode."""
 
-
-
-
-
-
-			myBarcode = barcode.get(codeType, text, writer = barcode.writer.ImageWriter())
-
-			#Save or return the barcode
-			if (fileName != None):
-				myBarcode.save(fileName, myWriter)
-			else:
-				image = myBarcode.render(myWriter)
-				return image
-
-		### To do ###
-		def read(self):
-			"""Reads a barcode."""
-
-			pass
+			return self.myBarcode
 
 class Security():
 	"""Allows the GUI to encrypt and decrypt files.
