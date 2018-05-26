@@ -13385,7 +13385,7 @@ class handle_WidgetTable(handle_Widget_Base):
 			if (self.debugging):
 				print("TableCellEditor.Clone()")
 
-			return TableCellEditor(downOnEnter = self.downOnEnter, debugging = self.debugging)
+			return self.parent.TableCellEditor(downOnEnter = self.downOnEnter, debugging = self.debugging)
 
 		def GetControl(self):
 			"""Returns the wx control used"""
@@ -15254,13 +15254,12 @@ class handle_Dialog(handle_Base):
 			
 			handle = handle_Window(self.myWindow.controller)
 			handle.type = "Preview"
-			handle.build({"canvas": printout, "endProgram": None})
+			handle.build({"canvas": printout, "enablePrint": True})
 
 			handle.setWindowSize(self.size)
 			handle.setWindowPosition(self.position)
 
-			handle.showWindow()#asDialog = True)
-
+			handle.showWindow()
 
 		else:
 			warnings.warn(f"Add {self.type} to send() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -15269,6 +15268,7 @@ class handle_Dialog(handle_Base):
 		def __init__(self, parent, title = "GUI_Maker Page"):
 			wx.Printout.__init__(self, title)
 
+			self.title = title
 			self.parent = parent
 
 		def OnPrintPage(self, page):
@@ -15292,6 +15292,11 @@ class handle_Dialog(handle_Base):
 				dc.DrawBitmap(image, 0, 0)
 
 			return True
+
+		def clone(self):
+			"""Returns a copy of itself as a separate instance."""
+
+			return self.parent.MyPrintout(self.parent, title = self.title)
 
 class handle_Window(handle_Container_Base):
 	"""A handle for working with a wxWindow."""
@@ -15422,8 +15427,12 @@ class handle_Window(handle_Container_Base):
 		def build_preview():
 			"""Builds a wx preview frame object."""
 
-			canvas = self.getArguments(argument_catalogue, ["canvas"])
-			preview = wx.PrintPreview(canvas)#, canvas)
+			canvas, enablePrint = self.getArguments(argument_catalogue, ["canvas", "enablePrint"])
+
+			if (enablePrint):
+				preview = wx.PrintPreview(canvas, canvas.clone())
+			else:
+				preview = wx.PrintPreview(canvas)
 
 			#Pre Settings
 			if ("__WXMAC__" in wx.PlatformInfo):
@@ -15441,18 +15450,7 @@ class handle_Window(handle_Container_Base):
 			#Post Settings
 			image = self.getImage("print", internal = True)
 			self.thing.SetIcon(wx.Icon(image))
-			# self.thing.Initialize()
-
-			endProgram = self.getArguments(argument_catalogue, ["endProgram"])
-			if (endProgram != None):
-				if (endProgram):
-					delFunction = self.controller.onExit
-				else:
-					delFunction = self.controller.onQuit
-			else:
-				delFunction = self.onHideWindow
-
-			self.setFunction_close(delFunction)
+			self.thing.Initialize()
 
 		#########################################################
 
