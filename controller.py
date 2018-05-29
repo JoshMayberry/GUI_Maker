@@ -15287,6 +15287,19 @@ class handle_Dialog(handle_Base):
 				dc.SetTextForeground("black")
 				dc.SetFont(wx.Font(11, wx.SWISS, wx.NORMAL, wx.BOLD))
 				dc.DrawText(self.parent.content, 0, 0)
+			if (isinstance(self.parent.content, handle_WidgetCanvas)):
+				with self.parent.content as myCanvas:
+					print("@1", myCanvas)
+					print("@2", myCanvas._Buffer)
+					print("@3", myCanvas.thing)
+
+
+					canvasDc = wx.MemoryDC()
+					print("@4", canvasDc)
+					canvasDc.SelectObject(myCanvas._Buffer)
+
+
+					dc.Blit(0, 0, canvasDc.width, canvasDc.height, canvasDc, 0, 0)
 			else:
 				image = self.parent.getImage(self.parent.content)
 				dc.DrawBitmap(image, 0, 0)
