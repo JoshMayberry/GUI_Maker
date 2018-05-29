@@ -28,6 +28,7 @@ def buildWindow():
 				mySubSizer.addInputBox(text = "Amet")
 				mySubSizer.addInputBox(text = "Consectetur")
 
+
 #Run Program
 if __name__ == '__main__':
 	buildWindow()

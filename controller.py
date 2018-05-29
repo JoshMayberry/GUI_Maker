@@ -2029,7 +2029,7 @@ class Utilities():
 
 		return fixedFlags, position, border
 
-	def getImage(self, imagePath, internal = False, alpha = False):
+	def _getImage(self, imagePath, internal = False, alpha = False):
 		"""Returns the image as specified by the user.
 
 		imagePath (str) - Where the image is on the computer. Can be a PIL image. If None, it will be a blank image
@@ -2088,10 +2088,10 @@ class Utilities():
 		internal (bool) - If True: 'imagePath' is the name of an icon as a string.
 		alpha (bool)    - If True: The image will preserve any alpha chanels
 
-		Example Input: getImage("example.bmp", 0)
-		Example Input: getImage(image, 0)
-		Example Input: getImage("error", 0, internal = True)
-		Example Input: getImage("example.bmp", 0, alpha = True)
+		Example Input: _getImage("example.bmp", 0)
+		Example Input: _getImage(image, 0)
+		Example Input: _getImage("error", 0, internal = True)
+		Example Input: _getImage("example.bmp", 0, alpha = True)
 		"""
 
 		#Determine if the image is a blank image
@@ -4135,7 +4135,7 @@ class CommonEventFunctions():
 	def onDoNothing(self, event):
 		"""Does nothing."""
 
-		print("onDoNothing()")
+		# print("onDoNothing()")
 		pass
 		
 		#There is no event.Skip() here to prevent the event from propigating forward
@@ -7417,8 +7417,8 @@ class handle_WidgetButton(handle_Widget_Base):
 
 				if ((imagePath != "") and (imagePath != None)):
 					if (not os.path.exists(imagePath)):
-						return self.getImage("error", internal = True)
-					return self.getImage(imagePath)
+						return self._getImage("error", internal = True)
+					return self._getImage(imagePath)
 				else:
 					return None
 
@@ -7435,7 +7435,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			#Error Check
 			image = imageCheck(idlePath)
 			if (image == None):
-				image = self.getImage(None)
+				image = self._getImage(None)
 
 			#Remember values
 			self.toggle = toggle
@@ -8221,7 +8221,7 @@ class handle_WidgetImage(handle_Widget_Base):
 			imagePath, internal, size = self.getArguments(argument_catalogue, ["imagePath", "internal", "size"])
 
 			#Get correct image
-			image = self.getImage(imagePath, internal)
+			image = self._getImage(imagePath, internal)
 		
 			#Create the thing to put in the grid
 			self.thing = wx.StaticBitmap(self.parent.thing, bitmap = image, size = size, style = 0)
@@ -8255,7 +8255,7 @@ class handle_WidgetImage(handle_Widget_Base):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
 		if (self.type.lower() == "image"):
-			image = self.getImage(newValue)
+			image = self._getImage(newValue)
 			self.thing.SetBitmap(image) #(wxBitmap) - What the image will be now
 
 		else:
@@ -9146,7 +9146,7 @@ class handle_MenuItem(handle_Widget_Base):
 					#Determine icon
 					icon, internal = self.getArguments(argument_catalogue, ["icon", "internal"])
 					if (icon != None):
-						image = self.getImage(icon, internal)
+						image = self._getImage(icon, internal)
 						image = self.convertBitmapToImage(image)
 						image = image.Scale(16, 16, wx.IMAGE_QUALITY_HIGH)
 						image = self.convertImageToBitmap(image)
@@ -9226,14 +9226,14 @@ class handle_MenuItem(handle_Widget_Base):
 						warnings.warn(f"No icon provided for {self.__repr__()}", Warning, stacklevel = 2)
 						icon = "error"
 						internal = True
-					image = self.getImage(icon, internal)
+					image = self._getImage(icon, internal)
 
 					if (disabled_icon == None):
 						imageDisabled = wx.NullBitmap
 					else:
 						if (disabled_internal == None):
 							disabled_internal = internal
-						imageDisabled = self.getImage(disabled_icon, disabled_internal)
+						imageDisabled = self._getImage(disabled_icon, disabled_internal)
 
 					#Configure Settings
 					if (toolTip == None):
@@ -9883,7 +9883,11 @@ class handle_MenuPopupSubMenu(handle_MenuPopup):
 		self.hidden = None
 
 class handle_WidgetCanvas(handle_Widget_Base):
-	"""A handle for working with canvas widgets."""
+	"""A handle for working with canvas widgets.
+	Special thanks to FogleBird for how to implement a double buffered canvas on https://stackoverflow.com/questions/16597110/best-canvas-for-wxpython
+	See: https://wiki.wxpython.org/DoubleBufferedDrawing
+	See: http://zetcode.com/wxpython/gdi/
+	"""
 
 	def __init__(self):
 		"""Initializes defaults."""
@@ -9894,6 +9898,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		#Defaults
 		self.paint_count = 0
 		self.drawQueue = [] #What will be drawn on the window. Items are drawn from left to right in their list order. [function, args, kwargs]
+		self.boundingBox = (0, 0, 0, 0)
 
 	def build(self, argument_catalogue):
 		"""Determiens which build system to use for this handle."""
@@ -9910,10 +9915,6 @@ class handle_WidgetCanvas(handle_Widget_Base):
 			self.finalNest(self.myPanel)
 			self.thing = self.myPanel.thing
 
-			#onSize called to make sure the buffer is initialized.
-			#This might result in onSize getting called twice on some platforms at initialization, but little harm done.
-			self.onSize(None)
-
 			#Bind Functions
 			if (initFunction != None):
 				initFunctionArgs, initFunctionKwargs = self.getArguments(argument_catalogue, ["initFunctionArgs", "initFunctionKwargs"])
@@ -9922,6 +9923,13 @@ class handle_WidgetCanvas(handle_Widget_Base):
 			#Enable painting
 			self.betterBind(wx.EVT_PAINT, self.thing, self.onPaint)
 			self.betterBind(wx.EVT_SIZE, self.thing, self.onSize)
+			# self.betterBind(wx.EVT_ERASE_BACKGROUND, self.thing, self.onDoNothing) #Disable background erasing to reduce flicker
+
+			#Tell the window that EVT_PAINT will be running (reduces flickering)
+			self.myWindow.thing.SetBackgroundStyle(wx.BG_STYLE_PAINT)
+			self.thing.SetBackgroundStyle(wx.BG_STYLE_PAINT)
+
+			self.new()
 		
 		#########################################################
 
@@ -9966,47 +9974,58 @@ class handle_WidgetCanvas(handle_Widget_Base):
 	def onPaint(self, event):
 		"""Needed so that the GUI can draw on the panel."""
 
-		#All that is needed here is to draw the buffer to screen
-		dc = wx.BufferedPaintDC(self.thing, self._Buffer)
+		dc = wx.AutoBufferedPaintDC(self.thing)
+		dc.Clear()
+		self.draw(dc)
+		self.boundingBox = dc.GetBoundingBox()
 
 		event.Skip()
 
 	def onSize(self, event):
 		"""Needed so that the GUI can draw on the panel."""
-		
-		#Make sure the buffer is always the same size as the Window
-		Size  = self.parent.parent.thing.ClientSize
-		self._Buffer = wx.Bitmap(*Size)
-		self.update()
 
-		if (event != None):
-			event.Skip()
+		self.thing.Refresh()
 
 	def save(self, fileName, fileType = wx.BITMAP_TYPE_PNG):
 		"""Save the contents of the buffer to the specified file.
+		See: https://wxpython.org/Phoenix/docs/html/wx.BitmapType.enumeration.html
 
 		Example Input: save("example.png")
 		"""
 
-		self._Buffer.SaveFile(fileName, fileType)
+		image = self.getImage()
+		image.SaveFile(fileName, fileType)
 
-	def update(self):
-		"""This is called if the drawing needs to change.
+	def getDC(self):
+		"""Returns a dc with the canvas on it."""
 
-		Example Input: update()
-		"""
-
-		#Create dc
 		dc = wx.MemoryDC()
-		dc.SelectObject(self._Buffer)
-
-		#Draw on canvas
+		dc.Clear()
 		self.draw(dc)
 
-		#Update canvas
-		del dc #Get rid of the MemoryDC before Update() is called.
-		self.parent.thing.Refresh()
-		self.parent.thing.Update()
+		return dc
+
+	def getImage(self):
+		"""Returns an image with the canvas on it."""
+
+		width, height = self.getSize()
+		bitmap = wx.EmptyBitmap(width, height)
+
+		dc = wx.MemoryDC()
+		dc.SelectObject(bitmap)
+		self.draw(dc)
+		dc.SelectObject(wx.NullBitmap)
+
+		image = self.convertBitmapToImage(bitmap)
+
+		return image
+
+	def getSize(self):
+		"""Returns the size of the canvas."""
+
+		width = self.boundingBox[2] - self.boundingBox[0] if (self.boundingBox[2] - self.boundingBox[0] > 0) else 1
+		height = self.boundingBox[3] - self.boundingBox[1] if (self.boundingBox[3] - self.boundingBox[1] > 0) else 1
+		return width, height
 
 	def queue(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Queues a drawing function for the canvas.
@@ -10024,22 +10043,14 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		Example Input: new()
 		"""
 
+		pass
+
 		#Clear queue
 		self.drawQueue = []
 
-		#Create dc
-		dc = wx.MemoryDC()
-		dc.SelectObject(self._Buffer)
-		
-		#Clear canvas
 		brush = wx.Brush("White")
-		dc.SetBackground(brush)
-		dc.Clear()
-
-		#Update canvas
-		del dc #Get rid of the MemoryDC before Update() is called.
-		self.parent.thing.Refresh()
-		self.parent.thing.Update()
+		self.queue("dc.SetBackground", brush)
+		self.queue("dc.Clear")
 
 	def draw(self, dc):
 		"""Draws the queued shapes.
@@ -10047,38 +10058,17 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		Example Input: draw(dc)
 		"""
 
-		#Clear canvas
-		brush = wx.Brush("White")
-		dc.SetBackground(brush)
-		dc.Clear()
+		metric = False
+		# metric = True
+		if (metric):
+			dc.SetMapMode(wx.MM_METRIC)
+		else:
+			dc.SetMapMode(wx.MM_POINTS)
 
 		#Draw items in queue
-		for item in self.drawQueue:
-			#Unpack variables
-			myFunction = eval(item[0], {'__builtins__': None}, {"self": self})
-			myFunctionArgs = item[1]
-			myFunctionKwargs = item[2]
-
-			#Ensure args and kwargs are formatted correctly
-			myFunction, myFunctionArgs, myFunctionKwargs = self.parent.formatFunctionInput(0, [myFunction], [myFunctionArgs], [myFunctionKwargs])
-
-			if (type(myFunctionArgs) == tuple):
-				myFunctionArgs = list(myFunctionArgs)
-			elif (type(myFunctionArgs) != list):
-				myFunctionArgs = [myFunctionArgs]
-
-			#Run function
-			##Has args and kwargs
-			if ((myFunctionArgs != None) and (myFunctionKwargs != None)):
-				myFunction(*myFunctionArgs, **myFunctionKwargs)
-
-			##Has only args
-			elif (myFunctionArgs != None):
-				myFunction(*myFunctionArgs)
-
-			##Has only kwargs
-			elif (myFunctionArgs != None):
-				myFunction(**myFunctionKwargs)
+		for myFunction, myFunctionArgs, myFunctionKwargs in self.drawQueue:
+			myFunctionEvaluated = eval(myFunction, {'__builtins__': None}, {"self": self, "dc": dc})
+			self.runMyFunction(myFunctionEvaluated, myFunctionArgs, myFunctionKwargs)
 
 	#Drawing Functions
 	def getPen(self, color, width = 1):
@@ -10266,7 +10256,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 			#Make sure an image was given
 			if (image != None):
 				#Ensure correct image format
-				image = self.getImage(imagePath, internal)
+				image = self._getImage(imagePath, internal)
 
 				#Determine style
 				if ("t" in style):
@@ -10405,12 +10395,12 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		#Skip blank images
 		if (imagePath != None):
 			#Get correct image
-			image = self.getImage(imagePath, internal, alpha = alpha)
+			image = self._getImage(imagePath, internal, alpha = alpha)
 
 			#Draw the image
 			self.queue("dc.DrawBitmap", [image, x, y, alpha])
 
-	def drawText(self, text, x, y, size = 12, angle = None, color = (0, 0, 0), bold = False):
+	def drawText(self, text, x = 0, y = 0, size = 12, angle = None, color = (0, 0, 0), bold = False, italic = False, family = None):
 		"""Draws text on the canvas.
 		### To Do: Add font family, italix, and bold args ###
 
@@ -10449,151 +10439,20 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		Example Input: drawText(["Lorem Ipsum", "Dolor Sit"], [5, 10], [5, 10], [12, 18], [45, 0], [(255, 0, 0), (0, 255, 0)])
 		"""
 
-		#Determine text color
-		pen = self.getPen(color)
+		if (not isinstance(text, (list, tuple, range))):
+			text = [text]
 
-		#Configure text
-		if (angle != None):
-			if ((type(text) == list) or (type(text) == tuple)):
-				for i, item in enumerate(text):
-					#Determine font size
-					if ((type(size) != list) and (type(size) != tuple)):
-						fontSize = size
-					else:
-						fontSize = size[i]
+		for item in text:
+			font = self.getFont(size = size, bold = bold, italic = italic, color = color, family = family)
+			self.queue("dc.SetFont", font)
 
-					#Determine font family
-					fontFamily = wx.ROMAN
+			pen = self.getPen(color)
+			self.queue("dc.SetPen", pen)
 
-					#Determine font italicization
-					fontItalic = wx.ITALIC
-
-					#Determine font boldness
-					if (bold):
-						fontBold = wx.BOLD
-					else:
-						fontBold = wx.NORMAL
-
-					#Define font
-					font = wx.Font(fontSize, fontFamily, fontItalic, fontBold)
-					self.queue("dc.SetFont", font)
-
-					#Determine x-coordinate
-					if ((type(x) != list) and (type(x) != tuple)):
-						textX = x
-					else:
-						textX = x[i]
-
-					#Determine y-coordinate
-					if ((type(y) != list) and (type(y) != tuple)):
-						textY = y
-					else:
-						textY = y[i]
-
-					#Determine angle
-					if ((type(angle) != list) and (type(angle) != tuple)):
-						textAngle = angle
-					else:
-						textAngle = angle[i]
-
-					if (type(pen) != list):
-						self.queue("dc.SetPen", pen)
-					else:
-						self.queue("dc.SetPen", pen[i])
-
-					#Draw text
-					self.queue("dc.DrawRotatedText", [item, textX, textY, textAngle])
+			if ((angle != None) and (angle != 0)):
+				self.queue("dc.DrawRotatedText", [item, x, y, angle])
 			else:
-				self.queue("dc.SetPen", pen)
-				self.queue("dc.DrawRotatedText", [text, x, y, angle])
-		
-		else:
-			if ((type(text) == list) or (type(text) == tuple)):
-				#Determine if fonts are different or not
-				### To Do: When other font things are implemented, account for them in this if statement as well
-				if ((type(size) != list) or (type(size) != tuple)):
-					for i, item in enumerate(text):
-						#Determine font size
-						if ((type(size) != list) and (type(size) != tuple)):
-							fontSize = size
-						else:
-							fontSize = size[i]
-
-						#Determine font family
-						fontFamily = wx.ROMAN
-
-						#Determine font italicization
-						fontItalic = wx.ITALIC
-
-						#Determine font boldness
-						fontBold = wx.NORMAL
-
-						#Define font
-						font = wx.Font(fontSize, fontFamily, fontItalic, fontBold)
-						self.queue("dc.SetFont", font)
-
-						#Determine x-coordinates and y-coordinates
-						if ((type(x) != list) and (type(x) != tuple)):
-							textX = x
-						else:
-							textX = x[i]
-
-						#Determine y-coordinate
-						if ((type(y) != list) and (type(y) != tuple)):
-							textY = y
-						else:
-							textY = y[i]
-
-						if (type(pen) != list):
-							pen = [pen for i in range(len(text))]
-						else:
-							self.queue("dc.SetPen", pen[i])
-
-						#Draw text
-						self.queue("dc.DrawText", [item, textX, textY])
-
-				else:
-					#Determine font family
-					fontFamily = wx.ROMAN
-
-					#Determine font italicization
-					fontItalic = wx.ITALIC
-
-					#Determine font boldness
-					fontBold = wx.NORMAL
-
-					#Define font
-					font = wx.Font(size, fontFamily, fontItalic, fontBold)
-					self.queue("dc.SetFont", font)
-
-					#Ensure x-coordinates and y-coordinates are lists
-					if ((type(x) != list) and (type(x) != tuple)):
-						x = [x for i in range(len(text))]
-
-					if ((type(y) != list) and (type(y) != tuple)):
-						y = [y for i in range(len(text))]
-
-					#Leaf x-coordinates and y-coordinates
-					coordinates = [(x[i], y[i]) for i in range(len(text))]
-
-					#Draw text
-					self.queue("dc.DrawTextList", [item, coordinates, pen])
-			else:
-				#Determine font family
-				fontFamily = wx.ROMAN
-
-				#Determine font italicization
-				fontItalic = wx.NORMAL
-
-				#Determine font boldness
-				fontBold = wx.NORMAL
-
-				#Define font
-				font = wx.Font(size, fontFamily, fontItalic, fontBold)
-				self.queue("dc.SetFont", font)
-
-				self.queue("dc.SetPen", pen)
-				self.queue("dc.DrawText", [text, x, y])
+				self.queue("dc.DrawText", [item, x, y])
 
 	def drawPoint(self, x, y, color = (0, 0, 0)):
 		"""Draws a single pixel on the canvas.
@@ -15206,45 +15065,13 @@ class handle_Dialog(handle_Base):
 		Modified code from: https://wiki.wxpython.org/Printing
 		"""
 
-		# def arrangeContent():
-		# 	nonlocal self, dc
-
-		# 	if (isinstance(self.content, str)):
-		# 		metric = False
-		# 		if (metric):
-		# 			dc.SetMapMode(wx.MM_METRIC)
-		# 		else:
-		# 			dc.SetMapMode(wx.MM_POINTS)
-
-		# 		dc.SetTextForeground("black")
-		# 		dc.SetFont(wx.Font(20, wx.SWISS, wx.NORMAL, wx.BOLD))
-		# 		dc.DrawText(self.content, 0, 0)
-		# 	else:
-		# 		image = self.getImage(self.content)
-		# 		dc.DrawBitmap(image, 0, 0)
-
-		#########################################################
-
-
 		if (self.type.lower() == "print"):
-			# dc = dlg.GetPrintDC()
-
-			# dc.StartDoc(self.title)
-			# dc.StartPage()
-
-			# arrangeContent()
-
-			# dc.EndPage()
-			# dc.EndDoc()
-			# del dc
-
 			printer = wx.Printer(self.dialogData)
 			myPrintout = self.MyPrintout(self)
 
 			if (not printer.Print(self, myPrintout, True)):
 				wx.MessageBox(("There was a problem printing.\nPerhaps your current printer is \nnot set correctly ?"), ("Printing"), wx.OK)
 				return
-
 			else:
 				self.printData = wx.PrintData(printer.GetPrintDialogData().GetPrintData())
 			myPrintout.Destroy()
@@ -15283,25 +15110,15 @@ class handle_Dialog(handle_Base):
 					dc.SetMapMode(wx.MM_METRIC)
 				else:
 					dc.SetMapMode(wx.MM_POINTS)
-
+					
 				dc.SetTextForeground("black")
 				dc.SetFont(wx.Font(11, wx.SWISS, wx.NORMAL, wx.BOLD))
 				dc.DrawText(self.parent.content, 0, 0)
 			if (isinstance(self.parent.content, handle_WidgetCanvas)):
 				with self.parent.content as myCanvas:
-					print("@1", myCanvas)
-					print("@2", myCanvas._Buffer)
-					print("@3", myCanvas.thing)
-
-
-					canvasDc = wx.MemoryDC()
-					print("@4", canvasDc)
-					canvasDc.SelectObject(myCanvas._Buffer)
-
-
-					dc.Blit(0, 0, canvasDc.width, canvasDc.height, canvasDc, 0, 0)
+					myCanvas.draw(dc)
 			else:
-				image = self.parent.getImage(self.parent.content)
+				image = self.parent._getImage(self.parent.content)
 				dc.DrawBitmap(image, 0, 0)
 
 			return True
@@ -15461,7 +15278,7 @@ class handle_Window(handle_Container_Base):
 			self.thing = wx.PreviewFrame(preview, None, "Print Preview")
 
 			#Post Settings
-			image = self.getImage("print", internal = True)
+			image = self._getImage("print", internal = True)
 			self.thing.SetIcon(wx.Icon(image))
 			self.thing.Initialize()
 
@@ -16539,7 +16356,7 @@ class handle_Window(handle_Container_Base):
 		"""
 
 		#Get the image
-		image = self.getImage(icon, internal)
+		image = self._getImage(icon, internal)
 		image = self.convertBitmapToImage(image)
 		image = image.Scale(16, 16, wx.IMAGE_QUALITY_HIGH)
 		image = self.convertImageToBitmap(image)
@@ -18624,7 +18441,7 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		if (self.type.lower() == "notebookpage"):
 			icon_path, icon_internal = self.getArguments(argument_catalogue, ["icon_path", "icon_internal"])
 			if (icon_path != None):
-				self.icon = self.getImage(icon_path, icon_internal)
+				self.icon = self._getImage(icon_path, icon_internal)
 			else:
 				self.icon = None
 				self.iconIndex = None
