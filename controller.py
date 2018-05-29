@@ -1680,7 +1680,7 @@ class Utilities():
 		address (list) - The path of keys to follow on the catalogue
 
 		Example Input: getAddressValue(self.nestingAddress)
-		Example Input: getAddressValue(self.nestingAddress + [self.(id)])
+		Example Input: getAddressValue(self.nestingAddress + [id(self)])
 		"""
 		global nestingCatalogue
 
@@ -1695,7 +1695,7 @@ class Utilities():
 		return catalogue
 
 	def setAddressValue(self, address, value):
-		"""Returns the value of a given address for a dictionary of dictionaries.
+		"""Sets the value of a given address for a dictionary of dictionaries.
 		Special thanks to eafit for how to set a value of a dictionary of dictionaries of n depth on https://stackoverflow.com/questions/14692690/access-nested-dictionary-items-via-a-list-of-keys
 		"""
 		global nestingCatalogue
@@ -1742,6 +1742,9 @@ class Utilities():
 
 		nestedList = []
 		for key, value in catalogue.items():
+			if (None not in value):
+				kuiiul
+
 			if (key == None):
 				continue
 
@@ -1811,8 +1814,8 @@ class Utilities():
 		"""The final step in the nesting process."""
 
 		handle.nested = True
-		handle.nestingAddress = self.nestingAddress + [id(self)]
-		self.setAddressValue(handle.nestingAddress + [id(handle)], {None: handle})
+		# handle.nestingAddress = self.nestingAddress + [id(self)]
+		# self.setAddressValue(handle.nestingAddress + [id(handle)], {None: handle})
 
 	#Settings
 	def getItemMod(self, flags = None, stretchable = True, border = 5):
@@ -4012,7 +4015,172 @@ class Utilities():
 
 		return handle
 
+	def makeSizerGrid(self, rows = 1, columns = 1, text = None,
+		rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1,
 
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Creates a grid sizer to the specified size.
+
+		label (any)     - What this is catalogued as
+		rows (int)        - The number of rows that the grid has
+		columns (int)     - The number of columns that the grid has
+		hidden (bool)     - If True: All items in the sizer are hidden from the user, but they are still created
+		rowGap (int)      - Empty space between each row
+		colGap (int)      - Empty space between each column
+		minWidth (int)    - The minimum width of a box. -1 means automatic
+		minHeight (int)   - The minimum height of a box. -1 means automatic
+
+		Example Input: makeSizerGrid()
+		Example Input: makeSizerGrid(0)
+		Example Input: makeSizerGrid(rows = 4, columns = 3)
+		Example Input: makeSizerGrid(0, rows = 4, columns = 3)
+		"""
+
+		handle = handle_Sizer()
+		handle.type = "Grid"
+		handle.build(locals())
+		return handle
+
+	def makeSizerGridFlex(self, rows = 1, columns = 1, text = None, vertical = None,
+		rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1, flexGrid = True,
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Creates a flex grid sizer.
+		############## NEEDS TO BE FIXED #################
+
+		label (any)     - What this is catalogued as
+		rows (int)        - The number of rows that the grid has
+		columns (int)     - The number of columns that the grid has
+		rowGap (int)      - Empty space between each row
+		colGap (int)      - Empty space between each column
+		hidden (bool)     - If True: All items in the sizer are hidden from the user, but they are still created
+		minWidth (int)    - The minimum width of a box. -1 means automatic
+		minHeight (int)   - The minimum height of a box. -1 means automatic
+		flexGrid (bool)   - True if the grid will be flexable. If False, this is like a normal grid sizer.
+		vertical (bool)   - Determines what direction cells are flexibally (unequally) sized
+			- If True: Rows are sized
+			- If False: Columns are sized
+			- If None: Both are sized
+
+		Example Input: makeSizerGridFlex()
+		Example Input: makeSizerGridFlex(0)
+		Example Input: makeSizerGridFlex(rows = 4, columns = 3)
+		Example Input: makeSizerGridFlex(0, rows = 4, columns = 3)
+		"""
+
+		handle = handle_Sizer()
+		handle.type = "Flex"
+		handle.build(locals())
+
+		return handle
+
+	def makeSizerGridBag(self, rows = 1, columns = 1, text = None,
+		rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1, vertical = None, 
+		emptySpace = None, flexGrid = True,
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Creates a bag grid sizer.
+
+		label (any)      - What this is catalogued as
+		rows (int)         - The number of rows that the grid has
+		columns (int)      - The number of columns that the grid has
+		rowGap (int)       - Empty space between each row
+		colGap (int)       - Empty space between each column
+		minWidth (int)     - The minimum width of a box. -1 means automatic
+		minHeight (int)    - The minimum height of a box. -1 means automatic
+		hidden (bool)      - If True: All items in the sizer are hidden from the user, but they are still created
+		emptySpace (tuple) - The space taken up by cells that are empty or hidden; (row width, column width)
+		flexGrid (bool)    - True if the grid will be flexable. If False, this is like a normal grid sizer.
+		vertical (bool)    - Determines what direction cells are flexibally (unequally) sized
+			- If True: Rows are sized
+			- If False: Columns are sized
+			- If None: Both are sized
+
+		Example Input: makeSizerGridBag()
+		Example Input: makeSizerGridBag(0)
+		Example Input: makeSizerGridBag(0, rows = 4, columns = 3)
+		Example Input: makeSizerGridBag(0, rows = 4, columns = 3, emptySpace = (0, 0))
+		"""
+
+		handle = handle_Sizer()
+		handle.type = "Bag"
+		handle.build(locals())
+
+		return handle
+
+	def makeSizerBox(self, text = None, minWidth = -1, minHeight = -1, vertical = True,
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Creates a box sizer.
+
+		label (any)     - What this is catalogued as
+		minWidth (int)    - The minimum width of a box. -1 means automatic
+		minHeight (int)   - The minimum height of a box. -1 means automatic
+		horizontal (bool) - True to align items horizontally. False to align items vertically
+		hidden (bool)     - If True: All items in the sizer are hidden from the user, but they are still created
+
+		Example Input: makeSizerBox()
+		Example Input: makeSizerBox(0)
+		Example Input: makeSizerBox(vertical = False)
+		Example Input: makeSizerBox(0, vertical = False)
+		"""
+
+		handle = handle_Sizer()
+		handle.type = "Box"
+		handle.build(locals())
+
+		return handle
+
+	def makeSizerText(self, text = "", minWidth = -1, minHeight = -1, vertical = True, 
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Creates a static box sizer.
+		This is a sizer surrounded by a box with a title, much like a wxRadioBox.
+
+		label (any)     - What this is catalogued as
+		text (str)      - The text that appears above the static box
+		minWidth (int)    - The minimum width of a box. -1 means automatic
+		minHeight (int)   - The minimum height of a box. -1 means automatic
+		horizontal (bool) - True to align items horizontally. False to align items vertically
+		hidden (bool)     - If True: All items in the sizer are hidden from the user, but they are still created
+
+		Example Input: makeSizerText()
+		Example Input: makeSizerText(0)
+		Example Input: makeSizerText(text = "Lorem")
+		Example Input: makeSizerText(0, text = "Lorem")
+		"""
+
+		handle = handle_Sizer()
+		handle.type = "Text"
+		handle.build(locals())
+
+		return handle
+
+	def makeSizerWrap(self, text = None, minWidth = -1, minHeight = -1, extendLast = False, vertical = True,
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		"""Creates a wrap sizer.
+		The widgets will arrange themselves into rows and columns on their own, starting in the top-left corner.
+
+		label (any)     - What this is catalogued as
+		text (str)      - The text that appears above the static box
+		minWidth (int)    - The minimum width of a box. -1 means automatic
+		minHeight (int)   - The minimum height of a box. -1 means automatic
+		horizontal (bool) - Determines the primary direction to fill widgets in
+			- If True: Align items horizontally first
+			- If False: Align items vertically first
+		hidden (bool)     - If True: All items in the sizer are hidden from the user, but they are still created
+		extendLast (bool) - If True: The last widget will extend to fill empty space
+
+		Example Input: makeSizerWrap()
+		Example Input: makeSizerWrap(0)
+		"""
+
+		handle = handle_Sizer()
+		handle.type = "Wrap"
+		handle.build(locals())
+
+		return handle
 
 
 
@@ -4167,7 +4335,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 		self.label = None
 		self.parent = None
 		self.nested = False
-		self.nestingAddress = None
+		self.nestingAddress = []
 		self.allowBuildErrors = None
 
 		self.unnamedList = []
@@ -4359,10 +4527,10 @@ class handle_Container_Base(handle_Base):
 		parent = argument_catalogue["parent"]
 		buildSelf = argument_catalogue["self"]
 
-		#Error Checking
-		if (buildSelf.nestingAddress == None):
-			errorMessage = f"{buildSelf.__repr__()} is not nested, and so it cannot nest things in preBuild() for {self.__repr__()}"
-			raise ValueError(errorMessage)
+		# #Error Checking
+		# if (buildSelf.nestingAddress == None):
+		# 	errorMessage = f"{buildSelf.__repr__()} is not nested, and so it cannot nest things in preBuild() for {self.__repr__()}"
+		# 	raise ValueError(errorMessage)
 
 		#Store data
 		self.label = label
@@ -4394,18 +4562,18 @@ class handle_Container_Base(handle_Base):
 		self.nestingAddress = buildSelf.nestingAddress + [id(buildSelf)]
 		buildSelf.setAddressValue(self.nestingAddress + [id(self)], {None: self})
 
-		#Remember build error policy
-		if (not isinstance(buildSelf, Controller)):
-			if (buildSelf.nestingAddress[0] not in nestingCatalogue):
-				warnings.warn(f"{buildSelf.nestingAddress[0]} not in nestingCatalogue", Warning, stacklevel = 2)
-				return
+		# #Remember build error policy
+		# if (not isinstance(buildSelf, Controller)):
+		# 	if (buildSelf.nestingAddress[0] not in nestingCatalogue):
+		# 		warnings.warn(f"{buildSelf.nestingAddress[0]} not in nestingCatalogue", Warning, stacklevel = 2)
+		# 		return
 
-			if (None not in nestingCatalogue[buildSelf.nestingAddress[0]]):
-				warnings.warn(f"None not in nestingCatalogue for {buildSelf.nestingAddress[0]}", Warning, stacklevel = 2)
-				return
+		# 	if (None not in nestingCatalogue[buildSelf.nestingAddress[0]]):
+		# 		warnings.warn(f"None not in nestingCatalogue for {buildSelf.nestingAddress[0]}", Warning, stacklevel = 2)
+		# 		return
 
-			buildSelf.allowBuildErrors = nestingCatalogue[buildSelf.nestingAddress[0]][None].allowBuildErrors
-			self.allowBuildErrors = buildSelf.allowBuildErrors
+		# 	buildSelf.allowBuildErrors = nestingCatalogue[buildSelf.nestingAddress[0]][None].allowBuildErrors
+		# 	self.allowBuildErrors = buildSelf.allowBuildErrors
 
 	def overloadHelp(self, myFunction, label, kwargs, window = False):
 		"""Helps the overloaded functions to stay small.
@@ -4450,6 +4618,8 @@ class handle_Container_Base(handle_Base):
 
 				answerList.extend(answer)
 
+			if ((not isinstance(label, (list, tuple, range))) and (len(answerList) == 1)):
+				return answerList[0]
 			return answerList
 
 	#Standard Functions
@@ -4729,34 +4899,21 @@ class handle_Container_Base(handle_Base):
 			errorMessage = f"There is no 'type' {instructions['type']}. The value should be be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
 			raise KeyError(errorMessage)
 
-		#Get Default build arguments
-		if (sizerType == "grid"):
-			sizerFunction = handle_Window.addSizerGrid
-		elif (sizerType == "flex"):
-			sizerFunction = handle_Window.addSizerGridFlex
-		elif (sizerType == "bag"):
-			sizerFunction = handle_Window.addSizerGridBag
-		elif (sizerType == "box"):
-			sizerFunction = handle_Window.addSizerBox
-		elif (sizerType == "text"):
-			sizerFunction = handle_Window.addSizerText
-		else:
-			sizerFunction = handle_Window.addSizerWrap
-		kwargs = self.arrangeArguments(sizerFunction, kwargDict = {"self": parent})
-
-		#Create Handler
-		sizer = handle_Sizer()
-		sizer.index = i
-		sizer.type = instructions["type"]
 		del instructions["type"]
 
-		#Overwrite default with user given data
-		for key, value in instructions.items():
-			kwargs[key] = value
-
-		#Finish building sizer
-		kwargs["self"] = parent
-		sizer.build(kwargs)
+		#Get Default build arguments
+		if (sizerType == "grid"):
+			sizer = parent.makeSizerGrid(**instructions)
+		elif (sizerType == "flex"):
+			sizer = parent.makeSizerGridFlex(**instructions)
+		elif (sizerType == "bag"):
+			sizer = parent.makeSizerGridBag(**instructions)
+		elif (sizerType == "box"):
+			sizer = parent.makeSizerBox(**instructions)
+		elif (sizerType == "text"):
+			sizer = parent.makeSizerText(**instructions)
+		else:
+			sizer = parent.makeSizerWrap(**instructions)
 
 		return sizer
 
@@ -4850,22 +5007,22 @@ class handle_Widget_Base(handle_Base):
 						else:
 							self.parent = buildSelf
 
-		#Determine Nesting Address
+		# #Determine Nesting Address
 		self.nestingAddress = buildSelf.nestingAddress + [id(buildSelf)]
 		buildSelf.setAddressValue(self.nestingAddress + [id(self)], {None: self})
 
-		#Remember build error policy
-		if (not isinstance(buildSelf, Controller)):
-			if (buildSelf.nestingAddress[0] not in nestingCatalogue):
-				warnings.warn(f"{buildSelf.nestingAddress[0]} not in nestingCatalogue", Warning, stacklevel = 2)
-				return
+		# #Remember build error policy
+		# if (not isinstance(buildSelf, Controller)):
+		# 	if (buildSelf.nestingAddress[0] not in nestingCatalogue):
+		# 		warnings.warn(f"{buildSelf.nestingAddress[0]} not in nestingCatalogue", Warning, stacklevel = 2)
+		# 		return
 
-			if (None not in nestingCatalogue[buildSelf.nestingAddress[0]]):
-				warnings.warn(f"None not in nestingCatalogue for {buildSelf.nestingAddress[0]}", Warning, stacklevel = 2)
-				return
+		# 	if (None not in nestingCatalogue[buildSelf.nestingAddress[0]]):
+		# 		warnings.warn(f"None not in nestingCatalogue for {buildSelf.nestingAddress[0]}", Warning, stacklevel = 2)
+		# 		return
 
-			buildSelf.allowBuildErrors = nestingCatalogue[buildSelf.nestingAddress[0]][None].allowBuildErrors
-			self.allowBuildErrors = buildSelf.allowBuildErrors
+		# 	buildSelf.allowBuildErrors = nestingCatalogue[buildSelf.nestingAddress[0]][None].allowBuildErrors
+		# 	self.allowBuildErrors = buildSelf.allowBuildErrors
 
 	def build(self, argument_catalogue):
 		"""Determiens which build system to use for this handle."""
@@ -10381,7 +10538,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 			else:
 				self.thing.SetDeviceOrigin(x, x)
 			
-	def drawImage(self, imagePath, x, y, internal = True, alpha = False):
+	def drawImage(self, imagePath, x = 0, y = 0, internal = True, alpha = False):
 		"""Draws an image on the canvas.
 		
 
@@ -10389,7 +10546,8 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		x (int)         - The x-coordinate of the image on the canvas
 		y (int)         - The y-coordinate of the image on the canvas
 
-		Example Input: drawImage(0, "python.jpg", 10, 10)
+		Example Input: drawImage("python.jpg")
+		Example Input: drawImage("python.jpg", 10, 10)
 		"""
 
 		#Skip blank images
@@ -10424,6 +10582,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		color (tuple) - (R, G, B) as integers
 					  - If a list of tuples is given and 'text' is a list: Each color will be used for each text in the list 'x' correcponding to that index
 
+		Example Input: drawText("Lorem Ipsum")
 		Example Input: drawText("Lorem Ipsum", 5, 5)
 		Example Input: drawText("Lorem Ipsum", 5, 5, 10)
 		Example Input: drawText("Lorem Ipsum", 5, 5, 10, 45)
@@ -12906,10 +13065,12 @@ class handle_WidgetTable(handle_Widget_Base):
 
 			#Internal variables
 			self.parent = parent
-			self.downOnEnter = downOnEnter
 			self.debugging = debugging
-			self.patching = False
-			# self.debugging = True
+			self.downOnEnter = downOnEnter
+			self.patching_dialog = False #Used for dialog boxes work correctly
+			self.patching_event = False #Used to make the events work correctly
+			self.debugging = True
+			self.shown = False
 
 			if (cellType == None):
 				self.cellType = "inputbox"
@@ -12920,6 +13081,12 @@ class handle_WidgetTable(handle_Widget_Base):
 				else:
 					self.cellType = cellType
 					self.cellTypeValue = None
+
+			if (self.cellType.lower() == "dialog"):
+				with self.cellTypeValue as myFrame:
+					if ("value" not in myFrame):
+						warnings.warn(f"Window {myFrame.label} must have a widget with the label 'value' in order to use it as a dialog for {self.parent.__repr__()}", Warning, stacklevel = 2)
+						self.cellType = "inputBox"
 
 			#Write debug information
 			if (self.debugging):
@@ -12955,7 +13122,6 @@ class handle_WidgetTable(handle_Widget_Base):
 
 				#Ensure that the choices are all strings
 				self.cellTypeValue = [str(item) for item in self.cellTypeValue]
-
 				self.myCellControl = wx.Choice(parent, myId, (100, 50), choices = self.cellTypeValue)
 
 				#Check readOnly
@@ -12963,7 +13129,7 @@ class handle_WidgetTable(handle_Widget_Base):
 					self.myCellControl.Enable(False)
 
 			#Use a text box
-			else:
+			else:				
 				#Check how the enter key is processed
 				if (self.downOnEnter):
 					style += "|wx.TE_PROCESS_ENTER"
@@ -12995,6 +13161,10 @@ class handle_WidgetTable(handle_Widget_Base):
 			PaintBackground and do something meaningful there.
 			"""
 
+			#Check for patching in process
+			if (self.patching_dialog):
+				return
+
 			#Write debug information
 			if (self.debugging):
 				print(f"TableCellEditor.SetSize(rect = {rect})")
@@ -13007,12 +13177,14 @@ class handle_WidgetTable(handle_Widget_Base):
 			"""
 
 			#Check for patching in process
-			if (self.patching):
+			if (self.patching_event):
 				return
 
 			#Write debug information
 			if (self.debugging):
 				print(f"TableCellEditor.Show(show = {show}, attr = {attr})")
+
+			self.shown = show
 
 			super(handle_WidgetTable.TableCellEditor, self).Show(show, attr)
 
@@ -13032,6 +13204,25 @@ class handle_WidgetTable(handle_Widget_Base):
 			to begin editing. Set the focus to the edit control.
 			*Must Override*
 			"""
+			
+			def dialogBeginEdit():
+				nonlocal self
+
+				with self.cellTypeValue as myFrame:
+					myFrame.showWindow(asDialog = True)
+					while myFrame.checkShown(window = True):
+						time.sleep(0.25)
+
+					value = myFrame.getValue("value")
+					self.myCellControl.SetValue(value)
+				self.EndEdit(row, column, grid, self.startValue, skipPatching = True)
+
+			#Check for patching in process
+			if (self.patching_dialog):
+				return
+
+			if (not self.shown):
+				return
 
 			#Write debug information
 			if (self.debugging):
@@ -13043,6 +13234,11 @@ class handle_WidgetTable(handle_Widget_Base):
 			if (self.cellType.lower() == "droplist"):
 				self.myCellControl.SetStringSelection(self.startValue)
 				self.myCellControl.SetFocus()
+
+			elif (self.cellType.lower() == "dialog"):
+				self.patching_dialog = True
+				self.parent.backgroundRun(dialogBeginEdit)
+
 			else:
 				self.myCellControl.SetValue(self.startValue)
 				self.myCellControl.SetInsertionPointEnd()
@@ -13054,8 +13250,9 @@ class handle_WidgetTable(handle_Widget_Base):
 			# event = wx.CommandEvent()
 			# event.SetEventType(wx.grid.EVT_GRID_CELL_CHANGING.typeId)
 			# wx.PostEvent(grid, event)
-		
-		def EndEdit(self, row, column, grid, oldValue):
+
+
+		def EndEdit(self, row, column, grid, oldValue, skipPatching = False):
 			"""End editing the cell. This function must check if the current
 			value of the editing control is valid and different from thde
 			original value (available as oldValue in its string form.)  If
@@ -13067,8 +13264,10 @@ class handle_WidgetTable(handle_Widget_Base):
 			event wx.grid.EVT_GRID_CELL_CHANGED, which causes this function to run again.
 			"""
 
-			#Check for patching in process
-			if (self.patching):
+			if (self.patching_event):
+				return
+
+			if (not self.shown):
 				return
 
 			#Write debug information
@@ -13083,11 +13282,11 @@ class handle_WidgetTable(handle_Widget_Base):
 				newValue = self.myCellControl.GetStringSelection()
 			else:
 				newValue = self.myCellControl.GetValue()
-			
+
 			#Compare Value
 			if (newValue != oldValue):
 				#Fix loop problem
-				self.patching = True
+				self.patching_event = True
 
 				event = wx.grid.GridEvent(grid.GetId(), wx.grid.EVT_GRID_CELL_CHANGING.typeId, grid, row = row, col = column)
 				self.parent.thing.GetEventHandler().ProcessEvent(event)
@@ -13097,16 +13296,11 @@ class handle_WidgetTable(handle_Widget_Base):
 				event = wx.grid.GridEvent(grid.GetId(), wx.grid.EVT_GRID_CELL_CHANGED.typeId, grid, row = row, col = column)
 				self.parent.thing.GetEventHandler().ProcessEvent(event)
 
-				self.patching = False
-				return
-				# return newValue
-			else:
-				# if (self.cellType.lower() == "droplist"):
-				#   self.myCellControl.SetStringSelection(self.cellTypeValue[0])
-				# else:
-				#   self.startValue = ''
-				#   self.myCellControl.SetValue('')
-				return
+				self.patching_event = False
+
+			#Check for patching in process
+			if (self.patching_dialog):
+				self.patching_dialog = False
 			
 		def ApplyEdit(self, row, column, grid):
 			"""This function should save the value of the control into the
@@ -13291,6 +13485,15 @@ class handle_WidgetTable(handle_Widget_Base):
 
 			return super(handle_WidgetTable.TableCellEditor, self).SetControl(control)
 
+		# class QuitOnShow(wx.TextCtrl):
+		# 	"""Used to modify the grid cell editor's behavior.
+		# 	Modified code from: https://github.com/wxWidgets/wxPython/blob/master/demo/GridCustEditor.py
+		# 	Cell Type 'droplist' code from: https://wiki.wxpython.org/wxGridCellChoiceEditor2
+		# 	"""
+
+		# 	def __init__(self, parent, myId):
+		# 		self.myCellControl = wx.TextCtrl(parent, myId, ""
+
 	####################################################################################################
 
 class handle_Sizer(handle_Container_Base):
@@ -13335,7 +13538,7 @@ class handle_Sizer(handle_Container_Base):
 
 	def __exit__(self, exc_type, exc_value, traceback):
 		"""Allows the user to use a with statement to build the GUI."""
-		
+
 		#Allow nested while loops to nest their objects
 		building = False
 		if (self.myWindow.sizersIterating[self][0]):
@@ -13346,14 +13549,14 @@ class handle_Sizer(handle_Container_Base):
 		if (state != None):
 			return state
 
-		if (building):
-			#Check for auto-nesting conditions
-			myOrder = self.myWindow.sizersIterating[self][1]
-			leftOpen = {value[1]: key for key, value in self.myWindow.sizersIterating.items() if (value[0])}
+		# if (building):
+		# 	#Check for auto-nesting conditions
+		# 	myOrder = self.myWindow.sizersIterating[self][1]
+		# 	leftOpen = {value[1]: key for key, value in self.myWindow.sizersIterating.items() if (value[0])}
 
-			if (myOrder - 1 in leftOpen):
-				if (not self.nested):
-					leftOpen[myOrder - 1].nest(self)
+		# 	if (myOrder - 1 in leftOpen):
+		# 		if (not self.nested):
+		# 			leftOpen[myOrder - 1].nest(self)
 
 	def build(self, argument_catalogue):
 		if (self.type == None):
@@ -13364,22 +13567,6 @@ class handle_Sizer(handle_Container_Base):
 		if (sizerType not in ["grid", "flex", "bag", "box", "text", "wrap"]):
 			errorMessage = f"There is no 'type' {self.type}. The value should be be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
 			raise KeyError(errorMessage)
-
-		#Get Default build arguments
-		if (sizerType == "grid"):
-			sizerFunction = handle_Window.addSizerGrid
-		elif (sizerType == "flex"):
-			sizerFunction = handle_Window.addSizerGridFlex
-		elif (sizerType == "bag"):
-			sizerFunction = handle_Window.addSizerGridBag
-		elif (sizerType == "box"):
-			sizerFunction = handle_Window.addSizerBox
-		elif (sizerType == "text"):
-			sizerFunction = handle_Window.addSizerText
-		else:
-			sizerFunction = handle_Window.addSizerWrap
-
-		argument_catalogue = self.arrangeArguments(sizerFunction, kwargDict = argument_catalogue)
 
 		#Pre Build
 		self.preBuild(argument_catalogue)
@@ -13393,7 +13580,6 @@ class handle_Sizer(handle_Container_Base):
 		else:
 			self.myWindow = buildSelf.myWindow
 
-		#Nest first sizer
 		if (isinstance(buildSelf, handle_Window)):
 			sizerList = buildSelf.getNested(include = handle_Sizer)
 			if (len(sizerList) <= 1):
@@ -13447,10 +13633,10 @@ class handle_Sizer(handle_Container_Base):
 					raise KeyError(errorMessage)
 
 				flexGrid = self.getArguments(argument_catalogue, "flexGrid")
-				if (flexGrid):
-					self.thing.SetNonFlexibleGrowMode(wx.FLEX_GROWMODE_SPECIFIED)
-				else:
+				if (not flexGrid):
 					self.thing.SetNonFlexibleGrowMode(wx.FLEX_GROWMODE_NONE)
+				else:
+					self.thing.SetNonFlexibleGrowMode(wx.FLEX_GROWMODE_SPECIFIED)
 				
 				self.thing.SetFlexibleDirection(direction)
 
@@ -13480,15 +13666,7 @@ class handle_Sizer(handle_Container_Base):
 		#Account for nesting in a text sizer
 		if (sizerType != "text"):
 			if (text != None):
-				subHandle = handle_Sizer()
-				subHandle.type = "text"
-
-				argument_catalogue = self.arrangeArguments(handle_Window.addSizerText, kwargDict = {"self": self})
-				argument_catalogue["self"] = self
-				argument_catalogue["text"] = text
-				subHandle.build(argument_catalogue)
-
-				self.text = subHandle
+				self.text = self.makeSizerText()
 				self.text.nest(self)
 
 	#Change Settings
@@ -13592,6 +13770,7 @@ class handle_Sizer(handle_Container_Base):
 
 		#Configure Flags
 		flags, position, border = self.getItemMod(flags)
+		print("@1", flex, flags, border, self.label, handle.label)
 
 		#Perform Nesting
 		if (isinstance(handle, handle_Widget_Base)):
@@ -14399,7 +14578,7 @@ class handle_Sizer(handle_Container_Base):
 		handle.type = "Notebook"
 		handle.build(locals())
 
-		self.nest(handle)
+		self.nest(handle, flex = flex)#, flags = flags)
 
 		return handle
 
@@ -14447,7 +14626,7 @@ class handle_Sizer(handle_Container_Base):
 		handle.type = "AuiNotebook"
 		handle.build(locals())
 
-		self.nest(handle)
+		self.nest(handle, flex = flex)#, flags = flags)
 
 		return handle
 
@@ -14493,103 +14672,85 @@ class handle_Sizer(handle_Container_Base):
 
 	#Sizers
 	def addSizerBox(self, *args, **kwargs):
-		"""Overload for addSizerBox in handle_Window().
-		Adds the created sizer to this sizer.
+		"""Creates a box sizer.
+
+		Example Input: addSizerBox()
+		Example Input: addSizerBox(0)
+		Example Input: addSizerBox(vertical = False)
+		Example Input: addSizerBox(0, vertical = False)
 		"""
 
-		handle = handle_Sizer()
-		handle.type = "Box"
-
-		kwargs["self"] = self
-		argument_catalogue = self.arrangeArguments(handle_Window.addSizerBox, args, kwargs)
-		argument_catalogue["self"] = self
-
-		handle.build(argument_catalogue)
+		handle = self.makeSizerBox(*args, **kwargs)
 		self.nest(handle)
 
 		return handle
 
 	def addSizerText(self, *args, **kwargs):
-		"""Overload for addSizerText in handle_Window().
-		Adds the created sizer to this sizer.
+		"""Creates a static box sizer.
+		This is a sizer surrounded by a box with a title, much like a wxRadioBox.
+
+		Example Input: addSizerText()
+		Example Input: addSizerText(0)
+		Example Input: addSizerText(text = "Lorem")
+		Example Input: addSizerText(0, text = "Lorem")
 		"""
 
-		handle = handle_Sizer()
-		handle.type = "Text"
-
-		kwargs["self"] = self
-		argument_catalogue = self.arrangeArguments(handle_Window.addSizerText, args, kwargs)
-		argument_catalogue["self"] = self
-
-		handle.build(argument_catalogue)
+		handle = self.makeSizerText(*args, **kwargs)
 		self.nest(handle)
 
 		return handle
 
 	def addSizerGrid(self, *args, **kwargs):
-		"""Overload for addSizerGrid in handle_Window().
-		Adds the created sizer to this sizer.
+		"""Creates a grid sizer to the specified size.
+
+		Example Input: addSizerGrid()
+		Example Input: addSizerGrid(0)
+		Example Input: addSizerGrid(rows = 4, columns = 3)
+		Example Input: addSizerGrid(0, rows = 4, columns = 3)
 		"""
 
-		handle = handle_Sizer()
-		handle.type = "Grid"
-
-		kwargs["self"] = self
-		argument_catalogue = self.arrangeArguments(handle_Window.addSizerGrid, args, kwargs)
-		argument_catalogue["self"] = self
-
-		handle.build(argument_catalogue)
+		handle = self.makeSizerGrid(*args, **kwargs)
 		self.nest(handle)
 
 		return handle
 
 	def addSizerGridFlex(self, *args, **kwargs):
-		"""Overload for addSizerGridFlex in handle_Window().
-		Adds the created sizer to this sizer.
+		"""Creates a flex grid sizer.
+
+		Example Input: addSizerGridFlex()
+		Example Input: addSizerGridFlex(0)
+		Example Input: addSizerGridFlex(rows = 4, columns = 3)
+		Example Input: addSizerGridFlex(0, rows = 4, columns = 3)
 		"""
 
-		handle = handle_Sizer()
-		handle.type = "Flex"
-
-		kwargs["self"] = self
-		argument_catalogue = self.arrangeArguments(handle_Window.addSizerGridFlex, args, kwargs)
-		argument_catalogue["self"] = self
-
-		handle.build(argument_catalogue)
+		handle = self.makeSizerGridFlex(*args, **kwargs)
 		self.nest(handle)
 
 		return handle
 
 	def addSizerGridBag(self, *args, **kwargs):
-		"""Overload for addSizerGridBag in handle_Window().
-		Adds the created sizer to this sizer.
+		"""Creates a bag grid sizer.
+
+		Example Input: addSizerGridBag()
+		Example Input: addSizerGridBag(0)
+		Example Input: addSizerGridBag(0, rows = 4, columns = 3)
+		Example Input: addSizerGridBag(0, rows = 4, columns = 3, emptySpace = (0, 0))
 		"""
 
-		handle = handle_Sizer()
-		handle.type = "Bag"
-
-		kwargs["self"] = self
-		argument_catalogue = self.arrangeArguments(handle_Window.addSizerGridBag, args, kwargs)
-		argument_catalogue["self"] = self
-
-		handle.build(argument_catalogue)
+		handle = self.makeSizerGridBag(*args, **kwargs)
 		self.nest(handle)
 
 		return handle
 
 	def addSizerWrap(self, *args, **kwargs):
-		"""Overload for addSizerWrap in handle_Window().
-		Adds the created sizer to this sizer.
+		"""Creates a wrap sizer.
+		The widgets will arrange themselves into rows and columns on their own, starting in the top-left corner.
+
+		Example Input: addSizerWrap()
+		Example Input: addSizerWrap(0)
 		"""
 
-		handle = handle_Sizer()
-		handle.type = "Wrap"
-
-		kwargs["self"] = self
-		argument_catalogue = self.arrangeArguments(handle_Window.addSizerWrap, args, kwargs)
-		argument_catalogue["self"] = self
-
-		handle.build(argument_catalogue)
+		handle = self.makeSizerWrap(*args, **kwargs)
 		self.nest(handle)
 
 		return handle
@@ -14839,6 +15000,28 @@ class handle_Dialog(handle_Base):
 			self.position = None
 			self.content = None
 			self.size = None
+
+		def build_custom():
+			"""Uses a frame to mimic a wx dialog object."""
+			nonlocal self, argument_catalogue
+
+			myFrame, valueLabel = self.getArguments(argument_catalogue, ["myFrame", "valueLabel"])
+			addYes, addOk, addCancel = self.getArguments(argument_catalogue, ["addYes", "addOk", "addCancel"])
+			self.thing = myFrame
+			self.data = valueLabel
+
+			if (addYes or addOk or addCancel):
+				with self.thing.addSizerGrid(1, 4) as mySizer:
+					mySizer.growFlexColumnAll()
+					mySizer.growFlexRowAll()
+
+					if (addYes):
+						mySizer.addButton("Yes", myFunction = self.onYes)
+						mySizer.addButton("No", myFunction = self.onNo)
+					if (addOk):
+						mySizer.addButton("Ok", myFunction = self.onOk)
+					if (addCancel):
+						mySizer.addButton("Cancel", myFunction = self.onCancel)
 		
 		#########################################################
 
@@ -14854,6 +15037,8 @@ class handle_Dialog(handle_Base):
 			build_scroll()
 		elif (self.type.lower() == "inputbox"):
 			build_inputBox()
+		elif (self.type.lower() == "custom"):
+			build_custom()
 		elif (self.type.lower() == "busy"):
 			build_busyInfo()
 		elif (self.type.lower() == "color"):
@@ -14888,6 +15073,17 @@ class handle_Dialog(handle_Base):
 	def show(self):
 		"""Shows the dialog box for this handle."""
 
+		def mimicDialog():
+			nonlocal self
+
+			with self.cellTypeValue as myFrame:
+				myFrame.showWindow(asDialog = True)
+				while myFrame.checkShown(window = True):
+					time.sleep(0.25)
+
+		#########################################################
+
+
 		#Error Check
 		if (self.thing == None):
 			warnings.warn(f"The {self.type} dialogue box {self.__repr__()} has already been shown", Warning, stacklevel = 2)
@@ -14921,6 +15117,9 @@ class handle_Dialog(handle_Base):
 
 			self.thing.Destroy()
 			self.thing = None
+
+		elif (self.type.lower() == "custom"):
+			self.backgroundRun(mimicDialog)
 
 		elif (self.type.lower() == "busyinfo"):
 			self.thing = wx.BusyInfo(self.thing)
@@ -15021,12 +15220,40 @@ class handle_Dialog(handle_Base):
 			return True
 		return False
 
-	def isNo(self):
+	def isNo(self, event):
 		"""Returns if the closed dialog box answer was 'no'."""
 
 		if (self.answer == wx.ID_NO):
 			return True
 		return False
+
+	def onOk(self, event):
+		"""Hides the custom dialog box and sets the answer to 'ok'."""
+
+		self.answer = wx.ID_OK
+		self.thing.hideWIndow()
+		event.Skip()
+
+	def onCancel(self, event):
+		"""Hides the custom dialog box and sets the answer to 'cancel'."""
+
+		self.answer = wx.ID_CANCEL
+		self.thing.hideWIndow()
+		event.Skip()
+
+	def onYes(self, event):
+		"""Hides the custom dialog box and sets the answer to 'yes'."""
+
+		self.answer = wx.ID_YES
+		self.thing.hideWIndow()
+		event.Skip()
+
+	def onNo(self, event):
+		"""Hides the custom dialog box and sets the answer to 'no'."""
+
+		self.answer = wx.ID_NO
+		self.thing.hideWIndow()
+		event.Skip()
 
 	#Setters
 	def setValue(self, value, event = None):
@@ -15110,7 +15337,7 @@ class handle_Dialog(handle_Base):
 					dc.SetMapMode(wx.MM_METRIC)
 				else:
 					dc.SetMapMode(wx.MM_POINTS)
-					
+
 				dc.SetTextForeground("black")
 				dc.SetFont(wx.Font(11, wx.SWISS, wx.NORMAL, wx.BOLD))
 				dc.DrawText(self.parent.content, 0, 0)
@@ -15139,6 +15366,7 @@ class handle_Window(handle_Container_Base):
 
 		#Defaults
 		self.mainPanel = None
+		self.mainSizer = None
 		self.thing = None
 		self.visible = False
 		self.complexity_total = 0
@@ -15168,6 +15396,8 @@ class handle_Window(handle_Container_Base):
 		
 		if (self.mainPanel != None):
 			output += f"-- main panel id: {id(self.mainPanel)}\n"
+		if (self.mainSizer != None):
+			output += f"-- main sizer id: {id(self.mainSizer)}\n"
 		return output
 
 	def build(self, argument_catalogue):
@@ -15222,7 +15452,6 @@ class handle_Window(handle_Container_Base):
 			delFunction, delFunctionArgs, delFunctionKwargs = self.getArguments(argument_catalogue, ["delFunction", "delFunctionArgs", "delFunctionKwargs"])
 			initFunction, initFunctionArgs, initFunctionKwargs = self.getArguments(argument_catalogue, ["initFunction", "initFunctionArgs", "initFunctionKwargs"])
 			idleFunction, idleFunctionArgs, idleFunctionKwargs = self.getArguments(argument_catalogue, ["idleFunction", "idleFunctionArgs", "idleFunctionKwargs"])
-			controller = self.getAddressValue(self.nestingAddress[0])[None]
 			
 			if (initFunction != None):
 				self.setFunction_init(initFunction, initFunctionArgs, initFunctionKwargs)
@@ -15233,9 +15462,9 @@ class handle_Window(handle_Container_Base):
 				endProgram = self.getArguments(argument_catalogue, ["endProgram"])
 				if (endProgram != None):
 					if (endProgram):
-						delFunction = controller.onExit
+						delFunction = self.controller.onExit
 					else:
-						delFunction = controller.onQuit
+						delFunction = self.controller.onQuit
 				else:
 					delFunction = self.onHideWindow
 
@@ -15245,7 +15474,7 @@ class handle_Window(handle_Container_Base):
 				self.idleQueue = None
 				self.betterBind(wx.EVT_IDLE, self.thing, idleFunction, idleFunctionArgs, idleFunctionKwargs)
 			else:
-				self.betterBind(wx.EVT_IDLE, self.thing, controller.onIdle)
+				self.betterBind(wx.EVT_IDLE, self.thing, self.controller.onIdle)
 
 			#Unpack arguments
 			panel = argument_catalogue["panel"]
@@ -15253,6 +15482,14 @@ class handle_Window(handle_Container_Base):
 			#Make the main panel
 			if (panel):
 				self.mainPanel = self.addPanel()#"-1", parent = handle, size = (10, 10), tabTraversal = tabTraversal, useDefaultSize = False)
+				self.finalNest(self.mainPanel)
+
+			#Make the main sizer
+			self.mainSizer = self.makeSizerBox()
+			# self.mainSizer = self.makeSizerGridFlex(rows = 5, columns = 1)
+			# # self.mainSizer.growFlexRowAll()
+			# self.mainSizer.growFlexColumnAll()	
+			self.finalNest(self.mainSizer)
 
 		def build_preview():
 			"""Builds a wx preview frame object."""
@@ -15620,9 +15857,7 @@ class handle_Window(handle_Container_Base):
 
 		if (self.controller.windowDisabler != None):
 			if (self.controller.windowDisabler[0] == self.thing):
-				# del self.controller.windowDisabler[1]
-				self.controller.windowDisabler[0] = None
-			if (len(self.controller.windowDisabler) == 0):
+				self.controller.windowDisabler[1] = None
 				self.controller.windowDisabler = None
 
 		if (self.visible):
@@ -15720,119 +15955,8 @@ class handle_Window(handle_Container_Base):
 		warnings.warn(f"{self.__repr__()} has no sizer '{sizerLabel}'", Warning, stacklevel = 2)
 		return
 
-	def addSizerGrid(self, rows = 1, columns = 1, text = None, label = None,
-		rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1,
-
-		parent = None, hidden = False, enabled = True, handle = None):
-		"""Creates a grid sizer to the specified size.
-
-		label (any)     - What this is catalogued as
-		rows (int)        - The number of rows that the grid has
-		columns (int)     - The number of columns that the grid has
-		hidden (bool)     - If True: All items in the sizer are hidden from the user, but they are still created
-		rowGap (int)      - Empty space between each row
-		colGap (int)      - Empty space between each column
-		minWidth (int)    - The minimum width of a box. -1 means automatic
-		minHeight (int)   - The minimum height of a box. -1 means automatic
-
-		Example Input: addSizerGrid()
-		Example Input: addSizerGrid(0)
-		Example Input: addSizerGrid(rows = 4, columns = 3)
-		Example Input: addSizerGrid(0, rows = 4, columns = 3)
-		"""
-
-		handle = handle_Sizer()
-		handle.type = "Grid"
-
-		kwargs = locals()
-		# kwargs["parent"] = self.parent
-
-		handle.build(kwargs)
-		return handle
-
-	def addSizerGridFlex(self, rows = 1, columns = 1, text = None, label = None, 
-		rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1, flexGrid = True,
-
-		parent = None, hidden = False, enabled = True, vertical = None, handle = None):
-		"""Creates a flex grid sizer.
-		############## NEEDS TO BE FIXED #################
-
-		label (any)     - What this is catalogued as
-		rows (int)        - The number of rows that the grid has
-		columns (int)     - The number of columns that the grid has
-		rowGap (int)      - Empty space between each row
-		colGap (int)      - Empty space between each column
-		hidden (bool)     - If True: All items in the sizer are hidden from the user, but they are still created
-		minWidth (int)    - The minimum width of a box. -1 means automatic
-		minHeight (int)   - The minimum height of a box. -1 means automatic
-		flexGrid (bool)   - True if the grid will be flexable. If False, this is like a normal grid sizer.
-		vertical (bool)   - Determines what direction cells are flexibally (unequally) sized
-			- If True: Rows are sized
-			- If False: Columns are sized
-			- If None: Both are sized
-
-		Example Input: addSizerGridFlex()
-		Example Input: addSizerGridFlex(0)
-		Example Input: addSizerGridFlex(rows = 4, columns = 3)
-		Example Input: addSizerGridFlex(0, rows = 4, columns = 3)
-		"""
-
-		handle = handle_Sizer()
-		handle.type = "Flex"
-
-		kwargs = locals()
-		# kwargs["parent"] = self.parent
-
-		handle.build(kwargs)
-		return handle
-
-	def addSizerGridBag(self, rows = 1, columns = 1, text = None, label = None, 
-		rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1, 
-		emptySpace = None, flexGrid = True,
-
-		parent = None, hidden = False, enabled = True, vertical = None, handle = None):
-		"""Creates a bag grid sizer.
-
-		label (any)      - What this is catalogued as
-		rows (int)         - The number of rows that the grid has
-		columns (int)      - The number of columns that the grid has
-		rowGap (int)       - Empty space between each row
-		colGap (int)       - Empty space between each column
-		minWidth (int)     - The minimum width of a box. -1 means automatic
-		minHeight (int)    - The minimum height of a box. -1 means automatic
-		hidden (bool)      - If True: All items in the sizer are hidden from the user, but they are still created
-		emptySpace (tuple) - The space taken up by cells that are empty or hidden; (row width, column width)
-		flexGrid (bool)    - True if the grid will be flexable. If False, this is like a normal grid sizer.
-		vertical (bool)    - Determines what direction cells are flexibally (unequally) sized
-			- If True: Rows are sized
-			- If False: Columns are sized
-			- If None: Both are sized
-
-		Example Input: addSizerGridBag()
-		Example Input: addSizerGridBag(0)
-		Example Input: addSizerGridBag(0, rows = 4, columns = 3)
-		Example Input: addSizerGridBag(0, rows = 4, columns = 3, emptySpace = (0, 0))
-		"""
-
-		handle = handle_Sizer()
-		handle.type = "Bag"
-
-		kwargs = locals()
-		# kwargs["parent"] = self.parent
-
-		handle.build(kwargs)
-		return handle
-
-	def addSizerBox(self, text = None, label = None, minWidth = -1, minHeight = -1,
-
-		parent = None, hidden = False, enabled = True, vertical = True, handle = None):
+	def addSizerBox(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Creates a box sizer.
-
-		label (any)     - What this is catalogued as
-		minWidth (int)    - The minimum width of a box. -1 means automatic
-		minHeight (int)   - The minimum height of a box. -1 means automatic
-		horizontal (bool) - True to align items horizontally. False to align items vertically
-		hidden (bool)     - If True: All items in the sizer are hidden from the user, but they are still created
 
 		Example Input: addSizerBox()
 		Example Input: addSizerBox(0)
@@ -15840,27 +15964,14 @@ class handle_Window(handle_Container_Base):
 		Example Input: addSizerBox(0, vertical = False)
 		"""
 
-		handle = handle_Sizer()
-		handle.type = "Box"
+		handle = self.makeSizerBox(*args, **kwargs)
+		self.mainSizer.nest(handle, flex = flex, flags = flags, selected = selected)
 
-		kwargs = locals()
-		# kwargs["parent"] = self.parent
-
-		handle.build(kwargs)
 		return handle
 
-	def addSizerText(self, text = "", label = None, minWidth = -1, minHeight = -1, 
-
-		parent = None, hidden = False, enabled = True, vertical = True, handle = None):
+	def addSizerText(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Creates a static box sizer.
 		This is a sizer surrounded by a box with a title, much like a wxRadioBox.
-
-		label (any)     - What this is catalogued as
-		text (str)      - The text that appears above the static box
-		minWidth (int)    - The minimum width of a box. -1 means automatic
-		minHeight (int)   - The minimum height of a box. -1 means automatic
-		horizontal (bool) - True to align items horizontally. False to align items vertically
-		hidden (bool)     - If True: All items in the sizer are hidden from the user, but they are still created
 
 		Example Input: addSizerText()
 		Example Input: addSizerText(0)
@@ -15868,43 +15979,64 @@ class handle_Window(handle_Container_Base):
 		Example Input: addSizerText(0, text = "Lorem")
 		"""
 
-		handle = handle_Sizer()
-		handle.type = "Text"
+		handle = self.makeSizerText(*args, **kwargs)
+		self.mainSizer.nest(handle, flex = flex, flags = flags, selected = selected)
 
-		kwargs = locals()
-		# kwargs["parent"] = self.parent
-
-		handle.build(kwargs)
 		return handle
 
-	def addSizerWrap(self, text = None, label = None, minWidth = -1, minHeight = -1, 
-		extendLast = False,
+	def addSizerGrid(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
+		"""Creates a grid sizer to the specified size.
 
-		parent = None, hidden = False, enabled = True, vertical = True, handle = None):
+		Example Input: addSizerGrid()
+		Example Input: addSizerGrid(0)
+		Example Input: addSizerGrid(rows = 4, columns = 3)
+		Example Input: addSizerGrid(0, rows = 4, columns = 3)
+		"""
+
+		handle = self.makeSizerGrid(*args, **kwargs)
+		self.mainSizer.nest(handle, flex = flex, flags = flags, selected = selected)
+
+		return handle
+
+	def addSizerGridFlex(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
+		"""Creates a flex grid sizer.
+
+		Example Input: addSizerGridFlex()
+		Example Input: addSizerGridFlex(0)
+		Example Input: addSizerGridFlex(rows = 4, columns = 3)
+		Example Input: addSizerGridFlex(0, rows = 4, columns = 3)
+		"""
+
+		handle = self.makeSizerGridFlex(*args, **kwargs)
+		self.mainSizer.nest(handle, flex = flex, flags = flags, selected = selected)
+
+		return handle
+
+	def addSizerGridBag(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
+		"""Creates a bag grid sizer.
+
+		Example Input: addSizerGridBag()
+		Example Input: addSizerGridBag(0)
+		Example Input: addSizerGridBag(0, rows = 4, columns = 3)
+		Example Input: addSizerGridBag(0, rows = 4, columns = 3, emptySpace = (0, 0))
+		"""
+
+		handle = self.makeSizerGridBag(*args, **kwargs)
+		self.mainSizer.nest(handle, flex = flex, flags = flags, selected = selected)
+
+		return handle
+
+	def addSizerWrap(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Creates a wrap sizer.
 		The widgets will arrange themselves into rows and columns on their own, starting in the top-left corner.
-
-		label (any)     - What this is catalogued as
-		text (str)      - The text that appears above the static box
-		minWidth (int)    - The minimum width of a box. -1 means automatic
-		minHeight (int)   - The minimum height of a box. -1 means automatic
-		horizontal (bool) - Determines the primary direction to fill widgets in
-			- If True: Align items horizontally first
-			- If False: Align items vertically first
-		hidden (bool)     - If True: All items in the sizer are hidden from the user, but they are still created
-		extendLast (bool) - If True: The last widget will extend to fill empty space
 
 		Example Input: addSizerWrap()
 		Example Input: addSizerWrap(0)
 		"""
 
-		handle = handle_Sizer()
-		handle.type = "Wrap"
+		handle = self.makeSizerWrap(*args, **kwargs)
+		self.mainSizer.nest(handle, flex = flex, flags = flags, selected = selected)
 
-		kwargs = locals()
-		# kwargs["parent"] = self.parent
-
-		handle.build(kwargs)
 		return handle
 
 	#Menus
@@ -16289,11 +16421,36 @@ class handle_Window(handle_Container_Base):
 				myDialog.send()
 		_________________________________________________________________________
 
-		Example Input: makeDialogPrint()
+		Example Input: makeDialogPrintPreview()
 		"""
 
 		handle = handle_Dialog()
 		handle.type = "printPreview"
+		handle.build(locals())
+		return handle
+
+	def makeDialogCustom(self, myFrame, valueLabel, stayOnTop = False, icon = None, 
+		addYes = False, addOk = False, addCancel = False, addHelp = False, default = False):
+		"""Allows the user to define how the frame looks on their own.
+
+		myFrame (handle_Window) - What frame to use as the window
+		valueLabel (str)        - The label for the widget to use for getValue()
+
+		_________________________________________________________________________
+
+		Example Use:
+			with myFrame.makeDialogWindow(gui["customDialog"], "value") as myDialog:
+				if (myDialog.isOk()):
+					print("You selected ok")
+				elif (myDialog.isCancel()):
+					print("You selected cancel")
+		_________________________________________________________________________
+
+		Example Input: makeDialogCustom(gui["customDialog"], "value")
+		"""
+
+		handle = handle_Dialog()
+		handle.type = "custom"
 		handle.build(locals())
 		return handle
 
@@ -16443,7 +16600,8 @@ class handle_Window(handle_Container_Base):
 				autoSize = self.autoSize
 
 			#Get random sizer
-			sizer = self.getSizer(returnAny = True)
+			# sizer = self.getSizer(returnAny = True)
+			sizer = self.mainSizer
 
 			if (sizer == None):
 				#Empty Window
@@ -17216,11 +17374,11 @@ class handle_Panel(handle_Container_Base):
 			raise RuntimeError(errorMessage)
 
 		#Add first panel
-		if (isinstance(buildSelf, handle_Window)):
-			panelList = buildSelf.getNested(include = handle_Panel)
-			if (len(panelList) <= 1):
-				#The first panel added to a window is automatically nested
-				buildSelf.finalNest(self)
+		# if (isinstance(buildSelf, handle_Window)):
+		# 	panelList = buildSelf.getNested(include = handle_Panel)
+		# 	if (len(panelList) <= 1):
+		# 		#The first panel added to a window is automatically nested
+		# 		buildSelf.finalNest(self)
 
 		#Determine border
 		border = self.getArguments(argument_catalogue, "border")
@@ -20224,7 +20382,8 @@ class Communication():
 					return
 
 			#Create barcode
-			self.myBarcode = elaphe.barcode(codeType, f"{text}", options = dict(version = 9, eclevel = 'M'), margin = 10, data_mode = '8bits')
+			# self.myBarcode = elaphe.barcode(codeType, f"{text}", options = dict(version = 9, eclevel = 'M'), margin = 10, data_mode = '8bits')
+			self.myBarcode = elaphe.barcode(codeType, f"{text}", data_mode = '8bits')
 
 			return self.myBarcode
 

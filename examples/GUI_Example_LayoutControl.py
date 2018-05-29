@@ -17,17 +17,30 @@ def buildWindow():
 		myFrame.setMinimumFrameSize((250, 200))
 
 		#Add Content
-		with myFrame.addSizerBox() as mySizer:
+		with myFrame.addSizerGridFlex(rows = 2, columns = 1) as mySizer:
+			mySizer.growFlexRowAll()
+			mySizer.growFlexColumnAll()	
+				
 			with mySizer.addSizerGridFlex(rows = 3, columns = 2) as mySubSizer:
 				mySubSizer.growFlexRow(2)
 				mySubSizer.growFlexColumnAll()	
 				mySubSizer.addText("Lorem")
 				mySubSizer.addText("Ipsum")
 				mySubSizer.addText(text = "Dolor")
+			
+			with mySizer.addSizerGridFlex(rows = 3, columns = 2) as mySubSizer:
+				mySubSizer.growFlexRow(2)
+				mySubSizer.growFlexColumnAll()	
 				mySubSizer.addText(text = "Sit")
 				mySubSizer.addInputBox(text = "Amet")
 				mySubSizer.addInputBox(text = "Consectetur")
 
+		with myFrame.addSizerGridFlex(rows = 3, columns = 2) as mySizer:
+			mySizer.growFlexRowAll()
+			mySizer.growFlexColumnAll()	
+			mySizer.addText("Lorem")
+			mySizer.addText("Ipsum")
+			mySizer.addText("Dolor")
 
 #Run Program
 if __name__ == '__main__':
