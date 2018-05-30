@@ -650,7 +650,7 @@ class Utilities():
 			"special+11": 203, "special+12": 204, "special+13": 205, "special+14": 206, "special+15": 207,
 			"special+16": 208, "special+17": 209, "special+18": 210, "special+19": 211, "special+20": 212}
 
-	def get(self, itemLabel = None, includeUnnamed = True, checkNested = True, typeList = None, returnExists = False):
+	def get(self, itemLabel = None, includeUnnamed = True, checkNested = True, typeList = None, subTypeList = None, returnExists = False):
 		"""Searches the label catalogue for the requested object.
 
 		itemLabel (any) - What the object is labled as in the catalogue
@@ -687,7 +687,7 @@ class Utilities():
 
 		def checkType(handleList):
 			"""Makes sure only the instance types the user wants are in the return list."""
-			nonlocal typeList
+			nonlocal typeList, subTypeList
 
 			if ((handleList != None) and (typeList != None)):
 				answer = []
@@ -695,10 +695,14 @@ class Utilities():
 					handleList = [handleList]
 				if (not isinstance(typeList, (list, tuple))):
 					typeList = [typeList]
+				if ((subTypeList != None) and (not isinstance(subTypeList, (list, tuple)))):
+					subTypeList = [subTypeList]
 
 				for item in handleList:
 					for itemType in typeList:
 						if (isinstance(item, itemType)):
+							if ((subTypeList != None) and (item.type.lower() not in subTypeList)):
+								continue
 							answer.append(item)
 							break
 
@@ -2744,11 +2748,23 @@ class Utilities():
 
 		return size
 
-	def getWindow(self, label = None):
+	def getWindow(self, label = None, frameOnly = True):
 		if (isinstance(label, handle_Window)):
+			if (frameOnly and (label.type.lower() == "frame")):
+				return label
+
+		if (frameOnly):
+			window = self.get(label, typeList = [handle_Window], subTypeList = ["frame"])
+		else:
+			window = self.get(label, typeList = [handle_Window])
+
+		return window
+
+	def getDialog(self, label = None):
+		if ((isinstance(label, handle_Window)) and (label.type.lower() == "dialog")):
 			return label
 
-		window = self.get(label, typeList = [handle_Window])
+		window = self.get(label, typeList = [handle_Window], subTypeList = ["dialog"])
 		return window
 
 	def getTable(self, label = None):
@@ -4015,6 +4031,7 @@ class Utilities():
 
 		return handle
 
+	#Sizers
 	def makeSizerGrid(self, rows = 1, columns = 1, text = None,
 		rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1,
 
@@ -4182,47 +4199,259 @@ class Utilities():
 
 		return handle
 
+	#Dialog Boxes
+	def makeDialogMessage(self, text = "", title = "", stayOnTop = False, icon = None, 
+		addYes = False, addOk = False, addCancel = False, addHelp = False, default = False):
+		"""Pauses the running code and shows a dialog box to get input from the user or display a message.
+		_________________________________________________________________________
 
+		Example Use:
+			with myFrame.makeDialogMessage(text = "Lorem Ipsum", addOk = True) as myDialog:
+				if (myDialog.isOk()):
+					print("You selected ok")
+		_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
+		Example Use:
+			myDialog = myFrame.makeDialogMessage(text = "Lorem Ipsum", addOk = True)
+			myDialog.show()
+			if (myDialog.isOk()):
+				print("You selected ok")
+		_________________________________________________________________________
 
+		Example Input: makeDialogMessage("Lorem Ipsum")
+		Example Input: makeDialogMessage("Lorem Ipsum", addYes = True)
+		Example Input: makeDialogMessage("Lorem Ipsum", addOk = True, addCancel = True)
+		"""
 
+		handle = handle_Dialog()
+		handle.type = "message"
+		handle.build(locals())
+		return handle
 
+	def makeDialogError(self, *args, **kwargs):
+		"""Overload for makeDialogMessage() to look like an error message automatically.
+		_________________________________________________________________________
 
+		Example Use:
+			with myFrame.makeDialogError(text = traceback.print_exc()):
+				pass
+		_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
+		Example Use:
+			myDialog = myFrame.makeDialogError(text = traceback.print_exc())
+			myDialog.show()
+		_________________________________________________________________________
 
+		Example Input: makeDialogError()
+		Example Input: makeDialogError(text = "Lorem Ipsum")
+		Example Input: makeDialogError(text = traceback.print_exc())
+		"""
 
+		kwargs["icon"] = "error"
+		kwargs["addOk"] = True
 
+		handle = self.makeDialogMessage(*args, **kwargs)
+		return handle
 
+	def makeDialogScroll(self, text = "", title = ""):
+		"""Pauses the running code and shows a dialog box that scrolls.
+		_________________________________________________________________________
 
+		Example Use:
+			with myFrame.makeDialogScroll(text = "Lorem Ipsum") as myDialog:
+				if (myDialog.isOk()):
+					print("You selected ok")
+		_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
+		Example Use:
+			myDialog = myFrame.makeDialogScroll(text = "Lorem Ipsum")
+			myDialog.show()
+			if (myDialog.isOk()):
+				print("You selected ok")
+		_________________________________________________________________________
 
+		Example Input: makeDialogScroll()
+		Example Input: makeDialogScroll(text = "Lorem Ipsum")
+		"""
 
+		handle = handle_Dialog()
+		handle.type = "scroll"
+		handle.build(locals())
+		return handle
 
+	def makeDialogBusy(self, text = ""):
+		"""Does not pause the running code, but instead ignores user inputs by 
+		locking the GUI until the code tells the dialog box to go away. 
+		This is done by eitehr exiting a while loop or using the hide() function. 
 
+		To protect the GUI better, implement: https://wxpython.org/Phoenix/docs/html/wx.WindowDisabler.html
+		_________________________________________________________________________
 
+		Example Use:
+			with myFrame.makeDialog(text = "Hold on...") as myDialog:
+				for i in range(100):
+					time.sleep(1)
+		_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
+		Example Use:
+			myDialog = myFrame.makeDialog(text = "Hold on...")
+			myDialog.show()
+			for i in range(100):
+				time.sleep(1)
+			myDialog.hide()
+		_________________________________________________________________________
 
+		Example Input: makeDialogBusy()
+		Example Input: makeDialogBusy(text = "Calculating...")
+		"""
 
+		handle = handle_Dialog()
+		handle.type = "busy"
+		handle.build(locals())
+		return handle
 
+	def makeDialogChoice(self, choices = [], text = "", title = "", single = True, default = None):
+		"""Pauses the running code and shows a dialog box that scrolls.
 
+		choices (list) - What can be chosen from
+		default (int) - The index of what to select by default
+			- If None: Will not set the default
+			- If 'single' is False: Provide a list of what indexes to set by default
+		_________________________________________________________________________
 
+		Example Use:
+			with myFrame.makeDialogChoice(["Lorem", "Ipsum"]) as myDialog:
+				choices = myDialog.getValue()
+		_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
+		Example Use:
+			myDialog = myFrame.makeDialogChoice(["Lorem", "Ipsum"])
+			choices = myDialog.getValue()
+		_________________________________________________________________________
 
+		Example Input: makeDialogChoice()
+		Example Input: makeDialogChoice(["Lorem", "Ipsum"])
+		Example Input: makeDialogChoice(["Lorem", "Ipsum"], default = 1)
+		Example Input: makeDialogChoice(["Lorem", "Ipsum"], single = False, default = [0, 1])
+		"""
 
+		handle = handle_Dialog()
+		handle.type = "choice"
+		handle.build(locals())
+		return handle
 
+	def makeDialogColor(self, simple = True):
+		"""Pauses the running code and shows a dialog box to get input from the user about color.
 
+		simple (bool) - Determines the amount of complexity the color picker window will have.
+			- If True: Only shows a few color choices
+			- If False: Shows color choices and a color picker field
+			- If None: Shows as much detail as possible for selecting color
+		_________________________________________________________________________
 
+		Example Use:
+			with myFrame.makeDialogColor() as myDialog:
+				color = myDialog.getValue()
+		_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
+		Example Use:
+			myDialog = myFrame.makeDialogColor()
+			myDialog.show()
+			color = myDialog.getValue()
+		_________________________________________________________________________
 
+		Example Input: makeDialogColor()
+		Example Input: makeDialogColor(simple = False)
+		Example Input: makeDialogColor(simple = None)
+		"""
 
+		handle = handle_Dialog()
+		handle.type = "color"
+		handle.build(locals())
+		return handle
 
+	def makeDialogPrint(self, pageNumbers = True, helpButton = False, printToFile = None, selection = None, 
+		pageFrom = None, pageTo = None, pageMin = None, pageMax = None, collate = None, copies = None):
+		"""Pauses the running code and shows a dialog box to get input from the user about printing.
 
+		pageNumbers (bool) - Determines the state of the 'page numbers' control box
+			- If True: Enables the control box
+			- If False: Disables the control box
+		helpButton (bool) - Determines the state of the 'help' button
+			- If True: Enables the help button
+			- If False: Disables the help button
 
+		printToFile (str) - What file to print this to
+			- If None: Disables the 'print to file' check box
 
+		selection (bool) - ?
+			- If None: Disables the 'selection' radio button?
 
+		pageFrom (int) - Sets the 'Pages' from field
+		pageTo (int)   - Sets the 'Pages' to field
+		pageMin (int)  - Sets the minimum number of copies
+		pageMax (int)  - Sets the maximum number of copies
+		copies (int)   - Sets the 'Number of copies' input spinner
 
+		collate (bool) - Sets the 'Collate' check box
 
+		_________________________________________________________________________
 
+		Example Use:
+			with myFrame.makeDialogPrint() as myDialog:
+				myDialog.setValue(text)
+				myDialog.send()
+		_________________________________________________________________________
+
+		Example Input: makeDialogPrint()
+		"""
+
+		handle = handle_Dialog()
+		handle.type = "print"
+		handle.build(locals())
+		return handle
+
+	def makeDialogPrintPreview(self):
+		"""Pauses the running code and shows a dialog box to get input from the user about printing.
+		_________________________________________________________________________
+
+		Example Use:
+			with myFrame.makeDialogPrintPreview() as myDialog:
+				myDialog.setValue(text)
+				myDialog.send()
+		_________________________________________________________________________
+
+		Example Input: makeDialogPrintPreview()
+		"""
+
+		handle = handle_Dialog()
+		handle.type = "printPreview"
+		handle.build(locals())
+		return handle
+
+	def makeDialogCustom(self, myFrame, valueLabel):
+		"""Allows the user to define how the frame looks on their own.
+
+		myFrame (handle_Window) - What frame to use as the window
+		valueLabel (str)        - The label for the widget to use for getValue()
+
+		_________________________________________________________________________
+
+		Example Use:
+			with myFrame.makeDialogWindow(gui["customDialog"], "value") as myDialog:
+				if (myDialog.isOk()):
+					print("You selected ok")
+				elif (myDialog.isCancel()):
+					print("You selected cancel")
+		_________________________________________________________________________
+
+		Example Input: makeDialogCustom(gui["customDialog"], "value")
+		"""
+
+		handle = handle_Dialog()
+		handle.type = "custom"
+		handle.build(locals())
+		return handle
 
 class CommonEventFunctions():
 	"""Contains common functions used for events bound to wxObjects.
@@ -11886,16 +12115,20 @@ class handle_WidgetTable(handle_Widget_Base):
 			~ {row number (int): cell type for the whole row (str)}
 			~ {None: {column number (int): cell type for the whole column (str)}}
 			- Can be a string that applies to the given row and column
-			- Possible Inputs: "inputBox", "dropList"
+			- Possible Inputs: 
+				~ "inputBox"
+				~ ["dropList", list contents (list)]
+				~ ["dialog", dialog window name (str)] or ["dialog", dialog window handle (handle_Window)]
 			- If None: will apply the default cell type
 		row (int) - Which row to apply this cell type to. Can be a list. Must be in the dict for 'cellType' or 'cellType' must be a string
 		column (int) - Which column to apply this cell type to. Can be a list. Must be in the dict for 'cellType' or 'cellType' must be a string
 
 		Example Input: setTableCellType()
-		Example Input: setTableCellType("dropList")
-		Example Input: setTableCellType("dropList", column = 1)
-		Example Input: setTableCellType({None: {1: "dropList"}})
-		Example Input: setTableCellType("dropList", row = [1, 2, 5])
+		Example Input: setTableCellType(["dropList", ["a", "b", "c"]])
+		Example Input: setTableCellType(["dropList", ["a", "b", "c"]], column = 1)
+		Example Input: setTableCellType(["dropList", ["a", "b", "c"]], row = [1, 2, 5])
+		Example Input: setTableCellType({None: {1: ["dropList", ["a", "b", "c"]]}})
+		Example Input: setTableCellType(["dialog", "modifyBarcode"])
 		"""
 
 		def addEditor(cellType, row = None, column = None):
@@ -13067,10 +13300,8 @@ class handle_WidgetTable(handle_Widget_Base):
 			self.parent = parent
 			self.debugging = debugging
 			self.downOnEnter = downOnEnter
-			self.patching_dialog = False #Used for dialog boxes work correctly
 			self.patching_event = False #Used to make the events work correctly
-			self.debugging = True
-			self.shown = False
+			# self.debugging = True
 
 			if (cellType == None):
 				self.cellType = "inputbox"
@@ -13083,10 +13314,12 @@ class handle_WidgetTable(handle_Widget_Base):
 					self.cellTypeValue = None
 
 			if (self.cellType.lower() == "dialog"):
-				with self.cellTypeValue as myFrame:
-					if ("value" not in myFrame):
-						warnings.warn(f"Window {myFrame.label} must have a widget with the label 'value' in order to use it as a dialog for {self.parent.__repr__()}", Warning, stacklevel = 2)
+				if (isinstance(self.cellTypeValue, str)):
+					if (self.cellTypeValue not in self.parent.getDialog()):
+						warnings.warn(f"There is no custom dialog window {self.cellTypeValue} for {self.parent.__repr__()}\nCreate one using GUI_Maker.addDialog(label = {self.cellTypeValue}) during setup", Warning, stacklevel = 2)
 						self.cellType = "inputBox"
+					else:
+						self.cellTypeValue = self.parent.controller[self.cellTypeValue]
 
 			#Write debug information
 			if (self.debugging):
@@ -13161,10 +13394,6 @@ class handle_WidgetTable(handle_Widget_Base):
 			PaintBackground and do something meaningful there.
 			"""
 
-			#Check for patching in process
-			if (self.patching_dialog):
-				return
-
 			#Write debug information
 			if (self.debugging):
 				print(f"TableCellEditor.SetSize(rect = {rect})")
@@ -13184,8 +13413,6 @@ class handle_WidgetTable(handle_Widget_Base):
 			if (self.debugging):
 				print(f"TableCellEditor.Show(show = {show}, attr = {attr})")
 
-			self.shown = show
-
 			super(handle_WidgetTable.TableCellEditor, self).Show(show, attr)
 
 		def PaintBackground(self, rect, attr):
@@ -13204,25 +13431,6 @@ class handle_WidgetTable(handle_Widget_Base):
 			to begin editing. Set the focus to the edit control.
 			*Must Override*
 			"""
-			
-			def dialogBeginEdit():
-				nonlocal self
-
-				with self.cellTypeValue as myFrame:
-					myFrame.showWindow(asDialog = True)
-					while myFrame.checkShown(window = True):
-						time.sleep(0.25)
-
-					value = myFrame.getValue("value")
-					self.myCellControl.SetValue(value)
-				self.EndEdit(row, column, grid, self.startValue, skipPatching = True)
-
-			#Check for patching in process
-			if (self.patching_dialog):
-				return
-
-			if (not self.shown):
-				return
 
 			#Write debug information
 			if (self.debugging):
@@ -13236,8 +13444,18 @@ class handle_WidgetTable(handle_Widget_Base):
 				self.myCellControl.SetFocus()
 
 			elif (self.cellType.lower() == "dialog"):
-				self.patching_dialog = True
-				self.parent.backgroundRun(dialogBeginEdit)
+				self.myCellControl.SetValue(self.startValue)
+				self.myCellControl.SetFocus()
+
+				print("@0.1")
+				with self.parent.makeDialogCustom(self.cellTypeValue, self.cellTypeValue.getValueLabel()) as myDialog:
+					if (not myDialog.isCancel()):
+						value = myDialog.getValue()
+						self.myCellControl.SetValue(value)
+
+				print("@0.2")
+
+				self.EndEdit(row, column, grid, self.startValue)
 
 			else:
 				self.myCellControl.SetValue(self.startValue)
@@ -13252,7 +13470,7 @@ class handle_WidgetTable(handle_Widget_Base):
 			# wx.PostEvent(grid, event)
 
 
-		def EndEdit(self, row, column, grid, oldValue, skipPatching = False):
+		def EndEdit(self, row, column, grid, oldValue):
 			"""End editing the cell. This function must check if the current
 			value of the editing control is valid and different from thde
 			original value (available as oldValue in its string form.)  If
@@ -13265,9 +13483,6 @@ class handle_WidgetTable(handle_Widget_Base):
 			"""
 
 			if (self.patching_event):
-				return
-
-			if (not self.shown):
 				return
 
 			#Write debug information
@@ -13297,10 +13512,6 @@ class handle_WidgetTable(handle_Widget_Base):
 				self.parent.thing.GetEventHandler().ProcessEvent(event)
 
 				self.patching_event = False
-
-			#Check for patching in process
-			if (self.patching_dialog):
-				self.patching_dialog = False
 			
 		def ApplyEdit(self, row, column, grid):
 			"""This function should save the value of the control into the
@@ -13580,11 +13791,11 @@ class handle_Sizer(handle_Container_Base):
 		else:
 			self.myWindow = buildSelf.myWindow
 
-		if (isinstance(buildSelf, handle_Window)):
-			sizerList = buildSelf.getNested(include = handle_Sizer)
-			if (len(sizerList) <= 1):
-				#The first sizer added to a window is automatically nested
-				buildSelf.finalNest(self)
+		# if (isinstance(buildSelf, handle_Window)):
+		# 	sizerList = buildSelf.getNested(include = handle_Sizer)
+		# 	if (len(sizerList) <= 1):
+		# 		#The first sizer added to a window is automatically nested
+		# 		buildSelf.finalNest(self)
 		
 		#Create Sizer
 		if (sizerType == "grid"):
@@ -13770,7 +13981,6 @@ class handle_Sizer(handle_Container_Base):
 
 		#Configure Flags
 		flags, position, border = self.getItemMod(flags)
-		print("@1", flex, flags, border, self.label, handle.label)
 
 		#Perform Nesting
 		if (isinstance(handle, handle_Widget_Base)):
@@ -14760,6 +14970,7 @@ class handle_Dialog(handle_Base):
 
 	Use: https://www.blog.pythonlibrary.org/2010/06/26/the-dialogs-of-wxpython-part-1-of-2/
 	https://www.blog.pythonlibrary.org/2010/07/10/the-dialogs-of-wxpython-part-2-of-2/
+	http://zetcode.com/wxpython/dialogs/
 	"""
 
 	def __init__(self):
@@ -15006,22 +15217,9 @@ class handle_Dialog(handle_Base):
 			nonlocal self, argument_catalogue
 
 			myFrame, valueLabel = self.getArguments(argument_catalogue, ["myFrame", "valueLabel"])
-			addYes, addOk, addCancel = self.getArguments(argument_catalogue, ["addYes", "addOk", "addCancel"])
-			self.thing = myFrame
-			self.data = valueLabel
-
-			if (addYes or addOk or addCancel):
-				with self.thing.addSizerGrid(1, 4) as mySizer:
-					mySizer.growFlexColumnAll()
-					mySizer.growFlexRowAll()
-
-					if (addYes):
-						mySizer.addButton("Yes", myFunction = self.onYes)
-						mySizer.addButton("No", myFunction = self.onNo)
-					if (addOk):
-						mySizer.addButton("Ok", myFunction = self.onOk)
-					if (addCancel):
-						mySizer.addButton("Cancel", myFunction = self.onCancel)
+			self.thing = -1
+			self.myFrame = myFrame
+			self.valueLabel = valueLabel
 		
 		#########################################################
 
@@ -15073,17 +15271,6 @@ class handle_Dialog(handle_Base):
 	def show(self):
 		"""Shows the dialog box for this handle."""
 
-		def mimicDialog():
-			nonlocal self
-
-			with self.cellTypeValue as myFrame:
-				myFrame.showWindow(asDialog = True)
-				while myFrame.checkShown(window = True):
-					time.sleep(0.25)
-
-		#########################################################
-
-
 		#Error Check
 		if (self.thing == None):
 			warnings.warn(f"The {self.type} dialogue box {self.__repr__()} has already been shown", Warning, stacklevel = 2)
@@ -15119,7 +15306,10 @@ class handle_Dialog(handle_Base):
 			self.thing = None
 
 		elif (self.type.lower() == "custom"):
-			self.backgroundRun(mimicDialog)
+			self.answer = self.myFrame.thing.ShowModal()
+
+			# self.myFrame.thing.Destroy() #Don't destroy it so it can appear again without the user calling addDialog() again. Time will tell if this is a bad idea or not
+			self.thing = None
 
 		elif (self.type.lower() == "busyinfo"):
 			self.thing = wx.BusyInfo(self.thing)
@@ -15133,11 +15323,6 @@ class handle_Dialog(handle_Base):
 
 		elif (self.type.lower() == "printpreview"):
 			pass
-			# self.answer = self.thing.ShowModal()
-			# self.data = [self.thing.GetPrintData(), self.thing.GetPrintDialogData()]
-
-			# self.thing.Destroy()
-			# self.thing = None
 
 		elif (self.type.lower() == "color"):
 			self.answer = self.thing.ShowModal()
@@ -15173,6 +15358,9 @@ class handle_Dialog(handle_Base):
 
 		elif (self.type.lower() == "print"):
 			value = [self.data, self.dialogData, self.content]
+
+		elif (self.type.lower() == "custom"):
+			value = self.myFrame.getValue(self.valueLabel)
 
 		elif (self.type.lower() == "printPreview"):
 			value = self.content
@@ -15226,34 +15414,6 @@ class handle_Dialog(handle_Base):
 		if (self.answer == wx.ID_NO):
 			return True
 		return False
-
-	def onOk(self, event):
-		"""Hides the custom dialog box and sets the answer to 'ok'."""
-
-		self.answer = wx.ID_OK
-		self.thing.hideWIndow()
-		event.Skip()
-
-	def onCancel(self, event):
-		"""Hides the custom dialog box and sets the answer to 'cancel'."""
-
-		self.answer = wx.ID_CANCEL
-		self.thing.hideWIndow()
-		event.Skip()
-
-	def onYes(self, event):
-		"""Hides the custom dialog box and sets the answer to 'yes'."""
-
-		self.answer = wx.ID_YES
-		self.thing.hideWIndow()
-		event.Skip()
-
-	def onNo(self, event):
-		"""Hides the custom dialog box and sets the answer to 'no'."""
-
-		self.answer = wx.ID_NO
-		self.thing.hideWIndow()
-		event.Skip()
 
 	#Setters
 	def setValue(self, value, event = None):
@@ -15405,43 +15565,44 @@ class handle_Window(handle_Container_Base):
 
 		def build_frame():
 			"""Builds a wx frame object."""
+			nonlocal self, argument_catalogue
 
 			#Determine window style
 			tabTraversal, stayOnTop, floatOnParent, resize, topBar, minimize, maximize, close, title = self.getArguments(argument_catalogue, ["tabTraversal", "stayOnTop", "floatOnParent", "resize", "topBar", "minimize", "maximize", "close", "title"])
-			flags = "wx.CLIP_CHILDREN|wx.SYSTEM_MENU"
+			style = "wx.CLIP_CHILDREN|wx.SYSTEM_MENU"
 			if (tabTraversal):
-				flags += "|wx.TAB_TRAVERSAL"
+				style += "|wx.TAB_TRAVERSAL"
 
 			if (stayOnTop):
-				flags += "|wx.STAY_ON_TOP"
+				style += "|wx.STAY_ON_TOP"
 
 			if (floatOnParent):
-				flags += "|wx.FRAME_FLOAT_ON_PARENT"
+				style += "|wx.FRAME_FLOAT_ON_PARENT"
 
 			if (resize):
-				flags += "|wx.RESIZE_BORDER"
+				style += "|wx.RESIZE_BORDER"
 
 			if (topBar != None):
 				if (topBar):
-					flags += "|wx.MINIMIZE_BOX|wx.MAXIMIZE_BOX|wx.CLOSE_BOX"
+					style += "|wx.MINIMIZE_BOX|wx.MAXIMIZE_BOX|wx.CLOSE_BOX"
 			else:
 				if (minimize):
-					flags += "|wx.MINIMIZE_BOX"
+					style += "|wx.MINIMIZE_BOX"
 
 				if (maximize):
-					flags += "|wx.MAXIMIZE_BOX"
+					style += "|wx.MAXIMIZE_BOX"
 
 				if (close):
-					flags += "|wx.CLOSE_BOX"
+					style += "|wx.CLOSE_BOX"
 
 			if (title != None):
-				flags += "|wx.CAPTION"
+				style += "|wx.CAPTION"
 			else:
 				title = ""
 
 			#Make the frame
 			size, position = self.getArguments(argument_catalogue, ["size", "position"])
-			self.thing = wx.Frame(None, title = title, size = size, pos = position, style = eval(flags, {'__builtins__': None, "wx": wx}, {}))
+			self.thing = wx.Frame(None, title = title, size = size, pos = position, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 			
 			#Add Properties
 			icon, internal = self.getArguments(argument_catalogue, ["icon", "internal"])
@@ -15486,13 +15647,105 @@ class handle_Window(handle_Container_Base):
 
 			#Make the main sizer
 			self.mainSizer = self.makeSizerBox()
-			# self.mainSizer = self.makeSizerGridFlex(rows = 5, columns = 1)
-			# # self.mainSizer.growFlexRowAll()
-			# self.mainSizer.growFlexColumnAll()	
 			self.finalNest(self.mainSizer)
+
+		def build_dialog():
+			"""Builds a wx dialog object."""
+			nonlocal self, argument_catalogue
+
+			tabTraversal, stayOnTop, resize, title = self.getArguments(argument_catalogue, ["tabTraversal", "floatOnParent", "resize", "title"])
+			topBar, minimize, maximize, close = self.getArguments(argument_catalogue, ["topBar", "minimize", "maximize", "close"])
+			size, position, panel, valueLabel = self.getArguments(argument_catalogue, ["size", "position", "panel", "valueLabel"])
+			addYes, addOk, addCancel, addHelp, addApply, addLine = self.getArguments(argument_catalogue, ["addYes", "addOk", "addCancel", "addHelp", "addApply", "addLine"])
+			
+			#Configure Style
+			style = "wx.SYSTEM_MENU"
+
+			if (stayOnTop):
+				style += "|wx.STAY_ON_TOP"
+
+			# if (helpButton):
+			# 	style += "|wx.DIALOG_EX_CONTEXTHELP"
+
+			if (resize):
+				style += "|wx.RESIZE_BORDER"
+
+			if (topBar != None):
+				if (topBar):
+					style += "|wx.MINIMIZE_BOX|wx.MAXIMIZE_BOX|wx.CLOSE_BOX"
+			else:
+				if (minimize):
+					style += "|wx.MINIMIZE_BOX"
+
+				if (maximize):
+					style += "|wx.MAXIMIZE_BOX"
+
+				if (close):
+					style += "|wx.CLOSE_BOX"
+
+			if (title != None):
+				style += "|wx.CAPTION"
+			else:
+				title = ""
+
+			#Create Object
+			self.thing = wx.Dialog(None, title=title, size = size, pos = position, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+
+			#Add Elements
+			style = ""
+			if (addYes):
+				style += "|wx.YES|wx.NO"
+			if (addOk):
+				style += "|wx.OK"
+			if (addCancel):
+				style += "|wx.CANCEL"
+			if (addHelp):
+				style += "|wx.HELP"
+			if (addApply):
+				style += "|wx.APPLY"
+
+			if (len(style) == 0):
+				style += "wx.OK"
+			elif (style[0] == "|"):
+				style = style[1:]
+
+			if (addLine):
+				buttonSizer = self.thing.CreateSeparatedButtonSizer(eval(style, {'__builtins__': None, "wx": wx}, {}))
+			else:
+				buttonSizer = self.thing.CreateButtonSizer(eval(style, {'__builtins__': None, "wx": wx}, {}))
+
+			#Remember Values
+			self.valueLabel = valueLabel
+
+			#Bind functions
+			delFunction, delFunctionArgs, delFunctionKwargs = self.getArguments(argument_catalogue, ["delFunction", "delFunctionArgs", "delFunctionKwargs"])
+			initFunction, initFunctionArgs, initFunctionKwargs = self.getArguments(argument_catalogue, ["initFunction", "initFunctionArgs", "initFunctionKwargs"])
+			
+			if (initFunction != None):
+				self.setFunction_init(initFunction, initFunctionArgs, initFunctionKwargs)
+
+			if (delFunction != None):
+				self.setFunction_close(delFunction, delFunctionArgs, delFunctionKwargs)
+
+			#Setup sizers and panels
+			rootSizer = wx.BoxSizer(wx.VERTICAL)
+
+			self.mainSizer = self.makeSizerBox()
+			self.finalNest(self.mainSizer)
+
+			if (panel):
+				self.mainPanel = self.addPanel()#"-1", parent = handle, size = (10, 10), tabTraversal = tabTraversal, useDefaultSize = False)
+				self.finalNest(self.mainPanel)
+				rootSizer.Add(self.mainPanel.thing, 1, wx.ALIGN_CENTER|wx.EXPAND|wx.ALL, 5)
+			else:
+				rootSizer.Add(self.mainSizer.thing, 1, wx.ALIGN_CENTER|wx.EXPAND|wx.ALL, 5)
+
+			rootSizer.Add(buttonSizer, 0, wx.ALIGN_CENTER|wx.EXPAND|wx.TOP|wx.BOTTOM, 5)
+			self.thing.SetSizerAndFit(rootSizer)
 
 		def build_preview():
 			"""Builds a wx preview frame object."""
+			nonlocal self, argument_catalogue
 
 			canvas, enablePrint = self.getArguments(argument_catalogue, ["canvas", "enablePrint"])
 
@@ -15522,13 +15775,15 @@ class handle_Window(handle_Container_Base):
 		#########################################################
 
 		#Fill in default values
-		argument_catalogue["self"] = self.controller
-		argument_catalogue = self.arrangeArguments(Controller.addWindow, kwargDict = argument_catalogue)
+		# argument_catalogue["self"] = self.controller
+		# argument_catalogue = self.arrangeArguments(Controller.addWindow, kwargDict = argument_catalogue)
 
 		self.preBuild(argument_catalogue)
 
 		if (self.type.lower() == "frame"):
 			build_frame()
+		elif (self.type.lower() == "dialog"):
+			build_dialog()
 		elif (self.type.lower() == "preview"):
 			build_preview()
 		else:
@@ -15549,62 +15804,24 @@ class handle_Window(handle_Container_Base):
 				return event.GetActive()
 		return self.thing.IsActive()
 
-	# def getValue(self, label, *args, **kwargs):
-	# 	"""Overload for getValue for handle_Widget_Base."""
+	def getValueLabel(self, event = None):
+		"""Returns what the contextual value label is for the object associated with this handle."""
 
-	# 	handle = self.get(label, *args, **kwargs)
-	# 	event = self.getArgument_event(label, args, kwargs)
-	# 	value = handle.getValue(event = event)
-	# 	return value
+		if (self.type.lower() == "dialog"):
+			value = self.valueLabel
+		else:
+			warnings.warn(f"Add {self.type} to getValueLabel() for {self.__repr__()}", Warning, stacklevel = 2)
+			value = None
 
-	# def getIndex(self, label, *args, **kwargs):
-	# 	"""Overload for getIndex for handle_Widget_Base."""
+		return value
 
-	# 	handle = self.get(label, *args, **kwargs)
-	# 	event = self.getArgument_event(label, args, kwargs)
-	# 	value = handle.getIndex(event = event)
-	# 	return value
+	def setValueLabel(self, newValue, event = None):
+		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
-	# def getAll(self, label, *args, **kwargs):
-	# 	"""Overload for getAll for handle_Widget_Base."""
-
-	# 	handle = self.get(label, *args, **kwargs)
-	# 	event = self.getArgument_event(label, args, kwargs)
-	# 	value = handle.getAll(event = event)
-	# 	return value
-
-	# def getSelection(self, label, *args, **kwargs):
-	# 	"""Overload for getSelection for handle_Widget_Base."""
-
-	# 	handle = self.get(label, *args, **kwargs)
-	# 	event = self.getArgument_event(label, args, kwargs)
-	# 	value = handle.getSelection(event = event)
-	# 	return value
-
-	# def getLabel(self, *args, label = None, **kwargs):
-	# 	"""Overload for getLabel for handle_Widget_Base."""
-
-	# 	if (label == None):
-	# 		handle = self
-	# 	else:
-	# 		handle = self.get(label, *args, **kwargs)
-	# 	event = self.getArgument_event(label, args, kwargs)
-	# 	value = handle.getLabel(event = event)
-	# 	return value
-
-	# def setValue(self, label, newValue, *args, **kwargs):
-	# 	"""Overload for setValue for handle_Widget_Base."""
-
-	# 	handle = self.get(label, *args, **kwargs)
-	# 	event = self.getArgument_event(label, args, kwargs)
-	# 	handle.setValue(newValue, event = event)
-
-	# def setSelection(self, label, newValue, *args, **kwargs):
-	# 	"""Overload for setSelection for handle_Widget_Base."""
-
-	# 	handle = self.get(label, *args, **kwargs)
-	# 	event = self.getArgument_event(label, args, kwargs)
-	# 	handle.setSelection(newValue, event = event)
+		if (self.type.lower() == "dialog"):
+			self.valueLabel = newValue
+		else:
+			warnings.warn(f"Add {self.type} to setValueLabel() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Event Functions
 	def setFunction_size(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
@@ -16199,261 +16416,6 @@ class handle_Window(handle_Container_Base):
 			message = " "
 		self.statusTextDefault = message
 
-	#Dialog Boxes
-	def makeDialogMessage(self, text = "", title = "", stayOnTop = False, icon = None, 
-		addYes = False, addOk = False, addCancel = False, addHelp = False, default = False):
-		"""Pauses the running code and shows a dialog box to get input from the user or display a message.
-		_________________________________________________________________________
-
-		Example Use:
-			with myFrame.makeDialogMessage(text = "Lorem Ipsum", addOk = True) as myDialog:
-				if (myDialog.isOk()):
-					print("You selected ok")
-		_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-
-		Example Use:
-			myDialog = myFrame.makeDialogMessage(text = "Lorem Ipsum", addOk = True)
-			myDialog.show()
-			if (myDialog.isOk()):
-				print("You selected ok")
-		_________________________________________________________________________
-
-		Example Input: makeDialogMessage("Lorem Ipsum")
-		Example Input: makeDialogMessage("Lorem Ipsum", addYes = True)
-		Example Input: makeDialogMessage("Lorem Ipsum", addOk = True, addCancel = True)
-		"""
-
-		handle = handle_Dialog()
-		handle.type = "message"
-		handle.build(locals())
-		return handle
-
-	def makeDialogError(self, *args, **kwargs):
-		"""Overload for makeDialogMessage() to look like an error message automatically.
-		_________________________________________________________________________
-
-		Example Use:
-			with myFrame.makeDialogError(text = traceback.print_exc()):
-				pass
-		_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-
-		Example Use:
-			myDialog = myFrame.makeDialogError(text = traceback.print_exc())
-			myDialog.show()
-		_________________________________________________________________________
-
-		Example Input: makeDialogError()
-		Example Input: makeDialogError(text = "Lorem Ipsum")
-		Example Input: makeDialogError(text = traceback.print_exc())
-		"""
-
-		kwargs["icon"] = "error"
-		kwargs["addOk"] = True
-
-		handle = self.makeDialogMessage(*args, **kwargs)
-		return handle
-
-	def makeDialogScroll(self, text = "", title = ""):
-		"""Pauses the running code and shows a dialog box that scrolls.
-		_________________________________________________________________________
-
-		Example Use:
-			with myFrame.makeDialogScroll(text = "Lorem Ipsum") as myDialog:
-				if (myDialog.isOk()):
-					print("You selected ok")
-		_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-
-		Example Use:
-			myDialog = myFrame.makeDialogScroll(text = "Lorem Ipsum")
-			myDialog.show()
-			if (myDialog.isOk()):
-				print("You selected ok")
-		_________________________________________________________________________
-
-		Example Input: makeDialogScroll()
-		Example Input: makeDialogScroll(text = "Lorem Ipsum")
-		"""
-
-		handle = handle_Dialog()
-		handle.type = "scroll"
-		handle.build(locals())
-		return handle
-
-	def makeDialogBusy(self, text = ""):
-		"""Does not pause the running code, but instead ignores user inputs by 
-		locking the GUI until the code tells the dialog box to go away. 
-		This is done by eitehr exiting a while loop or using the hide() function. 
-
-		To protect the GUI better, implement: https://wxpython.org/Phoenix/docs/html/wx.WindowDisabler.html
-		_________________________________________________________________________
-
-		Example Use:
-			with myFrame.makeDialog(text = "Hold on...") as myDialog:
-				for i in range(100):
-					time.sleep(1)
-		_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-
-		Example Use:
-			myDialog = myFrame.makeDialog(text = "Hold on...")
-			myDialog.show()
-			for i in range(100):
-				time.sleep(1)
-			myDialog.hide()
-		_________________________________________________________________________
-
-		Example Input: makeDialogBusy()
-		Example Input: makeDialogBusy(text = "Calculating...")
-		"""
-
-		handle = handle_Dialog()
-		handle.type = "busy"
-		handle.build(locals())
-		return handle
-
-	def makeDialogChoice(self, choices = [], text = "", title = "", single = True, default = None):
-		"""Pauses the running code and shows a dialog box that scrolls.
-
-		choices (list) - What can be chosen from
-		default (int) - The index of what to select by default
-			- If None: Will not set the default
-			- If 'single' is False: Provide a list of what indexes to set by default
-		_________________________________________________________________________
-
-		Example Use:
-			with myFrame.makeDialogChoice(["Lorem", "Ipsum"]) as myDialog:
-				choices = myDialog.getValue()
-		_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-
-		Example Use:
-			myDialog = myFrame.makeDialogChoice(["Lorem", "Ipsum"])
-			choices = myDialog.getValue()
-		_________________________________________________________________________
-
-		Example Input: makeDialogChoice()
-		Example Input: makeDialogChoice(["Lorem", "Ipsum"])
-		Example Input: makeDialogChoice(["Lorem", "Ipsum"], default = 1)
-		Example Input: makeDialogChoice(["Lorem", "Ipsum"], single = False, default = [0, 1])
-		"""
-
-		handle = handle_Dialog()
-		handle.type = "choice"
-		handle.build(locals())
-		return handle
-
-	def makeDialogColor(self, simple = True):
-		"""Pauses the running code and shows a dialog box to get input from the user about color.
-
-		simple (bool) - Determines the amount of complexity the color picker window will have.
-			- If True: Only shows a few color choices
-			- If False: Shows color choices and a color picker field
-			- If None: Shows as much detail as possible for selecting color
-		_________________________________________________________________________
-
-		Example Use:
-			with myFrame.makeDialogColor() as myDialog:
-				color = myDialog.getValue()
-		_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-
-		Example Use:
-			myDialog = myFrame.makeDialogColor()
-			myDialog.show()
-			color = myDialog.getValue()
-		_________________________________________________________________________
-
-		Example Input: makeDialogColor()
-		Example Input: makeDialogColor(simple = False)
-		Example Input: makeDialogColor(simple = None)
-		"""
-
-		handle = handle_Dialog()
-		handle.type = "color"
-		handle.build(locals())
-		return handle
-
-	def makeDialogPrint(self, pageNumbers = True, helpButton = False, printToFile = None, selection = None, 
-		pageFrom = None, pageTo = None, pageMin = None, pageMax = None, collate = None, copies = None):
-		"""Pauses the running code and shows a dialog box to get input from the user about printing.
-
-		pageNumbers (bool) - Determines the state of the 'page numbers' control box
-			- If True: Enables the control box
-			- If False: Disables the control box
-		helpButton (bool) - Determines the state of the 'help' button
-			- If True: Enables the help button
-			- If False: Disables the help button
-
-		printToFile (str) - What file to print this to
-			- If None: Disables the 'print to file' check box
-
-		selection (bool) - ?
-			- If None: Disables the 'selection' radio button?
-
-		pageFrom (int) - Sets the 'Pages' from field
-		pageTo (int)   - Sets the 'Pages' to field
-		pageMin (int)  - Sets the minimum number of copies
-		pageMax (int)  - Sets the maximum number of copies
-		copies (int)   - Sets the 'Number of copies' input spinner
-
-		collate (bool) - Sets the 'Collate' check box
-
-		_________________________________________________________________________
-
-		Example Use:
-			with myFrame.makeDialogPrint() as myDialog:
-				myDialog.setValue(text)
-				myDialog.send()
-		_________________________________________________________________________
-
-		Example Input: makeDialogPrint()
-		"""
-
-		handle = handle_Dialog()
-		handle.type = "print"
-		handle.build(locals())
-		return handle
-
-	def makeDialogPrintPreview(self):
-		"""Pauses the running code and shows a dialog box to get input from the user about printing.
-		_________________________________________________________________________
-
-		Example Use:
-			with myFrame.makeDialogPrintPreview() as myDialog:
-				myDialog.setValue(text)
-				myDialog.send()
-		_________________________________________________________________________
-
-		Example Input: makeDialogPrintPreview()
-		"""
-
-		handle = handle_Dialog()
-		handle.type = "printPreview"
-		handle.build(locals())
-		return handle
-
-	def makeDialogCustom(self, myFrame, valueLabel, stayOnTop = False, icon = None, 
-		addYes = False, addOk = False, addCancel = False, addHelp = False, default = False):
-		"""Allows the user to define how the frame looks on their own.
-
-		myFrame (handle_Window) - What frame to use as the window
-		valueLabel (str)        - The label for the widget to use for getValue()
-
-		_________________________________________________________________________
-
-		Example Use:
-			with myFrame.makeDialogWindow(gui["customDialog"], "value") as myDialog:
-				if (myDialog.isOk()):
-					print("You selected ok")
-				elif (myDialog.isCancel()):
-					print("You selected cancel")
-		_________________________________________________________________________
-
-		Example Input: makeDialogCustom(gui["customDialog"], "value")
-		"""
-
-		handle = handle_Dialog()
-		handle.type = "custom"
-		handle.build(locals())
-		return handle
-
 	def addAui(self, label = None, flags = None, flex = 0, 
 
 		reduceFlicker = True, 
@@ -16599,10 +16561,7 @@ class handle_Window(handle_Container_Base):
 			if (autoSize == None):
 				autoSize = self.autoSize
 
-			#Get random sizer
-			# sizer = self.getSizer(returnAny = True)
 			sizer = self.mainSizer
-
 			if (sizer == None):
 				#Empty Window
 				return
@@ -20705,20 +20664,19 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 
 		del self.labelCatalogue[key]
 
-	def get(self, *args, **kwargs):
+	def get(self, *args, returnExists = False, **kwargs):
 		"""Overload for get() in Utilities."""
 
 		#Check nested windows first
 		windowList = Utilities.get(self, None, typeList = [handle_Window])
 		for window in windowList:
-			if (("returnExists" in kwargs) or (len(args) == 5)):
-				if (window.get(*args, **kwargs)):
-					return True
+			if (returnExists):
+				return window.get(*args, returnExists = returnExists, **kwargs)
 			elif (window.get(*args, returnExists = True, **kwargs)):
-				return window.get(*args, **kwargs)
+				return window.get(*args, returnExists = returnExists, **kwargs)
 
 		#It is not a window item, so check inside of self
-		return Utilities.get(self, *args, **kwargs)
+		return Utilities.get(self, *args, returnExists = returnExists, **kwargs)
 
 	def getValue(self, label, *args, **kwargs):
 		"""Overload for getValue for handle_Widget_Base."""
@@ -20777,7 +20735,6 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 
 		parent = None, handle = None, hidden = True, enabled = True):
 		"""Creates a new window.
-		Returns the index number of the created window.
 
 		label (any) - What this is catalogued as
 		title (str)   - The text that appears on top of the window
@@ -20818,6 +20775,64 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 
 		handle = handle_Window(self)
 		handle.type = "Frame"
+		handle.build(locals())
+		self.finalNest(handle)
+
+		return handle
+
+	def addDialog(self, label = None, title = "", size = wx.DefaultSize, position = wx.DefaultPosition, panel = True, autoSize = True,
+		tabTraversal = True, stayOnTop = False, floatOnParent = False, endProgram = True, valueLabel = None,
+		resize = True, minimize = True, maximize = True, close = True, icon = None, internal = False, topBar = True,
+		addYes = False, addOk = False, addCancel = False, addHelp = False, addApply = False, addLine = False,
+
+		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None, 
+		delFunction = None, delFunctionArgs = None, delFunctionKwargs = None, 
+		idleFunction = None, idleFunctionArgs = None, idleFunctionKwargs = None, 
+
+		parent = None, handle = None, hidden = True, enabled = True):
+		"""Creates a new dialog window.
+
+		label (any) - What this is catalogued as
+		valueLabel (any) - The label for the widget to get the value for on getValue()
+			- If None: The user must set it using setValueLabel() before calling the dialog up, or they will get an error
+		title (str)   - The text that appears on top of the window
+		xSize (int)   - The width of the window
+		ySize (int)   - The height of the window
+		
+		initFunction (str)       - The function that is ran when the panel first appears
+		initFunctionArgs (any)   - The arguments for 'initFunction'
+		initFunctionKwargs (any) - The keyword arguments for 'initFunction'function
+
+		delFunction (str)       - The function that is ran when the user tries to close the panel. Can be used to interrup closing
+		delFunctionArgs (any)   - The arguments for 'delFunction'
+		delFunctionKwargs (any) - The keyword arguments for 'delFunction'function
+
+		idleFunction (str)       - The function that is ran when the window is idle
+		idleFunctionArgs (any)   - The arguments for 'idleFunction'
+		idleFunctionKwargs (any) - The keyword arguments for 'idleFunction'function
+		
+		tabTraversal (bool) - If True: Hitting the Tab key will move the selected widget to the next one
+		topBar (bool)       - An override for 'minimize', 'maximize', and 'close'.
+			- If None: Will not override 'minimize', 'maximize', and 'close'.
+			- If True: The top of the window will have a minimize, maximize, and close button.
+			- If False: The top of the window will not have a minimize, maximize, and close button.
+		panel (bool)        - If True: All content within the window will be nested inside a main panel
+		autoSize (bool)     - If True: The window will determine the best size for itself
+		icon (str)          - The file path to the icon for the window
+			If None: No icon will be shown
+		internal (bool)     - If True: The icon provided is an internal icon, not an external file
+		endProgram (bool)   - Determines what happens when the close button is pressed
+			- If True: runs onExit()
+			- If False: runs onQuit()
+			- If None: runs onHideWindow()
+		
+		Example Input: addDialog()
+		Example Input: addDialog(0)
+		Example Input: addDialog(0, title = "Example")
+		"""
+
+		handle = handle_Window(self)
+		handle.type = "Dialog"
 		handle.build(locals())
 		self.finalNest(handle)
 
@@ -21069,68 +21084,68 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def setWindowSize(self, windowLabel, *args, **kwargs):
 		"""Overload for setWindowSize in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		myFrame.setWindowSize(*args, **kwargs)
 
 	def setMinimumFrameSize(self, windowLabel, *args, **kwargs):
 		"""Overload for setMinimumFrameSize in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		myFrame.setMinimumFrameSize(*args, **kwargs)
 
 	def setMaximumFrameSize(self, windowLabel, *args, **kwargs):
 		"""Overload for setMaximumFrameSize in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		myFrame.setMaximumFrameSize(*args, **kwargs)
 
 	def setAutoWindowSize(self, windowLabel, *args, **kwargs):
 		"""Overload for setAutoWindowSize in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		myFrame.setAutoWindowSize(*args, **kwargs)
 
 	def setWindowTitle(self, windowLabel, title, *args, **kwargs):
 		"""Overload for setWindowTitle in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		myFrame.setWindowTitle(*args, **kwargs)
 
 	def centerWindow(self, windowLabel, *args, **kwargs):
 		"""Overload for centerWindow in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		myFrame.centerWindow(*args, **kwargs)
 
 	def showWindow(self, windowLabel, *args, **kwargs):
 		"""Overload for showWindow in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		myFrame.showWindow(*args, **kwargs)
 
 	def onShowWindow(self, event, windowLabel, *args, **kwargs):
 		"""Overload for onShowWindow in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		myFrame.onShowWindow(event, *args, **kwargs)
 
 	def showWindowCheck(self, windowLabel, *args, **kwargs):
 		"""Overload for showWindowCheck in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		shown = myFrame.showWindowCheck(*args, **kwargs)
 		return shown
 
 	def hideWindow(self, windowLabel, *args, **kwargs):
 		"""Overload for hideWindow in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		myFrame.hideWindow(*args, **kwargs)
 
 	def onHideWindow(self, event, windowLabel, *args, **kwargs):
 		"""Overload for onHideWindow in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		myFrame.onHideWindow(event, *args, **kwargs)
 
 	def typicalWindowSetup(self, windowLabel, *args, **kwargs):
@@ -21142,19 +21157,19 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def closeWindow(self, windowLabel, *args, **kwargs):
 		"""Overload for closeWindow in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		myFrame.closeWindow(*args, **kwargs)
 
 	def onCloseWindow(self, event, windowLabel, *args, **kwargs):
 		"""Overload for onCloseWindow in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		myFrame.onCloseWindow(event, *args, **kwargs)
 
 	def addSizerBox(self, windowLabel, *args, **kwargs):
 		"""Overload for addSizerBox in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addSizerBox(*args, **kwargs)
 
 		return handle
@@ -21162,7 +21177,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addSizerText(self, windowLabel, *args, **kwargs):
 		"""Overload for addSizerText in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addSizerText(*args, **kwargs)
 
 		return handle
@@ -21170,7 +21185,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addSizerGrid(self, windowLabel, *args, **kwargs):
 		"""Overload for addSizerGrid in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addSizerGrid(*args, **kwargs)
 
 		return handle
@@ -21178,7 +21193,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addSizerGridFlex(self, windowLabel, *args, **kwargs):
 		"""Overload for addSizerGridFlex in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addSizerGridFlex(*args, **kwargs)
 
 		return handle
@@ -21186,7 +21201,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addSizerGridBag(self, windowLabel, *args, **kwargs):
 		"""Overload for addSizerGridBag in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addSizerGridBag(*args, **kwargs)
 
 		return handle
@@ -21194,7 +21209,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addSizerWrap(self, windowLabel, *args, **kwargs):
 		"""Overload for addSizerWrap in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addSizerWrap(*args, **kwargs)
 
 		return handle
@@ -21202,37 +21217,37 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def nestSizerInSizer(self, windowLabel, *args, **kwargs):
 		"""Overload for growFlexColumn in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		myFrame.nestSizerInSizer(*args, **kwargs)
 
 	def growFlexColumn(self, windowLabel, *args, **kwargs):
 		"""Overload for growFlexColumn in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		myFrame.growFlexColumn(*args, **kwargs)
 
 	def growFlexRow(self, windowLabel, *args, **kwargs):
 		"""Overload for growFlexRow in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		myFrame.growFlexRow(*args, **kwargs)
 
 	def growFlexColumnAll(self, windowLabel, *args, **kwargs):
 		"""Overload for growFlexColumnAll in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		myFrame.growFlexColumnAll(*args, **kwargs)
 
 	def growFlexRowAll(self, windowLabel, *args, **kwargs):
 		"""Overload for growFlexRowAll in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		myFrame.growFlexRowAll(*args, **kwargs)
 
 	def addText(self, windowLabel, *args, **kwargs):
 		"""Overload for addText in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addText(*args, **kwargs)
 
 		return handle
@@ -21240,7 +21255,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addHyperlink(self, windowLabel, *args, **kwargs):
 		"""Overload for addHyperlink in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addHyperlink(*args, **kwargs)
 
 		return handle
@@ -21248,7 +21263,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addEmpty(self, windowLabel, *args, **kwargs):
 		"""Overload for addEmpty in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addEmpty(*args, **kwargs)
 
 		return handle
@@ -21256,7 +21271,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addLine(self, windowLabel, *args, **kwargs):
 		"""Overload for addLine in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addLine(*args, **kwargs)
 
 		return handle
@@ -21264,7 +21279,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addListDrop(self, windowLabel, *args, **kwargs):
 		"""Overload for addListDrop in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addListDrop(*args, **kwargs)
 
 		return handle
@@ -21272,7 +21287,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addListFull(self, windowLabel, *args, **kwargs):
 		"""Overload for addListFull in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addListFull(*args, **kwargs)
 
 		return handle
@@ -21280,7 +21295,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addInputSlider(self, windowLabel, *args, **kwargs):
 		"""Overload for addInputSlider in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addInputSlider(*args, **kwargs)
 
 		return handle
@@ -21288,7 +21303,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addInputBox(self, windowLabel, *args, **kwargs):
 		"""Overload for addInputBox in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addInputBox(*args, **kwargs)
 
 		return handle
@@ -21296,7 +21311,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addInputSearch(self, windowLabel, *args, **kwargs):
 		"""Overload for addInputSearch in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addInputSearch(*args, **kwargs)
 
 		return handle
@@ -21304,7 +21319,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addInputSpinner(self, windowLabel, *args, **kwargs):
 		"""Overload for addInputSpinner in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addInputSpinner(*args, **kwargs)
 
 		return handle
@@ -21312,7 +21327,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addButton(self, windowLabel, *args, **kwargs):
 		"""Overload for addButton in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addButton(*args, **kwargs)
 
 		return handle
@@ -21320,7 +21335,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addButtonToggle(self, windowLabel, *args, **kwargs):
 		"""Overload for addButtonToggle in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addButtonToggle(*args, **kwargs)
 
 		return handle
@@ -21328,7 +21343,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addButtonCheck(self, windowLabel, *args, **kwargs):
 		"""Overload for addButtonCheck in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addButtonCheck(*args, **kwargs)
 
 		return handle
@@ -21336,7 +21351,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addButtonCheckList(self, windowLabel, *args, **kwargs):
 		"""Overload for addButtonCheckList in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addButtonCheckList(*args, **kwargs)
 
 		return handle
@@ -21344,7 +21359,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addButtonRadio(self, windowLabel, *args, **kwargs):
 		"""Overload for addButtonRadio in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addButtonRadio(*args, **kwargs)
 
 		return handle
@@ -21352,7 +21367,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addButtonRadioBox(self, windowLabel, *args, **kwargs):
 		"""Overload for addButtonRadioBox in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addButtonRadioBox(*args, **kwargs)
 
 		return handle
@@ -21360,7 +21375,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addButtonImage(self, windowLabel, *args, **kwargs):
 		"""Overload for addButtonImage in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addButtonImage(*args, **kwargs)
 
 		return handle
@@ -21368,7 +21383,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addImage(self, windowLabel, *args, **kwargs):
 		"""Overload for addImage in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addImage(*args, **kwargs)
 
 		return handle
@@ -21376,7 +21391,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addProgressBar(self, windowLabel, *args, **kwargs):
 		"""Overload for addProgressBar in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addProgressBar(*args, **kwargs)
 
 		return handle
@@ -21384,7 +21399,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addPickerColor(self, windowLabel, *args, **kwargs):
 		"""Overload for addPickerColor in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addPickerColor(*args, **kwargs)
 
 		return handle
@@ -21392,7 +21407,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addPickerFont(self, windowLabel, *args, **kwargs):
 		"""Overload for addPickerFont in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addPickerFont(*args, **kwargs)
 
 		return handle
@@ -21400,7 +21415,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addPickerFile(self, windowLabel, *args, **kwargs):
 		"""Overload for addPickerFile in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addPickerFile(*args, **kwargs)
 
 		return handle
@@ -21408,7 +21423,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addPickerFileWindow(self, windowLabel, *args, **kwargs):
 		"""Overload for addPickerFileWindow in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addPickerFileWindow(*args, **kwargs)
 
 		return handle
@@ -21416,7 +21431,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addPickerTime(self, windowLabel, *args, **kwargs):
 		"""Overload for addPickerTime in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addPickerTime(*args, **kwargs)
 
 		return handle
@@ -21424,7 +21439,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addPickerDate(self, windowLabel, *args, **kwargs):
 		"""Overload for addPickerDate in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addPickerDate(*args, **kwargs)
 
 		return handle
@@ -21432,7 +21447,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def addPickerDateWindow(self, windowLabel, *args, **kwargs):
 		"""Overload for addPickerDateWindow in handle_Window()."""
 
-		myFrame = self.getWindow(windowLabel)
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addPickerDateWindow(*args, **kwargs)
 
 		return handle
