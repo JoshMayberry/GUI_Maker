@@ -807,11 +807,12 @@ class Utilities():
 			errorMessage = f"There is no item labled {itemLabel} in the label catalogue for {self.__repr__()}"
 		raise KeyError(errorMessage)
 
-	def runMyFunction(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+	def runMyFunction(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, event = None, includeEvent = False):
 		"""Runs a function."""
 
 		def runFunction(myFunctionEvaluated, myFunctionArgs, myFunctionKwargs):
 			"""This sub-function is needed to make the multiple functions work properly."""
+			nonlocal event, includeEvent
 
 			#Ensure the *args and **kwargs are formatted correctly 
 			if ((type(myFunctionArgs) != list) and (myFunctionArgs != None)):
@@ -822,19 +823,31 @@ class Utilities():
 
 			#Has both args and kwargs
 			if ((myFunctionKwargs != None) and (myFunctionArgs != None)):
-				myFunctionEvaluated(*myFunctionArgs, **myFunctionKwargs)
+				if (includeEvent):
+					myFunctionEvaluated(event, *myFunctionArgs, **myFunctionKwargs)
+				else:
+					myFunctionEvaluated(*myFunctionArgs, **myFunctionKwargs)
 
 			#Has args, but not kwargs
 			elif (myFunctionArgs != None):
-				myFunctionEvaluated(*myFunctionArgs)
+				if (includeEvent):
+					myFunctionEvaluated(event, *myFunctionArgs)
+				else:
+					myFunctionEvaluated(*myFunctionArgs)
 
 			#Has kwargs, but not args
 			elif (myFunctionKwargs != None):
-				myFunctionEvaluated(**myFunctionKwargs)
+				if (includeEvent):
+					myFunctionEvaluated(event, **myFunctionKwargs)
+				else:
+					myFunctionEvaluated(**myFunctionKwargs)
 
 			#Has neither args nor kwargs
 			else:
-				myFunctionEvaluated()
+				if (includeEvent):
+					myFunctionEvaluated(event)
+				else:
+					myFunctionEvaluated()
 
 		#Skip empty functions
 		if (myFunction != None):
@@ -1585,6 +1598,7 @@ class Utilities():
 		if (myFunction in self.listeningCatalogue):
 			while (self.listeningCatalogue[myFunction]["listening"] > 0):
 				self.listeningCatalogue[myFunction]["stop"] = True
+				time.sleep(100 / 1000)
 		else:
 			self.listeningCatalogue[myFunction] = {"listening": 0, "stop": False}
 	
@@ -4804,7 +4818,7 @@ class handle_Container_Base(handle_Base):
 		# 	buildSelf.allowBuildErrors = nestingCatalogue[buildSelf.nestingAddress[0]][None].allowBuildErrors
 		# 	self.allowBuildErrors = buildSelf.allowBuildErrors
 
-	def overloadHelp(self, myFunction, label, kwargs, window = False):
+	def overloadHelp(self, myFunction, label, args, kwargs, window = False):
 		"""Helps the overloaded functions to stay small.
 
 		Example Input: overloadHelp("toggleEnable")
@@ -4814,13 +4828,13 @@ class handle_Container_Base(handle_Base):
 		if (label == None):
 			if (window):
 				function = getattr(handle_Widget_Base, myFunction)
-				answer = function(self, **kwargs)
+				answer = function(self, *args, **kwargs)
 				return answer
 			else:
 				answerList = []
 				for handle in self:
 					function = getattr(handle, myFunction)
-					answer = function(**kwargs)
+					answer = function(*args, **kwargs)
 
 					if (not isinstance(answer, list)):
 						answer = [answer]
@@ -4840,7 +4854,7 @@ class handle_Container_Base(handle_Base):
 				handle = self.get(label, checkNested = True)
 
 				function = getattr(handle, myFunction)
-				answer = function(**kwargs)
+				answer = function(*args, **kwargs)
 
 				if (not isinstance(answer, list)):
 					answer = [answer]
@@ -4852,46 +4866,46 @@ class handle_Container_Base(handle_Base):
 			return answerList
 
 	#Standard Functions
-	def getValue(self, label = None, window = False, **kwargs):
+	def getValue(self, label = None, *args, window = False, **kwargs):
 		"""Overload for getValue for handle_Widget_Base."""
 
-		answer = self.overloadHelp("getValue", label, kwargs, window = window)
+		answer = self.overloadHelp("getValue", label, args, kwargs, window = window)
 		return answer
 
-	def getIndex(self, label = None, window = False, **kwargs):
+	def getIndex(self, label = None, *args, window = False, **kwargs):
 		"""Overload for getIndex for handle_Widget_Base."""
 
-		answer = self.overloadHelp("getIndex", label, kwargs, window = window)
+		answer = self.overloadHelp("getIndex", label, args, kwargs, window = window)
 		return answer
 
-	def getAll(self, label = None, window = False, **kwargs):
+	def getAll(self, label = None, *args, window = False, **kwargs):
 		"""Overload for getAll for handle_Widget_Base."""
 
-		answer = self.overloadHelp("getAll", label, kwargs, window = window)
+		answer = self.overloadHelp("getAll", label, args, kwargs, window = window)
 		return answer
 
-	def getSelection(self, label = None, window = False, **kwargs):
+	def getSelection(self, label = None, *args, window = False, **kwargs):
 		"""Overload for getSelection for handle_Widget_Base."""
 
-		answer = self.overloadHelp("getSelection", label, kwargs, window = window)
+		answer = self.overloadHelp("getSelection", label, args, kwargs, window = window)
 		return answer
 
-	def getLabel(self, label = None, window = False, **kwargs):
+	def getLabel(self, label = None, *args, window = False, **kwargs):
 		"""Overload for getLabel for handle_Widget_Base."""
 
-		answer = self.overloadHelp("getLabel", label, kwargs, window = window)
+		answer = self.overloadHelp("getLabel", label, args, kwargs, window = window)
 		return answer
 
-	def setValue(self, label = None, window = False, **kwargs):
+	def setValue(self, label = None, *args, window = False, **kwargs):
 		"""Overload for setValue for handle_Widget_Base."""
 
-		answer = self.overloadHelp("setValue", label, kwargs, window = window)
+		answer = self.overloadHelp("setValue", label, args, kwargs, window = window)
 		return answer
 
-	def setSelection(self, label = None, window = False, **kwargs):
+	def setSelection(self, label = None, *args, window = False, **kwargs):
 		"""Overload for setSelection for handle_Widget_Base."""
 
-		answer = self.overloadHelp("setSelection", label, kwargs, window = window)
+		answer = self.overloadHelp("setSelection", label, args, kwargs, window = window)
 		return answer
 
 	#Change State
@@ -4902,10 +4916,10 @@ class handle_Container_Base(handle_Base):
 		self.toggleEnable(*args, event = event, **kwargs)
 		event.Skip()
 
-	def toggleEnable(self, label = None, window = False, **kwargs):
+	def toggleEnable(self, label = None, *args, window = False, **kwargs):
 		"""Overload for toggleEnable in handle_Widget_Base."""
 
-		self.overloadHelp("toggleEnable", label, kwargs, window = window)
+		self.overloadHelp("toggleEnable", label, args, kwargs, window = window)
 
 	def onSetEnable(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of setEnable."""
@@ -4913,10 +4927,10 @@ class handle_Container_Base(handle_Base):
 		self.setEnable(*args, event = event, **kwargs)
 		event.Skip()
 
-	def setEnable(self, label = None, window = False, **kwargs):
+	def setEnable(self, label = None, *args, window = False, **kwargs):
 		"""Overload for setEnable in handle_Widget_Base."""
 
-		self.overloadHelp("setEnable", label, kwargs, window = window)
+		self.overloadHelp("setEnable", label, args, kwargs, window = window)
 
 	def onSetDisable(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of setDisable."""
@@ -4924,10 +4938,10 @@ class handle_Container_Base(handle_Base):
 		self.setDisable(*args, event = event, **kwargs)
 		event.Skip()
 
-	def setDisable(self, label = None, window = False, **kwargs):
+	def setDisable(self, label = None, *args, window = False, **kwargs):
 		"""Overload for setDisable in handle_Widget_Base."""
 
-		self.overloadHelp("setDisable", label, kwargs, window = window)
+		self.overloadHelp("setDisable", label, args, kwargs, window = window)
 
 	def onEnable(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of enable."""
@@ -4935,10 +4949,10 @@ class handle_Container_Base(handle_Base):
 		self.enable(*args, event = event, **kwargs)
 		event.Skip()
 
-	def enable(self, label = None, window = False, **kwargs):
+	def enable(self, label = None, *args, window = False, **kwargs):
 		"""Overload for enable in handle_Widget_Base."""
 
-		self.overloadHelp("enable", label, kwargs, window = window)
+		self.overloadHelp("enable", label, args, kwargs, window = window)
 
 	def onDisable(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of disable."""
@@ -4946,21 +4960,21 @@ class handle_Container_Base(handle_Base):
 		self.disable(*args, event = event, **kwargs)
 		event.Skip()
 
-	def disable(self, label = None, window = False, **kwargs):
+	def disable(self, label = None, *args, window = False, **kwargs):
 		"""Overload for disable in handle_Widget_Base."""
 
-		self.overloadHelp("disable", label, kwargs, window = window)
+		self.overloadHelp("disable", label, args, kwargs, window = window)
 
-	def checkEnabled(self, label = None, window = False, **kwargs):
+	def checkEnabled(self, label = None, *args, window = False, **kwargs):
 		"""Overload for checkEnabled in handle_Widget_Base."""
 
-		answer = self.overloadHelp("checkEnabled", label, kwargs, window = window)
+		answer = self.overloadHelp("checkEnabled", label, args, kwargs, window = window)
 		return answer
 
-	def checkDisabled(self, label = None, window = False, **kwargs):
+	def checkDisabled(self, label = None, *args, window = False, **kwargs):
 		"""Overload for checkDisabled in handle_Widget_Base."""
 
-		answer = self.overloadHelp("checkDisabled", label, kwargs, window = window)
+		answer = self.overloadHelp("checkDisabled", label, args, kwargs, window = window)
 		return answer
 
 	##Show / Hide
@@ -4970,10 +4984,10 @@ class handle_Container_Base(handle_Base):
 		self.toggleShow(*args, event = event, **kwargs)
 		event.Skip()
 
-	def toggleShow(self, label = None, window = False, **kwargs):
+	def toggleShow(self, label = None, *args, window = False, **kwargs):
 		"""Overload for toggleShow in handle_Widget_Base."""
 
-		self.overloadHelp("toggleShow", label, kwargs, window = window)
+		self.overloadHelp("toggleShow", label, args, kwargs, window = window)
 
 	def onSetShow(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of setShow."""
@@ -4981,10 +4995,10 @@ class handle_Container_Base(handle_Base):
 		self.setShow(*args, event = event, **kwargs)
 		event.Skip()
 
-	def setShow(self, label = None, window = False, **kwargs):
+	def setShow(self, label = None, *args, window = False, **kwargs):
 		"""Overload for setShow in handle_Widget_Base."""
 
-		self.overloadHelp("setShow", label, kwargs, window = window)
+		self.overloadHelp("setShow", label, args, kwargs, window = window)
 
 	def onSetHide(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of setHide."""
@@ -4992,10 +5006,10 @@ class handle_Container_Base(handle_Base):
 		self.setHide(*args, event = event, **kwargs)
 		event.Skip()
 
-	def setHide(self, label = None, window = False, **kwargs):
+	def setHide(self, label = None, *args, window = False, **kwargs):
 		"""Overload for setHide in handle_Widget_Base."""
 
-		self.overloadHelp("setHide", label, kwargs, window = window)
+		self.overloadHelp("setHide", label, args, kwargs, window = window)
 
 	def onShow(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of show."""
@@ -5003,10 +5017,10 @@ class handle_Container_Base(handle_Base):
 		self.show(*args, event = event, **kwargs)
 		event.Skip()
 
-	def show(self, label = None, window = False, **kwargs):
+	def show(self, label = None, *args, window = False, **kwargs):
 		"""Overload for show in handle_Widget_Base."""
 
-		self.overloadHelp("show", label, kwargs, window = window)
+		self.overloadHelp("show", label, args, kwargs, window = window)
 
 	def onHide(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of hide."""
@@ -5014,21 +5028,21 @@ class handle_Container_Base(handle_Base):
 		self.hide(*args, event = event, **kwargs)
 		event.Skip()
 
-	def hide(self, label = None, window = False, **kwargs):
+	def hide(self, label = None, *args, window = False, **kwargs):
 		"""Overload for hide in handle_Widget_Base."""
 
-		self.overloadHelp("hide", label, kwargs, window = window)
+		self.overloadHelp("hide", label, args, kwargs, window = window)
 
-	def checkShown(self, label = None, window = False, **kwargs):
+	def checkShown(self, label = None, *args, window = False, **kwargs):
 		"""Overload for checkShown in handle_Widget_Base."""
 
-		answer = self.overloadHelp("checkShown", label, kwargs, window = window)
+		answer = self.overloadHelp("checkShown", label, args, kwargs, window = window)
 		return answer
 
-	def checkHidden(self, label = None, window = False, **kwargs):
+	def checkHidden(self, label = None, *args, window = False, **kwargs):
 		"""Overload for checkHidden in handle_Widget_Base."""
 
-		answer = self.overloadHelp("checkHidden", label, kwargs, window = window)
+		answer = self.overloadHelp("checkHidden", label, args, kwargs, window = window)
 		return answer
 
 	##Modified
@@ -5038,10 +5052,10 @@ class handle_Container_Base(handle_Base):
 		self.modify(*args, event = event, **kwargs)
 		event.Skip()
 
-	def modify(self, label = None, window = False, **kwargs):
+	def modify(self, label = None, *args, window = False, **kwargs):
 		"""Overload for modify in handle_Widget_Base."""
 
-		self.overloadHelp("modify", label, kwargs, window = window)
+		self.overloadHelp("modify", label, args, kwargs, window = window)
 
 	def onSetModified(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of setModified."""
@@ -5049,15 +5063,15 @@ class handle_Container_Base(handle_Base):
 		self.setModified(*args, event = event, **kwargs)
 		event.Skip()
 
-	def setModified(self, label = None, window = False, **kwargs):
+	def setModified(self, label = None, *args, window = False, **kwargs):
 		"""Overload for setModified in handle_Widget_Base."""
 
-		self.overloadHelp("setModified", label, kwargs, window = window)
+		self.overloadHelp("setModified", label, args, kwargs, window = window)
 
-	def checkModified(self, label = None, window = False, **kwargs):
+	def checkModified(self, label = None, *args, window = False, **kwargs):
 		"""Overload for checkModified in handle_Widget_Base."""
 
-		answer = self.overloadHelp("checkModified", label, kwargs, window = window)
+		answer = self.overloadHelp("checkModified", label, args, kwargs, window = window)
 		return answer
 
 	##Read Only
@@ -5067,10 +5081,10 @@ class handle_Container_Base(handle_Base):
 		self.readOnly(*args, event = event, **kwargs)
 		event.Skip()
 
-	def readOnly(self, label = None, window = False, **kwargs):
+	def readOnly(self, label = None, *args, window = False, **kwargs):
 		"""Overload for readOnly in handle_Widget_Base."""
 
-		self.overloadHelp("readOnly", label, kwargs, window = window)
+		self.overloadHelp("readOnly", label, args, kwargs, window = window)
 
 	def onSetReadOnly(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of setReadOnly."""
@@ -5078,32 +5092,32 @@ class handle_Container_Base(handle_Base):
 		self.setReadOnly(*args, event = event, **kwargs)
 		event.Skip()
 
-	def setReadOnly(self, label = None, window = False, **kwargs):
+	def setReadOnly(self, label = None, *args, window = False, **kwargs):
 		"""Overload for setReadOnly in handle_Widget_Base."""
 
-		self.overloadHelp("setReadOnly", label, kwargs, window = window)
+		self.overloadHelp("setReadOnly", label, args, kwargs, window = window)
 
-	def checkReadOnly(self, label = None, window = False, **kwargs):
+	def checkReadOnly(self, label = None, *args, window = False, **kwargs):
 		"""Overload for checkReadOnly in handle_Widget_Base."""
 
-		answer = self.overloadHelp("checkReadOnly", label, kwargs, window = window)
+		answer = self.overloadHelp("checkReadOnly", label, args, kwargs, window = window)
 		return answer
 
 	#Tool Tips
-	def setToolTipAppearDelay(self, *args, label = None, window = False, **kwargs):
+	def setToolTipAppearDelay(self, label = None, *args, window = False, **kwargs):
 		"""Override function for setToolTipAppearDelay for handle_Widget_Base."""
 
-		self.overloadHelp("setToolTipAppearDelay", label, kwargs, window = window)
+		self.overloadHelp("setToolTipAppearDelay", label, args, kwargs, window = window)
 
-	def setToolTipDisappearDelay(self, *args, label = None, window = False, **kwargs):
+	def setToolTipDisappearDelay(self, label = None, *args, window = False, **kwargs):
 		"""Override function for setToolTipDisappearDelay for handle_Widget_Base."""
 
-		self.overloadHelp("setToolTipDisappearDelay", label, kwargs, window = window)
+		self.overloadHelp("setToolTipDisappearDelay", label, args, kwargs, window = window)
 
-	def setToolTipReappearDelay(self, *args, label = None, window = False, **kwargs):
+	def setToolTipReappearDelay(self, label = None, *args, window = False, **kwargs):
 		"""Override function for setToolTipReappearDelay for handle_Widget_Base."""
 
-		self.overloadHelp("setToolTipReappearDelay", label, kwargs, window = window)
+		self.overloadHelp("setToolTipReappearDelay", label, args, kwargs, window = window)
 
 	#Etc
 	def readBuildInstructions_sizer(self, parent, i, instructions):
@@ -7495,6 +7509,7 @@ class handle_WidgetInput(handle_Widget_Base):
 	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "inputbox"):
 			self.betterBind(wx.EVT_TEXT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			self.betterBind(wx.EVT_TEXT_ENTER, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
 		elif (self.type.lower() == "inputspinner"):
 			self.betterBind(wx.EVT_SPINCTRL, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
@@ -13447,13 +13462,10 @@ class handle_WidgetTable(handle_Widget_Base):
 				self.myCellControl.SetValue(self.startValue)
 				self.myCellControl.SetFocus()
 
-				print("@0.1")
 				with self.parent.makeDialogCustom(self.cellTypeValue, self.cellTypeValue.getValueLabel()) as myDialog:
 					if (not myDialog.isCancel()):
 						value = myDialog.getValue()
 						self.myCellControl.SetValue(value)
-
-				print("@0.2")
 
 				self.EndEdit(row, column, grid, self.startValue)
 
@@ -14989,7 +15001,7 @@ class handle_Dialog(handle_Base):
 
 		handle = handle_Base.__enter__(self)
 
-		self.show()
+		handle_Dialog.show(self)
 
 		return handle
 
@@ -15306,7 +15318,20 @@ class handle_Dialog(handle_Base):
 			self.thing = None
 
 		elif (self.type.lower() == "custom"):
+			if (len(self.myFrame.preShowFunction) != 0):
+				self.myFrame.runMyFunction(self.myFrame.preShowFunction, self.myFrame.preShowFunctionArgs, self.myFrame.preShowFunctionKwargs)
+			if (len(self.myFrame.postShowFunction) != 0):
+				self.myFrame.runMyFunction(self.myFrame.postShowFunction, self.myFrame.postShowFunctionArgs, self.myFrame.postShowFunctionKwargs)
+
 			self.answer = self.myFrame.thing.ShowModal()
+
+			if ((self.answer == wx.CANCEL) and (len(self.myFrame.cancelFunction) != 0)):
+				self.myFrame.runMyFunction(self.myFrame.cancelFunction, self.myFrame.cancelFunctionArgs, self.myFrame.cancelFunctionKwargs)
+
+			if (len(self.myFrame.preHideFunction) != 0):
+				self.myFrame.runMyFunction(self.myFrame.preHideFunction, self.myFrame.preHideFunctionArgs, self.myFrame.preHideFunctionKwargs)
+			if (len(self.myFrame.postHideFunction) != 0):
+				self.myFrame.runMyFunction(self.myFrame.postHideFunction, self.myFrame.postHideFunctionArgs, self.myFrame.postHideFunctionKwargs)
 
 			# self.myFrame.thing.Destroy() #Don't destroy it so it can appear again without the user calling addDialog() again. Time will tell if this is a bad idea or not
 			self.thing = None
@@ -15533,16 +15558,37 @@ class handle_Window(handle_Container_Base):
 		self.complexity_max = 20
 		self.controller = controller
 
-		self.statusBarOn = True
 		self.toolBarOn = True
 		self.autoSize = True
 		self.menuBar = None
-		self.statusBar = None
 		self.auiManager = None
+
+		self.statusBar = None
+		self.statusBarOn = True
+		self.statusTextDefault = " "
+		self.statusTextTimer = {"listening": 0, "stop": False}
 
 		self.refreshFunction = []
 		self.refreshFunctionArgs = []
 		self.refreshFunctionKwargs = []
+
+		self.cancelFunction = []
+		self.cancelFunctionArgs = []
+		self.cancelFunctionKwargs = []
+
+		self.preShowFunction = []
+		self.preShowFunctionArgs = []
+		self.preShowFunctionKwargs = []
+		self.postShowFunction = []
+		self.postShowFunctionArgs = []
+		self.postShowFunctionKwargs = []
+
+		self.preHideFunction = []
+		self.preHideFunctionArgs = []
+		self.preHideFunctionKwargs = []
+		self.postHideFunction = []
+		self.postHideFunctionArgs = []
+		self.postHideFunctionKwargs = []
 
 		self.finalFunctionList = []
 		self.sizersIterating = {} #Keeps track of which sizers have been used in a while loop, as well as if they are still in the while loop {sizer (handle): [currently in a while loop (bool), order entered (int)]}
@@ -15653,10 +15699,11 @@ class handle_Window(handle_Container_Base):
 			"""Builds a wx dialog object."""
 			nonlocal self, argument_catalogue
 
-			tabTraversal, stayOnTop, resize, title = self.getArguments(argument_catalogue, ["tabTraversal", "floatOnParent", "resize", "title"])
+			tabTraversal, stayOnTop, resize, title = self.getArguments(argument_catalogue, ["tabTraversal", "stayOnTop", "resize", "title"])
 			topBar, minimize, maximize, close = self.getArguments(argument_catalogue, ["topBar", "minimize", "maximize", "close"])
 			size, position, panel, valueLabel = self.getArguments(argument_catalogue, ["size", "position", "panel", "valueLabel"])
 			addYes, addOk, addCancel, addHelp, addApply, addLine = self.getArguments(argument_catalogue, ["addYes", "addOk", "addCancel", "addHelp", "addApply", "addLine"])
+			icon, internal = self.getArguments(argument_catalogue, ["icon", "internal"])
 			
 			#Configure Style
 			style = "wx.SYSTEM_MENU"
@@ -15713,6 +15760,10 @@ class handle_Window(handle_Container_Base):
 				buttonSizer = self.thing.CreateSeparatedButtonSizer(eval(style, {'__builtins__': None, "wx": wx}, {}))
 			else:
 				buttonSizer = self.thing.CreateButtonSizer(eval(style, {'__builtins__': None, "wx": wx}, {}))
+
+			#Set Properties
+			if (icon != None):
+				self.setIcon(icon, internal)
 
 			#Remember Values
 			self.valueLabel = valueLabel
@@ -15832,6 +15883,37 @@ class handle_Window(handle_Container_Base):
 
 	def setFunction_init(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		self.betterBind(wx.EVT_ACTIVATE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	def setFunction_show(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self.setFunction_preShow(self, myFunction = myFunction, myFunctionArgs = myFunctionArgs, myFunctionKwargs = myFunctionKwargs)
+
+	def setFunction_preShow(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self.preShowFunction.append(myFunction)
+		self.preShowFunctionArgs.append(myFunctionArgs)
+		self.preShowFunctionKwargs.append(myFunctionKwargs)
+
+	def setFunction_postShow(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self.postShowFunction.append(myFunction)
+		self.postShowFunctionArgs.append(myFunctionArgs)
+		self.postShowFunctionKwargs.append(myFunctionKwargs)
+
+	def setFunction_hide(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self.setFunction_preHide(self, myFunction = myFunction, myFunctionArgs = myFunctionArgs, myFunctionKwargs = myFunctionKwargs)
+
+	def setFunction_preHide(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self.preHideFunction.append(myFunction)
+		self.preHideFunctionArgs.append(myFunctionArgs)
+		self.preHideFunctionKwargs.append(myFunctionKwargs)
+
+	def setFunction_postHide(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self.postHideFunction.append(myFunction)
+		self.postHideFunctionArgs.append(myFunctionArgs)
+		self.postHideFunctionKwargs.append(myFunctionKwargs)
+
+	def setFunction_cancel(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self.cancelFunction.append(myFunction)
+		self.cancelFunctionArgs.append(myFunctionArgs)
+		self.cancelFunctionKwargs.append(myFunctionKwargs)
 
 	def setFunction_close(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		self.betterBind(wx.EVT_CLOSE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
@@ -16024,6 +16106,9 @@ class handle_Window(handle_Container_Base):
 		Example Input: showWindow(asDialog = True)
 		"""
 
+		if (len(self.preShowFunction) != 0):
+			self.runMyFunction(self.preShowFunction, self.preShowFunctionArgs, self.preShowFunctionKwargs)
+
 		self.thing.Show()
 
 		if (asDialog):
@@ -16036,6 +16121,9 @@ class handle_Window(handle_Container_Base):
 				self.thing.Iconize(False)
 			else:
 				self.thing.Raise()
+
+		if (len(self.postShowFunction) != 0):
+			self.runMyFunction(self.postShowFunction, self.postShowFunctionArgs, self.postShowFunctionKwargs)
 
 	def showWindowCheck(self, notShown = False, onScreen = False):
 		"""Checks if a window is currently being shown to the user.
@@ -16072,6 +16160,9 @@ class handle_Window(handle_Container_Base):
 		Example Input: hideWindow()
 		"""
 
+		if (len(self.preHideFunction) != 0):
+			self.runMyFunction(self.preHideFunction, self.preHideFunctionArgs, self.preHideFunctionKwargs)
+
 		if (self.controller.windowDisabler != None):
 			if (self.controller.windowDisabler[0] == self.thing):
 				self.controller.windowDisabler[1] = None
@@ -16082,6 +16173,9 @@ class handle_Window(handle_Container_Base):
 			self.visible = False
 		else:
 			warnings.warn(f"Window {self.label} is already hidden", Warning, stacklevel = 2)
+
+		if (len(self.postHideFunction) != 0):
+			self.runMyFunction(self.postHideFunction, self.postHideFunctionArgs, self.postHideFunctionKwargs)
 
 	def onHideWindow(self, event, *args, **kwargs):
 		"""Event function for hideWindow()"""
@@ -16364,6 +16458,7 @@ class handle_Window(handle_Container_Base):
 
 	def setStatusText(self, message = None, autoAdd = False):
 		"""Sets the text shown in the status bar.
+		If a message is on a timer and a new message gets sent, the timer message will stop and not overwrite the new message.
 
 		message (str)  - What the status bar will say
 			- If dict: {What to say (str): How long to wait in ms before moving on to the next message (int). Use None for ending}
@@ -16380,7 +16475,18 @@ class handle_Window(handle_Container_Base):
 			"""The thread function that runs for the timer status message."""
 			nonlocal self, message
 
+			#Account for other messages with timers before this one
+			if (self.statusTextTimer["listening"] > 0):
+				self.statusTextTimer["stop"] = True
+				time.sleep(100 / 1000)
+
+			self.statusTextTimer["listening"] += 1
+
 			for text, delay in message.items():
+				if (self.statusTextTimer["stop"]):
+					self.statusTextTimer["stop"] = False
+					break
+
 				if (text == None):
 					text = self.statusTextDefault
 				self.statusBar.SetStatusText(text)
@@ -16388,6 +16494,8 @@ class handle_Window(handle_Container_Base):
 				if (delay == None):
 					break
 				time.sleep(delay / 1000)
+
+			self.statusTextTimer["listening"] -= 1
 
 		#Error Checking
 		if (self.statusBar == None):
@@ -16600,7 +16708,15 @@ class handle_Window(handle_Container_Base):
 		self.refreshFunctionArgs.append(myFunctionArgs)
 		self.refreshFunctionKwargs.append(myFunctionKwargs)
 
-	def refresh(self):
+	def onRefresh(self, event, includeEvent = True):
+		"""A wx event version of refresh()."""
+
+		self.refresh(event = event, includeEvent = includeEvent)
+
+		if (event != None):
+			event.Skip()
+
+	def refresh(self, event = None, includeEvent = False):
 		"""Runs the user defined refresh function.
 		This function is intended to make sure all widget values are up to date.
 
@@ -16612,7 +16728,7 @@ class handle_Window(handle_Container_Base):
 			return
 
 		for i in range(len(self.refreshFunction)):
-			self.runMyFunction(self.refreshFunction[i], self.refreshFunctionArgs[i], self.refreshFunctionKwargs[i])
+			self.runMyFunction(self.refreshFunction[i], self.refreshFunctionArgs[i], self.refreshFunctionKwargs[i], event = event, includeEvent = includeEvent)
 
 	def nest(self, inside, outside):
 		"""Nests an object in another object.
@@ -20780,14 +20896,13 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 
 		return handle
 
-	def addDialog(self, label = None, title = "", size = wx.DefaultSize, position = wx.DefaultPosition, panel = True, autoSize = True,
-		tabTraversal = True, stayOnTop = False, floatOnParent = False, endProgram = True, valueLabel = None,
-		resize = True, minimize = True, maximize = True, close = True, icon = None, internal = False, topBar = True,
+	def addDialog(self, label = None, title = "", size = wx.DefaultSize, position = wx.DefaultPosition, panel = True, 
+		tabTraversal = True, stayOnTop = False, floatOnParent = False, valueLabel = None,
+		resize = True, minimize = False, maximize = False, close = False, icon = None, internal = False, topBar = None,
 		addYes = False, addOk = False, addCancel = False, addHelp = False, addApply = False, addLine = False,
 
 		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None, 
 		delFunction = None, delFunctionArgs = None, delFunctionKwargs = None, 
-		idleFunction = None, idleFunctionArgs = None, idleFunctionKwargs = None, 
 
 		parent = None, handle = None, hidden = True, enabled = True):
 		"""Creates a new dialog window.
@@ -21630,9 +21745,9 @@ class User_Utilities():
 		errorMessage = f"There is no item labled {itemLabel} in the data catalogue for {self.__repr__()}"
 		raise KeyError(errorMessage)
 
-	def getValue(self, variable, order = True, exclude = []):
+	def getValue(self, variable, order = True, exclude = [], sortNone = False, reverse = False):
 		"""Returns a list of all values for the requested variable.
-		Special thank to Andrew Dalke for how to sort objects by attributes on https://wiki.python.org/moin/HowTo/Sorting#Key_Functions
+		Special thanks to Andrew Clark for how to sort None on https://stackoverflow.com/questions/18411560/python-sort-list-with-none-at-the-end
 
 		variable (str) - what variable to retrieve from all rows
 		order (str) - By what variable to order the items
@@ -21640,10 +21755,15 @@ class User_Utilities():
 			- If True: Will use the python list function sort()
 			- If False: Will not sort returned items
 			- If None: Will not sort returned items
+		sortNone (bool) - Determines how None is sorted
+			- If True: Will place None at the beginning of the list
+			- If False: Will place None at the end of the list
+			- If None: Will remove all instances of None from the list
 
 		Example Input: getValue("naed")
 		Example Input: getValue(self.easyPrint_selectBy)
 		Example Input: getValue("naed", "defaultOrder")
+		Example Input: getValue("barcode", sortNone = None)
 		"""
 
 		if (not isinstance(exclude, (list, tuple, range))):
@@ -21655,12 +21775,16 @@ class User_Utilities():
 			data = [getattr(item, variable) for item in self if (item not in exclude)]
 
 			if ((order != None) and (isinstance(order, bool)) and order):
-				data.sort()
+				if (sortNone == None):
+					data = sorted(data, key = lambda item: (item is not None if reverse else item is None, item), reverse = reverse)
+				else:
+					data = sorted(data, key = lambda item: (item is None if reverse else item is not None, item), reverse = reverse)
 
 		return data
 
 	def getOrder(self, variable, includeMissing = True, reverse = False, exclude = []):
 		"""Returns a list of children in order according to the variable given.
+		Special thanks to Andrew Dalke for how to sort objects by attributes on https://wiki.python.org/moin/HowTo/Sorting#Key_Functions
 
 		variable (str) - what variable to use for sorting
 		includeMissing (bool) - Determiens what to do with children who do not have the requested variable
