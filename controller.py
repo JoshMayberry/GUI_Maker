@@ -2050,7 +2050,7 @@ class Utilities():
 
 		return fixedFlags, position, border
 
-	def _getImage(self, imagePath, internal = False, alpha = False):
+	def _getImage(self, imagePath, internal = False, alpha = False, scale = None):
 		"""Returns the image as specified by the user.
 
 		imagePath (str) - Where the image is on the computer. Can be a PIL image. If None, it will be a blank image
@@ -2286,6 +2286,19 @@ class Utilities():
 						image = wx.Image(imagePath, wx.BITMAP_TYPE_BMP).ConvertToBitmap()
 		else:
 			image = wx.NullBitmap
+
+		if (scale != None):
+			if (not isinstance(scale, (list, tuple))):
+				scale = [scale, scale]
+
+			if (isinstance(scale[0], float)):
+				scale[0] = math.ceil(image.GetWidth() * scale[0])
+			if (isinstance(scale[1], float)):
+				scale[1] = math.ceil(image.GetHeight() * scale[1])
+
+			image = image.ConvertToImage()
+			image = image.Scale(*scale)
+			image = wx.Bitmap(image)
 
 		return image
 
@@ -10782,22 +10795,29 @@ class handle_WidgetCanvas(handle_Widget_Base):
 			else:
 				self.thing.SetDeviceOrigin(x, x)
 			
-	def drawImage(self, imagePath, x = 0, y = 0, internal = True, alpha = False):
+	def drawImage(self, imagePath, x = 0, y = 0, scale = None, internal = True, alpha = False):
 		"""Draws an image on the canvas.
 		
 
 		imagePath (str) - The pathway to the image
 		x (int)         - The x-coordinate of the image on the canvas
 		y (int)         - The y-coordinate of the image on the canvas
+		scale (float)   - What percentage to scale the image at
+			- If None: Will not scale the image
+			- If tuple: (x scale (float), y scale (float))
+			- If int: Will overwrite the current width and height
 
 		Example Input: drawImage("python.jpg")
 		Example Input: drawImage("python.jpg", 10, 10)
+		Example Input: drawImage("python.jpg", scale = 2.0)
+		Example Input: drawImage("python.jpg", scale = (0.5, 1.0))
+		Example Input: drawImage("python.jpg", scale = (36, 36))
 		"""
 
 		#Skip blank images
 		if (imagePath != None):
 			#Get correct image
-			image = self._getImage(imagePath, internal, alpha = alpha)
+			image = self._getImage(imagePath, internal, alpha = alpha, scale = scale)
 
 			#Draw the image
 			self.queue("dc.DrawBitmap", [image, x, y, alpha])
@@ -11633,7 +11653,7 @@ class handle_WidgetTable(handle_Widget_Base):
 			if (editOnEnter):
 				self.betterBind(wx.EVT_KEY_DOWN, self.thing.GetGridWindow(), self.onTableEditOnEnter, mode = 2)
 
-			self.betterBind(wx.EVT_SIZE, self.thing, self.onTableAutoSize, mode = 2)
+			self.betterBind(wx.EVT_SIZE, self.myWindow.thing, self.onTableAutoSize, mode = 2)
 		
 		#########################################################
 
@@ -15325,7 +15345,7 @@ class handle_Dialog(handle_Base):
 
 			self.answer = self.myFrame.thing.ShowModal()
 
-			if ((self.answer == wx.CANCEL) and (len(self.myFrame.cancelFunction) != 0)):
+			if ((self.answer == wx.ID_CANCEL) and (len(self.myFrame.cancelFunction) != 0)):
 				self.myFrame.runMyFunction(self.myFrame.cancelFunction, self.myFrame.cancelFunctionArgs, self.myFrame.cancelFunctionKwargs)
 
 			if (len(self.myFrame.preHideFunction) != 0):
@@ -15489,15 +15509,15 @@ class handle_Dialog(handle_Base):
 			myPrintout.Destroy()
 
 		elif (self.type.lower() == "printpreview"):
-			printout = self.MyPrintout(self, self.title)
-			
 			handle = handle_Window(self.myWindow.controller)
 			handle.type = "Preview"
-			handle.build({"canvas": printout, "enablePrint": True})
+
+			argument_catalogue = {"self": self.controller, "canvas": self.MyPrintout(self, self.title), "enablePrint": True}
+			argument_catalogue = self.arrangeArguments(Controller.addWindow, kwargDict = argument_catalogue)
+			handle.build(argument_catalogue)
 
 			handle.setWindowSize(self.size)
 			handle.setWindowPosition(self.position)
-
 			handle.showWindow()
 
 		else:
