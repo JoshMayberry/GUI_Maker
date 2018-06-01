@@ -34,7 +34,7 @@ def buildWindow():
 		with myFrame.addSizerGridFlex(rows = 2, columns = 1) as mySizer:
 			mySizer.growFlexRowAll()
 			mySizer.growFlexColumnAll()	
-			with mySizer.addCanvas(label = "canvas") as myCanvas:
+			with mySizer.addCanvas(label = "canvas", flex = 1) as myCanvas:
 				myCanvas.drawText("Lorem Ipsum Dolor Sit Amet Lorem Ipsum Dolor Sit Amet")
 
 			mySizer.addButton("Save", myFunction = onSave)

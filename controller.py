@@ -3209,7 +3209,7 @@ class Utilities():
 		return handle
 	
 	def makeInputBox(self, text = None, maxLength = None, 
-		password = False, alpha = False, readOnly = False, tab = True, wrap = None, ipAddress = False,
+		password = False, readOnly = False, tab = True, wrap = None, ipAddress = False,
 		
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 		enterFunction = None, enterFunctionArgs = None, enterFunctionKwargs = None, 
@@ -3231,7 +3231,6 @@ class Utilities():
 		enabled (bool)   - If True: The user can interact with this
 		hidden (bool)    - If True: The widget is hidden from the user, but it is still created
 		password (bool)  - If True: The text within is shown as dots
-		alpha (bool)     - If True: The items will be sorted alphabetically
 		readOnly (bool)  - If True: The user cannot change the text
 		tab (bool)       - If True: The 'Tab' key will move the focus to the next widget
 		wrap (int)       - How many pixels wide the line will be before it wraps. 
@@ -4338,7 +4337,7 @@ class Utilities():
 		return handle
 
 	def makeDialogChoice(self, choices = [], text = "", title = "", single = True, default = None):
-		"""Pauses the running code and shows a dialog box that scrolls.
+		"""Pauses the running code and shows a dialog box that has choices in a list.
 
 		choices (list) - What can be chosen from
 		default (int) - The index of what to select by default
@@ -4364,6 +4363,40 @@ class Utilities():
 
 		handle = handle_Dialog()
 		handle.type = "choice"
+		handle.build(locals())
+		return handle
+
+	def makeDialogInput(self, text = "", title = "", default = "",
+		addYes = False, addOk = True, addCancel = True, addHelp = False,
+		password = False, readOnly = False, tab = False, wrap = None, maximum = None):
+		"""Pauses the running code and shows a dialog box that has an input box.
+
+		password (bool) - If True: The text within is shown as dots
+		readOnly (bool) - If True: The user cannot change the text
+		tab (bool)      - If True: The 'Tab' key will move the focus to the next widget
+		wrap (int)      - How many pixels wide the line will be before it wraps. 
+			- If None: no wrapping is done
+			- If positive: Will not break words
+			- If negative: Will break words
+		maximum (int)   - Determines how long the input can be
+			- If None: No maximum
+		_________________________________________________________________________
+
+		Example Use:
+			with myFrame.makeDialogChoice(["Lorem", "Ipsum"]) as myDialog:
+				choices = myDialog.getValue()
+		_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+		Example Use:
+			myDialog = myFrame.makeDialogChoice(["Lorem", "Ipsum"])
+			choices = myDialog.getValue()
+		_________________________________________________________________________
+
+		Example Input: makeDialogInput()
+		"""
+
+		handle = handle_Dialog()
+		handle.type = "inputBox"
 		handle.build(locals())
 		return handle
 
@@ -4456,7 +4489,7 @@ class Utilities():
 		handle.build(locals())
 		return handle
 
-	def makeDialogCustom(self, myFrame, valueLabel):
+	def makeDialogCustom(self, myFrame, valueLabel = None):
 		"""Allows the user to define how the frame looks on their own.
 
 		myFrame (handle_Window) - What frame to use as the window
@@ -7281,16 +7314,13 @@ class handle_WidgetInput(handle_Widget_Base):
 			"""Builds a wx text control or ip address control object."""
 			nonlocal self, argument_catalogue
 
-			password, alpha, readOnly, tab, wrap = self.getArguments(argument_catalogue, ["password", "alpha", "readOnly", "tab", "wrap"])
+			password, readOnly, tab, wrap = self.getArguments(argument_catalogue, ["password", "readOnly", "tab", "wrap"])
 			text, ipAddress, maxLength = self.getArguments(argument_catalogue, ["text", "ipAddress", "maxLength"])
 
 			#Prepare style attributes
 			style = ""
 			if (password):
 				style += "|wx.TE_PASSWORD"
-
-			if (alpha):
-				style += "|wx.CB_SORT"
 
 			if (readOnly):
 				style += "|wx.TE_READONLY"
@@ -10325,6 +10355,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 
 			#Create the thing
 			panel["parent"] = buildSelf.parent
+			print("@2", panel, argument_catalogue)
 			self.myPanel = self.readBuildInstructions_panel(buildSelf, panel)
 			self.finalNest(self.myPanel)
 			self.thing = self.myPanel.thing
@@ -11442,6 +11473,7 @@ class handle_WidgetTable(handle_Widget_Base):
 		self.previousCell = (-1, -1)
 		self.readOnlyCatalogue = {}
 		self.cellTypeCatalogue = {}
+		self.buttonPressCatalogue = {} #{row (int): column (int): {"press": if the button is currently pressed (bool), "ranFunction": If the button has been unpressed}}
 
 	def __len__(self):
 		"""Returns what the contextual length is for the object associated with this handle.
@@ -11561,6 +11593,32 @@ class handle_WidgetTable(handle_Widget_Base):
 					for column in range(len(contents[0])):
 						self.thing.SetCellValue(row, column, contents[row][column])
 
+			##Set Cell Type for Cells
+			self.cellTypeCatalogue = {}
+			self.enterKeyExitEdit = enterKeyExitEdit
+			self.cellTypeDefault = cellTypeDefault
+			self.setTableCellType()
+
+			for column in range(self.thing.GetNumberCols()):
+				for row in range(self.thing.GetNumberRows()):
+					if (not isinstance(cellType, dict)):
+						self.setTableCellType(cellType, row, column)
+					else:
+						if (row in cellType):
+							if (isinstance(cellType[row], str)):
+								#Define for whole row
+								self.setTableCellType(cellType[row], row, column)
+							else:
+								if (column in cellType[row]):
+									#Define for individual cell
+									self.setTableCellType(cellType[row][column], row, column)
+				
+				if (isinstance(cellType, dict)):
+					if (None in cellType):
+						if (column in cellType[None]):
+							#Define for whole column
+							self.setTableCellType(cellType[None][column], None, column)
+
 			##Set Editability for Cells
 			self.readOnlyCatalogue = {}
 			self.readOnlyDefault = readOnlyDefault
@@ -11596,16 +11654,6 @@ class handle_WidgetTable(handle_Widget_Base):
 								self.readOnlyCatalogue[row][column] = readOnlyDefault
 					else:
 						self.readOnlyCatalogue[row][column] = readOnlyDefault
-
-			##Set Cell Type for Cells
-			self.cellTypeCatalogue = {}
-			self.enterKeyExitEdit = enterKeyExitEdit
-			self.cellTypeDefault = cellTypeDefault
-			self.setTableCellType()
-
-			for row in range(self.thing.GetNumberRows()):
-				for column in range(self.thing.GetNumberCols()):
-					self.setTableCellType(cellType, row, column)
 
 			##Default Cell Selection
 			if ((default != None) and (default != (0, 0))):
@@ -11654,7 +11702,10 @@ class handle_WidgetTable(handle_Widget_Base):
 				self.betterBind(wx.EVT_KEY_DOWN, self.thing.GetGridWindow(), self.onTableEditOnEnter, mode = 2)
 
 			self.betterBind(wx.EVT_SIZE, self.myWindow.thing, self.onTableAutoSize, mode = 2)
-		
+
+			self.betterBind(wx.EVT_LEFT_DOWN, self.thing.GetGridWindow(), self.onTableButton, True, mode = 2)
+			self.betterBind(wx.EVT_LEFT_UP, self.thing.GetGridWindow(), self.onTableButton, False, mode = 2)
+
 		#########################################################
 
 		self.preBuild(argument_catalogue)
@@ -11665,7 +11716,6 @@ class handle_WidgetTable(handle_Widget_Base):
 			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self.postBuild(argument_catalogue)
-
 
 	#Getters
 	def getValue(self, row = None, column = None, event = None):
@@ -12096,6 +12146,9 @@ class handle_WidgetTable(handle_Widget_Base):
 		Example Input: getTableReadOnly(1, 1)
 		"""
 
+		if ((row not in self.readOnlyCatalogue) or (column not in self.readOnlyCatalogue[row])):
+			return False
+
 		readOnly = self.readOnlyCatalogue[row][column]
 		return readOnly
 
@@ -12145,26 +12198,137 @@ class handle_WidgetTable(handle_Widget_Base):
 	def setTableCellType(self, cellType = None, row = None, column = None):
 		"""Changes the cell types for the table.
 
-		cellType (dict) - Determines the widget type used for a specific cell in the table
-			~ {row number (int): {column number (int): cell type for the cell (str)}}
-			~ {row number (int): cell type for the whole row (str)}
-			~ {None: {column number (int): cell type for the whole column (str)}}
+		cellType (dict) - {None: keyword (str), **kwargs}
 			- Can be a string that applies to the given row and column
+			- If None: will apply the default cell type
 			- Possible Inputs: 
 				~ "inputBox"
-				~ ["dropList", list contents (list)]
-				~ ["dialog", dialog window name (str)] or ["dialog", dialog window handle (handle_Window)]
-			- If None: will apply the default cell type
-		row (int) - Which row to apply this cell type to. Can be a list. Must be in the dict for 'cellType' or 'cellType' must be a string
+				~ "dropList", {"choices": list contents (list)}
+					~ Defaults: {"choices": []}
+
+				~ "dialog", {"myFrame": dialog window name (str) or dialog window handle (handle_Window)}
+					~ Must supply valid "myFrame"
+
+				~ "button", {"text": None, "myFunction": (function), "myFunctionArgs": (list), "myFunctionKwargs": (dict)}
+					~ Defaults: {"text": None, "myFunction": None, "myFunctionArgs": None, "myFunctionKwargs": None}
+				
+				~ str
+
+				~ int, {"minimum": (int), "maximum": (int)}
+					~ Defaults: {"minimum": -1, "maximum": -1}
+					~ Use a -1 to ignore min or max
+
+				~ float, {"minimum": (float), "maximum": (float), "scientific": if e+ notation should be used (bool)}
+					~ Defaults: {"minimum": -1, "maximum": -1, "scientific": False}
+					~ Use a -1 to ignore min or max
+
+				~ bool, {"showCheck": (bool)}
+					~ Defaults: {"showCheck": True}
+					~ If showCheck is True: Will show a check box instead of a number after and during editing
+					~ If showCheck is False: Will show a check box instead of a number after editing
+					~ If showCheck is None: Will show not show a check box, but numbers only
+
+		row (int)    - Which row to apply this cell type to. Can be a list. Must be in the dict for 'cellType' or 'cellType' must be a string
 		column (int) - Which column to apply this cell type to. Can be a list. Must be in the dict for 'cellType' or 'cellType' must be a string
 
 		Example Input: setTableCellType()
-		Example Input: setTableCellType(["dropList", ["a", "b", "c"]])
-		Example Input: setTableCellType(["dropList", ["a", "b", "c"]], column = 1)
-		Example Input: setTableCellType(["dropList", ["a", "b", "c"]], row = [1, 2, 5])
-		Example Input: setTableCellType({None: {1: ["dropList", ["a", "b", "c"]]}})
-		Example Input: setTableCellType(["dialog", "modifyBarcode"])
+		Example Input: setTableCellType({None: "dropList", ["a", "b", "c"]})
+		Example Input: setTableCellType({None: "dropList", ["a", "b", "c"]}, column = 1)
+		Example Input: setTableCellType({None: "dropList", ["a", "b", "c"]}, row = [1, 2, 5])
+		Example Input: setTableCellType({None: {1: {None: "dropList", "choices": ["a", "b", "c"]}}})
+		Example Input: setTableCellType({2: 1: {None: "dropList", "choices": ["a", "b", "c"]}}})
+		Example Input: setTableCellType({None: "dialog", "myFrame": modifyBarcode"}])
 		"""
+
+		def configureCellType(cellType, row = None, column = None):
+			"""Makes the cell type into a standard form."""
+			nonlocal self
+
+			#Ensure cellType is structured correctly
+			if (isinstance(cellType, dict)):
+				if (None not in cellType):
+					errorMessage = f"The key word for the cell type must have the dictionary key None for {self.__repr__()}"
+					raise KeyError(errorMessage)
+			else:
+				cellType = {None: cellType}
+
+			#Error Checking
+			if (isinstance(cellType[None], str)):
+				if (cellType[None].lower() not in ["inputbox", "droplist", "dialog", "button"]):
+					errorMessage = f"Unknown cell type {cellType[None]} in {self.__repr__()}\ncellType: {cellType}"
+					raise KeyError(errorMessage)
+			elif (cellType[None] not in [str, int, float, bool]):
+				errorMessage = f"Unknown cell type {cellType[None]} in {self.__repr__()}\ncellType: {cellType}"
+				raise KeyError(errorMessage)
+
+			#Apply Defaults
+			if (isinstance(cellType[None], str)):
+				if (cellType[None].lower() == "droplist"):
+					cellType.setdefault("choices", [])
+				
+				elif (cellType[None].lower() == "button"):
+					cellType.setdefault("text", None)
+					cellType.setdefault("myFunction", None)
+					cellType.setdefault("myFunctionArgs", None)
+					cellType.setdefault("myFunctionKwargs", None)
+			else:
+				if (cellType[None] == int):
+					cellType.setdefault("minimum", -1)
+					cellType.setdefault("maximum", -1)
+
+				elif (cellType[None] == float):
+					cellType.setdefault("minimum", -1)
+					cellType.setdefault("maximum", -1)
+					cellType.setdefault("scientific", False)
+
+				elif (cellType[None] == bool):
+					cellType.setdefault("showCheck", True)
+
+			#Create editor and/or renderer if needed
+			if (str(cellType) not in self.cellTypeCatalogue):
+				if (cellType[None] == None):
+					self.cellTypeCatalogue[str(cellType)] = [self.thing.GetDefaultRenderer(), self.thing.GetDefaultEditor()]
+				elif (isinstance(cellType[None], str) and (cellType[None].lower() in ["button"])):
+					self.cellTypeCatalogue[str(cellType)] = [self.TableCellRenderer(self, cellType = cellType)]
+
+				elif (isinstance(cellType[None], type) and (cellType[None] in [str, int, float, bool])):
+					if (cellType[None] == str):
+						self.cellTypeCatalogue[str(cellType)] = [wx.grid.GridCellStringRenderer(), wx.grid.GridCellTextEditor()]
+
+					elif (cellType[None] == int):
+						self.cellTypeCatalogue[str(cellType)] = [wx.grid.GridCellNumberRenderer(), wx.grid.GridCellNumberEditor(min = cellType["minimum"], max = cellType["maximum"])]
+					
+					elif (cellType[None] == float):
+						if (cellType["scientific"]):
+							self.cellTypeCatalogue[str(cellType)] = [self.thing.GetDefaultRenderer(), wx.grid.GridCellFloatEditor(min = cellType["minimum"], max = cellType["maximum"])]
+						else:
+							self.cellTypeCatalogue[str(cellType)] = [wx.grid.GridCellFloatRenderer(), wx.grid.GridCellFloatEditor(min = cellType["minimum"], max = cellType["maximum"])]
+
+					else:
+						if (cellType["showCheck"] != None):
+							if (cellType["showCheck"]):
+								self.cellTypeCatalogue[str(cellType)] = [wx.grid.GridCellBoolRenderer(), wx.grid.GridCellBoolEditor()]
+							else:
+								self.cellTypeCatalogue[str(cellType)] = [wx.grid.GridCellBoolRenderer()]
+						else:
+							self.cellTypeCatalogue[str(cellType)] = [wx.grid.GridCellBoolEditor()]
+				else:
+					self.cellTypeCatalogue[str(cellType)] = [self.TableCellEditor(self, downOnEnter = self.enterKeyExitEdit, cellType = cellType)]
+
+			#Change settings if needed
+			rowList = range(self.thing.GetNumberRows()) if (row == None) else [row]
+			columnList = range(self.thing.GetNumberCols()) if (column == None) else [column]
+			for _row in rowList:
+				for _column in columnList:
+					if (isinstance(cellType[None], str) and (cellType[None].lower() in ["button"])):
+						if (not self.thing.IsReadOnly(_row, _column)):
+							self.thing.SetReadOnly(_row, _column, True)
+					else:
+						readOnly = self.getTableReadOnly(_row, _column)
+						if (self.thing.IsReadOnly(_row, _column) != readOnly):
+							self.thing.SetReadOnly(_row, _column, readOnly)
+
+			return cellType
 
 		def addEditor(cellType, row = None, column = None):
 			"""Adds the requested editor to the provided cell.
@@ -12181,13 +12345,16 @@ class handle_WidgetTable(handle_Widget_Base):
 			"""
 			nonlocal self
 
-			#Create editor if needed
-			if (str(cellType) not in self.cellTypeCatalogue):
-				self.cellTypeCatalogue[str(cellType)] = self.TableCellEditor(self, downOnEnter = self.enterKeyExitEdit, cellType = cellType)
+			#Housekeeping for cell types
+			cellType = configureCellType(cellType, row, column)
 
 			#Determine affected cells
 			if ((row == None) and (column == None)):
-				self.thing.SetDefaultEditor(self.cellTypeCatalogue[str(cellType)])
+				for item in self.cellTypeCatalogue[str(cellType)]:
+					if (isinstance(item, wx.grid.GridCellRenderer)):
+						self.thing.SetDefaultRenderer(item)
+					else:
+						self.thing.SetDefaultEditor(item)
 
 			rowList = range(self.thing.GetNumberRows()) if (row == None) else [row]
 			columnList = range(self.thing.GetNumberCols()) if (column == None) else [column]
@@ -12195,10 +12362,16 @@ class handle_WidgetTable(handle_Widget_Base):
 			#Assign editor to grid
 			for _row in rowList:
 				for _column in columnList:
-					self.thing.SetCellEditor(_row, _column, self.cellTypeCatalogue[str(cellType)])
+					for item in self.cellTypeCatalogue[str(cellType)]:
+						if (isinstance(item, wx.grid.GridCellRenderer)):
+							self.thing.SetCellRenderer(_row, _column, item)
+						else:
+							self.thing.SetCellEditor(_row, _column, item)
 
 			#Increment the reference variable for managing clones
-			self.cellTypeCatalogue[str(cellType)].IncRef()
+			for item in self.cellTypeCatalogue[str(cellType)]:
+				# if (isinstance(item, wx.grid.GridCellRenderer)):
+				item.IncRef()
 			
 		#########################################################	
 
@@ -12208,20 +12381,10 @@ class handle_WidgetTable(handle_Widget_Base):
 			row = [row]
 		if (not isinstance(column, (list, tuple, range))):
 			column = [column]
-		
+
 		for _row in row:
 			for _column in column:
-				if (not isinstance(cellType, dict)):
-					addEditor(cellType, _row, _column)
-				else:
-					if (_row in cellType):
-						if (isinstance(cellType[_row], str)):
-							#Define for whole row
-							addEditor(cellType[_row], _row, _column)
-						else:
-							if (_column in cellType[_row]):
-								#Define for individual cell or whole column if _row is None
-								addEditor(cellType[_row][_column], _row, _column)
+				addEditor(cellType, _row, _column)
 
 	def clearTable(self):
 		"""Clears all cells in the table
@@ -13139,6 +13302,27 @@ class handle_WidgetTable(handle_Widget_Base):
 
 		if (event != None):
 			event.Skip()
+	
+	def onTableButton(self, event, pressed):
+		"""Allows "button" cell types to function properly."""
+
+		x, y = self.thing.CalcUnscrolledPosition(event.GetPosition())
+		row = self.thing.YToRow(y)
+		column = self.thing.XToCol(x)
+
+		handle = self.thing.GetCellRenderer(row, column)
+		if (isinstance(handle, self.TableCellRenderer)):
+			if (row not in self.buttonPressCatalogue):
+				self.buttonPressCatalogue[row] = {}
+			if (column not in self.buttonPressCatalogue[row]):
+				self.buttonPressCatalogue[row][column] = {"press": False, "ranFunction": False}
+
+			self.buttonPressCatalogue[row][column]["press"] = pressed
+			if (not pressed):
+				self.buttonPressCatalogue[row][column]["ranFunction"] = False
+
+		self.thing.Refresh()
+		event.Skip()
 
 	####################################################################################################
 	class Table(wx.grid.Grid):
@@ -13336,25 +13520,16 @@ class handle_WidgetTable(handle_Widget_Base):
 			self.debugging = debugging
 			self.downOnEnter = downOnEnter
 			self.patching_event = False #Used to make the events work correctly
+			self.cellType = cellType
 			# self.debugging = True
 
-			if (cellType == None):
-				self.cellType = "inputbox"
-			else:
-				if (isinstance(cellType, (list, tuple))):
-					self.cellType = cellType[0]
-					self.cellTypeValue = cellType[1]
-				else:
-					self.cellType = cellType
-					self.cellTypeValue = None
-
-			if (self.cellType.lower() == "dialog"):
-				if (isinstance(self.cellTypeValue, str)):
-					if (self.cellTypeValue not in self.parent.getDialog()):
-						warnings.warn(f"There is no custom dialog window {self.cellTypeValue} for {self.parent.__repr__()}\nCreate one using GUI_Maker.addDialog(label = {self.cellTypeValue}) during setup", Warning, stacklevel = 2)
-						self.cellType = "inputBox"
+			if (isinstance(self.cellType[None], str)):
+				if ((self.cellType[None].lower() == "dialog") and (isinstance(self.cellType["myFrame"], str))):
+					if (self.cellType["myFrame"] not in self.parent.getDialog()):
+						errorMessage = f"There is no custom dialog window {self.cellType['myFrame']} for {self.parent.__repr__()}\nCreate one using GUI_Maker.addDialog(label = {self.cellType['myFrame']}) during setup"
+						raise KeyError(errorMessage)
 					else:
-						self.cellTypeValue = self.parent.controller[self.cellTypeValue]
+						self.cellType["myFrame"] = self.parent.controller[self.cellTypeValue]
 
 			#Write debug information
 			if (self.debugging):
@@ -13383,14 +13558,14 @@ class handle_WidgetTable(handle_Widget_Base):
 			style = ""
 
 			#Account for special style
-			if (self.cellType.lower() == "droplist"):
+			if (isinstance(self.cellType[None], str) and (self.cellType[None].lower() == "droplist")):
 				#Ensure that the choices given are a list or tuple
-				if (not isinstance(self.cellTypeValue, (list, tuple, range))):
-					self.cellTypeValue = [self.cellTypeValue]
+				if (not isinstance(self.cellType["choices"], (list, tuple, range))):
+					self.cellType["choices"] = [self.cellType["choices"]]
 
 				#Ensure that the choices are all strings
-				self.cellTypeValue = [str(item) for item in self.cellTypeValue]
-				self.myCellControl = wx.Choice(parent, myId, (100, 50), choices = self.cellTypeValue)
+				self.cellType["choices"] = [str(item) for item in self.cellType["choices"]]
+				self.myCellControl = wx.Choice(parent, myId, (100, 50), choices = self.cellType["choices"])
 
 				#Check readOnly
 				if (self.parent.getTableCurrentCellReadOnly(event = event)):
@@ -13474,33 +13649,33 @@ class handle_WidgetTable(handle_Widget_Base):
 			self.startValue = grid.GetTable().GetValue(row, column)
 
 			#Account for special styles
-			if (self.cellType.lower() == "droplist"):
-				self.myCellControl.SetStringSelection(self.startValue)
-				self.myCellControl.SetFocus()
+			if (isinstance(self.cellType[None], str)):
+				if (self.cellType[None].lower() == "droplist"):
+					self.myCellControl.SetStringSelection(self.startValue)
+					self.myCellControl.SetFocus()
 
-			elif (self.cellType.lower() == "dialog"):
-				self.myCellControl.SetValue(self.startValue)
-				self.myCellControl.SetFocus()
+				elif (self.cellType[None].lower() == "dialog"):
+					self.myCellControl.SetValue(self.startValue)
+					self.myCellControl.SetFocus()
 
-				with self.parent.makeDialogCustom(self.cellTypeValue, self.cellTypeValue.getValueLabel()) as myDialog:
-					if (not myDialog.isCancel()):
-						value = myDialog.getValue()
-						self.myCellControl.SetValue(value)
+					with self.parent.makeDialogCustom(self.cellType["myFrame"], self.cellType["myFrame"].getValueLabel()) as myDialog:
+						if (not myDialog.isCancel()):
+							value = myDialog.getValue()
+							self.myCellControl.SetValue(value)
 
-				self.EndEdit(row, column, grid, self.startValue)
+					self.EndEdit(row, column, grid, self.startValue)
 
-			else:
-				self.myCellControl.SetValue(self.startValue)
-				self.myCellControl.SetInsertionPointEnd()
-				self.myCellControl.SetFocus()
+				else:
+					self.myCellControl.SetValue(self.startValue)
+					self.myCellControl.SetInsertionPointEnd()
+					self.myCellControl.SetFocus()
 
-				self.myCellControl.SetSelection(0, self.myCellControl.GetLastPosition())
+					self.myCellControl.SetSelection(0, self.myCellControl.GetLastPosition())
 
 			# #Handle Events
 			# event = wx.CommandEvent()
 			# event.SetEventType(wx.grid.EVT_GRID_CELL_CHANGING.typeId)
 			# wx.PostEvent(grid, event)
-
 
 		def EndEdit(self, row, column, grid, oldValue):
 			"""End editing the cell. This function must check if the current
@@ -13522,10 +13697,10 @@ class handle_WidgetTable(handle_Widget_Base):
 				print(f"TableCellEditor.EndEdit(row = {row}, column = {column}, grid = {grid}, oldValue = {oldValue})")
 
 			#Check for read only condition
-			if (self.parent.readOnlyCatalogue[row][column]):
+			if (self.parent.getTableReadOnly(row, column)):
 				return
 
-			if (self.cellType.lower() == "droplist"):
+			if (isinstance(self.cellType[None], str) and (self.cellType[None].lower() == "droplist")):
 				newValue = self.myCellControl.GetStringSelection()
 			else:
 				newValue = self.myCellControl.GetValue()
@@ -13558,10 +13733,10 @@ class handle_WidgetTable(handle_Widget_Base):
 
 			table = grid.GetTable()
 
-			if (self.cellType.lower() == "droplist"):
+			if (isinstance(self.cellType[None], str) and (self.cellType[None].lower() == "droplist")):
 				value = self.myCellControl.GetStringSelection()
-				self.startValue = self.cellTypeValue[0]
-				self.myCellControl.SetStringSelection(self.cellTypeValue[0])
+				self.startValue = self.cellType["choices"][0]
+				self.myCellControl.SetStringSelection(self.cellType["choices"][0])
 			else:
 				value = self.myCellControl.GetValue()
 				self.startValue = ''
@@ -13589,7 +13764,7 @@ class handle_WidgetTable(handle_Widget_Base):
 			if (self.debugging):
 				print("TableCellEditor.Reset()")
 
-			if (self.cellType.lower() == "droplist"):
+			if (isinstance(self.cellType[None], str) and (self.cellType[None].lower() == "droplist")):
 				self.myCellControl.SetStringSelection(self.startValue)
 			else:
 				self.myCellControl.SetValue(self.startValue)
@@ -13638,11 +13813,11 @@ class handle_WidgetTable(handle_Widget_Base):
 					char = chr(key)
 
 				if char is not None:
-					if (self.cellType.lower() == "droplist"):
-						if (char in self.cellTypeValue):
+					if (isinstance(self.cellType[None], str) and (self.cellType[None].lower() == "droplist")):
+						if (char in self.cellType["choices"]):
 							self.myCellControl.SetStringSelection(char)
 						else:
-							self.myCellControl.SetStringSelection(self.cellTypeValue[0])
+							self.myCellControl.SetStringSelection(self.cellType["choices"][0])
 					else:
 						# For this example, replace the text. Normally we would append it.
 						self.myCellControl.AppendText(char)
@@ -13671,17 +13846,6 @@ class handle_WidgetTable(handle_Widget_Base):
 				print("TableCellEditor.Destroy()")
 
 			return super(handle_WidgetTable.TableCellEditor, self).Destroy()
-
-		def Clone(self):
-			"""Create a new object which is the copy of this one
-			*Must Override*
-			"""
-
-			#Write debug information
-			if (self.debugging):
-				print("TableCellEditor.Clone()")
-
-			return self.parent.TableCellEditor(downOnEnter = self.downOnEnter, debugging = self.debugging)
 
 		def GetControl(self):
 			"""Returns the wx control used"""
@@ -13728,14 +13892,188 @@ class handle_WidgetTable(handle_Widget_Base):
 
 			return super(handle_WidgetTable.TableCellEditor, self).SetControl(control)
 
-		# class QuitOnShow(wx.TextCtrl):
-		# 	"""Used to modify the grid cell editor's behavior.
-		# 	Modified code from: https://github.com/wxWidgets/wxPython/blob/master/demo/GridCustEditor.py
-		# 	Cell Type 'droplist' code from: https://wiki.wxpython.org/wxGridCellChoiceEditor2
-		# 	"""
+		def Clone(self):
+			"""Create a new object which is the copy of this one
+			*Must Override*
+			"""
 
-		# 	def __init__(self, parent, myId):
-		# 		self.myCellControl = wx.TextCtrl(parent, myId, ""
+			#Write debug information
+			if (self.debugging):
+				print("TableCellEditor.Clone()")
+
+			handle = self.parent.TableCellEditor(downOnEnter = self.downOnEnter, debugging = self.debugging, cellType = self.cellType)
+			handle.IncRef()
+			return handle
+
+	class TableCellRenderer(wx.grid.GridCellRenderer):
+		"""Used to modify the grid cell renderer's behavior.
+		Modified code from: Nathan McCorkle on https://groups.google.com/forum/#!topic/wxpython-users/HhtKCxPVX_s
+		See: https://wiki.wxpython.org/wxPyGridCellRenderer
+		See: https://github.com/wxWidgets/Phoenix/blob/master/demo/GridStdEdRend.py
+		"""
+
+		def __init__(self, parent, debugging = False, cellType = None):
+			"""Defines internal variables and arranges how the renderer will behave.
+
+			debugging (bool)   - Determines if debug information should be displayed or not
+				- If True: Debug information will be printed to the command window
+			cellType - Which widget type to use for the controller
+				- If None: Will use 'inputBox'
+
+			Example Input: TableCellRenderer()
+			Example Input: TableCellRenderer(debugging = True)
+			"""
+
+			#Load in default behavior
+			super(handle_WidgetTable.TableCellRenderer, self).__init__()
+			# wx.grid.GridCellEditor.__init__(self)
+
+			#Internal variables
+			self.parent = parent
+			self.debugging = debugging
+			self.cellType = cellType
+			# self.debugging = True
+
+			self.COLOR_BACKGROUND_SELECTED = wx.SystemSettings.GetColour(wx.SYS_COLOUR_HIGHLIGHT)
+			self.COLOR_TEXT_SELECTED = wx.SystemSettings.GetColour(wx.SYS_COLOUR_HIGHLIGHTTEXT)
+			self.COLOR_BACKGROUND = wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW )
+			self.COLOR_TEXT = wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOWTEXT )
+
+			#Write debug information
+			if (self.debugging):
+				print(f"TableCellRenderer.__init__(debugging = {debugging}, cellType = {cellType})")
+
+		def Draw(self, grid, attributes, dc, rectangle, row, column, isSelected):
+			"""Customisation Point: Draw the data from grid in the rectangle with attributes using the dc."""
+			
+			if (self.debugging):
+				print(f"TableCellRenderer.Draw(grid = {grid}, attributes = {attributes}, dc = {dc}, rectangle = {rectangle}, row = {row}, column = {column}, isSelected = {isSelected})")
+
+			self.drawBackground(grid, attributes, dc, rectangle, row, column, isSelected)
+			
+			if (isinstance(self.cellType[None], str)):
+				if (self.cellType[None].lower() == "button"):
+					#Error Checking
+					if (row not in self.parent.buttonPressCatalogue):
+						self.parent.buttonPressCatalogue[row] = {}
+					if (column not in self.parent.buttonPressCatalogue[row]):
+						self.parent.buttonPressCatalogue[row][column] = {"press": False, "ranFunction": False}
+
+					#Do not let the user enter the grid cell editor
+					if (not grid.IsReadOnly(row, column)):
+						self.SetReadOnly(row, column, True)
+
+					#Draw Button
+					if (self.parent.buttonPressCatalogue[row][column]["press"]):
+						state = wx.CONTROL_PRESSED | wx.CONTROL_SELECTED
+					else:
+						state = 0
+					wx.RendererNative.Get().DrawPushButton(grid, dc, rectangle, state)
+
+					if (self.cellType["text"] != None):
+						self.drawText(self.cellType["text"], attributes, dc, rectangle, isSelected, align = "center")
+
+					#Run Function
+					if ((self.parent.buttonPressCatalogue[row][column]["press"]) and (not self.parent.buttonPressCatalogue[row][column]["ranFunction"])):
+						self.parent.buttonPressCatalogue[row][column]["ranFunction"] = True
+						self.parent.runMyFunction(self.cellType["myFunction"], self.cellType["myFunctionArgs"], self.cellType["myFunctionKwargs"])
+				else:
+					text = grid.GetCellValue(row, column)
+					self.drawText(text, attributes, dc, rectangle, isSelected, align = "left")
+
+		def GetBestSize(self, grid, attributes, dc, row, column):
+			"""Customisation Point: Determine the appropriate (best) size for the control, return as wxSize.
+
+				Note: You _must_ return a wxSize object.  Returning a two-value-tuple
+				won't raise an error, but the value won't be respected by wxPython.
+				"""
+			
+			if (self.debugging):
+				print(f"TableCellRenderer.GetBestSize(grid = {grid}, attributes = {attributes}, dc = {dc}, row = {row}, column = {column})")
+
+			text = grid.GetCellValue(row, column)
+			dc.SetFont(attributes.GetFont())
+			width, height = dc.GetTextExtent(text)
+			return wx.Size(width, height)
+
+		def Clone(self):
+			"""Create a new object which is the copy of this one."""
+			
+			if (self.debugging):
+				print(f"TableCellRenderer.Clone()")
+
+			handle = self.parent.TableCellRenderer(self.parent, debugging = self.debugging, cellType = self.cellType)
+			handle.IncRef()
+			return handle
+
+		#Utility Functions
+		def drawText(self, text, attributes, dc, rectangle, isSelected, x_offset = 0, y_offset = 0, align = None):
+			"""Draw a simple text label in appropriate colours with background
+			Special thanks to Milan Skala for how to center text on http://wxpython-users.1045709.n5.nabble.com/Draw-text-over-an-existing-bitmap-td5725527.html
+
+			Uses the system settings at application load to draw a rectangle
+			(rectangle) in either system window background or system selected window
+			background. Then draws the string "text" using either selected
+			text or normal text colours.
+			"""
+
+			oldColor = dc.GetTextForeground()
+			#Determine text color
+			if (isSelected):
+				dc.SetTextForeground(self.COLOR_TEXT_SELECTED)
+			else:
+				dc.SetTextForeground(self.COLOR_TEXT)
+			
+			#Draw Text
+			try:
+				#Determine text alignment
+				if (align == None):
+					x_align = 0
+					y_align = 0
+				else:
+					width, height = dc.GetTextExtent(text)
+					y_align = (rectangle.height - height) / 2
+				
+					if (align.lower()[0] == "l"):
+						x_align = 0
+					elif (align.lower()[0] == "r"):
+						x_align = rectangle.width - width
+					else:
+						x_align = (rectangle.width - width) / 2
+
+				dc.DrawText(text, rectangle.x + x_offset + x_align, rectangle.y + y_offset + y_align)
+			finally:
+				dc.SetTextForeground(oldColor)
+
+		def drawBackground(self, grid, attributes, dc, rectangle, row, column, isSelected):
+			"""Draw an appropriate background based on selection state"""
+
+			oldPen = dc.GetPen()
+			oldBrush = dc.GetBrush()
+
+			#Determine background color
+			if isSelected:
+				dc.SetBrush(wx.Brush(self.COLOR_BACKGROUND_SELECTED, wx.SOLID))
+			else:
+				dc.SetBrush(wx.Brush(self.COLOR_BACKGROUND, wx.SOLID))
+			
+			#Draw Background
+			try:
+				dc.SetPen(wx.TRANSPARENT_PEN)
+				dc.DrawRectangle(rectangle.x, rectangle.y, rectangle.width, rectangle.height)
+			finally:
+				dc.SetPen(oldPen)
+				dc.SetBrush(oldBrush)
+				
+		def clip(self, dc, rectangle):
+			"""Setup the clipping rectangle"""
+			
+			dc.SetClippingRegion(rectangle.x, rectangle.y, rectangle.width, rectangle.height)
+		
+		def unclip(self, dc):
+			"""Destroy the clipping rectangle"""
+			
+			dc.DestroyClippingRegion()
 
 	####################################################################################################
 
@@ -14013,6 +14351,8 @@ class handle_Sizer(handle_Container_Base):
 
 		#Configure Flags
 		flags, position, border = self.getItemMod(flags)
+
+		print("@1", handle.type, self.type, flex, flags)
 
 		#Perform Nesting
 		if (isinstance(handle, handle_Widget_Base)):
@@ -15127,6 +15467,45 @@ class handle_Dialog(handle_Base):
 
 			self.thing = self.getArguments(argument_catalogue, ["text"])
 
+		def build_inputBox():
+			"""Builds a wx text entry dialog object."""
+			nonlocal self, argument_catalogue
+
+			text, title, default = self.getArguments(argument_catalogue, ["text", "title", "default"])
+			addYes, addOk, addCancel, addHelp = self.getArguments(argument_catalogue, ["addYes", "addOk", "addCancel", "addHelp"])
+			password, readOnly, tab, wrap, maximum = self.getArguments(argument_catalogue, ["password", "readOnly", "tab", "wrap", "maximum"])
+
+			#Prepare styles
+			style = "wx.CENTRE"
+
+			##Buttons
+			if (addYes):
+				style += "|wx.YES_NO"
+			if (addOk):
+				style += "|wx.OK"
+			if (addCancel):
+				style += "|wx.CANCEL"
+			if (addHelp):
+				style += "|wx.HELP"
+
+			if (password):
+				style += "|wx.TE_PASSWORD"
+			if (readOnly):
+				style += "|wx.TE_READONLY"
+			if (tab):
+				style += "|wx.TE_PROCESS_TAB"
+			
+			if (wrap != None):
+				if (wrap > 0):
+					style += "|wx.TE_MULTILINE|wx.TE_WORDWRAP"
+				else:
+					style += "|wx.TE_CHARWRAP|wx.TE_MULTILINE"
+
+			self.thing = wx.TextEntryDialog(None, text, caption = title, value = default, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+
+			if (maximum != None):
+				self.thing.SetMaxLength(maximum)
+
 		def build_choice():
 			"""Builds a wx choice dialog object."""
 			nonlocal self, argument_catalogue
@@ -15251,6 +15630,9 @@ class handle_Dialog(handle_Base):
 			myFrame, valueLabel = self.getArguments(argument_catalogue, ["myFrame", "valueLabel"])
 			self.thing = -1
 			self.myFrame = myFrame
+
+			if (valueLabel == None):
+				valueLabel = myFrame.getValueLabel()
 			self.valueLabel = valueLabel
 		
 		#########################################################
@@ -15316,6 +15698,13 @@ class handle_Dialog(handle_Base):
 		#Show dialogue
 		if (self.type.lower() == "message"):
 			self.answer = self.thing.ShowModal()
+
+			self.thing.Destroy()
+			self.thing = None
+
+		elif (self.type.lower() == "inputbox"):
+			self.answer = self.thing.ShowModal()
+			self.data = self.thing.GetValue()
 
 			self.thing.Destroy()
 			self.thing = None
@@ -15401,10 +15790,22 @@ class handle_Dialog(handle_Base):
 			else:
 				value = [self.choices[i] for i in self.data]
 
+		elif (self.type.lower() == "inputbox"):
+			value = self.data
+
 		elif (self.type.lower() == "print"):
 			value = [self.data, self.dialogData, self.content]
 
 		elif (self.type.lower() == "custom"):
+			if (self.valueLabel == None):
+				if (self.valueLabel == None):
+					errorMessage = f"In order to use getValue() for {self.__repr__()} 'valueLabel' cannot be None\nEither provide it in makeDialogCustom() for {self.__repr__()} or use setValueLabel() for {self.myFrame.__repr__()}"
+					raise KeyError(errorMessage)
+			else:
+				if (self.valueLabel not in self.myFrame):
+					errorMessage = f"There is no widget with the label {self.valueLabel} in {self.myFrame.__repr__()} for {self.__repr__()}"
+					raise ValueError(errorMessage)
+
 			value = self.myFrame.getValue(self.valueLabel)
 
 		elif (self.type.lower() == "printPreview"):
