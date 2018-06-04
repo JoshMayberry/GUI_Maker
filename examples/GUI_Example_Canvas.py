@@ -31,13 +31,14 @@ def buildWindow():
 		myFrame.setMinimumFrameSize((250, 200))
 
 		#Add Content
-		with myFrame.addSizerGridFlex(rows = 2, columns = 1) as mySizer:
-			mySizer.growFlexRowAll()
-			mySizer.growFlexColumnAll()	
+		with myFrame.addSizerBox(flex = 1) as mySizer:
+		# with myFrame.addSizerGridFlex(rows = 2, columns = 1) as mySizer:
+		# 	mySizer.growFlexRowAll()
+		# 	mySizer.growFlexColumnAll()	
 			with mySizer.addCanvas(label = "canvas", flex = 1) as myCanvas:
 				myCanvas.drawText("Lorem Ipsum Dolor Sit Amet Lorem Ipsum Dolor Sit Amet")
 
-			mySizer.addButton("Save", myFunction = onSave)
+			mySizer.addButton("Save", myFunction = onSave, flex = 0)
 
 #Run Program
 if __name__ == '__main__':

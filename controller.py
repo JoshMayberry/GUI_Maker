@@ -1407,6 +1407,14 @@ class Utilities():
 	
 		return state
 
+	def getMousePosition(self):
+		"""Returns the current mouse position relative to the current handle.
+
+		Example Input: getMousePosition()
+		"""
+
+		return self.thing.ScreenToClient(wx.GetMousePosition()).Get()
+
 	#Background Processes
 	def passFunction(self, myFunction, myFunctionArgs = None, myFunctionKwargs = None, thread = None):
 		"""Passes a function from one thread to another. Used to pass the function
@@ -1760,11 +1768,11 @@ class Utilities():
 
 		nestedList = []
 		for key, value in catalogue.items():
-			if (None not in value):
-				kuiiul
-
 			if (key == None):
 				continue
+
+			if (None not in value):
+				kuiiul
 
 			if (len(include) != 0):
 				for item in include:
@@ -2818,7 +2826,7 @@ class Utilities():
 	def makeText(self, text = "", wrap = None, ellipsize = False, alignment = None,
 		size = None, bold = False, italic = False, color = None, family = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Creates a wx text object.
 		If you want to update this text, you will need to run the function setObjectValue() or setObjectValueWithLabel().
 		If you provide a variable to this function and that variable changes- the text on the GUI will not update.
@@ -2875,7 +2883,7 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds a hyperlink text to the next cell on the grid.
 
 		text (str)            - What text is shown
@@ -2897,7 +2905,7 @@ class Utilities():
 
 	def makeEmpty(self, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds an empty space to the next cell on the grid.
 
 		label (any)     - What this is catalogued as
@@ -2916,7 +2924,7 @@ class Utilities():
 
 	def makeLine(self, vertical = False,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds a simple line to the window.
 		It can be horizontal or vertical.
 
@@ -2939,7 +2947,7 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds a dropdown list with choices to the next cell on the grid.
 
 		choices (list)          - A list of the choices as strings
@@ -2982,7 +2990,7 @@ class Utilities():
 		postDropFunction = None, postDropFunctionArgs = None, postDropFunctionKwargs = None, 
 		dragOverFunction = None, dragOverFunctionArgs = None, dragOverFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds a full list with choices to the next cell on the grid.
 		https://wxpython.org/Phoenix/docs/html/wx.ListCtrl.html
 
@@ -3107,7 +3115,7 @@ class Utilities():
 		toolTipFunction = None, toolTipFunctionArgs = None, toolTipFunctionKwargs = None, 
 		itemMenuFunction = None, itemMenuFunctionArgs = None, itemMenuFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds a tree list to the next cell on the grid.
 
 		choices (list)          - A list of the choices as strings
@@ -3187,7 +3195,7 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds a slider bar to the next cell on the grid.
 
 		myMin (int)             - The minimum value of the slider bar
@@ -3216,7 +3224,7 @@ class Utilities():
 		postEditFunction = None, postEditFunctionArgs = None, postEditFunctionKwargs = None,  
 		preEditFunction = None, preEditFunctionArgs = None, preEditFunctionKwargs = None,  
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds an input box to the next cell on the grid.
 
 		myFunction (str)       - The function that is ran when the user enters text
@@ -3268,7 +3276,7 @@ class Utilities():
 		searchFunction = None, searchFunctionArgs = None, searchFunctionKwargs = None, 
 		cancelFunction = None, cancelFunctionArgs = None, cancelFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds an input box to the next cell on the grid.
 
 		myFunction (str)       - The function that is ran when the user enters text and presses enter
@@ -3303,7 +3311,7 @@ class Utilities():
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 		changeTextFunction = True, changeTextFunctionArgs = None, changeTextFunctionKwargs = None,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds a spin control to the next cell on the grid. This is an input box for numbers.
 
 		myMin (int)       - The minimum value of the input spinner
@@ -3344,7 +3352,7 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds a button to the next cell on the grid.
 
 		text (str)            - What will be written on the button
@@ -3371,7 +3379,7 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds a toggle button to the next cell on the grid.
 
 		text (str)             - What will be written on the button
@@ -3396,7 +3404,7 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds a check box to the next cell on the grid.
 		Event fires every time the check box is clicked
 
@@ -3423,7 +3431,7 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds a checklist to the next cell on the grid.
 
 		choices (list)          - A list of strings that are the choices for the check boxes
@@ -3448,7 +3456,7 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds a radio button to the next cell on the grid. If default, it will disable the other
 		radio buttons of the same group.
 
@@ -3475,7 +3483,7 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds a box filled with grouped radio buttons to the next cell on the grid.
 		Because these buttons are grouped, only one can be selected
 
@@ -3505,7 +3513,7 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds a context help button to the next cell on the grid.
 
 		flags (list)            - A list of strings for which flag to add to the sizer
@@ -3527,12 +3535,11 @@ class Utilities():
 		return handle
 	
 	def makeButtonImage(self, idlePath = "", disabledPath = "", selectedPath = "", 
-		focusPath = "", hoverPath = "", text = None,
+		focusPath = "", hoverPath = "", text = None, toggle = False,
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, selected = False, toggle = False, default = False,
-		flex = 0, flags = "c1", parent = None, handle = None, mySizer = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds a button to the next cell on the grid. You design what the button looks like yourself.
 
 		idlePath (str)         - Where the image of the button idling is on the computer
@@ -3559,7 +3566,7 @@ class Utilities():
 	
 	def makeImage(self, imagePath = "", internal = False, size = wx.DefaultSize,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds an embeded image to the next cell on the grid.
 
 		imagePath (str) - Where the image is on the computer. Can be a PIL image. If None, it will be a blank image
@@ -3634,7 +3641,7 @@ class Utilities():
 	
 	def makeProgressBar(self, myInitial = 0, myMax = 100, vertical = False,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds progress bar to the next cell on the grid.
 
 		myInitial (int)         - The value that the progress bar starts at
@@ -3657,7 +3664,7 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds a tool bar to the next cell on the grid.
 		Menu items can be added to this.
 
@@ -3678,7 +3685,7 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds a color picker to the next cell on the grid.
 		It can display the name or RGB of the color as well.
 
@@ -3701,7 +3708,7 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds a color picker to the next cell on the grid.
 		It can display the name or RGB of the color as well.
 
@@ -3728,7 +3735,7 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds a file picker to the next cell on the grid.
 
 		flags (list)      - A list of strings for which flag to add to the sizer
@@ -3769,7 +3776,7 @@ class Utilities():
 		editLabelFunction = None, editLabelFunctionArgs = None, editLabelFunctionKwargs = None, 
 		rightClickFunction = None, rightClickFunctionArgs = None, rightClickFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds a file picker window to the next cell on the grid.
 
 		myFunction (str)               - What function will be ran when the file is chosen
@@ -3800,7 +3807,7 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds a time picker to the next cell on the grid.
 		The input time is in military time.
 
@@ -3828,7 +3835,7 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds a date picker to the next cell on the grid.
 
 		myFunction (str)        - What function will be ran when the date is changed
@@ -3859,7 +3866,7 @@ class Utilities():
 		monthFunction = None, monthFunctionArgs = None, monthFunctionKwargs = None, 
 		yearFunction = None, yearFunctionArgs = None, yearFunctionArgsKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds a date picker to the next cell on the grid.
 
 		myFunction (str)          - What function will be ran when the date is changed
@@ -3896,11 +3903,11 @@ class Utilities():
 		return handle
 
 	def makeCanvas(self, size = wx.DefaultSize, position = wx.DefaultPosition, 
-		panel = {},
+		panel = {}, metric = None,
 
 		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Creates a blank canvas window.
 
 		size (int tuple)  - The size of the canvas. (length, width)
@@ -3939,7 +3946,7 @@ class Utilities():
 		rightClickCellFunction = None, rightClickCellFunctionArgs = None, rightClickCellFunctionKwargs = None, 
 		rightClickLabelFunction = None, rightClickLabelFunctionArgs = None, rightClickLabelFunctionKwargs = None,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 
 		"""Adds a table to the next cell on the grid. 
 		If enabled, it can be edited; the column &  sizerNumber, size can be changed.
@@ -4061,7 +4068,7 @@ class Utilities():
 	def makeSizerGrid(self, rows = 1, columns = 1, text = None,
 		rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Creates a grid sizer to the specified size.
 
 		label (any)     - What this is catalogued as
@@ -4087,7 +4094,7 @@ class Utilities():
 	def makeSizerGridFlex(self, rows = 1, columns = 1, text = None, vertical = None,
 		rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1, flexGrid = True,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Creates a flex grid sizer.
 		############## NEEDS TO BE FIXED #################
 
@@ -4121,7 +4128,7 @@ class Utilities():
 		rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1, vertical = None, 
 		emptySpace = None, flexGrid = True,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Creates a bag grid sizer.
 
 		label (any)      - What this is catalogued as
@@ -4153,7 +4160,7 @@ class Utilities():
 
 	def makeSizerBox(self, text = None, minWidth = -1, minHeight = -1, vertical = True,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Creates a box sizer.
 
 		label (any)     - What this is catalogued as
@@ -4176,7 +4183,7 @@ class Utilities():
 
 	def makeSizerText(self, text = "", minWidth = -1, minHeight = -1, vertical = True, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Creates a static box sizer.
 		This is a sizer surrounded by a box with a title, much like a wxRadioBox.
 
@@ -4201,7 +4208,7 @@ class Utilities():
 
 	def makeSizerWrap(self, text = None, minWidth = -1, minHeight = -1, extendLast = False, vertical = True,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Creates a wrap sizer.
 		The widgets will arrange themselves into rows and columns on their own, starting in the top-left corner.
 
@@ -4489,10 +4496,11 @@ class Utilities():
 		handle.build(locals())
 		return handle
 
-	def makeDialogCustom(self, myFrame, valueLabel = None):
+	def makeDialogCustom(self, myFrame = None, valueLabel = None):
 		"""Allows the user to define how the frame looks on their own.
 
 		myFrame (handle_Window) - What frame to use as the window
+			- If None: Will use self
 		valueLabel (str)        - The label for the widget to use for getValue()
 
 		_________________________________________________________________________
@@ -4507,6 +4515,9 @@ class Utilities():
 
 		Example Input: makeDialogCustom(gui["customDialog"], "value")
 		"""
+
+		if (myFrame == None):
+			myFrame = self
 
 		handle = handle_Dialog()
 		handle.type = "custom"
@@ -5328,8 +5339,12 @@ class handle_Widget_Base(handle_Base):
 			else:
 				direction = wx.LI_HORIZONTAL
 
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
+
 			#Create the thing to put in the grid
-			self.thing = wx.StaticLine(self.parent.thing, style = direction)
+			self.thing = wx.StaticLine(self.parent.thing, id = myId, style = direction)
 
 		def build_progressBar():
 			"""Builds a wx line object."""
@@ -5340,9 +5355,13 @@ class handle_Widget_Base(handle_Base):
 				style = wx.GA_VERTICAL
 			else:
 				style = wx.GA_HORIZONTAL
+
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
 		
 			#Create the thing to put in the grid
-			self.thing = wx.Gauge(self.parent.thing, range = myMax, style = style)
+			self.thing = wx.Gauge(self.parent.thing, id = myId, range = myMax, style = style)
 
 			#Set Initial Conditions
 			self.thing.SetValue(myInitial)
@@ -5424,7 +5443,7 @@ class handle_Widget_Base(handle_Base):
 		preFunction = None, preFunctionArgs = None, preFunctionKwargs = None, 
 		postFunction = None, postFunctionArgs = None, postFunctionKwargs = None,
 
-		parent = None, hidden = False, enabled = True, handle = None):
+		parent = None, hidden = False, enabled = True, handle = None, myId = None):
 		"""Enables a popup menu.
 
 		label (str) - A unique name for this popupMenu. Used to interact with it later.
@@ -5639,7 +5658,7 @@ class handle_Widget_Base(handle_Base):
 	def addToolTip(self, text = "", maxWidth = None, 
 		delayAppear = None, delayDisappear = None, delayReappear = None,
 
-		label = None, myId = -1, identity = None):
+		label = None, identity = None, myId = None):
 		"""Adds a small text box that will appear when the mouse hovers over a wxObject.
 
 		triggerObjectLabel (str) - The id catalogue number for the object that triggers the tool tip
@@ -5851,8 +5870,12 @@ class handle_WidgetText(handle_Widget_Base):
 				else:
 					style += "|wx.ST_ELLIPSIZE_END"
 
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
+
 			#Create the thing to put in the grid
-			self.thing = wx.StaticText(self.parent.thing, label = text, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+			self.thing = wx.StaticText(self.parent.thing, id = myId, label = text, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 			# font = self.getFont(size = size, bold = bold, italic = italic, color = color, family = family)
 			# self.thing.SetFont(font)
@@ -5875,9 +5898,13 @@ class handle_WidgetText(handle_Widget_Base):
 			# wx.adv.HL_DEFAULT_STYLE: The default style for wx.adv.HyperlinkCtrl: BORDER_NONE|wxHL_CONTEXTMENU|wxHL_ALIGN_CENTRE.
 			style = "wx.adv.HL_DEFAULT_STYLE"
 
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
+
 
 			#Create the thing to put in the grid
-			self.thing = wx.adv.HyperlinkCtrl(self.parent.thing, label = text, url = myWebsite, style =  eval(style, {'__builtins__': None, "wx": wx}, {}))
+			self.thing = wx.adv.HyperlinkCtrl(self.parent.thing, id = myId, label = text, url = myWebsite, style =  eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 			#Apply colors
 			# SetHoverColour
@@ -5892,8 +5919,12 @@ class handle_WidgetText(handle_Widget_Base):
 			"""Builds a blank wx text object."""
 			nonlocal self
 
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
+
 			#Create the thing to put in the grid
-			self.thing = wx.StaticText(self.parent.thing, label = wx.EmptyString)
+			self.thing = wx.StaticText(self.parent.thing, id = myId, label = wx.EmptyString)
 			self.wrapText(-1)
 		
 		#########################################################
@@ -6043,8 +6074,12 @@ class handle_WidgetList(handle_Widget_Base):
 			else:
 				style = 0
 
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
+
 			#Create the thing to put in the grid
-			self.thing = wx.Choice(self.parent.thing, choices = choices, style = style)
+			self.thing = wx.Choice(self.parent.thing, id = myId, choices = choices, style = style)
 			
 			#Set default position
 			if (type(default) == str):
@@ -6099,12 +6134,16 @@ class handle_WidgetList(handle_Widget_Base):
 				mixin_editable = True
 				style += "|wx.LC_EDIT_LABELS" #Editable
 
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
+
 			#Create the thing to put in the grid
 			if (mixin_editable):
-				self.thing = self.ListFull_Editable(self.parent.thing, style = style)
+				self.thing = self.ListFull_Editable(self.parent.thing, myId = myId, style = style)
 				self.thing.editable = editable
 			else:
-				self.thing = wx.ListCtrl(self.parent.thing, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+				self.thing = wx.ListCtrl(self.parent.thing, id = myId, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 			#Remember key variables
 			self.columns = columns
@@ -6206,8 +6245,12 @@ class handle_WidgetList(handle_Widget_Base):
 			else:
 				style += "|wx.TR_SINGLE"
 
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
+
 			#Create the thing to put in the grid
-			self.thing = wx.TreeCtrl(self.parent.thing, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+			self.thing = wx.TreeCtrl(self.parent.thing, id = myId, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 			
 			self.setValue({root: choices})
 
@@ -7292,8 +7335,12 @@ class handle_WidgetInput(handle_Widget_Base):
 			# wx.SL_SELRANGE: Allows the user to select a range on the slider. Windows only.
 			# wx.SL_INVERSE: Inverses the minimum and maximum endpoints on the slider. Not compatible with wx.SL_SELRANGE.
 
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
+
 			#Create the thing to put in the grid
-			self.thing = wx.Slider(self.parent.thing, value = myInitial, minValue = myMin, maxValue = myMax, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+			self.thing = wx.Slider(self.parent.thing, id = myId, value = myInitial, minValue = myMin, maxValue = myMax, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 			#Bind the function(s)
 			myFunction = self.getArguments(argument_catalogue, "myFunction")
@@ -7352,14 +7399,18 @@ class handle_WidgetInput(handle_Widget_Base):
 			if (text == None):
 				text = wx.EmptyString
 
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
+
 			#Create the thing to put in the grid
 			if (ipAddress):
-				self.thing = wx.lib.masked.ipaddrctrl.IpAddrCtrl(self.parent.thing, wx.ID_ANY, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+				self.thing = wx.lib.masked.ipaddrctrl.IpAddrCtrl(self.parent.thing, id = myId, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 				if (text != wx.EmptyString):
 					self.thing.SetValue(text)
 			else:
-				self.thing = wx.TextCtrl(self.parent.thing, value = text, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+				self.thing = wx.TextCtrl(self.parent.thing, id = myId, value = text, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 				#Set maximum length
 				if (maxLength != None):
@@ -7394,8 +7445,12 @@ class handle_WidgetInput(handle_Widget_Base):
 
 			myFunction, searchFunction, cancelFunction = self.getArguments(argument_catalogue, ["myFunction", "searchFunction", "cancelFunction"])
 
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
+
 			#Create the thing to put in the grid
-			self.thing = wx.SearchCtrl(self.parent.thing, value = wx.EmptyString, style = 0)
+			self.thing = wx.SearchCtrl(self.parent.thing, id = myId, value = wx.EmptyString, style = 0)
 
 			#Determine if additional features are enabled
 			if (searchFunction != None):
@@ -7430,6 +7485,10 @@ class handle_WidgetInput(handle_Widget_Base):
 			#wx.SP_WRAP: The value wraps at the minimum and maximum.
 			style = "wx.SP_ARROW_KEYS|wx.SP_WRAP"
 
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
+
 			#Create the thing to put in the grid
 			if (useFloat):
 				style = "wx.lib.agw.floatspin.FS_LEFT"
@@ -7442,14 +7501,14 @@ class handle_WidgetInput(handle_Widget_Base):
 				if (digits == None):
 					digits = 1
 
-				self.thing = wx.lib.agw.floatspin.FloatSpin(self.parent.thing, wx.ID_ANY, wx.DefaultPosition, size, wx.SP_ARROW_KEYS|wx.SP_WRAP, myInitial, myMin, myMax, increment, digits, eval(style, {'__builtins__': None, "wx.lib.agw.floatspin": wx.lib.agw.floatspin}, {}))
+				self.thing = wx.lib.agw.floatspin.FloatSpin(self.parent.thing, wx.DefaultPosition, size, wx.SP_ARROW_KEYS|wx.SP_WRAP, myInitial, myMin, myMax, increment, digits, eval(style, {'__builtins__': None, "wx.lib.agw.floatspin": wx.lib.agw.floatspin}, {}), id = myId)
 			else:
 				if (increment != None):
 					style = "wx.lib.agw.floatspin.FS_LEFT"
-					self.thing = wx.lib.agw.floatspin.FloatSpin(self.parent.thing, wx.ID_ANY, wx.DefaultPosition, size, wx.SP_ARROW_KEYS|wx.SP_WRAP, myInitial, myMin, myMax, increment, -1, eval(style, {'__builtins__': None, "wx.lib.agw.floatspin": wx.lib.agw.floatspin}, {}))
+					self.thing = wx.lib.agw.floatspin.FloatSpin(self.parent.thing, wx.DefaultPosition, size, wx.SP_ARROW_KEYS|wx.SP_WRAP, myInitial, myMin, myMax, increment, -1, eval(style, {'__builtins__': None, "wx.lib.agw.floatspin": wx.lib.agw.floatspin}, {}), id = myId)
 					self.thing.SetDigits(0)
 				else:
-					self.thing = wx.SpinCtrl(self.parent.thing, value = wx.EmptyString, size = size, style = eval(style, {'__builtins__': None, "wx": wx}, {}), min = myMin, max = myMax, initial = myInitial)
+					self.thing = wx.SpinCtrl(self.parent.thing, id = myId, value = wx.EmptyString, size = size, style = eval(style, {'__builtins__': None, "wx": wx}, {}), min = myMin, max = myMax, initial = myInitial)
 
 				if (readOnly):
 					self.thing.SetReadOnly()
@@ -7716,8 +7775,12 @@ class handle_WidgetButton(handle_Widget_Base):
 
 			text, myFunction = self.getArguments(argument_catalogue, ["text", "myFunction"])
 
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
+
 			#Create the thing to put in the grid
-			self.thing = wx.Button(self.parent.thing, label = text, style = 0)
+			self.thing = wx.Button(self.parent.thing, id = myId, label = text, style = 0)
 
 			#Bind the function(s)
 			if (myFunction != None):
@@ -7730,8 +7793,12 @@ class handle_WidgetButton(handle_Widget_Base):
 
 			text, myFunction = self.getArguments(argument_catalogue, ["text", "myFunction"])
 
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
+
 			#Create the thing to put in the grid
-			self.thing = wx.ToggleButton(self.parent.thing, label = text, style = 0)
+			self.thing = wx.ToggleButton(self.parent.thing, id = myId, label = text, style = 0)
 			self.thing.SetValue(True) 
 
 			#Bind the function(s)
@@ -7745,8 +7812,12 @@ class handle_WidgetButton(handle_Widget_Base):
 
 			text, default, myFunction = self.getArguments(argument_catalogue, ["text", "default", "myFunction"])
 
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
+
 			#Create the thing to put in the grid
-			self.thing = wx.CheckBox(self.parent.thing, label = text, style = 0)
+			self.thing = wx.CheckBox(self.parent.thing, id = myId, label = text, style = 0)
 
 			#Determine if it is on by default
 			self.thing.SetValue(default)
@@ -7777,9 +7848,13 @@ class handle_WidgetButton(handle_Widget_Base):
 			
 			if (sort):
 				style += "|wx.LB_SORT"
+
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
 		
 			#Create the thing to put in the grid
-			self.thing = wx.CheckListBox(self.parent.thing, choices = choices, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+			self.thing = wx.CheckListBox(self.parent.thing, id = myId, choices = choices, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 			#Bind the function(s)
 			if (myFunction != None):
@@ -7797,9 +7872,13 @@ class handle_WidgetButton(handle_Widget_Base):
 				group = wx.RB_GROUP
 			else:
 				group = 0
+
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
 		
 			#Create the thing to put in the grid
-			self.thing = wx.RadioButton(self.parent.thing, label = text, style = group)
+			self.thing = wx.RadioButton(self.parent.thing, id = myId, label = text, style = group)
 
 			#Determine if it is turned on by default
 			self.thing.SetValue(default)
@@ -7831,9 +7910,12 @@ class handle_WidgetButton(handle_Widget_Base):
 			if (maximum < 0):
 				maximum = 0
 
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
 
 			#Create the thing to put in the grid
-			self.thing = wx.RadioBox(self.parent.thing, label = title, choices = choices, majorDimension = maximum, style = direction)
+			self.thing = wx.RadioBox(self.parent.thing, id = myId, label = title, choices = choices, majorDimension = maximum, style = direction)
 
 			#Set default position
 			if (len(choices) != 0):
@@ -7884,18 +7966,21 @@ class handle_WidgetButton(handle_Widget_Base):
 			#Remember values
 			self.toggle = toggle
 
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
+
 			#Create the thing to put in the grid
 			if (text != None):
 				if (toggle):
-					self.thing = wx.lib.buttons.GenBitmapTextToggleButton(self.parent.thing, bitmap = image, label = text, style = wx.BU_AUTODRAW)
+					self.thing = wx.lib.buttons.GenBitmapTextToggleButton(self.parent.thing, id = myId, bitmap = image, label = text, style = wx.BU_AUTODRAW)
 				else:
-					self.thing = wx.lib.buttons.GenBitmapTextButton(self.parent.thing, bitmap = image, label = text, style = wx.BU_AUTODRAW)
+					self.thing = wx.lib.buttons.GenBitmapTextButton(self.parent.thing, id = myId, bitmap = image, label = text, style = wx.BU_AUTODRAW)
 			else:
 				if (toggle):
-					self.thing = wx.lib.buttons.GenBitmapToggleButton(self.parent.thing, bitmap = image, style = wx.BU_AUTODRAW)
+					self.thing = wx.lib.buttons.GenBitmapToggleButton(self.parent.thing, id = myId, bitmap = image, style = wx.BU_AUTODRAW)
 				else:
-					# self.thing = wx.BitmapToggleButton(self.parent.thing, bitmap = image)
-					self.thing = wx.lib.buttons.GenBitmapButton(self.parent.thing, bitmap = image, style = wx.BU_AUTODRAW)
+					self.thing = wx.lib.buttons.GenBitmapButton(self.parent.thing, id = myId, bitmap = image, style = wx.BU_AUTODRAW)
 		
 			#Apply extra images
 			image = imageCheck(disabledPath)
@@ -8185,12 +8270,16 @@ class handle_WidgetPicker(handle_Widget_Base):
 				style = style[:-1]
 			else:
 				style = "0"
+
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
 		
 			#Create the thing to put in the grid
 			if (directoryOnly):
-				self.thing = wx.DirPickerCtrl(self.parent.thing, path = default, message = text, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+				self.thing = wx.DirPickerCtrl(self.parent.thing, id = myId, path = default, message = text, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 			else:
-				self.thing = wx.FilePickerCtrl(self.parent.thing, path = default, message = text, wildcard = initialDir, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+				self.thing = wx.FilePickerCtrl(self.parent.thing, id = myId, path = default, message = text, wildcard = initialDir, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 			#Set Initial directory
 			self.thing.SetInitialDirectory(initialDir)
@@ -8224,9 +8313,13 @@ class handle_WidgetPicker(handle_Widget_Base):
 
 			# A filter string, using the same syntax as that for wx.FileDialog. This may be empty if filters are not being used. Example: "All files (*.*)|*.*|JPEG files (*.jpg)|*.jpg"
 			filterList = wx.EmptyString
+
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
 		
 			#Create the thing to put in the grid
-			self.thing = wx.GenericDirCtrl(self.parent.thing, dir = initialDir, style = eval(style, {'__builtins__': None, "wx": wx}, {}), filter = filterList)
+			self.thing = wx.GenericDirCtrl(self.parent.thing, id = myId, dir = initialDir, style = eval(style, {'__builtins__': None, "wx": wx}, {}), filter = filterList)
 
 			#Determine if it is hidden
 			if (showHidden):
@@ -8277,8 +8370,12 @@ class handle_WidgetPicker(handle_Widget_Base):
 			else:
 				style = wx.adv.DP_SPIN
 
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
+
 			#Create the thing to put in the grid
-			self.thing = wx.adv.DatePickerCtrl(self.parent.thing, dt = date, style = style)
+			self.thing = wx.adv.DatePickerCtrl(self.parent.thing, id = myId, dt = date, style = style)
 
 			#Bind the function(s)
 			if (myFunction != None):
@@ -8323,9 +8420,13 @@ class handle_WidgetPicker(handle_Widget_Base):
 				style = style[1:] #Remove leading line
 			else:
 				style = "0"
+
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
 		
 			#Create the thing to put in the grid
-			self.thing = wx.adv.CalendarCtrl(self.parent.thing, date = date, style = eval(style, {'__builtins__': None, "wx.adv": wx.adv}, {}))
+			self.thing = wx.adv.CalendarCtrl(self.parent.thing, id = myId, date = date, style = eval(style, {'__builtins__': None, "wx.adv": wx.adv}, {}))
 
 			#Bind the function(s)
 			if (myFunction != None):
@@ -8373,8 +8474,12 @@ class handle_WidgetPicker(handle_Widget_Base):
 			else:
 				time = wx.DateTime().SetToCurrent()
 
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
+
 			#Create the thing to put in the grid
-			self.thing = wx.adv.TimePickerCtrl(self.parent.thing, dt = time)
+			self.thing = wx.adv.TimePickerCtrl(self.parent.thing, id = myId, dt = time)
 
 			#Bind the function(s)
 			if (myFunction != None):
@@ -8405,9 +8510,13 @@ class handle_WidgetPicker(handle_Widget_Base):
 				initial = wx.BLACK
 			else:
 				initial = wx.BLACK
+
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
 		
 			#Create the thing to put in the grid
-			self.thing = wx.ColourPickerCtrl(self.parent.thing, colour = initial, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+			self.thing = wx.ColourPickerCtrl(self.parent.thing, id = myId, colour = initial, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 			#Bind the function(s)
 			if (myFunction != None):
@@ -8436,9 +8545,13 @@ class handle_WidgetPicker(handle_Widget_Base):
 
 			# font = self.getFont()
 			font = wx.NullFont
+
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
 		
 			#Create the thing to put in the grid
-			self.thing = wx.FontPickerCtrl(self.parent.thing, font = font, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+			self.thing = wx.FontPickerCtrl(self.parent.thing, id = myId, font = font, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 			
 			self.thing.SetMaxPointSize(maxSize) 
 
@@ -8666,9 +8779,13 @@ class handle_WidgetImage(handle_Widget_Base):
 
 			#Get correct image
 			image = self._getImage(imagePath, internal)
+
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
 		
 			#Create the thing to put in the grid
-			self.thing = wx.StaticBitmap(self.parent.thing, bitmap = image, size = size, style = 0)
+			self.thing = wx.StaticBitmap(self.parent.thing, id = myId, bitmap = image, size = size, style = 0)
 		
 		#########################################################
 
@@ -8982,7 +9099,7 @@ class handle_Menu(handle_Container_Base):
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1"):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None, flex = 0, flags = "c1"):
 		"""Adds a menu item to a specific pre-existing menu.
 		Note: More special IDs for future implementation can be found at: https://wiki.wxpython.org/SpecialIDs
 
@@ -9076,7 +9193,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addSub(self, text = "", flex = 0, flags = "c1", 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds a sub menu to a specific pre-existing menu.
 		To adding items to a sub menu is the same as for menus.
 
@@ -9553,31 +9670,39 @@ class handle_MenuItem(handle_Widget_Base):
 		
 			#Unpack arguments
 			buildSelf, text, hidden = self.getArguments(argument_catalogue, ["self", "text", "hidden"])
+			myId = self.getArguments(argument_catalogue, ["myId"])
+
 
 			#Account for separators
 			if (text == None):
-				self.thing = wx.MenuItem(self.parent.thing, kind = wx.ITEM_SEPARATOR)
+				if (myId == None):
+					myId = wx.ID_ANY
+			
+				self.thing = wx.MenuItem(self.parent.thing, id = myId, kind = wx.ITEM_SEPARATOR)
 			else:
 				special, check, default = self.getArguments(argument_catalogue, ["special", "check", "default"])
 				myFunction, toolTip = self.getArguments(argument_catalogue, ["myFunction", "toolTip"])
 				
 				#Determine if the id is special
-				if (special != None):
-					special = special.lower()
-					if (special[0] == "n"):
-						myId = wx.ID_NEW
-					elif (special[0] == "o"):
-						myId = wx.ID_OPEN
-					elif (special[0] == "s"):
-						myId = wx.ID_SAVE
-					elif (special[0] == "c"):
-						myId = wx.ID_EXIT
-					elif (special[0] == "q" or special[0] == "e"):
-						myId = wx.ID_CLOSE
-					elif (special[0] == "u"):
-						myId = wx.ID_UNDO
-					elif (special[0] == "r"):
-						myId = wx.ID_REDO
+				if (myId == None):
+					if (special != None):
+						special = special.lower()
+						if (special[0] == "n"):
+							myId = wx.ID_NEW
+						elif (special[0] == "o"):
+							myId = wx.ID_OPEN
+						elif (special[0] == "s"):
+							myId = wx.ID_SAVE
+						elif (special[0] == "c"):
+							myId = wx.ID_EXIT
+						elif (special[0] == "q" or special[0] == "e"):
+							myId = wx.ID_CLOSE
+						elif (special[0] == "u"):
+							myId = wx.ID_UNDO
+						elif (special[0] == "r"):
+							myId = wx.ID_REDO
+						else:
+							myId = wx.ID_ANY
 					else:
 						myId = wx.ID_ANY
 				else:
@@ -9860,7 +9985,7 @@ class handle_MenuItem(handle_Widget_Base):
 
 		return state
 
-	def addToolTip(self, text = ""):
+	def addToolTip(self, text = "", myId = None):
 		"""Adds a small text box that will appear when the mouse hovers over a wxObject.
 		For a wxMenuItem, the text will appear in the status bar.
 
@@ -9991,7 +10116,7 @@ class handle_MenuPopup(handle_Container_Base):
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None):
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds an item to a catalogued popup menu.
 
 		text (str)           - The label of the item. This is what is shown to the user
@@ -10050,7 +10175,7 @@ class handle_MenuPopup(handle_Container_Base):
 		return handle
 
 	def addSub(self, text = None, label = None, 
-		parent = None, hidden = False, enabled = True, handle = None):
+		parent = None, hidden = False, enabled = True, handle = None, myId = None):
 		"""Adds a sub menu to a specific pre-existing menu.
 		To adding items to a sub menu is the same as for menus.
 
@@ -10202,7 +10327,7 @@ class handle_MenuPopup(handle_Container_Base):
 							runFunctionEvaluated()
 
 		def addMenu(self, label = None, text = " ", detachable = False,
-			parent = None, hidden = False, enabled = True, handle = None):
+			parent = None, hidden = False, enabled = True, handle = None, myId = None):
 			"""Adds a menu to a pre-existing menubar.
 			This is a collapsable array of menu items.
 
@@ -10342,6 +10467,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		#Defaults
 		self.paint_count = 0
 		self.drawQueue = [] #What will be drawn on the window. Items are drawn from left to right in their list order. [function, args, kwargs]
+		self.drawQueue_saved = {}
 		self.boundingBox = (0, 0, 0, 0)
 
 	def build(self, argument_catalogue):
@@ -10351,14 +10477,14 @@ class handle_WidgetCanvas(handle_Widget_Base):
 			"""Builds a wx panel object and makes it a canvas for painting."""
 			nonlocal self, argument_catalogue
 
-			panel, initFunction, buildSelf = self.getArguments(argument_catalogue, ["panel", "initFunction", "self"])
+			panel, metric, initFunction, buildSelf = self.getArguments(argument_catalogue, ["panel", "metric", "initFunction", "self"])
 
 			#Create the thing
 			panel["parent"] = buildSelf.parent
-			print("@2", panel, argument_catalogue)
 			self.myPanel = self.readBuildInstructions_panel(buildSelf, panel)
 			self.finalNest(self.myPanel)
 			self.thing = self.myPanel.thing
+			self.metric = metric
 
 			#Bind Functions
 			if (initFunction != None):
@@ -10430,6 +10556,18 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		"""Needed so that the GUI can draw on the panel."""
 
 		self.thing.Refresh()
+		event.Skip()
+
+	def setFunction_click(self, *args, **kwargs):
+		self.myPanel.setFunction_click(*args, **kwargs)
+
+	def update(self):
+		"""Redraws the canvas."""
+
+		self.thing.Refresh()
+		self.thing.Update()
+
+		self.myWindow.updateWindow()
 
 	def save(self, fileName, fileType = wx.BITMAP_TYPE_PNG):
 		"""Save the contents of the buffer to the specified file.
@@ -10472,6 +10610,15 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		height = self.boundingBox[3] - self.boundingBox[1] if (self.boundingBox[3] - self.boundingBox[1] > 0) else 1
 		return width, height
 
+	def getDrawnSize(self):
+		"""Returns the size of what would be drawn on the canvas."""
+
+		dc = self.getDC()
+		rectangle = dc.GetBoundingBox()
+		width = rectangle[2] - rectangle[0] if (rectangle[2] - rectangle[0] > 0) else 1
+		height = rectangle[3] - rectangle[1] if (rectangle[3] - rectangle[1] > 0) else 1
+		return width, height
+
 	def queue(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Queues a drawing function for the canvas.
 
@@ -10482,13 +10629,47 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		if (myFunction != None):
 			self.drawQueue.append([myFunction, myFunctionArgs, myFunctionKwargs])
 
+	def saveQueue(self, label = None):
+		"""Remembers what the queue looks like so far.
+
+		Example Input: saveQueue()
+		Example Input: saveQueue("step 1")
+		"""
+
+		if (label in self.drawQueue_saved):
+			warnings.warn(f"Overwriting save queue {label} saved in saveQueue() for {self.__repr__()}", Warning, stacklevel = 2)
+		
+		self.drawQueue_saved[label] = self.drawQueue[:]
+
+	def removeQueue(self, label = None):
+		"""Removes a saved queue
+
+		Example Input: removeQueue()
+		Example Input: removeQueue("step 1")
+		"""
+
+		if (label in self.drawQueue_saved):
+			del self.drawQueue_saved[label]
+		else:
+			warnings.warn(f"There is no queue {label} saved in removeQueue() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def loadQueue(self, label = None):
+		"""Replaces the draw queue with a saved queue
+
+		Example Input: loadQueue()
+		Example Input: loadQueue("step 1")
+		"""
+
+		if (label in self.drawQueue_saved):
+			self.drawQueue = self.drawQueue_saved[label][:]
+		else:
+			warnings.warn(f"There is no queue {label} saved in loadQueue() for {self.__repr__()}", Warning, stacklevel = 2)
+
 	def new(self):
 		"""Empties the draw queue and clears the canvas.
 
 		Example Input: new()
 		"""
-
-		pass
 
 		#Clear queue
 		self.drawQueue = []
@@ -10497,22 +10678,44 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		self.queue("dc.SetBackground", brush)
 		self.queue("dc.Clear")
 
+	def fit(self):
+		"""Fits the sizer item size to what has been drawn on the camnvas so far.
+
+		Example Input: fit()
+		"""
+
+		if (not self.myWindow.checkShown(window = True)):
+			self.myWindow.showWindow()
+			self.myWindow.hideWindow()
+
+		drawnSize = self.getDrawnSize()
+		mySize = self.thing.GetSize()
+		windowSize = self.myWindow.getWindowSize()
+
+		size_x = windowSize[0] + drawnSize[0] - mySize[0]
+		size_y = windowSize[1] + drawnSize[1] - mySize[1]
+		self.myWindow.setWindowSize(size_x, size_y)
+
 	def draw(self, dc):
 		"""Draws the queued shapes.
 
 		Example Input: draw(dc)
 		"""
 
-		metric = False
-		# metric = True
-		if (metric):
-			dc.SetMapMode(wx.MM_METRIC)
+		if (self.metric != None):
+			if (self.metric):
+				dc.SetMapMode(wx.MM_METRIC)
+			else:
+				dc.SetMapMode(wx.MM_LOMETRIC)
 		else:
-			dc.SetMapMode(wx.MM_POINTS)
+			dc.SetMapMode(wx.MM_TEXT)
 
 		#Draw items in queue
 		for myFunction, myFunctionArgs, myFunctionKwargs in self.drawQueue:
-			myFunctionEvaluated = eval(myFunction, {'__builtins__': None}, {"self": self, "dc": dc})
+			if (isinstance(myFunction, str)):
+				myFunctionEvaluated = eval(myFunction, {'__builtins__': None}, {"self": self, "dc": dc})
+			else:
+				myFunctionEvaluated = myFunction
 			self.runMyFunction(myFunctionEvaluated, myFunctionArgs, myFunctionKwargs)
 
 	#Drawing Functions
@@ -10826,7 +11029,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 			else:
 				self.thing.SetDeviceOrigin(x, x)
 			
-	def drawImage(self, imagePath, x = 0, y = 0, scale = None, internal = True, alpha = False):
+	def drawImage(self, imagePath, x = None, y = None, scale = None, internal = False, alpha = False):
 		"""Draws an image on the canvas.
 		
 
@@ -10840,6 +11043,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 
 		Example Input: drawImage("python.jpg")
 		Example Input: drawImage("python.jpg", 10, 10)
+		Example Input: drawImage("python.jpg", (10, 10))
 		Example Input: drawImage("python.jpg", scale = 2.0)
 		Example Input: drawImage("python.jpg", scale = (0.5, 1.0))
 		Example Input: drawImage("python.jpg", scale = (36, 36))
@@ -10849,6 +11053,20 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		if (imagePath != None):
 			#Get correct image
 			image = self._getImage(imagePath, internal, alpha = alpha, scale = scale)
+
+			if (x == None):
+				x = 0
+			elif (isinstance(x, str)):
+				x = ast.literal_eval(x)
+
+			if (y == None):
+				if (isinstance(x, (list, tuple))):
+					y = x[1]
+					x = x[0]
+				else:
+					y = 0
+			elif (isinstance(y, str)):
+				y = ast.literal_eval(y)
 
 			#Draw the image
 			self.queue("dc.DrawBitmap", [image, x, y, alpha])
@@ -11705,6 +11923,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 			self.betterBind(wx.EVT_LEFT_DOWN, self.thing.GetGridWindow(), self.onTableButton, True, mode = 2)
 			self.betterBind(wx.EVT_LEFT_UP, self.thing.GetGridWindow(), self.onTableButton, False, mode = 2)
+			self.betterBind(wx.EVT_KILL_FOCUS, self.thing.GetGridWindow(), self.onTableButton, False, mode = 2)
 
 		#########################################################
 
@@ -12309,11 +12528,11 @@ class handle_WidgetTable(handle_Widget_Base):
 							if (cellType["showCheck"]):
 								self.cellTypeCatalogue[str(cellType)] = [wx.grid.GridCellBoolRenderer(), wx.grid.GridCellBoolEditor()]
 							else:
-								self.cellTypeCatalogue[str(cellType)] = [wx.grid.GridCellBoolRenderer()]
+								self.cellTypeCatalogue[str(cellType)] = [wx.grid.GridCellBoolRenderer(), self.thing.GetDefaultEditor()]
 						else:
-							self.cellTypeCatalogue[str(cellType)] = [wx.grid.GridCellBoolEditor()]
+							self.cellTypeCatalogue[str(cellType)] = [self.thing.GetDefaultRenderer(), wx.grid.GridCellBoolEditor()]
 				else:
-					self.cellTypeCatalogue[str(cellType)] = [self.TableCellEditor(self, downOnEnter = self.enterKeyExitEdit, cellType = cellType)]
+					self.cellTypeCatalogue[str(cellType)] = [self.thing.GetDefaultRenderer(), self.TableCellEditor(self, downOnEnter = self.enterKeyExitEdit, cellType = cellType)]
 
 			#Change settings if needed
 			rowList = range(self.thing.GetNumberRows()) if (row == None) else [row]
@@ -13306,9 +13525,12 @@ class handle_WidgetTable(handle_Widget_Base):
 	def onTableButton(self, event, pressed):
 		"""Allows "button" cell types to function properly."""
 
-		x, y = self.thing.CalcUnscrolledPosition(event.GetPosition())
-		row = self.thing.YToRow(y)
-		column = self.thing.XToCol(x)
+		if (isinstance(event, wx.FocusEvent)):
+			row, column = self.getTableCurrentCell()[0]
+		else:
+			x, y = self.thing.CalcUnscrolledPosition(event.GetPosition())
+			row = self.thing.YToRow(y)
+			column = self.thing.XToCol(x)
 
 		handle = self.thing.GetCellRenderer(row, column)
 		if (isinstance(handle, self.TableCellRenderer)):
@@ -13961,9 +14183,10 @@ class handle_WidgetTable(handle_Widget_Base):
 
 					#Do not let the user enter the grid cell editor
 					if (not grid.IsReadOnly(row, column)):
-						self.SetReadOnly(row, column, True)
+						grid.SetReadOnly(row, column, True)
 
 					#Draw Button
+					# print("@3", self.parent.buttonPressCatalogue[row][column]["press"], row, column)
 					if (self.parent.buttonPressCatalogue[row][column]["press"]):
 						state = wx.CONTROL_PRESSED | wx.CONTROL_SELECTED
 					else:
@@ -14166,6 +14389,10 @@ class handle_Sizer(handle_Container_Base):
 		# 	if (len(sizerList) <= 1):
 		# 		#The first sizer added to a window is automatically nested
 		# 		buildSelf.finalNest(self)
+
+		myId = self.getArguments(argument_catalogue, ["myId"])
+		if (myId == None):
+			myId = wx.ID_ANY
 		
 		#Create Sizer
 		if (sizerType == "grid"):
@@ -14186,7 +14413,7 @@ class handle_Sizer(handle_Container_Base):
 				self.thing = wx.BoxSizer(direction)
 
 			elif (sizerType == "text"):
-				self.thing = wx.StaticBoxSizer(wx.StaticBox(self.parent.thing, wx.ID_ANY, text), direction)
+				self.thing = wx.StaticBoxSizer(wx.StaticBox(self.parent.thing, myId, text), direction)
 
 			elif (sizerType == "wrap"):
 				extendLast = self.getArguments(argument_catalogue, "extendLast")
@@ -14351,8 +14578,6 @@ class handle_Sizer(handle_Container_Base):
 
 		#Configure Flags
 		flags, position, border = self.getItemMod(flags)
-
-		print("@1", handle.type, self.type, flex, flags)
 
 		#Perform Nesting
 		if (isinstance(handle, handle_Widget_Base)):
@@ -15253,7 +15478,7 @@ class handle_Sizer(handle_Container_Base):
 	#   return handle
 
 	#Sizers
-	def addSizerBox(self, *args, **kwargs):
+	def addSizerBox(self, *args, flex = 0, flags = "c1", **kwargs):
 		"""Creates a box sizer.
 
 		Example Input: addSizerBox()
@@ -15263,11 +15488,11 @@ class handle_Sizer(handle_Container_Base):
 		"""
 
 		handle = self.makeSizerBox(*args, **kwargs)
-		self.nest(handle)
+		self.nest(handle, flex = flex, flags = flags)
 
 		return handle
 
-	def addSizerText(self, *args, **kwargs):
+	def addSizerText(self, *args, flex = 0, flags = "c1", **kwargs):
 		"""Creates a static box sizer.
 		This is a sizer surrounded by a box with a title, much like a wxRadioBox.
 
@@ -15278,11 +15503,11 @@ class handle_Sizer(handle_Container_Base):
 		"""
 
 		handle = self.makeSizerText(*args, **kwargs)
-		self.nest(handle)
+		self.nest(handle, flex = flex, flags = flags)
 
 		return handle
 
-	def addSizerGrid(self, *args, **kwargs):
+	def addSizerGrid(self, *args, flex = 0, flags = "c1", **kwargs):
 		"""Creates a grid sizer to the specified size.
 
 		Example Input: addSizerGrid()
@@ -15292,11 +15517,11 @@ class handle_Sizer(handle_Container_Base):
 		"""
 
 		handle = self.makeSizerGrid(*args, **kwargs)
-		self.nest(handle)
+		self.nest(handle, flex = flex, flags = flags)
 
 		return handle
 
-	def addSizerGridFlex(self, *args, **kwargs):
+	def addSizerGridFlex(self, *args, flex = 0, flags = "c1", **kwargs):
 		"""Creates a flex grid sizer.
 
 		Example Input: addSizerGridFlex()
@@ -15306,11 +15531,11 @@ class handle_Sizer(handle_Container_Base):
 		"""
 
 		handle = self.makeSizerGridFlex(*args, **kwargs)
-		self.nest(handle)
+		self.nest(handle, flex = flex, flags = flags)
 
 		return handle
 
-	def addSizerGridBag(self, *args, **kwargs):
+	def addSizerGridBag(self, *args, flex = 0, flags = "c1", **kwargs):
 		"""Creates a bag grid sizer.
 
 		Example Input: addSizerGridBag()
@@ -15320,11 +15545,11 @@ class handle_Sizer(handle_Container_Base):
 		"""
 
 		handle = self.makeSizerGridBag(*args, **kwargs)
-		self.nest(handle)
+		self.nest(handle, flex = flex, flags = flags)
 
 		return handle
 
-	def addSizerWrap(self, *args, **kwargs):
+	def addSizerWrap(self, *args, flex = 0, flags = "c1", **kwargs):
 		"""Creates a wrap sizer.
 		The widgets will arrange themselves into rows and columns on their own, starting in the top-left corner.
 
@@ -15333,7 +15558,7 @@ class handle_Sizer(handle_Container_Base):
 		"""
 
 		handle = self.makeSizerWrap(*args, **kwargs)
-		self.nest(handle)
+		self.nest(handle, flex = flex, flags = flags)
 
 		return handle
 
@@ -15937,12 +16162,8 @@ class handle_Dialog(handle_Base):
 			dc = self.GetDC()
 
 			if (isinstance(self.parent.content, str)):
-				metric = False
-				# metric = True
-				if (metric):
-					dc.SetMapMode(wx.MM_METRIC)
-				else:
-					dc.SetMapMode(wx.MM_POINTS)
+				dc.SetMapMode(wx.MM_POINTS) #Each logical unit is a “printer point” i.e. 1/72 of an inch
+				# dc.SetMapMode(wx.MM_TWIPS) #Each logical unit is 1/20 of a “printer point”, or 1/1440 of an inch
 
 				dc.SetTextForeground("black")
 				dc.SetFont(wx.Font(11, wx.SWISS, wx.NORMAL, wx.BOLD))
@@ -16106,15 +16327,19 @@ class handle_Window(handle_Container_Base):
 
 			#Unpack arguments
 			panel = argument_catalogue["panel"]
-
-			#Make the main panel
+			
+			#Setup sizers and panels
 			if (panel):
 				self.mainPanel = self.addPanel()#"-1", parent = handle, size = (10, 10), tabTraversal = tabTraversal, useDefaultSize = False)
 				self.finalNest(self.mainPanel)
 
-			#Make the main sizer
 			self.mainSizer = self.makeSizerBox()
 			self.finalNest(self.mainSizer)
+
+			if (panel):
+				self.mainPanel.thing.SetSizerAndFit(self.mainSizer.thing)
+			else:
+				self.thing.SetSizerAndFit(self.mainSizer.thing)
 
 		def build_dialog():
 			"""Builds a wx dialog object."""
@@ -16159,29 +16384,6 @@ class handle_Window(handle_Container_Base):
 			#Create Object
 			self.thing = wx.Dialog(None, title=title, size = size, pos = position, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
-			#Add Elements
-			style = ""
-			if (addYes):
-				style += "|wx.YES|wx.NO"
-			if (addOk):
-				style += "|wx.OK"
-			if (addCancel):
-				style += "|wx.CANCEL"
-			if (addHelp):
-				style += "|wx.HELP"
-			if (addApply):
-				style += "|wx.APPLY"
-
-			if (len(style) == 0):
-				style += "wx.OK"
-			elif (style[0] == "|"):
-				style = style[1:]
-
-			if (addLine):
-				buttonSizer = self.thing.CreateSeparatedButtonSizer(eval(style, {'__builtins__': None, "wx": wx}, {}))
-			else:
-				buttonSizer = self.thing.CreateButtonSizer(eval(style, {'__builtins__': None, "wx": wx}, {}))
-
 			#Set Properties
 			if (icon != None):
 				self.setIcon(icon, internal)
@@ -16198,22 +16400,34 @@ class handle_Window(handle_Container_Base):
 
 			if (delFunction != None):
 				self.setFunction_close(delFunction, delFunctionArgs, delFunctionKwargs)
-
+			
 			#Setup sizers and panels
-			rootSizer = wx.BoxSizer(wx.VERTICAL)
-
-			self.mainSizer = self.makeSizerBox()
-			self.finalNest(self.mainSizer)
-
 			if (panel):
 				self.mainPanel = self.addPanel()#"-1", parent = handle, size = (10, 10), tabTraversal = tabTraversal, useDefaultSize = False)
 				self.finalNest(self.mainPanel)
-				rootSizer.Add(self.mainPanel.thing, 1, wx.ALIGN_CENTER|wx.EXPAND|wx.ALL, 5)
-			else:
-				rootSizer.Add(self.mainSizer.thing, 1, wx.ALIGN_CENTER|wx.EXPAND|wx.ALL, 5)
 
-			rootSizer.Add(buttonSizer, 0, wx.ALIGN_CENTER|wx.EXPAND|wx.TOP|wx.BOTTOM, 5)
-			self.thing.SetSizerAndFit(rootSizer)
+			with self.makeSizerBox() as rootSizer:
+				self.finalNest(rootSizer)
+				self.mainSizer = rootSizer.addSizerBox(flex = 1)
+
+				if (addLine):
+					rootSizer.addLine(flex = 0)
+
+				with rootSizer.addSizerBox(vertical = False, flex = 0) as buttonSizer:
+					if (addYes):
+						buttonSizer.addButton("Yes", myId = wx.ID_YES)
+						buttonSizer.addButton("No", myId = wx.ID_NO)
+					if (addOk):
+						buttonSizer.addButton("Ok", myId = wx.ID_OK)
+					if (addApply):
+						buttonSizer.addButton("Apply", myId = wx.ID_APPLY)
+					if (addCancel):
+						buttonSizer.addButton("Cancel", myId = wx.ID_CANCEL)
+
+				if (panel):
+					self.mainPanel.thing.SetSizerAndFit(rootSizer.thing)
+				else:
+					self.thing.SetSizerAndFit(rootSizer.thing)
 
 		def build_preview():
 			"""Builds a wx preview frame object."""
@@ -17086,41 +17300,48 @@ class handle_Window(handle_Container_Base):
 
 		#Skip empty windows
 		if (len(catalogue) > 1):
-			#Refresh the window
-			if (autoSize == None):
-				autoSize = self.autoSize
-
-			sizer = self.mainSizer
-			if (sizer == None):
-				#Empty Window
-				return
-
 			if (self.mainPanel != None):
-				if (autoSize):
-					self.mainPanel.thing.SetSizerAndFit(sizer.thing)
-				else:
-					self.mainPanel.thing.SetSizer(sizer.thing)
+				self.mainPanel.thing.Refresh()
+				self.mainPanel.thing.Update()
 
-			else:
-				if (autoSize):
-					self.thing.SetSizerAndFit(sizer.thing)
-				else:
-					self.thing.SetSizer(sizer.thing)
+			self.thing.Refresh()
+			self.thing.Update()
 
-			#Auto-size the window
-			if (autoSize):
-				##Toggle the window size before setting to best size
-				bestSize = self.thing.GetBestSize()
-				modifiedSize = (bestSize[0] + 1, bestSize[1] + 1)
-				self.thing.SetSize(modifiedSize)
-				self.thing.SetSize(bestSize)
+		# 	#Refresh the window
+		# 	if (autoSize == None):
+		# 		autoSize = self.autoSize
 
-			else:
-				#Fix Panel Patch
-				currentSize = self.thing.GetSize()
-				modifiedSize = (currentSize[0] + 1, currentSize[1] + 1)
-				self.thing.SetSize(modifiedSize)
-				self.thing.SetSize(currentSize)
+		# 	sizer = self.mainSizer
+		# 	if (sizer == None):
+		# 		#Empty Window
+		# 		return
+
+		# 	if (self.mainPanel != None):
+		# 		if (autoSize):
+		# 			self.mainPanel.thing.SetSizerAndFit(sizer.thing)
+		# 		else:
+		# 			self.mainPanel.thing.SetSizer(sizer.thing)
+
+		# 	else:
+		# 		if (autoSize):
+		# 			self.thing.SetSizerAndFit(sizer.thing)
+		# 		else:
+		# 			self.thing.SetSizer(sizer.thing)
+
+		# 	#Auto-size the window
+		# 	if (autoSize):
+		# 		##Toggle the window size before setting to best size
+		# 		bestSize = self.thing.GetBestSize()
+		# 		modifiedSize = (bestSize[0] + 1, bestSize[1] + 1)
+		# 		self.thing.SetSize(modifiedSize)
+		# 		self.thing.SetSize(bestSize)
+
+		# 	else:
+		# 		#Fix Panel Patch
+		# 		currentSize = self.thing.GetSize()
+		# 		modifiedSize = (currentSize[0] + 1, currentSize[1] + 1)
+		# 		self.thing.SetSize(modifiedSize)
+		# 		self.thing.SetSize(currentSize)
 
 	def setRefresh(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Sets the functions to call for refresh()."""
@@ -17928,6 +18149,11 @@ class handle_Panel(handle_Container_Base):
 
 		#Postbuild
 		self.postBuild(argument_catalogue)
+
+	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		"""Changes the function that runs when a menu item is selected."""
+
+		self.betterBind(wx.EVT_LEFT_DOWN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
 	#Etc
 	def nest(self, handle = None):
