@@ -46,6 +46,7 @@ import wx.lib.splitter
 import wx.lib.agw.floatspin
 import wx.lib.mixins.listctrl
 import wx.lib.agw.fourwaysplitter
+import wx.lib.agw.multidirdialog
 
 #Import matplotlib elements to add plots to the GUI
 # import matplotlib
@@ -2974,7 +2975,7 @@ class Utilities():
 
 		return handle
 
-	def makeListFull(self, choices = [], default = False, singleSelect = False, editable = False,
+	def makeListFull(self, choices = [], default = False, single = False, editable = False,
 
 		report = False, columns = 1, columnNames = {}, columnWidth = {},
 		border = True, rowLines = True, columnLines = True, boldHeader = True,
@@ -3003,7 +3004,7 @@ class Utilities():
 
 		default (bool)      - If True: This is the default thing selected
 		enabled (bool)      - If True: The user can interact with this
-		singleSelect (bool) - Determines how many things the user can select
+		single (bool) - Determines how many things the user can select
 			- If True: The user can only select one thing
 			- If False: The user can select multiple things using the shift key
 		editable (bool)     - Determines if the user can edit the first item in the list
@@ -4407,6 +4408,41 @@ class Utilities():
 		handle.build(locals())
 		return handle
 
+	def makeDialogFile(self, title = "Select a File", text = "", initialFile = "", initialDir = "", wildcard = "*.*", 
+		directoryOnly = False, changeCurrentDirectory = False, fileMustExist = False, openFile = False, 
+		saveConfirmation = False, saveFile = False, preview = True, single = True, newDirButton = False):
+		"""Pauses the running code and shows a dialog box to get input from the user about files.
+		title (str)   - What is shown on the top of the popout window
+		default (str) - What the default value will be for the input box
+
+		initialDir (str)              - Which directory it will start at. By default this is the directory that the program is in
+		directoryOnly (bool)          - If True: Only the directory will be shown; no files will be shown
+		changeCurrentDirectory (bool) - If True: Changes the current working directory on each user file selection change
+		fileMustExist (bool)          - If True: When a file is opened, it must exist
+		openFile (bool)               - If True: The file picker is configured to open a file
+		saveConfirmation (bool)       - If True: When a file is saved over an existing file, it makes sure you want to do that
+		saveFile (bool)               - If True: The file picker is configured to save a file
+		_________________________________________________________________________
+
+		Example Use:
+			with myFrame.makeDialogColor() as myDialog:
+				color = myDialog.getValue()
+		_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+		Example Use:
+			myDialog = myFrame.makeDialogColor()
+			myDialog.show()
+			color = myDialog.getValue()
+		_________________________________________________________________________
+
+		Example Input: makeDialogFile()
+		"""
+
+		handle = handle_Dialog()
+		handle.type = "file"
+		handle.build(locals())
+		return handle
+
 	def makeDialogColor(self, simple = True):
 		"""Pauses the running code and shows a dialog box to get input from the user about color.
 
@@ -4616,7 +4652,7 @@ class CommonEventFunctions():
 		print("onIdle()")
 		pass
 
-#handles
+#Handles
 class handle_Base(Utilities, CommonEventFunctions):
 	"""The base handler for all GUI handlers.
 	Meant to be inherited.
@@ -6102,7 +6138,7 @@ class handle_WidgetList(handle_Widget_Base):
 			"""Builds a wx choice object."""
 			nonlocal self, argument_catalogue
 
-			report, singleSelect, editable = self.getArguments(argument_catalogue, ["report", "singleSelect", "editable"])
+			report, single, editable = self.getArguments(argument_catalogue, ["report", "single", "editable"])
 			columns, drag, drop, choices = self.getArguments(argument_catalogue, ["columns", "drag", "drop", "choices"])
 			columnNames, columnWidth = self.getArguments(argument_catalogue, ["columnNames", "columnWidth"])
 			border, rowLines, columnLines, boldHeader = self.getArguments(argument_catalogue, ["border", "rowLines", "columnLines", "boldHeader"])
@@ -6120,7 +6156,7 @@ class handle_WidgetList(handle_Widget_Base):
 			if (columnLines):
 				style += "|wx.LC_VRULES"
 
-			if (singleSelect):
+			if (single):
 				style += "|wx.LC_SINGLE_SEL" #Default: Can select multiple with shift
 
 			#Determine if it is editable or not
@@ -15565,9 +15601,9 @@ class handle_Sizer(handle_Container_Base):
 class handle_Dialog(handle_Base):
 	"""A handle for working with a wxDialog widget.
 
-	Use: https://www.blog.pythonlibrary.org/2010/06/26/the-dialogs-of-wxpython-part-1-of-2/
-	https://www.blog.pythonlibrary.org/2010/07/10/the-dialogs-of-wxpython-part-2-of-2/
-	http://zetcode.com/wxpython/dialogs/
+	Modified code from: https://www.blog.pythonlibrary.org/2010/06/26/the-dialogs-of-wxpython-part-1-of-2/
+	Modified code from: https://www.blog.pythonlibrary.org/2010/07/10/the-dialogs-of-wxpython-part-2-of-2/
+	Modified code from: http://zetcode.com/wxpython/dialogs/
 	"""
 
 	def __init__(self):
@@ -15751,6 +15787,92 @@ class handle_Dialog(handle_Base):
 				else:
 					self.thing.SetSelections(default)
 
+		def build_file():
+			"""Builds a wx color dialog object."""
+			nonlocal self, argument_catalogue
+
+			title, text, preview, initialFile, wildcard = self.getArguments(argument_catalogue, ["title", "text", "preview", "initialFile", "wildcard"])
+			initialDir, directoryOnly, changeCurrentDirectory = self.getArguments(argument_catalogue, ["initialDir", "directoryOnly", "changeCurrentDirectory"])
+			fileMustExist, openFile, saveConfirmation, saveFile = self.getArguments(argument_catalogue, ["fileMustExist", "openFile", "saveConfirmation", "saveFile"])
+			single, newDirButton = self.getArguments(argument_catalogue, ["single", "newDirButton"])
+
+			#Picker configurations
+			if (directoryOnly):
+				##Determine which configurations to add
+				style = "wx.RESIZE_BORDER|" #Always select the newer directory dialog if there are more than one choices
+				if (changeCurrentDirectory):
+					style += "wx.DD_CHANGE_DIR|"
+				if (fileMustExist):
+					style += "wx.DD_DIR_MUST_EXIST|"
+				
+				if (not single):
+					agwStyle = "wx.lib.agw.multidirdialog.DD_MULTIPLE|"
+					if (newDirButton):
+						agwStyle += "wx.lib.agw.multidirdialog.DD_NEW_DIR_BUTTON|"
+					if (fileMustExist):
+						agwStyle += "wx.lib.agw.multidirdialog.DD_DIR_MUST_EXIST|"
+
+					if (agwStyle != ""):
+						agwStyle = agwStyle[:-1]
+			else:
+				style = ""
+				##Make sure conflicting configurations are not given
+				if ((openFile or fileMustExist) and (saveFile or saveConfirmation)):
+					errorMessage = "Open config and save config cannot be added to the same file picker"
+					raise SyntaxError(errorMessage)
+
+				if (changeCurrentDirectory and ((openFile or fileMustExist or saveFile or saveConfirmation))):
+					errorMessage = "Open config and save config cannot be used in combination with a directory change"
+					raise SyntaxError(errorMessage)
+
+				##Determine which configurations to add
+				if (changeCurrentDirectory):
+					style += "wx.FD_CHANGE_DIR|"
+				if (fileMustExist):
+					style += "wx.FD_FILE_MUST_EXIST|"
+				if (openFile):
+					style += "wx.FD_OPEN|"
+				if (saveConfirmation):
+					style += "wx.FD_OVERWRITE_PROMPT|"
+				if (saveFile):
+					style += "wx.FD_SAVE|"
+				if (preview):
+					style += "wx.FD_PREVIEW|"
+				if (not single):
+					style += "wx.FD_MULTIPLE|"
+
+			if (style != ""):
+				style = style[:-1]
+			else:
+				if (directoryOnly):
+					style = "wx.DD_DEFAULT_STYLE"
+				else:
+					style = "wx.FD_DEFAULT_STYLE"
+
+			if (initialDir == None):
+				initialDir = ""
+
+			if (initialFile == None):
+				initialFile = ""
+
+			if (wildcard == None):
+				wildcard = ""
+
+			#Create the thing to put in the grid
+			if (directoryOnly):
+				if (single):
+					self.subType = "directory_single"
+					self.thing = wx.DirDialog(None, message = text, defaultPath = initialDir, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+				else:
+					self.subType = "directory"
+					self.thing = wx.lib.agw.multidirdialog.MultiDirDialog(None, message = text, title = title, defaultPath = initialDir, style = eval(style, {'__builtins__': None, "wx": wx}, {}), agwStyle  = eval(agwStyle, {'__builtins__': None, "wx": wx}, {}))
+			else:
+				if (single):
+					self.subType = "file_single"
+				else:
+					self.subType = "file"
+				self.thing = wx.FileDialog(None, message = text, defaultDir = initialDir, defaultFile = initialFile, wildcard = wildcard, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+
 		def build_color():
 			"""Builds a wx color dialog object."""
 			nonlocal self, argument_catalogue
@@ -15882,12 +16004,6 @@ class handle_Dialog(handle_Base):
 			build_color()
 		elif (self.type.lower() == "file"):
 			build_file()
-		elif (self.type.lower() == "directory"):
-			build_directory()
-		elif (self.type.lower() == "open"):
-			build_open()
-		elif (self.type.lower() == "save"):
-			build_save()
 		elif (self.type.lower() == "font"):
 			build_font()
 		elif (self.type.lower() == "image"):
@@ -15973,6 +16089,24 @@ class handle_Dialog(handle_Base):
 		elif (self.type.lower() == "busyinfo"):
 			self.thing = wx.BusyInfo(self.thing)
 
+		elif (self.type.lower() == "file"):
+			self.answer = self.thing.ShowModal()
+
+			if ((self.subType != None) and ("single" in self.subType.lower())):
+				self.data = self.thing.GetPath()
+			else:
+				self.data = self.thing.GetPaths()
+
+			self.thing.Destroy()
+			self.thing = None
+
+		elif (self.type.lower() == "color"):
+			self.answer = self.thing.ShowModal()
+			self.data = self.thing.GetColourData()
+
+			self.thing.Destroy()
+			self.thing = None
+
 		elif (self.type.lower() == "print"):
 			self.answer = self.thing.ShowModal()
 			self.dialogData = self.thing.GetPrintDialogData()
@@ -15982,13 +16116,6 @@ class handle_Dialog(handle_Base):
 
 		elif (self.type.lower() == "printpreview"):
 			pass
-
-		elif (self.type.lower() == "color"):
-			self.answer = self.thing.ShowModal()
-			self.data = self.thing.GetColourData()
-
-			self.thing.Destroy()
-			self.thing = None
 
 		else:
 			warnings.warn(f"Add {self.type} to show() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -16018,9 +16145,6 @@ class handle_Dialog(handle_Base):
 		elif (self.type.lower() == "inputbox"):
 			value = self.data
 
-		elif (self.type.lower() == "print"):
-			value = [self.data, self.dialogData, self.content]
-
 		elif (self.type.lower() == "custom"):
 			if (self.valueLabel == None):
 				if (self.valueLabel == None):
@@ -16033,12 +16157,18 @@ class handle_Dialog(handle_Base):
 
 			value = self.myFrame.getValue(self.valueLabel)
 
-		elif (self.type.lower() == "printPreview"):
-			value = self.content
+		elif (self.type.lower() == "file"):
+			value = self.data
 
 		elif (self.type.lower() == "color"):
 			color = self.data.GetColour().Get()
 			value = (color.Red(), color.Green(), color.Blue(), color.Alpha())
+
+		elif (self.type.lower() == "print"):
+			value = [self.data, self.dialogData, self.content]
+
+		elif (self.type.lower() == "printPreview"):
+			value = self.content
 
 		else:
 			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
