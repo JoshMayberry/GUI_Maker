@@ -4765,8 +4765,8 @@ class handle_Base(Utilities, CommonEventFunctions):
 			output += f"-- wxObject: {type(self.thing).__name__}\n"
 		if (hasattr(self, "myWindow") and (self.myWindow != None)):
 			output += f"-- Window id: {id(self.myWindow)}\n"
-		if (hasattr(self, "mySizer") and (self.mySizer != None)):
-			output += f"-- Sizer id: {id(self.mySizer)}\n"
+		if (hasattr(self, "parentSizer") and (self.parentSizer != None)):
+			output += f"-- Sizer id: {id(self.parentSizer)}\n"
 		if (self.nested):
 			output += "-- nested: True\n"
 		if ((self.unnamedList != None) and (len(self.unnamedList) != 0)):
@@ -4831,22 +4831,22 @@ class handle_Base(Utilities, CommonEventFunctions):
 
 		buildSelf, label, parent = self.getArguments(argument_catalogue, ["self", "label", "parent"])
 		
-		#Determine mySizer
-		if (hasattr(self, "mySizer") and (self.mySizer != None)):
-			warnings.warn(f"{self.__repr__()} already has the sizer {self.mySizer.__repr__()} as 'mySizer' in finalNest() for {buildSelf.__repr__()}\nOverwriting 'mySizer'", Warning, stacklevel = 2)
+		#Determine parentSizer
+		if (hasattr(self, "parentSizer") and (self.parentSizer != None)):
+			warnings.warn(f"{self.__repr__()} already has the sizer {self.parentSizer.__repr__()} as 'parentSizer' in finalNest() for {buildSelf.__repr__()}\nOverwriting 'parentSizer'", Warning, stacklevel = 2)
 		
 		#Store data
 		self.label = label
 
 		#Determine native sizer
 		if (isinstance(buildSelf, handle_Sizer)):
-			self.mySizer = buildSelf
+			self.parentSizer = buildSelf
 		elif (isinstance(buildSelf, (handle_Window, Controller, handle_MenuPopup))):
-			self.mySizer = None
+			self.parentSizer = None
 		elif (isinstance(buildSelf, handle_Menu) and (buildSelf.type.lower() != "toolbar")):
-			self.mySizer = None
+			self.parentSizer = None
 		else:
-			self.mySizer = buildSelf.mySizer
+			self.parentSizer = buildSelf.parentSizer
 		
 		#Determine native window
 		if (isinstance(buildSelf, handle_Window)):
@@ -4937,6 +4937,76 @@ class handle_Base(Utilities, CommonEventFunctions):
 		data["thing"] = type(self.thing).__name__
 
 		return data
+
+	def nest(self, handle = None, flex = 0, flags = "c1", selected = False):
+		"""Nests an object inside of self.
+
+		handle (handle) - What to place in this object
+
+		Example Input: nest(text)
+		"""
+
+		#Account for automatic text sizer nesting
+		if (isinstance(handle, handle_Sizer)):
+			if (isinstance(self, handle_Sizer)):
+				sizerType = self.type.lower()
+			else:
+				sizerType = handle.type.lower()
+
+			if (sizerType != "text"):
+				if (handle.text != None):
+					handle = handle.text
+
+		#Do not nest already nested objects
+		if (handle.nested):
+			errorMessage = "Cannot nest objects twice"
+			raise SyntaxError(errorMessage)
+
+		self.finalNest(handle)
+
+		if (isinstance(handle, handle_AuiManager)):
+			iuyudkj
+
+		#Perform Nesting
+		if (isinstance(self, handle_Sizer)):
+			flags, position, border = self.getItemMod(flags)
+
+			if (isinstance(handle, (handle_Widget_Base, handle_Sizer, handle_Splitter, handle_Notebook))):
+				self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
+			
+			elif (isinstance(handle, handle_NotebookPage)):
+				self.thing.Add(handle.mySizer.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
+			
+			elif (isinstance(handle, handle_Menu) and (handle.type.lower() == "toolbar")):
+				self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
+
+			else:
+				warnings.warn(f"Add {handle.__class__} as a handle for handle_Sizer to nest() in {self.__repr__()}", Warning, stacklevel = 2)
+				return
+		
+		elif (isinstance(self, handle_Panel)):
+			if (isinstance(handle, handle_Sizer)):
+				self.thing.SetSizer(handle.thing)
+
+			else:
+				warnings.warn(f"Add {handle.__class__} as a handle for handle_Panel to nest() in {self.__repr__()}", Warning, stacklevel = 2)
+				return
+		else:
+			warnings.warn(f"Add {self.__class__} as self to nest() in {self.__repr__()}", Warning, stacklevel = 2)
+			return
+
+		#Select if needed
+		if (selected):
+			handle.thing.SetDefault()
+
+		#Remember Values
+		if (isinstance(self, handle_Sizer) and (not isinstance(handle, handle_Sizer))):
+			for item in self.thing.GetChildren():
+				if (item.GetWindow() == handle.thing):
+					handle.mySizerItem = item
+					break
+			else:
+				warnings.warn(f"Could not find sizer item for {handle.__repr__()} in nest() for {self.__repr__()}", Warning, stacklevel = 2)
 
 class handle_Container_Base(handle_Base):
 	"""The base handler for all GUI handlers.
@@ -9004,16 +9074,6 @@ class handle_Menu(handle_Container_Base):
 			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self.postBuild(argument_catalogue)
-
-	def nest(self, handle, *args, **kwargs):
-		"""Nests wx controls in a toolbar."""
-
-		#Do not nest already nested objects
-		if (handle.nested):
-			errorMessage = "Cannot nest objects twice"
-			raise SyntaxError(errorMessage)
-
-		self.finalNest(handle)
 
 	#Getters
 	def getValue(self, event = None):
@@ -14508,7 +14568,7 @@ class handle_Sizer(handle_Container_Base):
 		#Account for nesting in a text sizer
 		if (sizerType != "text"):
 			if (text != None):
-				self.text = self.makeSizerText()
+				self.text = self.makeSizerText(text = text)
 				self.text.nest(self)
 
 	#Change Settings
@@ -14581,78 +14641,6 @@ class handle_Sizer(handle_Container_Base):
 		
 		for row in range(self.thing.GetRows()):
 			self.growFlexRow(row, proportion = proportion)
-	
-	#Etc
-	def nest(self, handle = None, flex = 0, flags = "c1", selected = False):
-		"""Nests an object inside of this Sizer.
-
-		handle (handle) - What to place in this object
-			- Widgets should be passed in as a dictionary
-
-		Example Input: nest(text)
-		"""
-
-		#Account for automatic text sizer nesting
-		if (isinstance(handle, handle_Sizer)):
-			if (isinstance(self, handle_Sizer)):
-				sizerType = self.type.lower()
-			else:
-				sizerType = handle.type.lower()
-
-			if (sizerType != "text"):
-				if (handle.text != None):
-					handle = handle.text
-
-		#Do not nest already nested objects
-		if (handle.nested):
-			errorMessage = "Cannot nest objects twice"
-			raise SyntaxError(errorMessage)
-
-		self.finalNest(handle)
-
-		#Configure Flags
-		flags, position, border = self.getItemMod(flags)
-
-		#Perform Nesting
-		if (isinstance(handle, handle_Widget_Base)):
-			#Nesting a widget
-			self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
-		
-		elif (isinstance(handle, handle_NotebookPage)):
-			self.thing.Add(handle.mySizer.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
-		
-		elif (isinstance(handle, handle_Sizer)):
-			self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
-		
-		elif (isinstance(handle, handle_Splitter)):
-			self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
-
-		elif (isinstance(handle, handle_Notebook)):
-			self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
-
-		elif (isinstance(handle, handle_Menu) and (handle.type.lower() == "toolbar")):
-			self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
-
-		elif (isinstance(handle, handle_AuiManager)):
-			# self.thing.Add(handle.mySizer.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
-			pass
-
-		else:
-			warnings.warn(f"Add {handle.__class__} to nest() for {self.__repr__()}", Warning, stacklevel = 2)
-			return
-
-		#Select if needed
-		if (selected):
-			handle.thing.SetDefault()
-
-		#Remember Values
-		if (isinstance(self, handle_Sizer) and (not isinstance(handle, handle_Sizer))):
-			for item in self.thing.GetChildren():
-				if (item.GetWindow() == handle.thing):
-					handle.mySizerItem = item
-					break
-			else:
-				warnings.warn(f"Could not find sizer item for {handle.__repr__()} in nest() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def addFinalFunction(self, *args, **kwargs):
 		"""Overload for addFinalFunction in handle_Window()."""
@@ -16469,9 +16457,9 @@ class handle_Window(handle_Container_Base):
 			self.finalNest(self.mainSizer)
 
 			if (panel):
-				self.mainPanel.thing.SetSizerAndFit(self.mainSizer.thing)
+				self.mainPanel.thing.SetSizer(self.mainSizer.thing)
 			else:
-				self.thing.SetSizerAndFit(self.mainSizer.thing)
+				self.thing.SetSizer(self.mainSizer.thing)
 
 		def build_dialog():
 			"""Builds a wx dialog object."""
@@ -16557,9 +16545,9 @@ class handle_Window(handle_Container_Base):
 						buttonSizer.addButton("Cancel", myId = wx.ID_CANCEL)
 
 				if (panel):
-					self.mainPanel.thing.SetSizerAndFit(rootSizer.thing)
+					self.mainPanel.thing.SetSizer(rootSizer.thing)
 				else:
-					self.thing.SetSizerAndFit(rootSizer.thing)
+					self.thing.SetSizer(rootSizer.thing)
 
 		def build_preview():
 			"""Builds a wx preview frame object."""
@@ -16825,6 +16813,8 @@ class handle_Window(handle_Container_Base):
 		Example Input: setAutoWindowSize(False)
 		"""
 
+		jkhkkj
+
 		#Determine best size
 		size = self.thing.GetBestSize()
 
@@ -16877,6 +16867,7 @@ class handle_Window(handle_Container_Base):
 			self.runMyFunction(self.preShowFunction, self.preShowFunctionArgs, self.preShowFunctionKwargs)
 
 		self.thing.Show()
+		# self.updateWindow()
 
 		if (asDialog):
 			self.controller.windowDisabler = [self.thing, wx.WindowDisabler(self.thing)]
@@ -17033,7 +17024,7 @@ class handle_Window(handle_Container_Base):
 		warnings.warn(f"{self.__repr__()} has no sizer '{sizerLabel}'", Warning, stacklevel = 2)
 		return
 
-	def addSizerBox(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
+	def addSizerBox(self, *args, flex = 1, flags = "c1", selected = False, **kwargs):
 		"""Creates a box sizer.
 
 		Example Input: addSizerBox()
@@ -17047,7 +17038,7 @@ class handle_Window(handle_Container_Base):
 
 		return handle
 
-	def addSizerText(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
+	def addSizerText(self, *args, flex = 1, flags = "c1", selected = False, **kwargs):
 		"""Creates a static box sizer.
 		This is a sizer surrounded by a box with a title, much like a wxRadioBox.
 
@@ -17062,7 +17053,7 @@ class handle_Window(handle_Container_Base):
 
 		return handle
 
-	def addSizerGrid(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
+	def addSizerGrid(self, *args, flex = 1, flags = "c1", selected = False, **kwargs):
 		"""Creates a grid sizer to the specified size.
 
 		Example Input: addSizerGrid()
@@ -17076,7 +17067,7 @@ class handle_Window(handle_Container_Base):
 
 		return handle
 
-	def addSizerGridFlex(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
+	def addSizerGridFlex(self, *args, flex = 1, flags = "c1", selected = False, **kwargs):
 		"""Creates a flex grid sizer.
 
 		Example Input: addSizerGridFlex()
@@ -17090,7 +17081,7 @@ class handle_Window(handle_Container_Base):
 
 		return handle
 
-	def addSizerGridBag(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
+	def addSizerGridBag(self, *args, flex = 1, flags = "c1", selected = False, **kwargs):
 		"""Creates a bag grid sizer.
 
 		Example Input: addSizerGridBag()
@@ -17104,7 +17095,7 @@ class handle_Window(handle_Container_Base):
 
 		return handle
 
-	def addSizerWrap(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
+	def addSizerWrap(self, *args, flex = 1, flags = "c1", selected = False, **kwargs):
 		"""Creates a wrap sizer.
 		The widgets will arrange themselves into rows and columns on their own, starting in the top-left corner.
 
@@ -17423,11 +17414,23 @@ class handle_Window(handle_Container_Base):
 		Example Input: updateWindow(autoSize = False)
 		"""
 
+		def invalidateNested(itemList):
+			"""Invalidates the 'best size' calculation for everything nested."""
+
+			# for item in catalogue.values():
+			for item in itemList:
+				if (hasattr(item.thing, "InvalidateBestSize")):
+					item.thing.InvalidateBestSize()
+				invalidateNested(item[:])
 
 		catalogue = self.getAddressValue(self.nestingAddress + [id(self)])
 
 		#Skip empty windows
 		if (len(catalogue) > 1):
+			if (autoSize == None):
+				autoSize = self.autoSize
+
+			#Refresh the window
 			if (self.mainPanel != None):
 				self.mainPanel.thing.Refresh()
 				self.mainPanel.thing.Update()
@@ -17435,41 +17438,17 @@ class handle_Window(handle_Container_Base):
 			self.thing.Refresh()
 			self.thing.Update()
 
-		# 	#Refresh the window
-		# 	if (autoSize == None):
-		# 		autoSize = self.autoSize
+			#Auto-size the window
+			if (autoSize):
+				# invalidateNested(self[:])
 
-		# 	sizer = self.mainSizer
-		# 	if (sizer == None):
-		# 		#Empty Window
-		# 		return
+				if (self.mainPanel != None):
+					# invalidateNested(self.mainPanel[:])
+					self.mainPanel.thing.InvalidateBestSize()
+					self.mainPanel.thing.SetSize(self.mainPanel.thing.GetBestSize())
 
-		# 	if (self.mainPanel != None):
-		# 		if (autoSize):
-		# 			self.mainPanel.thing.SetSizerAndFit(sizer.thing)
-		# 		else:
-		# 			self.mainPanel.thing.SetSizer(sizer.thing)
-
-		# 	else:
-		# 		if (autoSize):
-		# 			self.thing.SetSizerAndFit(sizer.thing)
-		# 		else:
-		# 			self.thing.SetSizer(sizer.thing)
-
-		# 	#Auto-size the window
-		# 	if (autoSize):
-		# 		##Toggle the window size before setting to best size
-		# 		bestSize = self.thing.GetBestSize()
-		# 		modifiedSize = (bestSize[0] + 1, bestSize[1] + 1)
-		# 		self.thing.SetSize(modifiedSize)
-		# 		self.thing.SetSize(bestSize)
-
-		# 	else:
-		# 		#Fix Panel Patch
-		# 		currentSize = self.thing.GetSize()
-		# 		modifiedSize = (currentSize[0] + 1, currentSize[1] + 1)
-		# 		self.thing.SetSize(modifiedSize)
-		# 		self.thing.SetSize(currentSize)
+				self.thing.InvalidateBestSize()
+				self.thing.SetSize(self.thing.GetBestSize())
 
 	def setRefresh(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Sets the functions to call for refresh()."""
@@ -18283,39 +18262,6 @@ class handle_Panel(handle_Container_Base):
 
 		self.betterBind(wx.EVT_LEFT_DOWN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
-	#Etc
-	def nest(self, handle = None):
-		"""Nests an object inside of this Panel.
-
-		handle (handle) - What to place in this object
-			- Widgets should be passed in as a dictionary
-
-		Example Input: nest(text)
-		"""
-
-		#Do not nest already nested objects
-		if (isinstance(handle, dict)):
-			if ("nested" in handle):
-				nested = handle["nested"]
-			else:
-				nested = False
-		else:
-			nested = handle.nested
-
-		if (nested):
-			errorMessage = "Cannot nest objects twice"
-			raise SyntaxError(errorMessage)
-
-		#Perform Nesting
-		if (isinstance(handle, handle_Sizer)):
-			self.thing.SetSizer(handle.thing)
-
-		else:
-			warnings.warn(f"Add {handle.__class__} to nest() for {self.__repr__()}", Warning, stacklevel = 2)
-			return
-
-		self.finalNest(handle)
-
 class handle_Splitter(handle_Container_Base):
 	"""A handle for working with a wxSplitter."""
 
@@ -18671,11 +18617,6 @@ class handle_AuiManager(handle_Container_Base):
 		self.finalNest(handle)
 
 		return handle
-
-	def nest(self, handle, *args, **kwargs):
-		print(f"nesting {type(handle)} in {self.__repr__()}")
-
-		self.finalNest(handle)
 
 	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the object is activated."""
@@ -22564,14 +22505,14 @@ class User_Utilities():
 			data = [getattr(item, variable) for item in self if (item not in exclude)]
 
 			if ((order != None) and (isinstance(order, bool)) and order):
-				if (sortNone == None):
-					data = sorted(data, key = lambda item: (item is not None if reverse else item is None, item), reverse = reverse)
-				else:
-					data = sorted(data, key = lambda item: (item is None if reverse else item is not None, item), reverse = reverse)
+				data = sorted(filter(lambda item: True if (sortNone != None) else (item != None), data), 
+					key = lambda item: (((item is None)     if (reverse) else (item is not None)) if (sortNone) else
+										((item is not None) if (reverse) else (item is None)), item), 
+					reverse = reverse)
 
 		return data
 
-	def getOrder(self, variable, includeMissing = True, reverse = False, exclude = []):
+	def getOrder(self, variable, includeMissing = True, exclude = [], sortNone = False, reverse = False):
 		"""Returns a list of children in order according to the variable given.
 		Special thanks to Andrew Dalke for how to sort objects by attributes on https://wiki.python.org/moin/HowTo/Sorting#Key_Functions
 
@@ -22584,8 +22525,11 @@ class User_Utilities():
 		if (not isinstance(exclude, (list, tuple, range))):
 			exclude = [exclude]
 
-		handleList = sorted([item for item in self if (hasattr(item, variable) and (item not in exclude))], key = lambda item: getattr(item, variable), reverse = reverse)
-
+		handleList = sorted(filter(lambda item: hasattr(item, variable) and (item not in exclude) and ((sortNone != None) or (getattr(item, variable) != None)), self), 
+			key = lambda item: (((getattr(item, variable) is None)     if (reverse) else (getattr(item, variable) is not None)) if (sortNone) else
+								((getattr(item, variable) is not None) if (reverse) else (getattr(item, variable) is None)), getattr(item, variable)), 
+			reverse = reverse)
+		
 		if (includeMissing):
 			handleList.extend([item for item in self if (not hasattr(item, variable) and (item not in exclude))])
 

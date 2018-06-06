@@ -14,7 +14,7 @@ def buildWindow():
 
 	#Initialize Frame
 	with gui.addWindow(label = 0, title = "Controlled Layout") as myFrame:
-		myFrame.setMinimumFrameSize((250, 200))
+		# myFrame.setMinimumFrameSize((250, 200))
 
 		#Add Content
 		with myFrame.addSizerGridFlex(rows = 2, columns = 1) as mySizer:
