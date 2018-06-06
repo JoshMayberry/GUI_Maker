@@ -14571,6 +14571,11 @@ class handle_Sizer(handle_Container_Base):
 				self.text = self.makeSizerText(text = text)
 				self.text.nest(self)
 
+		#Set sizer hints to main window
+		minSize = self.myWindow.thing.GetMinSize() #Preserve minimum size bounds
+		self.thing.SetSizeHints(self.myWindow.thing)
+		self.myWindow.thing.SetMinSize(minSize)
+
 	#Change Settings
 	def growFlexColumn(self, column, proportion = 0):
 		"""Allows the column to grow as much as it can.
@@ -15772,7 +15777,8 @@ class handle_Dialog(handle_Base):
 					if (isinstance(default, (list, tuple, range))):
 						if (len(default) == 0):
 							default = 0
-						default = default[0]
+						else:
+							default = default[0]
 					self.thing.SetSelection(default)
 				else:
 					self.thing.SetSelections(default)
@@ -17419,6 +17425,12 @@ class handle_Window(handle_Container_Base):
 
 			# for item in catalogue.values():
 			for item in itemList:
+				if (isinstance(item, handle_NotebookPage)):
+					invalidateNested([item.mySizer, item.myPanel])
+					continue
+				elif (item.thing == None):
+					khikukuhk
+
 				if (hasattr(item.thing, "InvalidateBestSize")):
 					item.thing.InvalidateBestSize()
 				invalidateNested(item[:])
