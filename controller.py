@@ -17210,23 +17210,112 @@ class handle_Window(handle_Container_Base):
 		return handle
 
 	#Status Bars
+	def checkStatusBar(self):
+		"""Returns the state of the status bar.
+		True: The status bar is not currently on a timer
+		False: The status bar is currently on a timer
+		None: There is not a status bar
+
+		Example Input: checkStatusBar()
+		"""
+
+		if (self.statusBar == None):
+			return
+		if (self.statusTextTimer["listening"] > 0):
+			return True
+		return False
+
 	def addStatusBar(self):
-		"""Adds a status bar to the bottom of the window."""
+		"""Adds a status bar to the bottom of the window.
+		If one already exists, adds another field to it.
 
-		self.statusBar = self.thing.CreateStatusBar()
-		self.setStatusTextDefault()
+		See: https://www.blog.pythonlibrary.org/2017/06/06/wxpython-working-with-status-bars/
+		See: https://stackoverflow.com/questions/48215956/change-default-field-in-a-multi-field-statusbar-in-wxpython-to-display-menuitem
+		See: https://wxpython.org/Phoenix/docs/html/wx.StatusBar.html
+		
+		Example Input: addStatusBar()
+		"""
 
-	def setStatusText(self, message = None, autoAdd = False):
+		if (self.statusBar == None):
+			if (self.type.lower() == "dialog"):
+				if (self.mainPanel != None):
+					self.statusBar = wx.StatusBar(self.mainPanel.thing)
+					rootSizer = self.mainPanel.thing.GetSizer()
+				else:
+					self.statusBar = wx.StatusBar(self.thing)
+					rootSizer = self.thing.GetSizer()
+
+				self.statusBar.SetFieldsCount(1)
+				rootSizer.Add(self.statusBar, 0, wx.ALIGN_CENTER|wx.ALL|wx.EXPAND, 0)
+			else:
+				self.statusBar = self.thing.CreateStatusBar()
+			self.setStatusTextDefault()
+		else:
+			current = self.statusBar.GetFieldsCount()
+			self.statusBar.SetFieldsCount(current + 1)
+
+	def removeStatusBar(self):
+		"""Removes a status bar if there is more than one.
+
+		Example Input: removeStatusBar()
+		"""
+
+		if (self.statusBar == None):
+			warnings.warn(f"There is no status bar for {self.__repr__()}", Warning, stacklevel = 2)
+			return
+
+		current = self.statusBar.GetFieldsCount()
+		if (current == 1):
+			warnings.warn(f"There must be at least one status bar after creation for {self.__repr__()}", Warning, stacklevel = 2)
+			return
+
+		self.statusBar.SetFieldsCount(current - 1)
+
+	def setStatusWidth(self, width = None):
+		"""Changes the width of the status bar to match what was given.
+
+		width (int) - How wide the satus bar is in pixels
+			- If Negative: How wide the satus bar is relative to other negative widths
+			- If None: All ststus fields will expand evenly across the window
+			- If list: [width for field 0, width for field 1, etc.]
+
+		Example Input: setStatusWidth()
+		Example Input: setStatusWidth(100)
+		Example Input: setStatusWidth([100, -1])
+		Example Input: setStatusWidth([-2, -1])
+		Example Input: setStatusWidth([-2, 100, -1])
+		"""
+
+		if (self.statusBar == None):
+			warnings.warn(f"There is no status bar in setStatusWidth() for {self.__repr__()}", Warning, stacklevel = 2)
+			return
+
+		if (width != None):
+			if (not isinstance(width, (list, tuple, range))):
+				width = [width] * self.statusBar.GetFieldsCount()
+			elif (len(width) != self.statusBar.GetFieldsCount()):
+				warnings.warn(f"There are {self.statusBar.GetFieldsCount()} fields in the status bar, but 'width' had {len(width)} elements in setStatusWidth() for {self.__repr__()}", Warning, stacklevel = 2)
+				return
+			elif (not isinstance(width, list)):
+				width = list(width) #tuple and range
+
+		self.statusBar.SetStatusWidths(width)
+
+
+	def setStatusText(self, message = None, number = 0, autoAdd = False):
 		"""Sets the text shown in the status bar.
 		If a message is on a timer and a new message gets sent, the timer message will stop and not overwrite the new message.
+		In a multi-field status bar, the fields are numbered starting with 0.
 
 		message (str)  - What the status bar will say
 			- If dict: {What to say (str): How long to wait in ms before moving on to the next message (int). Use None for ending}
 			- If None: Will use the defaultr status message
+		number (int)   - Which field to place this status in on the status bar
 		autoAdd (bool) - If there is no status bar, add one
 
 		Example Input: setStatusText()
 		Example Input: setStatusText("Ready")
+		Example Input: setStatusText("Saving", number = 1)
 		Example Input: setStatusText({"Ready": 1000, "Set": 1000, "Go!": None, "This will not appear": 1000)
 		Example Input: setStatusText({"Changes Saved": 3000, None: None)
 		"""
@@ -17249,7 +17338,7 @@ class handle_Window(handle_Container_Base):
 
 				if (text == None):
 					text = self.statusTextDefault
-				self.statusBar.SetStatusText(text)
+				self.statusBar.SetStatusText(text, number)
 
 				if (delay == None):
 					break
@@ -17262,15 +17351,19 @@ class handle_Window(handle_Container_Base):
 			if (autoAdd):
 				self.addStatusBar()
 			else:
-				warnings.warn(f"There is no status bar for {self.__repr__()}", Warning, stacklevel = 2)
+				warnings.warn(f"There is no status bar in setStatusText() for {self.__repr__()}", Warning, stacklevel = 2)
 				return
+
+		if (self.statusBar.GetFieldsCount() <= number):
+			warnings.warn(f"There are only {self.statusBar.GetFieldsCount()} fields in the status bar, so it cannot set the text for field {number} in setStatusText() for {self.__repr__()}", Warning, stacklevel = 2)
+			return
 
 		if (isinstance(message, dict)):
 			self.backgroundRun(timerMessage)
 		else:
 			if (message == None):
 				message = self.statusTextDefault
-			self.statusBar.SetStatusText(message)
+			self.statusBar.SetStatusText(message, number)
 
 	def setStatusTextDefault(self, message = " "):
 		"""Sets the default status message for the status bar.
@@ -17284,6 +17377,23 @@ class handle_Window(handle_Container_Base):
 			message = " "
 		self.statusTextDefault = message
 
+	def getStatusText(self, number = 0):
+		"""Returns the status message that is currently displaying.
+
+		Example Input: getStatusText()
+		"""
+
+		if (self.statusBar == None):
+			warnings.warn(f"There is no status bar in getStatusText() for {self.__repr__()}", Warning, stacklevel = 2)
+			return
+		if (self.statusBar.GetFieldsCount() <= number):
+			warnings.warn(f"There are only {self.statusBar.GetFieldsCount()} fields in the status bar, so it cannot set the text for field {number} in getStatusText() for {self.__repr__()}", Warning, stacklevel = 2)
+			return
+
+		message = self.statusBar.GetStatusText(number)
+		return message
+
+	#Etc
 	def addAui(self, label = None, flags = None, flex = 0, 
 
 		reduceFlicker = True, 
@@ -17330,7 +17440,6 @@ class handle_Window(handle_Container_Base):
 
 		return handle
 
-	#Etc
 	def setIcon(self, icon, internal = False):
 		"""Sets the icon for the .exe file.
 
@@ -22418,7 +22527,7 @@ class User_Utilities():
 					dataCatalogue = getattr(self, self._catalogue_variable)
 			else:
 				if (isinstance(self._catalogue_variable, Controller)):
-					dataCatalogue = self._catalogue_variable.labelCatalogue
+					dataCatalogue = self._catalogue_variable.labelCatalogue #This might be causing some bugs with slices ex: self[:]
 				else:
 					dataCatalogue = self._catalogue_variable
 		else:
@@ -22547,24 +22656,30 @@ class User_Utilities():
 
 		return handleList
 
-	def getHandle(self, where, exclude = []):
+	def getHandle(self, where = None, exclude = []):
 		"""Returns a list of children whose variables are equal to what is given.
 
 		where (dict) - {variable (str): value (any)}
+			- If None, will not check the values given
 
+		Example Input: getHandle()
 		Example Input: getHandle({"order": 4})
+		Example Input: getHandle(exclude = ["main"])
 		"""
 
 		if (not isinstance(exclude, (list, tuple, range))):
 			exclude = [exclude]
 
 		handleList = []
-		for handle in self[:]:
+		for handle in self:
 			if (handle not in exclude):
-				for variable, value in where.items():
-					if (hasattr(handle, variable) and (getattr(handle, variable) == value)):
-						continue
-					break
+				if ((where != None) and (len(where) != 0)):
+					for variable, value in where.items():
+						if (hasattr(handle, variable) and (getattr(handle, variable) == value)):
+							continue
+						break
+					else:
+						handleList.append(handle)
 				else:
 					handleList.append(handle)
 		return handleList
