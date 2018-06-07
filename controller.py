@@ -15779,8 +15779,28 @@ class handle_Dialog(handle_Base):
 							default = 0
 						else:
 							default = default[0]
+
+					if (isinstance(default, str)):
+						if (default not in choices):
+							warnings.warn(f"{self.default} not in 'choices' {choices} for {self.__repr__()}", Warning, stacklevel = 2)
+							default = 0
+						else:
+							default = choices.index(default)
+
 					self.thing.SetSelection(default)
 				else:
+					if (not isinstance(default, (list, tuple, range))):
+						default = [default]
+
+					defaultList = []
+					for i in range(default):
+						if (isinstance(default[i], str)):
+							if (default[i] not in choices):
+								warnings.warn(f"{self.default[i]} not in 'choices' {choices} for {self.__repr__()}", Warning, stacklevel = 2)
+								default[i] = 0
+							else:
+								default[i] = choices.index(default[i])
+
 					self.thing.SetSelections(default)
 
 		def build_file():
@@ -18726,9 +18746,7 @@ class handle_AuiManager(handle_Container_Base):
 			kwargs["parent"] = self.myWindow
 			kwargs["myManager"] = self
 
-			handle.preBuild(kwargs)
 			handle.build(kwargs)
-			handle.postBuild(kwargs)
 
 		#Add Pane
 		self.thing.AddPane(handle.myPanel.thing, paneInfo) 
@@ -19177,12 +19195,10 @@ class handle_Notebook(handle_Container_Base):
 			#Get the object
 			handle = handle_NotebookPage()
 			handle.type = "notebookPage"
-			handleList.append(handle)
 			kwargs = locals()
 			kwargs["parent"] = self
-			handle.preBuild(kwargs)
 			handle.build(kwargs)
-			handle.postBuild(kwargs)
+			handleList.append(handle)
 
 			#Determine if there is an icon on the tab
 			if (handle.icon != None):
@@ -19492,6 +19508,8 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		Example Input: build(0, "Lorem", select = True)
 		"""
 
+		self.preBuild(argument_catalogue)
+
 		text, panel, sizer = self.getArguments(argument_catalogue, ["text", "panel", "sizer"])
 
 		if (isinstance(self.parent, handle_Window)):
@@ -19529,6 +19547,8 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 			else:
 				self.icon = None
 				self.iconIndex = None
+
+		self.postBuild(argument_catalogue)
 
 	def getSizer(self):
 		return self.mySizer
@@ -22596,7 +22616,7 @@ class User_Utilities():
 		errorMessage = f"There is no item labled {itemLabel} in the data catalogue for {self.__repr__()}"
 		raise KeyError(errorMessage)
 
-	def getValue(self, variable, order = True, exclude = [], sortNone = False, reverse = False):
+	def getValue(self, variable, order = True, includeMissing = True, exclude = [], sortNone = False, reverse = False, getFunction = None):
 		"""Returns a list of all values for the requested variable.
 		Special thanks to Andrew Clark for how to sort None on https://stackoverflow.com/questions/18411560/python-sort-list-with-none-at-the-end
 
@@ -22619,11 +22639,14 @@ class User_Utilities():
 
 		if (not isinstance(exclude, (list, tuple, range))):
 			exclude = [exclude]
+		if (getFunction == None):
+			getFunction = getattr
 
 		if ((order != None) and (not isinstance(order, bool))):
-			data = [getattr(item, variable) for item in self.getOrder(order) if (item not in exclude)]
+			data = [getFunction(item, variable) for item in self.getOrder(order, includeMissing = includeMissing, 
+				getFunction = getFunction, sortNone = sortNone, exclude = exclude) if (item not in exclude)]
 		else:
-			data = [getattr(item, variable) for item in self if (item not in exclude)]
+			data = [getFunction(item, variable) for item in self if (item not in exclude)]
 
 			if ((order != None) and (isinstance(order, bool)) and order):
 				data = sorted(filter(lambda item: True if (sortNone != None) else (item != None), data), 
