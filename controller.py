@@ -4442,13 +4442,13 @@ class Utilities():
 		_________________________________________________________________________
 
 		Example Use:
-			with myFrame.makeDialogChoice(["Lorem", "Ipsum"]) as myDialog:
-				choices = myDialog.getValue()
+			with myFrame.makeDialogInput("Lorem Ipsum") as myDialog:
+				value = myDialog.getValue()
 		_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 		Example Use:
-			myDialog = myFrame.makeDialogChoice(["Lorem", "Ipsum"])
-			choices = myDialog.getValue()
+			myDialog = myFrame.makeDialogInput("Lorem Ipsum")
+			value = myDialog.getValue()
 		_________________________________________________________________________
 
 		Example Input: makeDialogInput()
@@ -12519,8 +12519,8 @@ class handle_WidgetTable(handle_Widget_Base):
 			- If None: will apply the default cell type
 			- Possible Inputs: 
 				~ "inputBox"
-				~ "dropList", {"choices": list contents (list)}
-					~ Defaults: {"choices": []}
+				~ "dropList", {"choices": list contents (list), "endOnSelect": if focus should be lost after a selection is made (bool)}
+					~ Defaults: {"choices": [], "endOnSelect": True}
 
 				~ "dialog", {"myFrame": dialog window name (str) or dialog window handle (handle_Window)}
 					~ Must supply valid "myFrame"
@@ -12581,6 +12581,7 @@ class handle_WidgetTable(handle_Widget_Base):
 			if (isinstance(cellType[None], str)):
 				if (cellType[None].lower() == "droplist"):
 					cellType.setdefault("choices", [])
+					cellType.setdefault("endOnSelect", True)
 				
 				elif (cellType[None].lower() == "button"):
 					cellType.setdefault("text", None)
@@ -13885,6 +13886,9 @@ class handle_WidgetTable(handle_Widget_Base):
 				#Ensure that the choices are all strings
 				self.cellType["choices"] = [str(item) for item in self.cellType["choices"]]
 				self.myCellControl = wx.Choice(parent, myId, (100, 50), choices = self.cellType["choices"])
+				
+				if (self.cellType["endOnSelect"]):
+					self.myCellControl.Bind(wx.EVT_CHOICE, self.onSelectionMade)
 
 				#Check readOnly
 				if (self.parent.getTableCurrentCellReadOnly(event = event)):
@@ -13954,6 +13958,13 @@ class handle_WidgetTable(handle_Widget_Base):
 			#Write debug information
 			if (self.debugging):
 				print(f"TableCellEditor.PaintBackground(rect = {rect}, attr = {attr})")
+
+		def onSelectionMade(self, event):
+			"""Modifies the droplist behavior to EndEdit on selection, not unfocus."""
+
+			self.parent.myWindow.thing.SetFocus()
+			self.parent.thing.SetFocus()
+			event.Skip()
 
 		def BeginEdit(self, row, column, grid):
 			"""Fetch the value from the table and prepare the edit control
