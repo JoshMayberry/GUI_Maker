@@ -22633,22 +22633,28 @@ class User_Utilities():
 
 		return data
 
-	def getOrder(self, variable, includeMissing = True, exclude = [], sortNone = False, reverse = False):
+	def getOrder(self, variable, includeMissing = True, exclude = [], sortNone = False, reverse = False, getFunction = None):
 		"""Returns a list of children in order according to the variable given.
 		Special thanks to Andrew Dalke for how to sort objects by attributes on https://wiki.python.org/moin/HowTo/Sorting#Key_Functions
 
 		variable (str) - what variable to use for sorting
 		includeMissing (bool) - Determiens what to do with children who do not have the requested variable
+		getFunction (function) - What function to run to get the value of this variable where the args are [handle, variable]
+			- If None: will use getattr
 
 		Example Input: getOrder("order")
+		Example Input: getOrder("order", includeMissing = False, sortNone = None)
+		Example Input: getOrder("order", getFunction = lambda item, variable: getattr(item, variable.name))
 		"""
 
 		if (not isinstance(exclude, (list, tuple, range))):
 			exclude = [exclude]
+		if (getFunction == None):
+			getFunction = getattr
 
-		handleList = sorted(filter(lambda item: hasattr(item, variable) and (item not in exclude) and ((sortNone != None) or (getattr(item, variable) != None)), self), 
-			key = lambda item: (((getattr(item, variable) is None)     if (reverse) else (getattr(item, variable) is not None)) if (sortNone) else
-								((getattr(item, variable) is not None) if (reverse) else (getattr(item, variable) is None)), getattr(item, variable)), 
+		handleList = sorted(filter(lambda item: hasattr(item, variable) and (item not in exclude) and ((sortNone != None) or (getFunction(item, variable) != None)), self), 
+			key = lambda item: (((getFunction(item, variable) is None)     if (reverse) else (getFunction(item, variable) is not None)) if (sortNone) else
+								((getFunction(item, variable) is not None) if (reverse) else (getFunction(item, variable) is None)), getFunction(item, variable)), 
 			reverse = reverse)
 		
 		if (includeMissing):
