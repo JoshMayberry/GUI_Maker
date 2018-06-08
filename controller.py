@@ -44,6 +44,7 @@ import wx.lib.agw.aui
 # import wx.lib.newevent
 import wx.lib.splitter
 import wx.lib.agw.floatspin
+import wx.lib.scrolledpanel
 import wx.lib.mixins.listctrl
 import wx.lib.agw.fourwaysplitter
 import wx.lib.agw.multidirdialog
@@ -2824,6 +2825,16 @@ class Utilities():
 		return popupMenu
 
 	#Make Functions
+	def makeDummy(self):
+		"""Returns an object that will accept all functions but won't do anything.
+		Meant to be used to prevent crashes, such as entering a frame that is not made yet.
+
+		Example Input: makeDummy()
+		"""
+
+		handle = handle_Dummy()
+		return handle
+
 	def makeText(self, text = "", wrap = None, ellipsize = False, alignment = None,
 		size = None, bold = False, italic = False, color = None, family = None, 
 
@@ -3228,13 +3239,10 @@ class Utilities():
 		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Adds an input box to the next cell on the grid.
 
-		myFunction (str)       - The function that is ran when the user enters text
-		flags (list)           - A list of strings for which flag to add to the sizer
-		label (any)          - What this is catalogued as
-		myFunctionArgs (any)   - The arguments for 'myFunction'
-		myFunctionKwargs (any) - The keyword arguments for 'myFunction'
-		text (str)             - What is initially in the box
-		maxLength (int)        - If not None: The maximum length of text that can be added
+		flags (list)    - A list of strings for which flag to add to the sizer
+		label (any)     - What this is catalogued as
+		text (str)      - What is initially in the box
+		maxLength (int) - If not None: The maximum length of text that can be added
 		
 		selected (bool)  - If True: This is the default thing selected
 		enabled (bool)   - If True: The user can interact with this
@@ -3247,6 +3255,10 @@ class Utilities():
 		  If positive: Will not break words
 		  If negative: Will break words
 		ipAddress (bool) - If True: The input will accept and understand the semantics of an ip address
+
+		myFunction (str)       - The function that is ran when the user enters text
+		myFunctionArgs (any)   - The arguments for 'myFunction'
+		myFunctionKwargs (any) - The keyword arguments for 'myFunction'
 
 		enterFunction (str)       - The function that is ran when the user presses enter while in the input box
 		enterFunctionArgs (any)   - The arguments for 'enterFunction'
@@ -3272,9 +3284,10 @@ class Utilities():
 		return handle
 	
 	def makeInputSearch(self, text = None, menuLabel = None, searchButton = True, cancelButton = True,
-		hideSelection = True, tab = False, alignment = 0,
+		hideSelection = True, tab = False, alignment = 0, menuReplaceText = False,
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
+		enterFunction = None, enterFunctionArgs = None, enterFunctionKwargs = None, 
 		searchFunction = None, searchFunctionArgs = None, searchFunctionKwargs = None, 
 		cancelFunction = None, cancelFunctionArgs = None, cancelFunctionKwargs = None, 
 		menuFunction = None, menuFunctionArgs = None, menuFunctionKwargs = None, 
@@ -3288,6 +3301,7 @@ class Utilities():
 			- If None: Will not show the menu
 		searchButton (any) - If the search button should be shown
 		cancelButton (any) - If the cancel button should be shown
+		menuReplaceText(bool) - If the selection from the menu should replace the text in the input box
 
 		alignment (int) - Determines how the text is aligned in its alloted space
 			- If True: Will align text to the left
@@ -3297,9 +3311,13 @@ class Utilities():
 			- If 1: Will align text to the right
 			- If 2: Will align text to the center
 
-		myFunction (str)       - The function that is ran when the user enters text and presses enter
+		myFunction (str)       - The function that is ran when the user enters text
 		myFunctionArgs (any)   - The arguments for 'myFunction'
 		myFunctionKwargs (any) - The keyword arguments for 'myFunction'function
+
+		enterFunction (str)       - The function that is ran when the user presses enter while in the input box
+		enterFunctionArgs (any)   - The arguments for 'enterFunction'
+		enterFunctionKwargs (any) - the keyword arguments for 'enterFunction'
 		
 		searchFunction (str)       - If provided, this is what will be ran when the search button to the left is pressed
 		searchFunctionArgs (any)   - The arguments for 'searchFunction'
@@ -3311,7 +3329,6 @@ class Utilities():
 		cancelFunctionKwargs (any) - The keyword arguments for 'cancelFunction'function
 		
 		menuFunction (str)       - If provided, this is what will be ran when the user selects an item from the menu
-			- If None: The selection will replace the text in the input box
 		menuFunctionArgs (any)   - The arguments for 'menuFunction'
 		menuFunctionKwargs (any) - The keyword arguments for 'menuFunction'function
 		
@@ -4096,12 +4113,45 @@ class Utilities():
 		label (str)     - What this is called in the idCatalogue
 		detachable (bool) - If True: The menu can be undocked
 
-		Example Input: addMenu(0, "&File")
-		Example Input: addMenu("first", "&File")
+		Example Input: makeMenu("&File")
 		"""
 
 		handle = handle_Menu()
 		handle.type = "Menu"
+		handle.build(locals())
+
+		return handle
+
+	#Panels
+	def makePanel(self, size = wx.DefaultSize, border = wx.NO_BORDER, position = wx.DefaultPosition, 
+		tabTraversal = True, useDefaultSize = False, autoSize = True, flags = "c1", 
+
+		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
+
+		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		"""Creates a blank panel window.
+
+		label (any)     - What this is catalogued as
+		size (int tuple)  - The size of the panel. (length, width)
+		border (str)      - What style the border has. "simple", "raised", "sunken" or "none". Only the first two letters are necissary
+		parent (wxObject) - If None: The parent will be 'self'.
+		
+		tabTraversal (bool)   - If True: Pressing [tab] will move the cursor to the next widget
+		useDefaultSize (bool) - If True: The xSize and ySize will be overridden to fit as much of the widgets as it can. Will lock the panel size from re-sizing
+
+		initFunction (str)       - The function that is ran when the panel first appears
+		initFunctionArgs (any)   - The arguments for 'initFunction'
+		initFunctionKwargs (any) - The keyword arguments for 'initFunction'function
+
+		Example Input: makePanel()
+		Example Input: makePanel(size = (200, 300))
+		Example Input: makePanel(border = "raised")
+		Example Input: makePanel(useDefaultSize = True)
+		Example Input: makePanel(tabTraversal = False)
+		"""
+
+		handle = handle_Panel()
+		handle.type = "Panel"
 		handle.build(locals())
 
 		return handle
@@ -4714,6 +4764,51 @@ class CommonEventFunctions():
 		pass
 
 #Handles
+class handle_Dummy():
+	"""A handle that will accept all functions and just let the program continue without throwing an error."""
+
+	def __repr__(self):
+		representation = f"{type(self).__name__}(id = {id(self)}"
+		return representation
+
+	def __str__(self):
+		output = f"{type(self).__name__}()\n-- id: {id(self)}\n"
+		return output
+
+	def __len__(self):
+		return 1
+
+	def __iter__(self):
+		return Iterator({})
+
+	def __getitem__(self, key):
+		return None
+
+	def __setitem__(self, key, value):
+		pass
+
+	def __delitem__(self, key):
+		pass
+
+	def __contains__(self, key):
+		return False
+
+	def __enter__(self):
+		return self
+
+	def __exit__(self, exc_type, exc_value, traceback):
+		if (traceback != None):
+			print(exc_type, exc_value)
+
+	def __getattr__(self, name):
+		try:
+			return super(type(self), self).__getattr__(name, value)
+		except:
+			return self.dummyFunction
+
+	def dummyFunction(*args, **kwargs):
+		pass
+
 class handle_Base(Utilities, CommonEventFunctions):
 	"""The base handler for all GUI handlers.
 	Meant to be inherited.
@@ -5007,6 +5102,60 @@ class handle_Base(Utilities, CommonEventFunctions):
 					break
 			else:
 				warnings.warn(f"Could not find sizer item for {handle.__repr__()} in nest() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	#Etc
+	def readBuildInstructions_sizer(self, parent, i, instructions):
+		"""Interprets instructions given by the user for what sizer to make and how to make it."""
+
+		if (not isinstance(instructions, dict)):
+			errorMessage = f"sizer_{i} must be a dictionary for {self.__repr__()}"
+			raise ValueError(errorMessage)
+
+		if (len(instructions) == 0):
+			instructions["parent"] = parent
+
+		if (len(instructions) == 1):
+			instructions["type"] = "Box"
+		else:
+			if ("type" not in instructions):
+				errorMessage = "Must supply which sizer type to make. The key should be 'type'. The value should be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
+				raise ValueError(errorMessage)
+
+		sizerType = instructions["type"].lower()
+		if (sizerType not in ["grid", "flex", "bag", "box", "text", "wrap"]):
+			errorMessage = f"There is no 'type' {instructions['type']}. The value should be be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
+			raise KeyError(errorMessage)
+
+		del instructions["type"]
+
+		#Get Default build arguments
+		if (sizerType == "grid"):
+			sizer = parent.makeSizerGrid(**instructions)
+		elif (sizerType == "flex"):
+			sizer = parent.makeSizerGridFlex(**instructions)
+		elif (sizerType == "bag"):
+			sizer = parent.makeSizerGridBag(**instructions)
+		elif (sizerType == "box"):
+			sizer = parent.makeSizerBox(**instructions)
+		elif (sizerType == "text"):
+			sizer = parent.makeSizerText(**instructions)
+		else:
+			sizer = parent.makeSizerWrap(**instructions)
+
+		return sizer
+
+	def readBuildInstructions_panel(self, parent, i, instructions):
+		"""Interprets instructions given by the user for what panel to make and how to make it."""
+
+		if (not isinstance(instructions, dict)):
+			errorMessage = f"panel_{i} must be a dictionary for {self.__repr__()}"
+			raise ValueError(errorMessage)
+
+		#Finish building panel
+		panel = parent.makePanel(**instructions)
+		panel.index = i
+
+		return panel
 
 class handle_Container_Base(handle_Base):
 	"""The base handler for all GUI handlers.
@@ -5324,69 +5473,6 @@ class handle_Container_Base(handle_Base):
 		"""Override function for setToolTipReappearDelay for handle_Widget_Base."""
 
 		self.overloadHelp("setToolTipReappearDelay", label, args, kwargs, window = window)
-
-	#Etc
-	def readBuildInstructions_sizer(self, parent, i, instructions):
-		"""Interprets instructions given by the user for what sizer to make and how to make it."""
-
-		if (not isinstance(instructions, dict)):
-			errorMessage = f"sizer_{i} must be a dictionary for {self.__repr__()}"
-			raise ValueError(errorMessage)
-
-		if (len(instructions) == 0):
-			instructions["parent"] = parent
-
-		if (len(instructions) == 1):
-			instructions["type"] = "Box"
-		else:
-			if ("type" not in instructions):
-				errorMessage = "Must supply which sizer type to make. The key should be 'type'. The value should be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
-				raise ValueError(errorMessage)
-
-		sizerType = instructions["type"].lower()
-		if (sizerType not in ["grid", "flex", "bag", "box", "text", "wrap"]):
-			errorMessage = f"There is no 'type' {instructions['type']}. The value should be be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
-			raise KeyError(errorMessage)
-
-		del instructions["type"]
-
-		#Get Default build arguments
-		if (sizerType == "grid"):
-			sizer = parent.makeSizerGrid(**instructions)
-		elif (sizerType == "flex"):
-			sizer = parent.makeSizerGridFlex(**instructions)
-		elif (sizerType == "bag"):
-			sizer = parent.makeSizerGridBag(**instructions)
-		elif (sizerType == "box"):
-			sizer = parent.makeSizerBox(**instructions)
-		elif (sizerType == "text"):
-			sizer = parent.makeSizerText(**instructions)
-		else:
-			sizer = parent.makeSizerWrap(**instructions)
-
-		return sizer
-
-	def readBuildInstructions_panel(self, parent, i, instructions):
-		"""Interprets instructions given by the user for what panel to make and how to make it."""
-
-		if (not isinstance(instructions, dict)):
-			errorMessage = f"panel_{i} must be a dictionary for {self.__repr__()}"
-			raise ValueError(errorMessage)
-
-		#Overwrite default with user given data
-		kwargs = self.arrangeArguments(handle_Window.addPanel, kwargDict = {"self": parent})
-		for key, value in instructions.items():
-			kwargs[key] = value
-
-		#Create Handler
-		panel = handle_Panel()
-		panel.index = i
-
-		#Finish building panel
-		kwargs["self"] = parent
-		panel.build(kwargs)
-
-		return panel
 
 class handle_Widget_Base(handle_Base):
 	"""A handle for working with a wxWidget."""
@@ -7527,9 +7613,9 @@ class handle_WidgetInput(handle_Widget_Base):
 			"""Builds a wx search control object."""
 			nonlocal self, argument_catalogue
 
-			menuLabel, menuFunction, hideSelection = self.getArguments(argument_catalogue, ["menuLabel", "menuFunction", "hideSelection"])
 			searchButton, cancelButton, tab, alignment = self.getArguments(argument_catalogue, ["searchButton", "cancelButton", "tab", "alignment"])
-			myFunction, searchFunction, cancelFunction = self.getArguments(argument_catalogue, ["myFunction", "searchFunction", "cancelFunction"])
+			menuLabel, menuFunction, menuReplaceText, hideSelection, = self.getArguments(argument_catalogue, ["menuLabel", "menuFunction", "menuReplaceText", "hideSelection"])
+			myFunction, enterFunction, searchFunction, cancelFunction = self.getArguments(argument_catalogue, ["myFunction", "enterFunction", "searchFunction", "cancelFunction"])
 
 			#Configure Settings
 			style = "wx.TE_PROCESS_ENTER"
@@ -7582,7 +7668,11 @@ class handle_WidgetInput(handle_Widget_Base):
 			#Bind the function(s)
 			if (myFunction != None):
 				myFunctionArgs, myFunctionKwargs = self.getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
-				self.setFunction_postEdit(myFunction, myFunctionArgs, myFunctionKwargs)
+				self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
+
+			if (enterFunction != None):
+				enterFunctionArgs, enterFunctionKwargs = self.getArguments(argument_catalogue, ["enterFunctionArgs", "enterFunctionKwargs"])
+				self.setFunction_enter(enterFunction, enterFunctionArgs, enterFunctionKwargs)
 
 			if (searchFunction != None):
 				searchFunctionArgs, searchFunctionKwargs = self.getArguments(argument_catalogue, ["searchFunctionArgs", "searchFunctionKwargs"])
@@ -7595,7 +7685,8 @@ class handle_WidgetInput(handle_Widget_Base):
 			if (menuFunction != None):
 				menuFunctionArgs, menuFunctionKwargs = self.getArguments(argument_catalogue, ["menuFunctionArgs", "menuFunctionKwargs"])
 				self.setFunction_menuSelect(menuFunction, menuFunctionArgs, menuFunctionKwargs)
-			else:
+			
+			if (menuReplaceText):
 				self.setFunction_menuSelect(self.onSearch_replaceText)
 
 		def build_inputSpinner():
@@ -7742,12 +7833,22 @@ class handle_WidgetInput(handle_Widget_Base):
 
 		elif (self.type.lower() == "inputspinner"):
 			self.betterBind(wx.EVT_SPINCTRL, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+		elif (self.type.lower() == "inputsearch"):
+			self.betterBind(wx.EVT_TEXT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			self.betterBind(wx.EVT_TEXT_ENTER, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_enter(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "inputbox"):
 			self.keyBind("enter", myFunction, myFunctionArgs, myFunctionKwargs)
+
+		elif (self.type.lower() == "inputsearch"):
+			self.keyBind("enter", myFunction, myFunctionArgs, myFunctionKwargs)
+			# self.betterBind(wx.EVT_TEXT_ENTER, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_enter() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -7767,12 +7868,9 @@ class handle_WidgetInput(handle_Widget_Base):
 			if (not ((self.exclude == None) or (isinstance(self.exclude, (list, tuple, range)) and (len(self.exclude) == 0)))):
 				self.betterBind(wx.EVT_KILL_FOCUS, self.thing, self.onCheckValue_exclude, rebind = True)
 
-		elif (self.type.lower() == "inputsearch"):
-			# self.betterBind(wx.EVT_TEXT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-			self.betterBind(wx.EVT_TEXT_ENTER, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-
 		elif (self.type.lower() == "slider"):
 			self.betterBind(wx.EVT_SCROLL_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_postEdit() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -7790,7 +7888,6 @@ class handle_WidgetInput(handle_Widget_Base):
 
 	def setFunction_menuSelect(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "inputsearch"):
-
 			self.betterBind(wx.EVT_MENU, self.myMenu.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_menuSelect() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -10017,10 +10114,68 @@ class handle_MenuItem(handle_Widget_Base):
 			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Change Settings
-	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, **kwargs):
 		"""Changes the function that runs when a menu item is selected."""
 
-		self.parent.betterBind(wx.EVT_MENU, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		if (self.type.lower() == "menuitem"):
+			self.parent.betterBind(wx.EVT_MENU, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		
+		elif (self.type.lower() == "toolbaritem"):
+			if (self.subHandle != None):
+				self.subHandle.setFunction_click(myFunction = myFunction, myFunctionArgs = myFunctionArgs, myFunctionKwargs = myFunctionKwargs, **kwargs)
+			else:
+				self.parent.betterBind(wx.EVT_MENU, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_enter() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_enter(self, *args, **kwargs):
+		"""Override function for subHandle."""
+
+		if ((self.type.lower() == "toolbaritem") and (self.subHandle != None)):
+			self.subHandle.setFunction_enter(*args, **kwargs)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_enter() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_preEdit(self, *args, **kwargs):
+		"""Override function for subHandle."""
+
+		if ((self.type.lower() == "toolbaritem") and (self.subHandle != None)):
+			self.subHandle.setFunction_preEdit(*args, **kwargs)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_preEdit() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_postEdit(self, *args, **kwargs):
+		"""Override function for subHandle."""
+
+		if ((self.type.lower() == "toolbaritem") and (self.subHandle != None)):
+			self.subHandle.setFunction_postEdit(*args, **kwargs)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_postEdit() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_search(self, *args, **kwargs):
+		"""Override function for subHandle."""
+
+		if ((self.type.lower() == "toolbaritem") and (self.subHandle != None)):
+			self.subHandle.setFunction_search(*args, **kwargs)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_search() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_cancel(self, *args, **kwargs):
+		"""Override function for subHandle."""
+
+		if ((self.type.lower() == "toolbaritem") and (self.subHandle != None)):
+			self.subHandle.setFunction_cancel(*args, **kwargs)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_cancel() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_menuSelect(self, *args, **kwargs):
+		"""Override function for subHandle."""
+
+		if ((self.type.lower() == "toolbaritem") and (self.subHandle != None)):
+			self.subHandle.setFunction_menuSelect(*args, **kwargs)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_menuSelect() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setEnable(self, state = True):
 		"""Enables or disables an item based on the given input.
@@ -10578,7 +10733,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 
 			#Create the thing
 			panel["parent"] = buildSelf.parent
-			self.myPanel = self.readBuildInstructions_panel(buildSelf, panel)
+			self.myPanel = self.readBuildInstructions_panel(buildSelf, 0, panel)
 			self.finalNest(self.myPanel)
 			self.thing = self.myPanel.thing
 			self.metric = metric
@@ -10617,27 +10772,6 @@ class handle_WidgetCanvas(handle_Widget_Base):
 			self.parent.betterBind(wx.EVT_INIT_DIALOG, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_init() for {self.__repr__()}", Warning, stacklevel = 2)
-
-	def readBuildInstructions_panel(self, parent, instructions):
-		"""Interprets instructions given by the user for what panel to make and how to make it."""
-
-		if (not isinstance(instructions, dict)):
-			errorMessage = f"panel must be a dictionary for {self.__repr__()}"
-			raise ValueError(errorMessage)
-
-		#Overwrite default with user given data
-		kwargs = self.arrangeArguments(handle_Window.addPanel, kwargDict = {"self": parent})
-		for key, value in instructions.items():
-			kwargs[key] = value
-
-		#Create Handler
-		panel = handle_Panel()
-
-		#Finish building panel
-		kwargs["self"] = parent
-		panel.build(kwargs)
-
-		return panel
 
 	def onPaint(self, event):
 		"""Needed so that the GUI can draw on the panel."""
@@ -15774,6 +15908,13 @@ class handle_Dialog(handle_Base):
 			nonlocal self, argument_catalogue
 
 			choices, title, text, default, single = self.getArguments(argument_catalogue, ["choices", "title", "text", "default", "single"])
+			
+			#Ensure that the choices given are a list or tuple
+			if (not isinstance(choices, (list, tuple, range))):
+				choices = [choices]
+
+			#Ensure that the choices are all strings
+			choices = [str(item) for item in choices]
 
 			self.choices = choices
 			
@@ -16487,7 +16628,7 @@ class handle_Window(handle_Container_Base):
 			
 			#Setup sizers and panels
 			if (panel):
-				self.mainPanel = self.addPanel()#"-1", parent = handle, size = (10, 10), tabTraversal = tabTraversal, useDefaultSize = False)
+				self.mainPanel = self.makePanel()#"-1", parent = handle, size = (10, 10), tabTraversal = tabTraversal, useDefaultSize = False)
 				self.finalNest(self.mainPanel)
 
 			self.mainSizer = self.makeSizerBox()
@@ -16560,7 +16701,7 @@ class handle_Window(handle_Container_Base):
 			
 			#Setup sizers and panels
 			if (panel):
-				self.mainPanel = self.addPanel()#"-1", parent = handle, size = (10, 10), tabTraversal = tabTraversal, useDefaultSize = False)
+				self.mainPanel = self.makePanel()#"-1", parent = handle, size = (10, 10), tabTraversal = tabTraversal, useDefaultSize = False)
 				self.finalNest(self.mainPanel)
 
 			with self.makeSizerBox() as rootSizer:
@@ -16990,39 +17131,6 @@ class handle_Window(handle_Container_Base):
 		"""Overload for Controller.switchWindow()."""
 
 		self.controller.switchWindow(self, whichTo, hideFrom = hideFrom)
-
-	#Panels
-	def addPanel(self, label = None, size = wx.DefaultSize, border = wx.NO_BORDER, position = wx.DefaultPosition, parent = None,
-		tabTraversal = True, useDefaultSize = False, autoSize = True, flags = "c1", 
-
-		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
-
-		handle = None, hidden = False, enabled = True):
-		"""Creates a blank panel window.
-
-		label (any)     - What this is catalogued as
-		size (int tuple)  - The size of the panel. (length, width)
-		border (str)      - What style the border has. "simple", "raised", "sunken" or "none". Only the first two letters are necissary
-		parent (wxObject) - If None: The parent will be 'self'.
-		
-		tabTraversal (bool)   - If True: Pressing [tab] will move the cursor to the next widget
-		useDefaultSize (bool) - If True: The xSize and ySize will be overridden to fit as much of the widgets as it can. Will lock the panel size from re-sizing
-
-		initFunction (str)       - The function that is ran when the panel first appears
-		initFunctionArgs (any)   - The arguments for 'initFunction'
-		initFunctionKwargs (any) - The keyword arguments for 'initFunction'function
-
-		Example Input: addPanel(0)
-		Example Input: addPanel(0, size = (200, 300))
-		Example Input: addPanel(0, border = "raised")
-		Example Input: addPanel(0, useDefaultSize = True)
-		Example Input: addPanel(0, tabTraversal = False)
-		"""
-
-		handle = handle_Panel()
-		handle.build(locals())
-
-		return handle
 
 	#Sizers
 	def getSizer(self, sizerLabel = None, returnAny = False):
@@ -18335,9 +18443,6 @@ class handle_Panel(handle_Container_Base):
 		return output
 
 	def build(self, argument_catalogue):
-		#Fill in default values
-		argument_catalogue = self.arrangeArguments(handle_Window.addPanel, kwargDict = argument_catalogue)
-
 		#Prebuild
 		self.preBuild(argument_catalogue)
 
@@ -18515,7 +18620,7 @@ class handle_Splitter(handle_Container_Base):
 			#Add panels and sizers to splitter
 			for i in range(4):
 				#Add panels to the splitter
-				self.panelList.append(self.myWindow.addPanel(parent = self, border = "raised"))
+				self.panelList.append(self.myWindow.makePanel(parent = self, border = "raised"))
 				self.thing.AppendWindow(self.panelList[i].thing)
 				self.finalNest(self.panelList[i])
 
@@ -18547,7 +18652,7 @@ class handle_Splitter(handle_Container_Base):
 			#Add panels and sizers to splitter
 			for i in range(panelNumbers):
 				#Add panels to the splitter
-				self.panelList.append(self.myWindow.addPanel(parent = self, border = "raised"))
+				self.panelList.append(self.myWindow.makePanel(parent = self, border = "raised"))
 				self.thing.AppendWindow(self.panelList[i].thing)
 				self.finalNest(self.panelList[i])
 
