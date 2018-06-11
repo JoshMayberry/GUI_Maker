@@ -6978,6 +6978,8 @@ class handle_WidgetList(handle_Widget_Base):
 	def setFunction_doubleClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listtree"):
 			self.betterBind(wx.EVT_TREE_ITEM_ACTIVATED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		elif (self.type.lower() == "listfull"):
+			self.betterBind(wx.EVT_LIST_ITEM_ACTIVATED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_middleClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -7215,7 +7217,7 @@ class handle_WidgetList(handle_Widget_Base):
 				return
 
 			#Run Function Normally
-			event = wx.ListEvent(wx.wxEVT_COMMAND_LIST_BEGIN_LABEL_EDIT, self.GetId())
+			event = wx.ListEvent(wx.EVT_COMMAND_LIST_BEGIN_LABEL_EDIT, self.GetId())
 			event.SetEventObject(self) #Added this so the event has an associated object
 			event.Index = row
 			event.Column = column
@@ -7232,14 +7234,14 @@ class handle_WidgetList(handle_Widget_Base):
 				self.make_editor(self.GetColumn(column).Align)
 
 			x0 = self.col_locs[column]
-			x1 = self.col_locs[column+1] - x0
+			x1 = self.col_locs[column + 1] - x0
 
 			scrolloffset = self.GetScrollPos(wx.HORIZONTAL)
 
-			if x0+x1-scrolloffset > self.GetSize()[0]:
+			if x0 + x1 - scrolloffset > self.GetSize()[0]:
 				if wx.Platform == "__WXMSW__":
-					offset = x0+x1-self.GetSize()[0]-scrolloffset
-					addoffset = self.GetSize()[0]/4
+					offset = x0 + x1 - self.GetSize()[0] - scrolloffset
+					addoffset = self.GetSize()[0] / 4
 					if addoffset + scrolloffset < self.GetSize()[0]:
 						offset += addoffset
 
@@ -7255,7 +7257,7 @@ class handle_WidgetList(handle_Widget_Base):
 			y0 = self.GetItemRect(row)[1]
 
 			editor = self.editor
-			editor.SetSize(x0-scrolloffset,y0, x1,-1)
+			editor.SetSize(x0 - scrolloffset, y0, x1,-1)
 
 			editor.SetValue(self.GetItem(row, column).GetText())
 			editor.Show()
@@ -7276,7 +7278,7 @@ class handle_WidgetList(handle_Widget_Base):
 			self.editor.Hide()
 			self.SetFocus()
 
-			event = wx.ListEvent(wx.wxEVT_COMMAND_LIST_END_LABEL_EDIT, self.GetId())
+			event = wx.ListEvent(wx.EVT_COMMAND_LIST_END_LABEL_EDIT, self.GetId())
 			event.SetEventObject(self) #Added this so the event has an associated object
 			event.Index = self.curRow
 			event.Column = self.curCol
@@ -11952,6 +11954,7 @@ class handle_WidgetTable(handle_Widget_Base):
 		handle_Widget_Base.__init__(self)
 
 		self.previousCell = (-1, -1)
+		self.lastModifiedCell = (-1, -1)
 		self.readOnlyCatalogue = {}
 		self.cellTypeCatalogue = {}
 		self.buttonPressCatalogue = {} #{row (int): column (int): {"press": if the button is currently pressed (bool), "ranFunction": If the button has been unpressed}}
@@ -12103,7 +12106,7 @@ class handle_WidgetTable(handle_Widget_Base):
 			##Set Editability for Cells
 			self.readOnlyCatalogue = {}
 			self.readOnlyDefault = readOnlyDefault
-			self.disableTableEditing(readOnly)
+			self.disableTableEditing(state = readOnly)
 			for row in range(self.thing.GetNumberRows()):
 				for column in range(self.thing.GetNumberCols()):
 					if (row not in self.readOnlyCatalogue):
@@ -12145,6 +12148,7 @@ class handle_WidgetTable(handle_Widget_Base):
 				preEditFunctionArgs, preEditFunctionKwargs = self.getArguments(argument_catalogue, ["preEditFunctionArgs", "preEditFunctionKwargs"])
 				self.setFunction_preEdit(preEditFunction, preEditFunctionArgs, preEditFunctionKwargs)
 
+			self.setFunction_postEdit(self.setTableLastModifiedCell)
 			if (postEditFunction != None):
 				postEditFunctionArgs, postEditFunctionKwargs = self.getArguments(argument_catalogue, ["postEditFunctionArgs", "postEditFunctionKwargs"])
 				self.setFunction_postEdit(postEditFunction, postEditFunctionArgs, postEditFunctionKwargs)
@@ -12153,17 +12157,15 @@ class handle_WidgetTable(handle_Widget_Base):
 				dragFunctionArgs, dragFunctionKwargs = self.getArguments(argument_catalogue, ["dragFunctionArgs", "dragFunctionKwargs"])
 				self.setFunction_drag(dragFunction, dragFunctionArgs, dragFunctionKwargs)
 
+			self.setFunction_selectMany(self.setTablePreviousCell)
 			if (selectManyFunction != None):
 				selectManyFunctionArgs, selectManyFunctionKwargs = self.getArguments(argument_catalogue, ["selectManyFunctionArgs", "selectManyFunctionKwargs"])
-				self.setFunction_selectMany([self.setTablePreviousCell, selectManyFunction], [None, selectManyFunctionArgs], [None, selectManyFunctionKwargs])
-			else:
-				self.setFunction_selectMany(self.setTablePreviousCell)
+				self.setFunction_selectMany(selectManyFunction, selectManyFunctionArgs, selectManyFunctionKwargs)
 
+			self.setFunction_selectSingle(self.setTablePreviousCell)
 			if (selectSingleFunction != None):
 				selectSingleFunctionArgs, selectSingleFunctionKwargs = self.getArguments(argument_catalogue, ["selectSingleFunctionArgs", "selectSingleFunctionKwargs"])
-				self.setFunction_selectSingle([self.setTablePreviousCell, selectSingleFunction], [None, selectSingleFunctionArgs], [None, selectSingleFunctionKwargs])
-			else:
-				self.setFunction_selectSingle(self.setTablePreviousCell)
+				self.setFunction_selectSingle(selectSingleFunction, selectSingleFunctionArgs, selectSingleFunctionKwargs)
 			
 			if (rightClickCellFunction != None):
 				rightClickCellFunctionArgs, rightClickCellFunctionKwargs = self.getArguments(argument_catalogue, ["rightClickCellFunctionArgs", "rightClickCellFunctionKwargs"])
@@ -12433,12 +12435,33 @@ class handle_WidgetTable(handle_Widget_Base):
 		self.columnSize = size
 		self.autoSizeColumn = autoSize
 
+	def setTableLastModifiedCell(self, row = None, column = None, event = None):
+		"""Sets the internal last modified cell to the specified value.
+		If 'row' and 'column' are None, it will take the current cell.
+
+		Example Input: setTableLastModifiedCell()
+		Example Input: setTableLastModifiedCell(1, 2)
+		"""
+
+		if ((row != None) and (column != None)):
+			self.lastModifiedCell = (row, column)
+		else:
+			self.lastModifiedCell = self.getTableCurrentCell(event = event)[0]
+
+	def getTableLastModifiedCell(self):
+		"""Returns the last modified cell coordinates.
+
+		Example Input: getTableLastModifiedCell()
+		"""
+
+		return self.lastModifiedCell
+
 	def setTablePreviousCell(self, row = None, column = None, event = None):
 		"""Sets the internal previous cell to the specified value.
 		If 'row' and 'column' are None, it will take the current cell.
 
-		Example Input: setTablePreviousCell()
-		Example Input: setTablePreviousCell(1, 2)
+		Example Input: setTableLastModifiedCell()
+		Example Input: setTableLastModifiedCell(1, 2)
 		"""
 
 		if ((row != None) and (column != None)):
@@ -12490,7 +12513,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 		self.thing.AppendCols(numberOf, updateLabels)
 
-	def enableTableEditing(self, state = True, row = None, column = None):
+	def enableTableEditing(self, row = None, column = None, state = True):
 		"""Allows the user to edit the table.
 
 		row (int)    - Which row this applies to
@@ -12508,10 +12531,10 @@ class handle_WidgetTable(handle_Widget_Base):
 				~ {row number (int): editability for the whole row (bool)}
 				~ {None: {column number (int): editability for the whole column (bool)}}
 
-		Example Input: enableTableEditing(0)
-		Example Input: enableTableEditing(0, row = 0)
-		Example Input: enableTableEditing(0, column = 0)
-		Example Input: enableTableEditing(0, row = 0, column = 0)
+		Example Input: enableTableEditing()
+		Example Input: enableTableEditing(row = 0)
+		Example Input: enableTableEditing(column = 0)
+		Example Input: enableTableEditing(row = 0, column = 0)
 		"""
 
 		if (state == None):
@@ -12541,7 +12564,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 		self.disableTableEditing(row = row, column = column,  state = newState)
 
-	def disableTableEditing(self, state = False, row = None, column = None):
+	def disableTableEditing(self, row = None, column = None, state = True):
 		"""Allows the user to edit the table.
 
 		row (int)    - Which row this applies to
@@ -12559,10 +12582,10 @@ class handle_WidgetTable(handle_Widget_Base):
 				~ {row number (int): editability for the whole row (bool)}
 				~ {None: {column number (int): editability for the whole column (bool)}}
 
-		Example Input: disableTableEditing(0)
-		Example Input: disableTableEditing(0, row = 0)
-		Example Input: disableTableEditing(0, column = 0)
-		Example Input: disableTableEditing(0, row = 0, column = 0)
+		Example Input: disableTableEditing()
+		Example Input: disableTableEditing(row = 0)
+		Example Input: disableTableEditing(column = 0)
+		Example Input: disableTableEditing(row = 0, column = 0)
 		"""
 
 		def modifyReadonly(state, row = None, column = None):
@@ -12589,7 +12612,7 @@ class handle_WidgetTable(handle_Widget_Base):
 				for _column in columnList:
 					self.readOnlyCatalogue[_row][_column] = state
 			
-		#########################################################	
+		#########################################################
 
 		if (state == None):
 			state = self.readOnlyDefault
@@ -12798,18 +12821,18 @@ class handle_WidgetTable(handle_Widget_Base):
 				else:
 					self.cellTypeCatalogue[str(cellType)] = [self.thing.GetDefaultRenderer(), self.TableCellEditor(self, downOnEnter = self.enterKeyExitEdit, cellType = cellType)]
 
-			#Change settings if needed
-			rowList = range(self.thing.GetNumberRows()) if (row == None) else [row]
-			columnList = range(self.thing.GetNumberCols()) if (column == None) else [column]
-			for _row in rowList:
-				for _column in columnList:
-					if (isinstance(cellType[None], str) and (cellType[None].lower() in ["button"])):
-						if (not self.thing.IsReadOnly(_row, _column)):
-							self.thing.SetReadOnly(_row, _column, True)
-					else:
-						readOnly = self.getTableReadOnly(_row, _column)
-						if (self.thing.IsReadOnly(_row, _column) != readOnly):
-							self.thing.SetReadOnly(_row, _column, readOnly)
+			# #Change settings if needed
+			# rowList = range(self.thing.GetNumberRows()) if (row == None) else [row]
+			# columnList = range(self.thing.GetNumberCols()) if (column == None) else [column]
+			# for _row in rowList:
+			# 	for _column in columnList:
+			# 		if (isinstance(cellType[None], str) and (cellType[None].lower() in ["button"])):
+			# 			if (not self.thing.IsReadOnly(_row, _column)):
+			# 				self.thing.SetReadOnly(_row, _column, True)
+			# 		else:
+			# 			readOnly = self.getTableReadOnly(_row, _column)
+			# 			if (self.thing.IsReadOnly(_row, _column) != readOnly):
+			# 				self.thing.SetReadOnly(_row, _column, readOnly)
 
 			return cellType
 
@@ -14066,9 +14089,9 @@ class handle_WidgetTable(handle_Widget_Base):
 				if (self.downOnEnter):
 					style += "|wx.TE_PROCESS_ENTER"
 
-				#Check readOnly
-				if (self.parent.getTableCurrentCellReadOnly(event = event)):
-					style += "|wx.TE_READONLY"
+				# #Check readOnly
+				# if (self.parent.getTableCurrentCellReadOnly(event = event)):
+				# 	style += "|wx.TE_READONLY"
 
 				#Strip of extra divider
 				if (style != ""):
@@ -14080,7 +14103,7 @@ class handle_WidgetTable(handle_Widget_Base):
 				#Create text control
 				self.myCellControl = wx.TextCtrl(parent, myId, "", style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 				self.myCellControl.SetInsertionPoint(0)
-			
+				
 			self.SetControl(self.myCellControl)
 
 			#Handle events
