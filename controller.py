@@ -3948,16 +3948,8 @@ class Utilities():
 		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Creates a blank canvas window.
 
-		size (int tuple)  - The size of the canvas. (length, width)
-		label (str)     - What this is called in the idCatalogue
-		border (str)      - What style the border has. "simple", "raised", "sunken" or "none". Only the first two letters are necissary
-		
-		tabTraversal (bool)   - If True: Pressing [tab] will move the cursor to the next widget
-		useDefaultSize (bool) - If True: The xSize and ySize will be overridden to fit as much of the widgets as it can. Will lock the canvas size from re-sizing
-
-		initFunction (str)       - The function that is ran when the canvas first appears
-		initFunctionArgs (any)   - The arguments for 'initFunction'
-		initFunctionKwargs (any) - The keyword arguments for 'initFunction'function
+		panel (dict) - Instructions for the panel. Keys correspond to the args and kwargs for makePanel
+			- If None: Will not create a panel for the canvas
 
 		Example Input: makeCanvas()
 		"""
@@ -4123,21 +4115,27 @@ class Utilities():
 		return handle
 
 	#Panels
-	def makePanel(self, size = wx.DefaultSize, border = wx.NO_BORDER, position = wx.DefaultPosition, 
-		tabTraversal = True, useDefaultSize = False, autoSize = True, flags = "c1", 
+	def makePanel(self, border = wx.NO_BORDER, size = wx.DefaultSize, position = wx.DefaultPosition, 
+		tabTraversal = True, scroll_x = False, scroll_y = False, scrollToTop = True, scrollToChild = True,
 
 		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
 
 		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
-		"""Creates a blank panel window.
+		"""Creates a blank panel.
 
-		label (any)     - What this is catalogued as
-		size (int tuple)  - The size of the panel. (length, width)
-		border (str)      - What style the border has. "simple", "raised", "sunken" or "none". Only the first two letters are necissary
-		parent (wxObject) - If None: The parent will be 'self'.
+		border (str)        - What style the border has. "simple", "raised", "sunken" or "none". Only the first two letters are necissary
+		tabTraversal (bool) - If True: Pressing [tab] will move the cursor to the next widget
 		
-		tabTraversal (bool)   - If True: Pressing [tab] will move the cursor to the next widget
-		useDefaultSize (bool) - If True: The xSize and ySize will be overridden to fit as much of the widgets as it can. Will lock the panel size from re-sizing
+		scroll_x (bool) - Determines if the panel has a horizontal scroll bar
+			- If int: How many pixels the horizontal scroll bar will increment by
+			- If True: The panel has a horizontal scroll bar
+			- If False: The panel has no horizontal scroll bar
+		scroll_y (bool) - Determines if the panel has a vertical scroll bar
+			- If int: How many pixels the vertical scroll bar will increment by
+			- If True: The panel has a vertical scroll bar
+			- If False: The panel has no vertical scroll bar
+		scrollToTop (bool) - Determines if the scroll bar goes to the top?
+		scrollToChild (bool) - Determines if the scroll bar automatically scrolls to fully show a child when it first comes into focus
 
 		initFunction (str)       - The function that is ran when the panel first appears
 		initFunctionArgs (any)   - The arguments for 'initFunction'
@@ -4146,7 +4144,6 @@ class Utilities():
 		Example Input: makePanel()
 		Example Input: makePanel(size = (200, 300))
 		Example Input: makePanel(border = "raised")
-		Example Input: makePanel(useDefaultSize = True)
 		Example Input: makePanel(tabTraversal = False)
 		"""
 
@@ -5064,6 +5061,11 @@ class handle_Base(Utilities, CommonEventFunctions):
 
 		#Perform Nesting
 		if (isinstance(self, handle_Sizer)):
+			if ((isinstance(handle, handle_WidgetText)) and (self.type.lower() == "text")):
+				if (not isinstance(flags, (list, tuple, range))):
+					flags = [flags]
+				flags.append(handle.alignment)
+
 			flags, position, border = self.getItemMod(flags)
 
 			if (isinstance(handle, (handle_Widget_Base, handle_Sizer, handle_Splitter, handle_Notebook))):
@@ -6004,31 +6006,38 @@ class handle_WidgetText(handle_Widget_Base):
 			#Ensure correct format
 			if (not isinstance(text, str)):
 				text = f"{text}"
-			# if (not isinstance(argument_catalogue["flags"], (list, tuple, range))):
-			# 	argument_catalogue["flags"] = [argument_catalogue["flags"]]
 
-			# #Apply Settings
-			# if (alignment != None):
-			# 	if (isinstance(alignment, bool)):
-			# 		if (alignment):
-			# 			style = "wx.ALIGN_LEFT"
-			# 			argument_catalogue["flags"].append("al")
-			# 		else:
-			# 			style = "wx.ALIGN_CENTRE"
-			# 			argument_catalogue["flags"].append("ac")
-			# 	elif (alignment == 0):
-			# 		style = "wx.ALIGN_LEFT"
-			# 		argument_catalogue["flags"].append("al")
-			# 	elif (alignment == 1):
-			# 		style = "wx.ALIGN_RIGHT"
-			# 		argument_catalogue["flags"].append("ar")
-			# 	else:
-			# 		style = "wx.ALIGN_CENTRE"
-			# 		argument_catalogue["flags"].append("ac")
-			# else:
-			# 	style = "wx.ALIGN_CENTRE"
-			# 	argument_catalogue["flags"].append("ac")
-			style = "wx.ALIGN_CENTRE"
+			#Apply Settings
+			if (alignment != None):
+				if (isinstance(alignment, bool)):
+					if (alignment):
+						style = "wx.ALIGN_LEFT"
+						self.alignment = "al"
+					else:
+						style = "wx.ALIGN_CENTRE"
+						self.alignment = "ac"
+				elif (isinstance(alignment, str)):
+					if (alignment[0].lower() == "l"):
+						style = "wx.ALIGN_LEFT"
+						self.alignment = "al"
+					elif (alignment[0].lower() == "r"):
+						style = "wx.ALIGN_RIGHT"
+						self.alignment = "ar"
+					else:
+						style = "wx.ALIGN_CENTRE"
+						self.alignment = "ac"
+				elif (alignment == 0):
+					style = "wx.ALIGN_LEFT"
+					self.alignment = "al"
+				elif (alignment == 1):
+					style = "wx.ALIGN_RIGHT"
+					self.alignment = "ar"
+				else:
+					style = "wx.ALIGN_CENTRE"
+					self.alignment = "ac"
+			else:
+				style = "wx.ALIGN_CENTRE"
+				self.alignment = "ac"
 			
 			if (ellipsize != None):
 				if (isinstance(ellipsize, bool)):
@@ -10732,25 +10741,26 @@ class handle_WidgetCanvas(handle_Widget_Base):
 			panel, metric, initFunction, buildSelf = self.getArguments(argument_catalogue, ["panel", "metric", "initFunction", "self"])
 
 			#Create the thing
-			panel["parent"] = buildSelf.parent
-			self.myPanel = self.readBuildInstructions_panel(buildSelf, 0, panel)
-			self.finalNest(self.myPanel)
-			self.thing = self.myPanel.thing
-			self.metric = metric
+			if (panel != None):
+				self.myPanel = self.makePanel(parent = buildSelf.parent, **panel)
+				self.finalNest(self.myPanel)
+				self.thing = self.myPanel.thing
+				self.metric = metric
 
-			#Bind Functions
-			if (initFunction != None):
-				initFunctionArgs, initFunctionKwargs = self.getArguments(argument_catalogue, ["initFunctionArgs", "initFunctionKwargs"])
-				self.setFunction_init(initFunction, initFunctionArgs, initFunctionKwargs)
+				#Bind Functions
+				if (initFunction != None):
+					initFunctionArgs, initFunctionKwargs = self.getArguments(argument_catalogue, ["initFunctionArgs", "initFunctionKwargs"])
+					self.setFunction_init(initFunction, initFunctionArgs, initFunctionKwargs)
 
-			#Enable painting
-			self.betterBind(wx.EVT_PAINT, self.thing, self.onPaint)
-			self.betterBind(wx.EVT_SIZE, self.thing, self.onSize)
-			# self.betterBind(wx.EVT_ERASE_BACKGROUND, self.thing, self.onDoNothing) #Disable background erasing to reduce flicker
+				#Enable painting
+				self.betterBind(wx.EVT_PAINT, self.thing, self.onPaint)
+				self.betterBind(wx.EVT_SIZE, self.thing, self.onSize)
+				# self.betterBind(wx.EVT_ERASE_BACKGROUND, self.thing, self.onDoNothing) #Disable background erasing to reduce flicker
 
 			#Tell the window that EVT_PAINT will be running (reduces flickering)
 			self.myWindow.thing.SetBackgroundStyle(wx.BG_STYLE_PAINT)
-			self.thing.SetBackgroundStyle(wx.BG_STYLE_PAINT)
+			if (panel != None):
+				self.thing.SetBackgroundStyle(wx.BG_STYLE_PAINT)
 
 			self.new()
 		
@@ -10790,10 +10800,19 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		event.Skip()
 
 	def setFunction_click(self, *args, **kwargs):
+		"""Overload function for setFunction_click() in handle_Panel."""
+		if (self.thing == None):
+			errorMessage = f"A panel was not created because 'panel' was None upon creation for {self.__repr__()}"
+			raise ValueError(errorMessage)
+
 		self.myPanel.setFunction_click(*args, **kwargs)
 
 	def update(self):
 		"""Redraws the canvas."""
+
+		if (self.thing == None):
+			errorMessage = f"A panel was not created because 'panel' was None upon creation for {self.__repr__()}"
+			raise ValueError(errorMessage)
 
 		self.thing.Refresh()
 		self.thing.Update()
@@ -10915,6 +10934,10 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		Example Input: fit()
 		"""
 
+		if (self.thing == None):
+			errorMessage = f"A panel was not created because 'panel' was None upon creation for {self.__repr__()}"
+			raise ValueError(errorMessage)
+
 		if (not self.myWindow.checkShown(window = True)):
 			self.myWindow.showWindow()
 			self.myWindow.hideWindow()
@@ -10927,19 +10950,20 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		size_y = windowSize[1] + drawnSize[1] - mySize[1]
 		self.myWindow.setWindowSize(size_x, size_y)
 
-	def draw(self, dc):
+	def draw(self, dc, modifyUnits = True):
 		"""Draws the queued shapes.
 
 		Example Input: draw(dc)
 		"""
 
-		if (self.metric != None):
-			if (self.metric):
-				dc.SetMapMode(wx.MM_METRIC)
+		if (modifyUnits):
+			if (self.metric != None):
+				if (self.metric):
+					dc.SetMapMode(wx.MM_METRIC)
+				else:
+					dc.SetMapMode(wx.MM_LOMETRIC)
 			else:
-				dc.SetMapMode(wx.MM_LOMETRIC)
-		else:
-			dc.SetMapMode(wx.MM_TEXT)
+				dc.SetMapMode(wx.MM_TEXT)
 
 		#Draw items in queue
 		for myFunction, myFunctionArgs, myFunctionKwargs in self.drawQueue:
@@ -11231,6 +11255,10 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		Example Input: drawZoom(0, None)
 		"""
 
+		if (self.thing == None):
+			errorMessage = f"A panel was not created because 'panel' was None upon creation for {self.__repr__()}"
+			raise ValueError(errorMessage)
+
 		#Scale the canvas
 		if (x != None):
 			if (y != None):
@@ -11251,6 +11279,10 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		Example Input: drawZoom(0, 2)
 		Example Input: drawZoom(0, 2.5, 3)
 		"""
+
+		if (self.thing == None):
+			errorMessage = f"A panel was not created because 'panel' was None upon creation for {self.__repr__()}"
+			raise ValueError(errorMessage)
 
 		#Skip empty origins
 		if (x != None):
@@ -15415,18 +15447,17 @@ class handle_Sizer(handle_Container_Base):
 		"""Creates two blank panels in next to each other. 
 		The border between double panels is dragable.
 
-		leftSize (int)         - The size of the left panel. (length, width)
-		rightSize (int)        - The size of the right panel. (length, width)
-									~ If True: 'leftPanel' is the top panel; 'rightPanel' is the bottom panel
-									~ If False: 'leftPanel' is the left panel; 'rightPanel' is the right panel
-		border (str)           - What style the border has. "simple", "raised", "sunken" or "none". Only the first two letters are necissary
-		dividerSize (int)      - How many pixels thick the dividing line is. Not available yet
-		dividerPosition (int)  - How many pixels to the right the dividing line starts after the 'minimumSize' location
-									~ If None: The line will start at the 'minimumSize' value
-		dividerGravity (int)   - From 0.0 to 1.1, how much the left (or top) panel grows with respect to the right (or bottom) panel upon resizing
-		vertical (bool)        - Determines the direction that the frames are split
-		minimumSize (int)      - How many pixels the smaller pane must have between its far edge and the splitter.
-		useDefaultSize (bool) - If True: The xSize and ySize will be overridden to fit as much of the widgets as it can. Will lock the panel size from re-sizing
+		leftSize (int)        - The size of the left panel. (length, width)
+		rightSize (int)       - The size of the right panel. (length, width)
+			- If True: 'leftPanel' is the top panel; 'rightPanel' is the bottom panel
+			- If False: 'leftPanel' is the left panel; 'rightPanel' is the right panel
+		border (str)          - What style the border has. "simple", "raised", "sunken" or "none". Only the first two letters are necissary
+		dividerSize (int)     - How many pixels thick the dividing line is. Not available yet
+		dividerPosition (int) - How many pixels to the right the dividing line starts after the 'minimumSize' location
+			- If None: The line will start at the 'minimumSize' value
+		dividerGravity (int)  - From 0.0 to 1.1, how much the left (or top) panel grows with respect to the right (or bottom) panel upon resizing
+		vertical (bool)       - Determines the direction that the frames are split
+		minimumSize (int)     - How many pixels the smaller pane must have between its far edge and the splitter.
 		
 		initFunction (str)       - The function that is ran when the panel first appears
 		initFunctionArgs (any)   - The arguments for 'initFunction'
@@ -15454,9 +15485,8 @@ class handle_Sizer(handle_Container_Base):
 		The borders between quad panels are dragable. The itersection point is also dragable.
 		The panel order is top left, top right, bottom left, bottom right.
 		
-		border (str)          - What style the border has. "simple", "raised", "sunken" or "none". Only the first two letters are necissary
-		useDefaultSize (bool) - If True: The xSize and ySize will be overridden to fit as much of the widgets as it can. Will lock the panel size from re-sizing
-		label (str)          - What this is called in the idCatalogue
+		border (str) - What style the border has. "simple", "raised", "sunken" or "none". Only the first two letters are necissary
+		label (str)  - What this is called in the idCatalogue
 		
 		initFunction (str)       - The function that is ran when the panel first appears
 		initFunctionArgs (any)   - The arguments for 'initFunction'
@@ -15494,8 +15524,7 @@ class handle_Sizer(handle_Container_Base):
 		tabTraversal (bool)   - If True: Pressing [tab] will move the cursor to the next widget
 		horizontal (bool)     - Determines the that direction the frames are split
 		minimumSize (int)     - How many pixels the smaller pane must have between its far edge and the splitter.
-		useDefaultSize (bool) - If True: The xSize and ySize will be overridden to fit as much of the widgets as it can. Will lock the panel size from re-sizing
-		label (str)          - What this is called in the idCatalogue
+		label (str)           - What this is called in the idCatalogue
 		
 		initFunction (str)       - The function that is ran when the panel first appears
 		initFunctionArgs (any)   - The arguments for 'initFunction'
@@ -16458,17 +16487,17 @@ class handle_Dialog(handle_Base):
 			"""Arranges the stuff on the page."""
 
 			dc = self.GetDC()
+			dc.SetMapMode(wx.MM_POINTS) #Each logical unit is a “printer point” i.e. 1/72 of an inch
+			# dc.SetMapMode(wx.MM_TWIPS) #Each logical unit is 1/20 of a “printer point”, or 1/1440 of an inch
 
 			if (isinstance(self.parent.content, str)):
-				dc.SetMapMode(wx.MM_POINTS) #Each logical unit is a “printer point” i.e. 1/72 of an inch
-				# dc.SetMapMode(wx.MM_TWIPS) #Each logical unit is 1/20 of a “printer point”, or 1/1440 of an inch
 
 				dc.SetTextForeground("black")
 				dc.SetFont(wx.Font(11, wx.SWISS, wx.NORMAL, wx.BOLD))
 				dc.DrawText(self.parent.content, 0, 0)
 			if (isinstance(self.parent.content, handle_WidgetCanvas)):
 				with self.parent.content as myCanvas:
-					myCanvas.draw(dc)
+					myCanvas.draw(dc, modifyUnits = False)
 			else:
 				image = self.parent._getImage(self.parent.content)
 				dc.DrawBitmap(image, 0, 0)
@@ -18443,75 +18472,89 @@ class handle_Panel(handle_Container_Base):
 		return output
 
 	def build(self, argument_catalogue):
-		#Prebuild
-		self.preBuild(argument_catalogue)
+		"""Determiens which build system to use for this handle."""
 
-		#Unpack arguments
-		buildSelf = self.getArguments(argument_catalogue, "self")
+		def build_normal():
+			"""Builds a wx double splitter object."""
+			nonlocal self, argument_catalogue
 
-		#Error Check
-		if (self.parent.thing == None):
-			errorMessage = f"The object {self.parent.__repr__()} must be fully created for {self.__repr__()}"
-			raise RuntimeError(errorMessage)
+			#Error Check
+			if (self.parent.thing == None):
+				errorMessage = f"The object {self.parent.__repr__()} must be fully created for {self.__repr__()}"
+				raise RuntimeError(errorMessage)
 
-		#Add first panel
-		# if (isinstance(buildSelf, handle_Window)):
-		# 	panelList = buildSelf.getNested(include = handle_Panel)
-		# 	if (len(panelList) <= 1):
-		# 		#The first panel added to a window is automatically nested
-		# 		buildSelf.finalNest(self)
+			#Unpack arguments
+			scroll_x, scroll_y, scrollToTop, scrollToChild = self.getArguments(argument_catalogue, ["scroll_x", "scroll_y", "scrollToTop", "scrollToChild"])
+			position, size, border, tabTraversal = self.getArguments(argument_catalogue, ["position", "size", "border", "tabTraversal"])
+			initFunction = self.getArguments(argument_catalogue, ["initFunction"])
 
-		#Determine border
-		border = self.getArguments(argument_catalogue, "border")
-		if (type(border) == str):
+			#Setup
+			style = "wx.EXPAND|wx.ALL"
+			if (type(border) == str):
+				#Ensure correct caseing
+				border = border.lower()
 
-			#Ensure correct caseing
-			border = border.lower()
+				if (border[0:2] == "si"):
+					style += "|wx.SIMPLE_BORDER"
 
-			if (border[0:2] == "si"):
-				border = "wx.SIMPLE_BORDER"
+				elif (border[0] == "r"):
+					style += "|wx.RAISED_BORDER"
 
-			elif (border[0] == "r"):
-				border = "wx.RAISED_BORDER"
+				elif (border[0:2] == "su"):
+					style += "|wx.SUNKEN_BORDER"
 
-			elif (border[0:2] == "su"):
-				border = "wx.SUNKEN_BORDER"
+				elif (border[0] == "n"):
+					style += "|wx.NO_BORDER"
 
-			elif (border[0] == "n"):
-				border = "wx.NO_BORDER"
+				else:
+					errorMessage = f"Unknown border {border} in {self.__repr__()}"
+					raise KeyError(errorMessage)
+			else:
+				style += "|wx.NO_BORDER"
+
+			if (tabTraversal):
+				style += "|wx.TAB_TRAVERSAL"
+
+			myId = self.getArguments(argument_catalogue, ["myId"])
+			if (myId == None):
+				myId = wx.ID_ANY
+
+			#Create the panel
+			if ((scroll_x not in [False, None]) or (scroll_y not in [False, None])):
+				self.thing = wx.lib.scrolledpanel.ScrolledPanel(self.parent.thing, id = myId, pos = position, size = size, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+
+				instructions = {}
+				instructions["scrollToTop"] = scrollToTop
+				instructions["scrollIntoView"] = scrollToChild
+				instructions["scroll_x"] = (scroll_x not in [False, None])
+				instructions["scroll_y"] = (scroll_y not in [False, None])
+				instructions["rate_x"] = scroll_x if (isinstance(scroll_x, int)) else 20
+				instructions["rate_y"] = scroll_y if (isinstance(scroll_x, int)) else 20
+
+				self.thing.SetupScrolling(**instructions)
 
 			else:
-				errorMessage = f"border {border} does not exist"
-				raise NameError(errorMessage)
+				self.thing = wx.Panel(self.parent.thing, id = myId, pos = position, size = size, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+
+			#Bind Functions
+			if (initFunction != None):
+				initFunctionArgs, initFunctionKwargs = self.getArguments(argument_catalogue, ["initFunctionArgs", "initFunctionKwargs"])
+				self.betterBind(wx.EVT_INIT_DIALOG, self.thing, initFunction, initFunctionArgs, initFunctionKwargs)
+
+			#Update catalogue
+			for key, value in locals().items():
+				if (key != "self"):
+					argument_catalogue[key] = value
+			
+		#########################################################
+
+		self.preBuild(argument_catalogue)
+
+		if (self.type.lower() == "panel"):
+			build_normal()
 		else:
-			border = "wx.NO_BORDER"
+			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
 
-		#Get Attributes
-		flags = self.getArguments(argument_catalogue, "flags")
-		flags = self.getItemMod(flags, False, None)[0]
-
-		tabTraversal = self.getArguments(argument_catalogue, "tabTraversal")
-		if (tabTraversal):
-			flags += "|wx.TAB_TRAVERSAL"
-
-		#Create the panel
-		style = f"{border}|{flags}"
-		self.thing = wx.Panel(self.parent.thing, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
-
-		autoSize = self.getArguments(argument_catalogue, "autoSize")
-		self.autoSize = autoSize
-
-		#Bind Functions
-		initFunction = self.getArguments(argument_catalogue, "initFunction")
-		if (initFunction != None):
-			self.betterBind(wx.EVT_INIT_DIALOG, self.thing, initFunction, initFunctionArgs, initFunctionKwargs)
-
-		#Update catalogue
-		for key, value in locals().items():
-			if (key != "self"):
-				argument_catalogue[key] = value
-
-		#Postbuild
 		self.postBuild(argument_catalogue)
 
 	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
