@@ -22,6 +22,7 @@ import sys
 import time
 import math
 import copy
+import bisect
 import ctypes
 import string
 # import builtins
@@ -46,8 +47,9 @@ import wx.lib.splitter
 import wx.lib.agw.floatspin
 import wx.lib.scrolledpanel
 import wx.lib.mixins.listctrl
-import wx.lib.agw.fourwaysplitter
 import wx.lib.agw.multidirdialog
+import wx.lib.agw.fourwaysplitter
+import wx.lib.agw.ultimatelistctrl
 
 #Import matplotlib elements to add plots to the GUI
 # import matplotlib
@@ -976,7 +978,7 @@ class Utilities():
 
 		return myFunctionEvaluated, myFunctionArgs, myFunctionKwargs
 
-	def betterBind(self, eventType, thing, myFunctionList, myFunctionArgsList = None, myFunctionKwargsList = None, mode = 1, rebind = False):
+	def betterBind(self, eventType, thing, myFunctionList, myFunctionArgsList = None, myFunctionKwargsList = None, mode = 1, rebind = False, printError = True):
 		"""Binds wxObjects in a better way.
 		Inspired by: "Florian Bosch" on http://stackoverflow.com/questions/173687/is-it-possible-to-pass-arguments-into-event-bindings
 		Special thanks for help on mult-functions to "Mike Driscoll" on http://stackoverflow.com/questions/11621833/how-to-bind-2-functions-to-a-single-event
@@ -988,6 +990,9 @@ class Utilities():
 		myFunctionKwargs (dict)  - Any input keyword arguments for myFunction. A dictionary of variables for each function can be given as a list. The index of the variables must be the same as the index for the functions 
 		mode (int)               - Dictates how things are bound. Used for special cases
 		rebind (bool)            - Will unbind the provided function (if it was already bound) from the 'thing' and then rebind it. Only works for non-argument functions
+			- If True: Will rebind
+			- If False: Will not rebind
+			- If None: Will remove all previously bound functions
 		_________________________________________________________________________
 
 		MULTIPLE FUNCTION ORDER
@@ -1024,9 +1029,12 @@ class Utilities():
 				bindObject = thing
 
 			#Account for rebinding
-			if (rebind):
+			if (rebind == None):
+				bindObject.Unbind(eventType, source = thing)
+
+			elif (rebind):
 				unbound = bindObject.Unbind(eventType, handler = myFunctionEvaluated, source = thing)
-				if (not unbound):
+				if ((not unbound) and printError):
 					#If the lambda style function was used, this will not work
 					warnings.warn(f"Unbinding function {myFunctionEvaluated} for {self.__repr__()} failed", Warning, stacklevel = 3)
 
@@ -1415,7 +1423,12 @@ class Utilities():
 		Example Input: getMousePosition()
 		"""
 
-		return self.thing.ScreenToClient(wx.GetMousePosition()).Get()
+		position = self.thing.ScreenToClient(wx.GetMousePosition())
+
+		if (not isinstance(position, (list, tuple))):
+			position = position.Get()
+
+		return position
 
 	#Background Processes
 	def passFunction(self, myFunction, myFunctionArgs = None, myFunctionKwargs = None, thread = None):
@@ -2987,8 +3000,9 @@ class Utilities():
 		return handle
 
 	def makeListFull(self, choices = [], default = False, single = False, editable = False,
+		editOnClick = True, cellType = None, cellTypeDefault = "inputbox", 
 
-		report = False, columns = 1, columnNames = {}, columnWidth = {},
+		report = False, columns = 1, columnNames = {}, columnWidth = {}, 
 		border = True, rowLines = True, columnLines = True, boldHeader = True,
 		drag = False, dragDelete = False, dragCopyOverride = False, 
 		allowExternalAppDelete = True, dragLabel = None, drop = False, dropIndex = 0,
@@ -3006,20 +3020,28 @@ class Utilities():
 		"""Adds a full list with choices to the next cell on the grid.
 		https://wxpython.org/Phoenix/docs/html/wx.ListCtrl.html
 
-		choices (list - A list of the choices as strings
+		choices (list  - A list of the choices as strings
 			- If 'report' is True: Can be given as either [[row 1 column 1, row 2 column 1], [row 1 column 2, row 2 column 2]] or {column name 1: [row 1, row 2], column name 2: [row 1, row 2]}
-				- If an integer is given instead of a string for the column name, it will use that as the column index
-				- If more than one column have the same header, it will be added to the left most one
-		label (any) - What this is catalogued as
-		flags (list)  - A list of strings for which flag to add to the sizer
-
-		default (bool)      - If True: This is the default thing selected
-		enabled (bool)      - If True: The user can interact with this
-		single (bool) - Determines how many things the user can select
+			- If an integer is given instead of a string for the column name, it will use that as the column index
+			- If more than one column have the same header, it will be added to the left most one
+		default (bool) - If True: This is the default thing selected
+		enabled (bool) - If True: The user can interact with this
+		single (bool)  - Determines how many things the user can select
 			- If True: The user can only select one thing
 			- If False: The user can select multiple things using the shift key
-		editable (bool)     - Determines if the user can edit the first item in the list
+		
+		editable (bool)    - Determines if the user can edit the first item in the list
 			- If True: The user can edit all items in the list
+			- If dict: {column (int): state (bool)}
+		editOnClick (bool) - Determines how many clicks it takes to open the editor
+			- If True: one click
+			- If False: two clicks to edit, one click to select
+			- If None: two clicks to edit
+
+		cellType (dict)       - Determines the widget type used for a specific cell in the list
+				~ {column number (int): cell type for the cell (str)}
+		cellTypeDefault (str) - What the cells default to as a widget
+			- Possible Inputs: "inputbox", "button"
 
 		report (bool)      - Determines how the list is set up
 			- If True: The list will be arranged in a grid
@@ -4040,7 +4062,7 @@ class Utilities():
 				~ {row number (int): cell type for the whole row (str)}
 				~ {None: {column number (int): cell type for the whole column (str)}}
 		cellTypeDefault (str)   - What the cells default to as a widget
-			- Possible Inputs: "inputbox", "droplist"
+			- Possible Inputs: "inputbox", "droplist", "button"
 
 		preEditFunction (str)               - The function that is ran when the user edits a cell. If None: the user cannot edit cells. Accessed cells are before the edit
 		preEditFunctionArgs (any)           - The arguments for 'preEditFunction'
@@ -6194,11 +6216,12 @@ class handle_WidgetList(handle_Widget_Base):
 		handle_Widget_Base.__init__(self)
 
 		#Internal Variables
-		self.myDropTarget = None
 		self.dragable = False
+		self.myDropTarget = None
 
-		self.columnNames = None
 		self.columns = None
+		self.columnNames = None
+		self.cellTypeCatalogue = {}
 
 		self.preDragFunction = None
 		self.preDragFunctionArgs = None
@@ -6282,57 +6305,75 @@ class handle_WidgetList(handle_Widget_Base):
 			"""Builds a wx choice object."""
 			nonlocal self, argument_catalogue
 
-			report, single, editable = self.getArguments(argument_catalogue, ["report", "single", "editable"])
-			columns, drag, drop, choices = self.getArguments(argument_catalogue, ["columns", "drag", "drop", "choices"])
-			columnNames, columnWidth = self.getArguments(argument_catalogue, ["columnNames", "columnWidth"])
+			columnNames, columnWidth, cellType, cellTypeDefault = self.getArguments(argument_catalogue, ["columnNames", "columnWidth", "cellType", "cellTypeDefault"])
 			border, rowLines, columnLines, boldHeader = self.getArguments(argument_catalogue, ["border", "rowLines", "columnLines", "boldHeader"])
+			report, single, editable, editOnClick = self.getArguments(argument_catalogue, ["report", "single", "editable", "editOnClick"])
+			columns, drag, drop, choices = self.getArguments(argument_catalogue, ["columns", "drag", "drop", "choices"])
 
 			#Determine style
 			if (report):
-				style = "wx.LC_REPORT"
+				style = "wx.lib.agw.ultimatelistctrl.ULC_REPORT"
 			else:
-				style = "wx.LC_LIST" #Auto calculate columns and rows
+				style = "wx.lib.agw.ultimatelistctrl.ULC_LIST" #Auto calculate columns and rows
 
-			if (border):
-				style += "|wx.BORDER_SUNKEN"
+			# if (border):
+			# 	style += "|wx.lib.agw.ultimatelistctrl.BORDER_SUNKEN"
 			if (rowLines):
-				style += "|wx.LC_HRULES"
+				style += "|wx.lib.agw.ultimatelistctrl.ULC_HRULES"
 			if (columnLines):
-				style += "|wx.LC_VRULES"
+				style += "|wx.lib.agw.ultimatelistctrl.ULC_VRULES"
 
 			if (single):
-				style += "|wx.LC_SINGLE_SEL" #Default: Can select multiple with shift
+				style += "|wx.lib.agw.ultimatelistctrl.ULC_SINGLE_SEL" #Default: Can select multiple with shift
 
 			#Determine if it is editable or not
 			mixin_editable = False
 			if (type(editable) != dict):
 				if (editable):
 					mixin_editable = True
-					style += "|wx.LC_EDIT_LABELS" #Editable
 
 			elif (len(editable) != 0):
 				mixin_editable = True
-				style += "|wx.LC_EDIT_LABELS" #Editable
 
+			#Remember key variables
+			self.columnNames = columnNames
+			self.columnWidth = columnWidth
+			self.boldHeader = boldHeader
+			self.columns = columns
+
+			#Create widget id
 			myId = self.getArguments(argument_catalogue, ["myId"])
 			if (myId == None):
 				myId = wx.ID_ANY
 
 			#Create the thing to put in the grid
+			mixin_editable = False
 			if (mixin_editable):
-				self.thing = self.ListFull_Editable(self.parent.thing, myId = myId, style = style)
-				self.thing.editable = editable
+				self.thing = self.ListFull_Editable(self, self.parent.thing, myId = myId, style = style, editable = editable, editOnClick = editOnClick)
 			else:
-				self.thing = wx.ListCtrl(self.parent.thing, id = myId, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+				self.thing = self.ListFull(self, self.parent.thing, myId = myId, style = style)
 
-			#Remember key variables
-			self.columns = columns
-			self.columnNames = columnNames
-			self.columnWidth = columnWidth
-			self.boldHeader = boldHeader
+
+				attributes = wx.ListCtrl.GetClassDefaultAttributes()
+				self.thing.SetBackgroundColour(attributes.colBg)
+				self.thing.SetForegroundColour(attributes.colFg)
+				self.thing.SetFont(attributes.font)
+
+				# self.thing.SetDisabledTextColour(wx.ListCtrl.GetDisabledTextColour())
+				# self.thing.SetFirstGradientColour(wx.ListCtrl.GetFirstGradientColour())
+			
+			self.cellTypeDefault = cellTypeDefault
+			self.cellTypeCatalogue = {}
+			self.setCellType()
 
 			#Add Items
 			self.setValue(choices)
+
+			for column in range(self.thing.GetColumnCount()):
+				if (not isinstance(cellType, dict)):
+					self.setCellType(column, cellType)
+				elif (column in cellType):
+					self.setCellType(column, cellType[column])
 
 			#Determine if it's contents are dragable
 			if (drag):
@@ -6633,6 +6674,27 @@ class handle_WidgetList(handle_Widget_Base):
 
 		return value
 
+	def getColumn(self, event = None):
+		"""Returns what the contextual column is for the object associated with this handle.
+		Column algorithm from: wx.lib.mixins.listctrl.TextEditMixin
+		"""
+
+		if (self.type.lower() == "listfull"):
+			x, y = self.getMousePosition()
+			x_offset = self.thing._mainWin.GetScrollPos(wx.HORIZONTAL)
+			row, flags = self.thing.HitTest((x,y))
+
+			widthList = [0]
+			for i in range(self.thing.GetColumnCount()):
+				widthList.append(widthList[i] + self.thing.GetColumnWidth(i))
+			column = bisect.bisect(widthList, x + x_offset) - 1
+
+		else:
+			warnings.warn(f"Add {self.type} to getColumn() for {self.__repr__()}", Warning, stacklevel = 2)
+			column = None
+
+		return column
+
 	#Setters
 	def setValue(self, newValue, columns = None, columnNames = None, columnWidth = None, filterNone = False, boldHeader = None, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
@@ -6677,96 +6739,116 @@ class handle_WidgetList(handle_Widget_Base):
 			else:
 				self.boldHeader = boldHeader
 
+			#Account for columns that are not in the type catalogue
+			for column in range(self.columns):
+				if (column not in self.cellTypeCatalogue):
+					self.setCellType(column)
+
 			#Error Check
 			if (not isinstance(newValue, (list, tuple, range, dict))):
 				newValue = [newValue]
 
-			if (columns != 1):
-				if ((isinstance(newValue, (list, tuple, range))) and (len(newValue) != 0)):
-					if (not isinstance(newValue[0], (list, tuple, range))):
-						newValue = [newValue]
+			if ((isinstance(newValue, (list, tuple, range))) and (len(newValue) != 0)):
+				if (not isinstance(newValue[0], (list, tuple, range))):
+					newValue = [[item] for item in newValue]
 
 			if (filterNone != None):
-				if (filterNone):
-					if (None in newValue):
-						newValue[:] = [value for value in newValue if value is not None] #Filter out None
-				else:
-					newValue[:] = [value if (value != None) else "" for value in newValue] #Replace None with blank space
+				for item in newValue:
+					if (filterNone):
+						item[:] = [value for value in item if value is not None] #Filter out None
+					else:
+						item[:] = [value if (value != None) else "" for value in item] #Replace None with blank space
 
 			#Clear list
 			self.thing.ClearAll()
 
-			#Add items
-			if (self.thing.InReportView()):
+			if (self.thing._mainWin.InReportView()):
 				#Create columns
 				for i in range(columns):
+					info = wx.lib.agw.ultimatelistctrl.UltimateListItem()
+
+					info.SetMask(wx.LIST_MASK_TEXT | wx.LIST_MASK_IMAGE | wx.LIST_MASK_FORMAT | wx.lib.agw.ultimatelistctrl.ULC_MASK_FONT)
+					info.SetAlign(wx.lib.agw.ultimatelistctrl.ULC_FORMAT_LEFT)
+					info.SetKind(0) #0: A normal item, 1: A checkbox-like item, 2: A radiobutton-type item
+
 					if (i in columnNames):
-						name = columnNames[i]
+						info.SetText(columnNames[i])
 					else:
-						name = ""
+						info.SetText("")
+
+					if (boldHeader):
+						attributes = wx.ListCtrl.GetClassDefaultAttributes()
+						attributes.font.MakeBold()
+						info.SetFont(attributes.font)
+
 
 					if (i in columnWidth):
-						self.thing.InsertColumn(i, name, width = columnWidth[i])
-					else:
-						self.thing.InsertColumn(i, name)
+						info.SetWidth(columnWidth[i])
 
-					#Style column
-					if (boldHeader):
-						item = wx.ListItem()
-						font = wx.Font(self.thing.GetClassDefaultAttributes().font)
-						font.MakeBold()
-						item.SetFont(font)
-						self.thing.SetColumn(i, item)
+					self.thing.InsertColumnInfo(i, info)
 
-				#Add items
-				if (not isinstance(newValue, dict)):
-					itemDict = {}
-					for row, column in enumerate(newValue):
-						if (row not in itemDict):
-							itemDict[row] = []
+			#Add items
+			if (not isinstance(newValue, dict)):
+				itemDict = {}
+				for row, columnList in enumerate(newValue):
+					if (row not in itemDict):
+						itemDict[row] = {}
+					
+					for column, text in enumerate(columnList):
+						itemDict[row][column] = text
+			else:
+				itemDict = newValue
 
-						itemDict[row].extend(column)
-				else:
-					itemDict = newValue
-
-				#Make sure there are enough rows
-				itemCount = self.thing.GetItemCount()
-				rowCount = len(list(itemDict.keys()))
-
-				if (itemCount < rowCount):
-					for i in range(rowCount - itemCount):
-						self.thing.InsertItem(i + 1 + itemCount, "")
-
-				for row, column in itemDict.items():
+			#Add Items
+			for row, columnDict in itemDict.items():
+				for column, text in columnDict.items():
+					#Account for column label instead of index
 					if (isinstance(column, str)):
-						#Get the column number
 						index = [key for key, value in columnNames.items() if value == column]
-
-						#Account for no column found
 						if (len(index) == 0):
 							warnings.warn(f"There is no column {column} for the list {label} in the column names {columnNames}\nAdding value to the first column instead", Warning, stacklevel = 2)
 							column = 0
 						else:
-							#Choose the first instance of it
 							column = index[0]
 
 					#Add contents
-					for i, text in enumerate(column):
-						#Error check
-						if (not isinstance(text, str)):
-							text = str(text)
-
-						self.thing.SetItem(row, i, text)
-
-			else:
-				#Add items
-				newValue.reverse()
-				for text in newValue:
-					#Error check
 					if (not isinstance(text, str)):
 						text = str(text)
 
-					self.thing.InsertItem(0, text)
+					cellType = self.getCellType(column)
+					if (cellType[None].lower() == "inputbox"):
+						if (column == 0):
+							self.thing.InsertStringItem(row, text)
+						else:
+							self.thing.SetStringItem(row, column, text)
+					else:
+						if (cellType[None].lower() == "image"):
+							handle = self.makeImage(cellType["imagePath"], internal = cellType["internal"], parent = self)
+							cellType["handle"] = handle
+
+						elif (cellType[None].lower() == "button"):
+							if (cellType["idlePath"] != None):
+								handle = self.makeButtonImage(text = cellType["text"], parent = self,
+									internal = cellType["internal"], idlePath = cellType["idlePath"], disabledPath = cellType["disabledPath"], 
+									selectedPath = cellType["selectedPath"], focusPath = cellType["focusPath"], hoverPath = cellType["hoverPath"])
+							else:
+								handle = self.makeButton(text = cellType["text"], parent = self, 
+									myFunction = cellType["myFunction"], myFunctionArgs = cellType["myFunctionArgs"], myFunctionKwargs = cellType["myFunctionKwargs"])
+							cellType["handle"] = handle
+						
+						else:
+							warnings.warn(f"Add cellType {cellType[None]} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+							return
+
+						if (column == 0):
+							self.thing.InsertItemWindow(row, handle.thing, expand = True)
+						else:
+							self.thing.SetItemWindow(row, column, handle.thing, expand = True)
+
+			# if (self.thing._mainWin.InReportView()):
+			# 	self.thing.SetColumnWidth(0, 150)
+			# 	self.thing.SetColumnWidth(1, 200)
+			# 	self.thing.SetColumnWidth(2, 100)
 
 		elif (self.type.lower() == "listtree"):
 			if (not isinstance(newValue, dict)):
@@ -6979,7 +7061,10 @@ class handle_WidgetList(handle_Widget_Base):
 		if (self.type.lower() == "listtree"):
 			self.betterBind(wx.EVT_TREE_ITEM_ACTIVATED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		elif (self.type.lower() == "listfull"):
-			self.betterBind(wx.EVT_LIST_ITEM_ACTIVATED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			if (isinstance(self.thing, self.ListFull_Editable)):
+				self.betterBind(wx.EVT_LEFT_DCLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			else:
+				self.betterBind(wx.EVT_LIST_ITEM_ACTIVATED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_middleClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -7066,8 +7151,6 @@ class handle_WidgetList(handle_Widget_Base):
 			
 		else:
 			warnings.warn(f"Add {self.type} to setRowColor() for {self.__repr__()}", Warning, stacklevel = 2)
-
-
 
 	#Event functions
 	def onDragList_beginDragAway(self, event, label = None,
@@ -7182,117 +7265,297 @@ class handle_WidgetList(handle_Widget_Base):
 
 	#   event.Skip()
 
-	class ListFull_Editable(wx.ListCtrl, wx.lib.mixins.listctrl.TextEditMixin):
+	def getCellType(self, column):
+		"""Returns the widget type of the given cell.
+		The top-left corner is cell (0, 0) not (1, 1).
+
+		column (int) - The index of the column
+
+		Example Input: getCellType(1)
+		"""
+
+		cellType = self.cellTypeCatalogue[column]
+		return cellType
+
+	def setCellType(self, column = None, cellType = None):
+		"""Changes the cell types for the table.
+
+		column (int) - Which column to apply this cell type to. Can be a list. Must be in the dict for 'cellType' or 'cellType' must be a string
+			- If None: Will apply to all columns
+		cellType (dict) - {None: keyword (str), **kwargs}
+			- Can be a string that applies to the given row and column
+			- If None: will apply the default cell type
+			- Possible Inputs: 
+				~ "inputBox"
+				
+				~ "image", {"imagePath": (str), "internal": (bool), "size": (int, int)}
+					~ Defaults: {"imagePath": None, "internal": False, size = (16, 16)}
+
+				~ "button", {"text": None, "myFunction": (function), "myFunctionArgs": (list), "myFunctionKwargs": (dict)}
+					~ Defaults: {"text": None, "myFunction": None, "myFunctionArgs": None, "myFunctionKwargs": None}
+
+		Example Input: setCellType()
+		Example Input: setCellType(cellType = {None: "inputBox"})
+		Example Input: setCellType(2, {None: "button", "text": "Open", "myFunction": self.onOpen})
+		Example INput: setCellType(2, {None: "image", "imagePath": "error", "internal": True})
+		"""
+
+		if (cellType == None):
+			cellType = self.cellTypeDefault
+		if (not isinstance(column, (list, tuple, range))):
+			column = [column]
+
+		for _column in column:
+			#Ensure cellType is structured correctly
+			if (isinstance(cellType, dict)):
+				if (None not in cellType):
+					errorMessage = f"The key word for the cell type must have the dictionary key None for {self.__repr__()}"
+					raise KeyError(errorMessage)
+			else:
+				cellType = {None: cellType}
+			cellType[None] = str(cellType[None])
+
+			#Error Checking
+			if (cellType[None].lower() not in ["inputbox", "image", "button"]):
+				errorMessage = f"Unknown cell type {cellType[None]} in {self.__repr__()}\ncellType: {cellType}"
+				raise KeyError(errorMessage)
+
+			#Apply Defaults				
+			cellType.setdefault("handle", None)
+			if (cellType[None].lower() == "image"):
+				cellType.setdefault("imagePath", None)
+				cellType.setdefault("internal", False)
+				cellType.setdefault("size", (16, 16))
+
+			elif (cellType[None].lower() == "button"):
+				cellType.setdefault("text", None)
+				cellType.setdefault("myFunction", None)
+				cellType.setdefault("myFunctionArgs", None)
+				cellType.setdefault("myFunctionKwargs", None)
+				cellType.setdefault("idlePath", None)
+				cellType.setdefault("disabledPath", None)
+				cellType.setdefault("selectedPath", None)
+				cellType.setdefault("focusPath", None)
+				cellType.setdefault("hoverPath", None)
+				cellType.setdefault("internal", False)
+				cellType.setdefault("size", None)
+
+			#Assign cell type to list
+			columnList = range(self.columns) if (_column == None) else [_column]
+			for i in columnList:
+				self.cellTypeCatalogue[i] = cellType
+
+			if (cellType[None].lower() != "inputbox"):
+				if (not self.thing._mainWin.InReportView()):
+					errorMessage = f"{self.__repr__()} must be in report mode to have non-input box objects"
+					raise ValueError(errorMessage)
+
+				elif (not self.thing.HasAGWFlag(wx.lib.agw.ultimatelistctrl.ULC_HAS_VARIABLE_ROW_HEIGHT)):
+					flags = self.thing.GetAGWWindowStyleFlag()
+					self.thing.SetAGWWindowStyleFlag(flags | wx.lib.agw.ultimatelistctrl.ULC_HAS_VARIABLE_ROW_HEIGHT)
+
+
+	class ListFull(wx.lib.agw.ultimatelistctrl.UltimateListCtrl):
+		"""Allows different cell types for different columns. """
+		def __init__(self, parent, widget, myId = wx.ID_ANY, position = wx.DefaultPosition, size = wx.DefaultSize, style = "0", autoSizeColumns = True):
+			"""Creates the list control object."""
+			
+			#Load in modules
+			wx.lib.agw.ultimatelistctrl.UltimateListCtrl.__init__(self, widget, agwStyle = eval(style, {'__builtins__': None, "wx": wx}, {}))
+
+			#Fix class type
+			self.__name__ = "wxListCtrl"
+			
+			#Internal variables
+			self.parent = parent
+			# self.myImageList = self.GetImageList(wx.IMAGE_LIST_SMALL)
+
+			if (autoSizeColumns):
+				self.parent.betterBind(wx.EVT_SIZE, self, self.onSize)
+				self.parent.betterBind(wx.EVT_SHOW, self.parent.myWindow.thing, self.onSize)
+
+		def onSize(self, event):
+			"""Fits the list control in it's sizer item."""
+
+			if (self._mainWin.InReportView()):
+				widgetList = [column for column in range(self.parent.columns) if (self.parent.cellTypeCatalogue[column][None].lower() != "inputbox")]
+				
+				if (len(widgetList) != 0):
+					dc = wx.MemoryDC()
+					for column in widgetList:
+						if (self.parent.cellTypeCatalogue[column]["handle"] != None):
+							info = self.GetColumn(column)
+							dc.SetFont(info.GetFont())
+							self.SetColumnWidth(column, max(dc.GetTextExtent(info.GetText())[0] + 16, self.parent.cellTypeCatalogue[column]["handle"].thing.GetSize()[0], self.parent.cellTypeCatalogue[column]["handle"].thing.GetBestSize()[0]))
+				
+				columnList = [column for column in range(self.parent.columns) if ((column not in self.parent.columnWidth) and (column not in widgetList))]
+				width = math.ceil(self.GetSize()[0] / len(columnList) 
+					- sum([self.GetColumnWidth(column) for column in self.parent.columnWidth]) 
+					- sum([self.GetColumnWidth(column) for column in widgetList]))
+				
+				for column in columnList:
+					self.SetColumnWidth(column, width)
+
+			event.Skip()
+		
+		# def DoGetBestSize(self):
+		# 	"""Overridden because ultimatelistctrl does not calculate it."""
+
+		# 	return wx.Size(100, 80)
+			
+		# 	if ((not self._mainWin.InReportView()) or (not hasattr(self, "parent"))):
+		# 		return wx.Size(100, 80)
+
+		# 	size = [0, 0]
+		# 	for row in range(self.GetItemCount()):
+		# 		print("@2", self.GetItemRect(row))
+		# 		x, y, width, height = self.GetItemRect(row)
+				
+		# 		size[0] += width
+		# 		size[1] += height
+
+
+		# 		# for column in range(self.parent.columns):
+		# 		# 	print("@1", row, column, item)
+
+		# 		# 	print("@2", item.GetWidth())
+
+		# 	print("@1", size)
+
+		# 	return wx.Size(size[0], size[1])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		# 	sys.exit()
+		# 	kjhjkh
+
+
+
+
+
+
+
+
+		# def SetItem(self, *args, **kwargs):
+		# 	"""Overridden to allow different cell types."""
+
+		# 	index = super(handle_WidgetList.ListFull, self).SetItem(*args, **kwargs)
+
+		# 	#SetItem (self, info)
+		# 	if (isinstance(index, bool)):
+		# 		item = args[0]
+
+		# 		row = item.GetId()
+		# 		column = item.GetColumn()
+		# 		label = item.GetText()
+
+		# 	#SetItem (self, index, column, label, imageId=-1)
+		# 	else:
+		# 		row = args[0]
+		# 		column = args[1]
+		# 		label = args[2]
+
+		# 	print("@1", index, row, column, label, image)
+
+		# 	cellType = self.parent.cellTypeCatalogue[column]
+		# 	if (cellType[None] == "image"):
+		# 		if (self.myImageList == None):
+		# 			self.myImageList = wx.ImageList(32, 32)
+		# 			self.AssignImageList(self.myImageList, wx.IMAGE_LIST_SMALL)
+
+		# 		print("@6", self.parent.cellTypeCatalogue[column])
+		# 		image = self.parent._getImage(cellType["imagePath"], internal = cellType["internal"])
+		# 		handle = self.myImageList.Add(image)
+		# 		self.SetItemImage(row, handle)
+
+	class ListFull_Editable(ListFull, wx.lib.mixins.listctrl.TextEditMixin):
 		"""Allows a list control to have editable text."""
 
-		def __init__(self, parent, myId = wx.ID_ANY, pos = wx.DefaultPosition, size = wx.DefaultSize, style = "0"):
-			"""Creates the editable list object"""
+		def __init__(self, parent, widget, myId = wx.ID_ANY, position = wx.DefaultPosition, size = wx.DefaultSize, style = "0", editable = {}, editOnClick = True):
+			"""Creates the editable list object."""
 
 			#Load in modules
-			wx.ListCtrl.__init__(self, parent, id = myId, pos = pos, size = size, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+			parent.ListFull.__init__(self, parent, widget, myId = myId, position = position, size = size, style = style)
 			wx.lib.mixins.listctrl.TextEditMixin.__init__(self)
 
 			#Fix class type
 			self.__name__ = "wxListCtrl"
 
 			#Internal variables
-			self.editable = {}
+			self.editable = editable
+			self.parent = parent
+			self.event = None
+
+			#Open editor on double click only
+			if (editOnClick == None):
+				self.parent.betterBind(wx.EVT_LEFT_DOWN, self, self.parent.onDoNothing, rebind = None)
+			elif (not editOnClick):
+				self.Unbind(wx.EVT_LEFT_DOWN)
+
+		def make_editor(self, *args, **kwargs):
+			"""Overridden to make the colors standard again."""
+			
+			super(handle_WidgetList.ListFull_Editable, self).make_editor(*args, **kwargs)
+
+			self.editor.SetBackgroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_LISTBOX))
+			self.editor.SetForegroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_CAPTIONTEXT))
 
 		def OpenEditor(self, column, row):
-			"""Overriden to make only some cells editable."""
+			"""Overridden to make only some cells editable and fix the item size."""
 
+			print("@4", self.parent.cellTypeCatalogue)
+			print("@5", self.parent.cellTypeCatalogue[column])
+
+			leave = False
 			#Check for non-editable column
-			if (type(self.editable) != dict):
+			if (self.parent.cellTypeCatalogue[column][None].lower() != "inputbox"):
+				leave = True
+			elif (type(self.editable) != dict):
 				#All is editable
 				if (not self.editable):
-					return
+					leave = True
 
 			elif (column in self.editable):
 				#Specific columns are editable
 				if (not self.editable[column]):
-					return
+					leave = True
 
 			else:
 				#None is editable
+				leave = True
+			
+			if (leave):
+				if (self.event != None):
+					if (self.event.GetSkipped()):
+						self.event.Skip()
 				return
 
 			#Run Function Normally
-			event = wx.ListEvent(wx.EVT_COMMAND_LIST_BEGIN_LABEL_EDIT, self.GetId())
-			event.SetEventObject(self) #Added this so the event has an associated object
-			event.Index = row
-			event.Column = column
-			item = self.GetItem(row, column)
-			event.Item.SetId(item.GetId())
-			event.Item.SetColumn(item.GetColumn())
-			event.Item.SetData(item.GetData())
-			event.Item.SetText(item.GetText())
-			ret = self.GetEventHandler().ProcessEvent(event)
-			if ret and not event.IsAllowed():
-				return   
+			super(handle_WidgetList.ListFull_Editable, self).OpenEditor(column, row)
 
-			if self.GetColumn(column).Align != self.col_style:
-				self.make_editor(self.GetColumn(column).Align)
+			#Make the editor fit the cell
+			y = self.GetItemRect(row)[3]
+			x = self.editor.GetSize()[0]
+			self.editor.SetSize(x, y)
 
-			x0 = self.col_locs[column]
-			x1 = self.col_locs[column + 1] - x0
+		def OnLeftDown(self, event):
+			"""Overridden to continue the event if the item is not editable."""
 
-			scrolloffset = self.GetScrollPos(wx.HORIZONTAL)
+			self.event = event
 
-			if x0 + x1 - scrolloffset > self.GetSize()[0]:
-				if wx.Platform == "__WXMSW__":
-					offset = x0 + x1 - self.GetSize()[0] - scrolloffset
-					addoffset = self.GetSize()[0] / 4
-					if addoffset + scrolloffset < self.GetSize()[0]:
-						offset += addoffset
-
-					self.ScrollList(offset, 0)
-					scrolloffset = self.GetScrollPos(wx.HORIZONTAL)
-				else:
-					self.editor.SetValue(self.GetItem(row, column).GetText())
-					self.curRow = row
-					self.curCol = column
-					self.CloseEditor()
-					return
-
-			y0 = self.GetItemRect(row)[1]
-
-			editor = self.editor
-			editor.SetSize(x0 - scrolloffset, y0, x1,-1)
-
-			editor.SetValue(self.GetItem(row, column).GetText())
-			editor.Show()
-			editor.Raise()
-			editor.SetSelection(-1,-1)
-			editor.SetFocus()
-
-			self.curRow = row
-			self.curCol = column
-
-		def CloseEditor(self, event = None):
-			"""Overriden to fix deprication warnings."""
-
-			if (not self.editor.IsShown()):
-				return
-
-			text = self.editor.GetValue()
-			self.editor.Hide()
-			self.SetFocus()
-
-			event = wx.ListEvent(wx.EVT_COMMAND_LIST_END_LABEL_EDIT, self.GetId())
-			event.SetEventObject(self) #Added this so the event has an associated object
-			event.Index = self.curRow
-			event.Column = self.curCol
-			item = self.GetItem(self.curRow, self.curCol)
-			item.SetText(text)
-			event.SetItem(item)
-			ret = self.GetEventHandler().ProcessEvent(event)
-
-			if (not ret or event.IsAllowed()):
-				if (self.IsVirtual()):
-					self.SetVirtualData(self.curRow, self.curCol, text)
-				else:
-					self.SetItem(self.curRow, self.curCol, text) #Changed SetStringItem to SetItem
-			self.RefreshItem(self.curRow)
+			#Run Function Normally
+			super(handle_WidgetList.ListFull_Editable, self).OnLeftDown(event)
 
 	class DragTextDropTarget(wx.TextDropTarget):
 		"""Used to set an object as a drop destination for text being dragged by the mouse.
@@ -7373,14 +7636,14 @@ class handle_WidgetList(handle_Widget_Base):
 							myFunctionEvaluated()
 
 		def OnDragOver(self, x, y, d):
-			"""Overriden function. Needed to make this work."""
+			"""Overridden function. Needed to make this work."""
 			
 			self.runFunction(self.dragOverFunction, self.dragOverFunctionArgs, self.dragOverFunctionKwargs)
 
 			return wx.DragCopy
 			
 		def OnDropText(self, x, y, data):
-			"""Overriden function. Needed to make this work."""
+			"""Overridden function. Needed to make this work."""
 
 			global dragDropDestination
 
@@ -9039,7 +9302,7 @@ class handle_WidgetImage(handle_Widget_Base):
 				myId = wx.ID_ANY
 		
 			#Create the thing to put in the grid
-			self.thing = wx.StaticBitmap(self.parent.thing, id = myId, bitmap = image, size = size, style = 0)
+			self.thing = wx.StaticBitmap(self.parent.thing, id = myId, bitmap = image, size = size, style = 0) #style = wx.SUNKEN_BORDER)
 		
 		#########################################################
 
@@ -14468,7 +14731,7 @@ class handle_WidgetTable(handle_Widget_Base):
 			if (self.debugging):
 				print(f"TableCellRenderer.Draw(grid = {grid}, attributes = {attributes}, dc = {dc}, rectangle = {rectangle}, row = {row}, column = {column}, isSelected = {isSelected})")
 
-			self.drawBackground(grid, attributes, dc, rectangle, row, column, isSelected)
+			self.drawBackground(grid, dc, rectangle, isSelected)
 			
 			if (isinstance(self.cellType[None], str)):
 				if (self.cellType[None].lower() == "button"):
@@ -14490,7 +14753,7 @@ class handle_WidgetTable(handle_Widget_Base):
 					wx.RendererNative.Get().DrawPushButton(grid, dc, rectangle, state)
 
 					if (self.cellType["text"] != None):
-						self.drawText(self.cellType["text"], attributes, dc, rectangle, isSelected, align = "center")
+						self.drawText(self.cellType["text"], dc, rectangle, isSelected, align = "center")
 
 					#Run Function
 					if ((self.parent.buttonPressCatalogue[row][column]["press"]) and (not self.parent.buttonPressCatalogue[row][column]["ranFunction"])):
@@ -14498,7 +14761,7 @@ class handle_WidgetTable(handle_Widget_Base):
 						self.parent.runMyFunction(self.cellType["myFunction"], self.cellType["myFunctionArgs"], self.cellType["myFunctionKwargs"])
 				else:
 					text = grid.GetCellValue(row, column)
-					self.drawText(text, attributes, dc, rectangle, isSelected, align = "left")
+					self.drawText(text, dc, rectangle, isSelected, align = "left")
 
 		def GetBestSize(self, grid, attributes, dc, row, column):
 			"""Customisation Point: Determine the appropriate (best) size for the control, return as wxSize.
@@ -14526,7 +14789,7 @@ class handle_WidgetTable(handle_Widget_Base):
 			return handle
 
 		#Utility Functions
-		def drawText(self, text, attributes, dc, rectangle, isSelected, x_offset = 0, y_offset = 0, align = None):
+		def drawText(self, text, dc, rectangle, isSelected, x_offset = 0, y_offset = 0, align = None):
 			"""Draw a simple text label in appropriate colours with background
 			Special thanks to Milan Skala for how to center text on http://wxpython-users.1045709.n5.nabble.com/Draw-text-over-an-existing-bitmap-td5725527.html
 
@@ -14564,7 +14827,7 @@ class handle_WidgetTable(handle_Widget_Base):
 			finally:
 				dc.SetTextForeground(oldColor)
 
-		def drawBackground(self, grid, attributes, dc, rectangle, row, column, isSelected):
+		def drawBackground(self, grid, dc, rectangle, isSelected):
 			"""Draw an appropriate background based on selection state"""
 
 			oldPen = dc.GetPen()
