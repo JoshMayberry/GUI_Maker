@@ -670,21 +670,27 @@ class Utilities():
 		Example Input: get(slice(2, "text", None))
 		Example Input: get(event)
 		Example Input: get(event, returnExists = True)
+		Example Input: get(slice(None, None, None), checkNested = False)
 		"""
 
 		def nestCheck(itemList, itemLabel):
 			"""Makes sure everything is nested."""
 
+			if (isinstance(itemLabel, handle_Base)):
+				key = itemLabel.label
+			else:
+				key = itemLabel
+
 			answer = None
 			for item in itemList:
-				if (isinstance(itemLabel, wx.Event)):
-					if (itemLabel.GetEventObject() == item.thing):
+				if (isinstance(key, wx.Event)):
+					if (key.GetEventObject() == item.thing):
 						return item
 				else:
-					if (itemLabel == item.label):
+					if (key == item.label):
 						return item
 				
-				answer = nestCheck(item[:], itemLabel)
+				answer = nestCheck(item[:], key)
 				if (answer != None):
 					return answer
 			return answer
@@ -759,6 +765,11 @@ class Utilities():
 				errorMessage = f"There is no item labled {itemLabel.stop} in the label catalogue for {self.__repr__()}"
 				raise KeyError(errorMessage)
 
+			if (isinstance(itemLabel.start, handle_Base)):
+				itemLabel.start = itemLabel.start.label
+			if (isinstance(itemLabel.stop, handle_Base)):
+				itemLabel.stop = itemLabel.stop.label
+
 			handleList = []
 			begin = False
 			for item in self.labelCatalogueOrder:
@@ -776,19 +787,30 @@ class Utilities():
 				for item in self.unnamedList:
 					handleList.append(item)
 
-			# answer = checkType(handleList)
-			# answer = handleList
-			# return handleList
-			return checkType(handleList)
+			answer = checkType(handleList)
+			if (returnExists):
+				return answer != None
+			return answer
 
-		elif (itemLabel not in self.labelCatalogue):
-			if (checkNested):
-				answer = nestCheck(self[:], itemLabel)
-				answer = checkType(answer)
-			else:
-				answer = None
+		elif (itemLabel in self.unnamedList):
+			answer = checkType(itemLabel)
+
 		else:
-			answer = checkType(self.labelCatalogue[itemLabel])
+			if (isinstance(itemLabel, handle_Base)):
+				key = itemLabel.label
+			else:
+				key = itemLabel
+
+			if (key == None):
+				answer = None
+			elif (key in self.labelCatalogue):
+				answer = checkType(self.labelCatalogue[key])
+			else:
+				if (checkNested):
+					answer = nestCheck(self[:], key)
+					answer = checkType(answer)
+				else:
+					answer = None
 
 		if (returnExists):
 			return answer != None
@@ -4808,6 +4830,7 @@ class handle_Dummy():
 		pass
 
 	def __delitem__(self, key):
+		print("@2.1", key)
 		pass
 
 	def __contains__(self, key):
@@ -4917,7 +4940,21 @@ class handle_Base(Utilities, CommonEventFunctions):
 	def __delitem__(self, key):
 		"""Allows the user to index the handle to get nested elements with labels."""
 
-		del self.labelCatalogue[key]
+		if (key in self):
+			if (key in self.unnamedList):
+				self.unnamedList.remove(key)
+				return
+
+			if (isinstance(key, handle_Base)):
+				key = key.label
+			del self.labelCatalogue[key]
+
+		else:
+			if (isinstance(key, handle_Base)):
+				errorMessage = f"{key.__repr__()} not in {self.__repr__()}"
+			else:
+				errorMessage = f"{key} not in {self.__repr__()}"
+			raise KeyError(errorMessage)
 
 	def __contains__(self, key):
 		"""Allows the user to use get() when using 'in'."""
@@ -5092,17 +5129,18 @@ class handle_Base(Utilities, CommonEventFunctions):
 			flags, position, border = self.getItemMod(flags)
 
 			if (isinstance(handle, (handle_Widget_Base, handle_Sizer, handle_Splitter, handle_Notebook))):
-				self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
+				handle.mySizerItem = self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
 			
 			elif (isinstance(handle, handle_NotebookPage)):
-				self.thing.Add(handle.mySizer.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
+				handle.mySizerItem = self.thing.Add(handle.mySizer.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
 			
 			elif (isinstance(handle, handle_Menu) and (handle.type.lower() == "toolbar")):
-				self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
+				handle.mySizerItem = self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
 
 			else:
 				warnings.warn(f"Add {handle.__class__} as a handle for handle_Sizer to nest() in {self.__repr__()}", Warning, stacklevel = 2)
 				return
+			handle.nestedSizer = self
 		
 		elif (isinstance(self, handle_Panel)):
 			if (isinstance(handle, handle_Sizer)):
@@ -5119,14 +5157,51 @@ class handle_Base(Utilities, CommonEventFunctions):
 		if (selected):
 			handle.thing.SetDefault()
 
-		#Remember Values
-		if (isinstance(self, handle_Sizer) and (not isinstance(handle, handle_Sizer))):
-			for item in self.thing.GetChildren():
-				if (item.GetWindow() == handle.thing):
-					handle.mySizerItem = item
+		# #Remember Values
+		# if (isinstance(self, handle_Sizer) and (not isinstance(handle, handle_Sizer))):
+		# 	for item in self.thing.GetChildren():
+		# 		if (item.GetWindow() == handle.thing):
+		# 			handle.mySizerItem = item
+		# 			# handle.nestedSizer = self
+		# 			break
+		# 	else:
+		# 		warnings.warn(f"Could not find sizer item for {handle.__repr__()} in nest() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def clear(self):
+		"""Removes all nested widgets.
+
+		Example Input: clear()
+		"""
+
+		for item in self.get(slice(None, None, None), checkNested = False):
+			item.remove()
+
+	def remove(self):
+		"""Removes this item from it's sizer.
+
+		Example Input: remove()
+		"""
+
+		if (isinstance(self, handle_Sizer)):
+			self.clear()
+			del self
+		else:
+			index = None
+			for i, item in enumerate(self.nestedSizer.thing.GetChildren()):
+				if (item == self.mySizerItem):
+					index = i
 					break
-			else:
-				warnings.warn(f"Could not find sizer item for {handle.__repr__()} in nest() for {self.__repr__()}", Warning, stacklevel = 2)
+
+			if (index == None):
+				warnings.warn(f"Could not find sizer item index in remove() for {self.__repr__()}", Warning, stacklevel = 2)
+				jkjhjk
+				return
+
+			self.nestedSizer.thing.Hide(index)
+			self.nestedSizer.thing.Remove(index)
+			self.nestedSizer.thing.Layout()
+
+			del self.nestedSizer[self]
 
 	#Etc
 	def readBuildInstructions_sizer(self, parent, i, instructions):
@@ -7318,7 +7393,7 @@ class handle_WidgetList(handle_Widget_Base):
 		Example Input: setCellType()
 		Example Input: setCellType(cellType = {None: "inputBox"})
 		Example Input: setCellType(2, {None: "button", "text": "Open", "myFunction": self.onOpen})
-		Example INput: setCellType(2, {None: "image", "imagePath": "error", "internal": True})
+		Example Input: setCellType(2, {None: "image", "imagePath": "error", "internal": True})
 		"""
 
 		if (cellType == None):
@@ -19882,6 +19957,7 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 	def __delitem__(self, key):
 		"""Allows the user to index the handle to get nested elements with labels."""
 
+		print("@2.3", key)
 		self.mySizer.__delitem__(key)
 
 	def build(self, argument_catalogue):
@@ -22048,6 +22124,7 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def __delitem__(self, key):
 		"""Allows the user to index the handle to get nested elements with labels."""
 
+		print("@2.4", key)
 		del self.labelCatalogue[key]
 
 	def get(self, *args, returnExists = False, **kwargs):
@@ -22911,6 +22988,7 @@ class User_Utilities():
 		dataCatalogue[key] = value
 
 	def __delitem__(self, key):
+		print("@2.5", key)
 		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable != None)):
 			if (isinstance(self._catalogue_variable, Controller)):
 				return self._catalogue_variable.__delitem__(key)
