@@ -33,7 +33,6 @@ import warnings
 import traceback
 import functools
 
-
 #Import wxPython elements to create GUI
 import wx
 import wx.adv
@@ -59,12 +58,6 @@ import wx.lib.agw.ultimatelistctrl
 # from matplotlib.backends.backend_wxagg import FigureCanvas
 
 
-#Import py2exe elements for creating a .exe of the GUI
-# import sys; sys.argv.append('py2exe')
-# from distutils.core import setup
-# import py2exe
-
-
 #Import cryptodome to encrypt and decrypt files
 # import Cryptodome.Random
 # import Cryptodome.Cipher.AES
@@ -73,6 +66,7 @@ import wx.lib.agw.ultimatelistctrl
 
 
 #Import communication elements for talking to other devices such as printers, the internet, a raspberry pi, etc.
+import usb
 import select
 import socket
 import serial
@@ -80,7 +74,8 @@ import netaddr
 import serial.tools.list_ports
 
 #Import barcode software for drawing and decoding barcodes
-import elaphe
+import qrcode
+import barcode
 
 
 #Import multi-threading to run functions as background processes
@@ -91,8 +86,8 @@ import subprocess
 
 #Import needed support modules
 import re
+import PIL
 # import atexit
-# import PIL.Image
 
 
 #Import user-defined modules
@@ -109,6 +104,9 @@ import re
 	# cx_Freeze
 	# pyserial
 	# netaddr
+	# pyusb
+	# pyBarcode
+	# qrcode
 
 #Maybe Required Modules?
 	# openpyxl
@@ -117,20 +115,17 @@ import re
 	# pillow
 	# pycryptodomex
 	# atexit
-	# elaphe3
 	# python3-ghostscript "https://pypi.python.org/pypi/python3-ghostscript/0.5.0#downloads"
 	# sqlite3
 
-##User Created
-	#ExcelManipulator
-
-##Module Patches (Replace the following files with these from my computer)
-	#C:\Python34\Lib\site-packages\wx\lib\masked\maskededit.py
-
-##Module dependancies (Install the following .exe files)
+##Module dependancies (Install the following .exe and/or .dll files)
 	#"Ghostscript AGPL Release" on "https://ghostscript.com/download/gsdnld.html"
 		#Make sure you install the 32 bit version if you are using 32 bit python
 		#Add the .dll location to your PATH enviroment variable. Mine was at "C:\Program Files (x86)\gs\gs9.20\bin"
+
+	#The latest Windows binary on "https://sourceforge.net/projects/libusb/files/libusb-1.0/libusb-1.0.21/libusb-1.0.21.7z/download"
+		#If on 64-bit Windows, copy "MS64\dll\libusb-1.0.dll" into "C:\windows\system32"
+		#If on 32-bit windows, copy "MS32\dll\libusb-1.0.dll" into "C:\windows\SysWOW64"
 
 #_________________________________________________________________________#
 #                                                                         #
@@ -2163,8 +2158,16 @@ class Utilities():
 		#Determine if the image is a blank image
 		if ((imagePath != None) and (imagePath != "")):
 			#Determine if the image is a PIL image
+
+			print("@1", imagePath)
+			print("@2", type(imagePath))
+
 			if (type(imagePath) != str):
-				image = self.convertPilToBitmap(imagePath, alpha)
+				if (PIL.Image.isImageType(imagePath)):
+					image = self.convertPilToBitmap(imagePath, alpha)
+				else:
+					errorMessage = f"Unknown file type {type(imagePath)} for _getImage() in {self.__repr__()}"
+					raise KeyError(errorMessage)
 			else:
 				#Determine if the image is an internal image
 				if (internal):
@@ -4201,6 +4204,7 @@ class Utilities():
 	#Sizers
 	def makeSizerGrid(self, rows = 1, columns = 1, text = None,
 		rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1,
+		size = wx.DefaultSize, scroll_x = False, scroll_y = False, scrollToTop = True, scrollToChild = True,
 
 		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Creates a grid sizer to the specified size.
@@ -4227,6 +4231,7 @@ class Utilities():
 
 	def makeSizerGridFlex(self, rows = 1, columns = 1, text = None, vertical = None,
 		rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1, flexGrid = True,
+		size = wx.DefaultSize, scroll_x = False, scroll_y = False, scrollToTop = True, scrollToChild = True,
 
 		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Creates a flex grid sizer.
@@ -4261,6 +4266,7 @@ class Utilities():
 	def makeSizerGridBag(self, rows = 1, columns = 1, text = None,
 		rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1, vertical = None, 
 		emptySpace = None, flexGrid = True,
+		size = wx.DefaultSize, scroll_x = False, scroll_y = False, scrollToTop = True, scrollToChild = True,
 
 		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Creates a bag grid sizer.
@@ -4293,6 +4299,7 @@ class Utilities():
 		return handle
 
 	def makeSizerBox(self, text = None, minWidth = -1, minHeight = -1, vertical = True,
+		size = wx.DefaultSize, scroll_x = False, scroll_y = False, scrollToTop = True, scrollToChild = True,
 
 		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Creates a box sizer.
@@ -4316,6 +4323,7 @@ class Utilities():
 		return handle
 
 	def makeSizerText(self, text = "", minWidth = -1, minHeight = -1, vertical = True, 
+		size = wx.DefaultSize, scroll_x = False, scroll_y = False, scrollToTop = True, scrollToChild = True,
 
 		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Creates a static box sizer.
@@ -4341,6 +4349,7 @@ class Utilities():
 		return handle
 
 	def makeSizerWrap(self, text = None, minWidth = -1, minHeight = -1, extendLast = False, vertical = True,
+		size = wx.DefaultSize, scroll_x = False, scroll_y = False, scrollToTop = True, scrollToChild = True,
 
 		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
 		"""Creates a wrap sizer.
@@ -4830,7 +4839,6 @@ class handle_Dummy():
 		pass
 
 	def __delitem__(self, key):
-		print("@2.1", key)
 		pass
 
 	def __contains__(self, key):
@@ -5098,20 +5106,14 @@ class handle_Base(Utilities, CommonEventFunctions):
 		Example Input: nest(text)
 		"""
 
-		#Account for automatic text sizer nesting
+		#Account for automatic text sizer nesting and scroll sizer nesting
 		if (isinstance(handle, handle_Sizer)):
-			if (isinstance(self, handle_Sizer)):
-				sizerType = self.type.lower()
-			else:
-				sizerType = handle.type.lower()
-
-			if (sizerType != "text"):
-				if (handle.text != None):
-					handle = handle.text
+			if ((handle.substitute != None) and (handle.substitute != self)):
+				handle = handle.substitute
 
 		#Do not nest already nested objects
 		if (handle.nested):
-			errorMessage = "Cannot nest objects twice"
+			errorMessage = f"Cannot nest {handle.__repr__()} twice"
 			raise SyntaxError(errorMessage)
 
 		self.finalNest(handle)
@@ -5127,12 +5129,12 @@ class handle_Base(Utilities, CommonEventFunctions):
 				flags.append(handle.alignment)
 
 			flags, position, border = self.getItemMod(flags)
-
-			if (isinstance(handle, (handle_Widget_Base, handle_Sizer, handle_Splitter, handle_Notebook))):
-				handle.mySizerItem = self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
 			
-			elif (isinstance(handle, handle_NotebookPage)):
+			if (isinstance(handle, handle_NotebookPage)):
 				handle.mySizerItem = self.thing.Add(handle.mySizer.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
+
+			elif (isinstance(handle, (handle_Widget_Base, handle_Sizer, handle_Splitter, handle_Notebook, handle_Panel))):
+				handle.mySizerItem = self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
 			
 			elif (isinstance(handle, handle_Menu) and (handle.type.lower() == "toolbar")):
 				handle.mySizerItem = self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
@@ -14898,6 +14900,7 @@ class handle_Sizer(handle_Container_Base):
 		handle_Container_Base.__init__(self)
 
 		#Defaults
+		self.substitute = None
 		self.myWindow = None
 		self.text = None
 		self.rows = None
@@ -14939,15 +14942,6 @@ class handle_Sizer(handle_Container_Base):
 		if (state != None):
 			return state
 
-		# if (building):
-		# 	#Check for auto-nesting conditions
-		# 	myOrder = self.myWindow.sizersIterating[self][1]
-		# 	leftOpen = {value[1]: key for key, value in self.myWindow.sizersIterating.items() if (value[0])}
-
-		# 	if (myOrder - 1 in leftOpen):
-		# 		if (not self.nested):
-		# 			leftOpen[myOrder - 1].nest(self)
-
 	def build(self, argument_catalogue):
 		if (self.type == None):
 			errorMessage = "Must define sizer type before building"
@@ -14963,18 +14957,20 @@ class handle_Sizer(handle_Container_Base):
 
 		#Unpack arguments
 		buildSelf, text = self.getArguments(argument_catalogue, ["self", "text"])
+		scroll_x, scroll_y, scrollToTop, scrollToChild, size = self.getArguments(argument_catalogue, ["scroll_x", "scroll_y", "scrollToTop", "scrollToChild", "size"])
+
+		if ((scroll_x not in [False, None]) or (scroll_y not in [False, None])):
+			self.substitute = self.makeSizerBox()
+
+			panel = self.makePanel({"size": size, "scroll_x": scroll_x, "scroll_y": scroll_y, "scrollToTop": scrollToTop, "scrollToChild": scrollToChild})
+			self.substitute.nest(panel)
+			self.parent = panel
 
 		#Set values
 		if (isinstance(buildSelf, handle_Window)):
 			self.myWindow = buildSelf
 		else:
 			self.myWindow = buildSelf.myWindow
-
-		# if (isinstance(buildSelf, handle_Window)):
-		# 	sizerList = buildSelf.getNested(include = handle_Sizer)
-		# 	if (len(sizerList) <= 1):
-		# 		#The first sizer added to a window is automatically nested
-		# 		buildSelf.finalNest(self)
 
 		myId = self.getArguments(argument_catalogue, ["myId"])
 		if (myId == None):
@@ -15060,8 +15056,10 @@ class handle_Sizer(handle_Container_Base):
 		#Account for nesting in a text sizer
 		if (sizerType != "text"):
 			if (text != None):
-				self.text = self.makeSizerText(text = text)
-				self.text.nest(self)
+				self.substitute = self.makeSizerText(text = text)
+
+		if (self.substitute != None):
+			self.substitute.nest(self)
 
 		#Set sizer hints to main window
 		minSize = self.myWindow.thing.GetMinSize() #Preserve minimum size bounds
@@ -19957,7 +19955,6 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 	def __delitem__(self, key):
 		"""Allows the user to index the handle to get nested elements with labels."""
 
-		print("@2.3", key)
 		self.mySizer.__delitem__(key)
 
 	def build(self, argument_catalogue):
@@ -20215,9 +20212,10 @@ class Communication():
 	"""Helps the GUI to communicate with other devices.
 
 	CURRENTLY SUPPORTED METHODS
-		- COM Port
+		- COM Port (RS-232)
 		- Ethernet & Wi-fi
 		- Barcode
+		- USB
 
 	UPCOMING SUPPORTED METHODS
 		- Raspberry Pi GPIO
@@ -20229,6 +20227,7 @@ class Communication():
 	def __init__(self):
 		"""Initialized internal variables."""
 
+		self.usbDict     = {} #A dictionary that contains all of the created USB connections
 		self.comDict     = {} #A dictionary that contains all of the created COM ports
 		self.socketDict  = {} #A dictionary that contains all of the created socket connections
 		self.barcodeDict = {} #A dictionary that contains all of the created barcodes
@@ -20279,7 +20278,7 @@ class Communication():
 		"""Returns a list of available ports.
 		Code from Matt Williams on http://stackoverflow.com/questions/1205383/listing-serial-com-ports-on-windows.
 
-		Example Input: getAllComPorts()
+		Example Input: getComPortList()
 		"""
 
 		ports = [item.device for item in serial.tools.list_ports.comports()]
@@ -20348,7 +20347,7 @@ class Communication():
 	def getSocket(self, which):
 		"""Returns the requested Ethernet object.
 
-		Example Input: getComPort(0)
+		Example Input: getSocket(0)
 		"""
 
 		if (which in self.socketDict):
@@ -20356,6 +20355,203 @@ class Communication():
 		else:
 			warnings.warn(f"There is no Ethernet object {which}", Warning, stacklevel = 2)
 			return None
+
+	#COM port
+	def getUSBList(self, *args, **kwargs):
+		"""Returns a list of available usb ports.
+		Code from Matt Williams on http://stackoverflow.com/questions/1205383/listing-serial-com-ports-on-windows.
+
+		Example Input: getUSBList()
+		"""
+
+		ports = self.USB.getAll(self, *args, **kwargs)
+
+		return ports
+
+	def makeUSB(self, which = None):
+		"""Creates a new USB object.
+
+		Example Input: makeUSB()
+		Example Input: makeUSB(0)
+		"""
+
+		#Create USB object
+		usb = self.USB(self)
+		if (which in self.usbDict):
+			warnings.warn(f"Overwriting USB Port {which}", Warning, stacklevel = 2)
+
+		#Catalogue the USB port
+		if (which != None):
+			self.usbDict[which] = usb
+		else:
+			index = 0
+			while index in self.usbDict:
+				index += 1
+			self.usbDict[index] = usb
+
+		return usb
+
+	def getUSB(self, which):
+		"""Returns the requested USB object.
+
+		Example Input: getUSB(0)
+		"""
+
+		if (which in self.usbDict):
+			return self.usbDict[which]
+		else:
+			warnings.warn(f"There is no USB object {which}", Warning, stacklevel = 2)
+			return None
+
+	class USB():
+		"""A controller for a USB connection.
+		
+		Special thanks to KM4YRI for how to install libusb on https://github.com/pyusb/pyusb/issues/120
+			- Install the latest Windows binary on "https://sourceforge.net/projects/libusb/files/libusb-1.0/libusb-1.0.21/libusb-1.0.21.7z/download"
+			- If on 64-bit Windows, copy "MS64\dll\libusb-1.0.dll" into "C:\windows\system32"
+			- If on 32-bit windows, copy "MS32\dll\libusb-1.0.dll" into "C:\windows\SysWOW64"
+		"""
+
+		def __init__(self, parent):
+			"""Defines the internal variables needed to run."""
+			
+			self.parent = parent
+			self.device = None
+			self.catalogue = {} #Information on the current usb device
+
+			self.current_config = None
+			self.current_interface = None
+			self.current_endpoint = None
+
+		def getAll(self):
+			"""Returns all connected usb objects.
+			Modified Code from: https://www.orangecoat.com/how-to/use-pyusb-to-find-vendor-and-product-ids-for-usb-devices
+
+			Example Input: getAll()
+			"""
+
+			valueList = []
+			return valueList
+			
+
+			devices = usb.core.find(find_all=True)
+			for config in devices:
+				value = (config.idVendor, config.idProduct)#, usb.core._try_lookup(usb._lookup.device_classes, config.bDeviceClass), usb.core._try_get_string(config, config.iProduct), usb.core._try_get_string(config, config.iManufacturer))
+				valueList.append(value)
+
+			return valueList
+
+		def open(self, vendor, product = None):
+			"""Connects to a USB object.
+			Modified Code from: https://github.com/walac/pyusb/blob/master/docs/tutorial.rst
+
+			Special thanks to frva for how to allow device configurations on https://stackoverflow.com/questions/31960314/pyusb-1-0-notimplementederror-operation-not-supported-or-unimplemented-on-this
+				- Install the latest version of "Zadig" on "http://zadig.akeo.ie/"
+				- Connect your USB device
+				- Run "Zadig.exe", select "Options" and enable "List All Devices"
+				- Select your device, then select "WINUSB" and press "Reinstall Driver"
+				See: https://github.com/libusb/libusb/wiki/Windows#How_to_use_libusb_on_Windows
+
+			vendor (int) - The vendor id
+				- If tuple: (vendor id (int), product id (int))
+			product (int) - The product id
+
+			Example Input: open(1529, 16900)
+			Example Input: open((1529, 16900))
+			"""
+
+			if (isinstance(vendor, (list, tuple))):
+				product = vendor[1]
+				vendor = vendor[0]
+
+			#Locate the device
+			self.device = usb.core.find(idVendor = vendor, idProduct = product)#, find_all = True)
+			if (self.device is None):
+				raise ValueError(f"Device {vendor}:{product} not found in open() for {self.__repr__()}")
+
+			#Get info on device
+			self.catalogue[None] = self.device
+			self.catalogue["type"] = usb.core._try_lookup(usb._lookup.device_classes, self.device.bDeviceClass)
+			self.catalogue["company"] = usb.core._try_get_string(self.device, self.device.iManufacturer)
+			self.catalogue["name"] = usb.core._try_get_string(self.device, self.device.iProduct)
+			for i, config in enumerate(self.device):
+				self.catalogue[i] = {}
+				self.catalogue[i][None] = config
+				self.catalogue[i]["type"] = usb.core._try_get_string(config.device, config.iConfiguration)
+				# self.catalogue[i]["value"] = config.bConfigurationValue
+
+				self.catalogue[i]["data"] = ""
+				if (config.bmAttributes & (1<<6)):
+					self.catalogue[i]["data"] += "Self"
+				else:
+					self.catalogue[i]["data"] += "Bus"
+				if (config.bmAttributes & (1<<5)):
+					self.catalogue[i]["data"] += ", Remote Wakeup"
+
+				for j, interface in enumerate(config):
+					self.catalogue[i][j] = {}
+					self.catalogue[i][j][None] = interface
+					self.catalogue[i][j]["type"] = usb.core._try_lookup(usb._lookup.interface_classes, interface.bInterfaceClass)
+					self.catalogue[i][j]["name"] = usb.core._try_get_string(interface.device, interface.iInterface)
+
+					for k, endpoint in enumerate(interface):
+						self.catalogue[i][j][k] = {}
+						self.catalogue[i][j][k][None] = endpoint
+
+						if (usb.util.endpoint_direction(endpoint.bEndpointAddress) == usb.util.ENDPOINT_IN):
+							self.catalogue[i][j][k]["type"] = "IN"
+						else:
+							self.catalogue[i][j][k]["type"] = "OUT"
+
+						self.catalogue[i][j][k]["data"] = usb._lookup.ep_attributes[(endpoint.bmAttributes & 0x3)]
+
+		def info(self):
+			"""Returns info on the current USB object.
+
+			Example Input: info()
+			"""
+
+			return self.catalogue
+
+		def listen(self, config_id = 0, interface_id = 0, endpoint_id = 0):
+			#Maybe Needed: https://www.ghacks.net/2017/06/03/stop-windows-from-installing-drivers-for-specific-devices/
+			#https://learn.pimoroni.com/tutorial/robots/controlling-your-robot-wireless-keyboard
+
+			#listen
+			config = catalogue[config_id][None]
+			config.set()
+
+			interface = catalogue[config_id][interface_id][None]
+			try:
+				interface.set_altsetting()
+			except usb.core.USBError:
+				pass
+
+			endpoint = catalogue[config_id][interface_id][endpoint_id][None]
+
+			#Modified code from: https://www.orangecoat.com/how-to/read-and-decode-data-from-your-mouse-using-this-pyusb-hack
+			mustClaim = False# device.is_kernel_driver_active(interface.bInterfaceNumber)
+			try:
+				if mustClaim is True:
+					# device.detach_kernel_driver(interface.bInterfaceNumber)
+					usb.util.claim_interface(device, interface.bInterfaceNumber)
+
+				for i in range(300):
+					try:
+						data = device.read(endpoint.bEndpointAddress, endpoint.wMaxPacketSize, timeout = None)
+						print("@1", data)
+						print("@3", ''.join([chr(x) for x in data]))
+					except usb.core.USBError as error:
+						print("@2")
+						data = None
+						if (error.__str__() == "Operation timed out"):
+							continue
+					time.sleep(1)
+			finally:
+				if mustClaim is True:
+					usb.util.release_interface(device, interface.bInterfaceNumber)
+					# device.attach_kernel_driver(interface.bInterfaceNumber)
+
 
 	class Ethernet():
 		"""A controller for a single ethernet socket.
@@ -21423,6 +21619,7 @@ class Communication():
 			try:
 				self.serialPort.open()
 			except:
+				traceback.print_exc()
 				warnings.warn(f"Cannot find serial port {self.serialPort.port} for {self.__repr__()}", Warning, stacklevel = 2)
 				return False
 
@@ -21491,6 +21688,16 @@ class Communication():
 			else:
 				warnings.warn(f"No message to send for comWrite() in {self.__repr__()}", Warning, stacklevel = 2)
 
+		def comRead(self):
+			"""Listens to the comport for a message.
+
+			Example Input: comRead()
+			"""
+
+			message = self.serialPort.read()
+			# message = self.serialPort.readline()
+			return message
+
 	class Barcode():
 		"""Allows the user to create and read barcodes."""
 
@@ -21518,271 +21725,17 @@ class Communication():
 			else:
 				warnings.warn(f"Unknown type {newType} in setType() for {self.__repr__()}", Warning, stacklevel = 2)
 
-		def getTypes(self, grouped = 0):
+		def getTypes(self):
 			"""Returns the possible barcode types to the user as a list.
 
-			grouping (int) - Configures how the barcode types will be returned
-				0: No grouping will be done
-				1: The same barcodes with different names will be grouped as sub-lists
-				2: The same barcodes with different names will be grouped as a single string
-				3: Barcodes of similar names will be grouped as sub-lists (Some are duplicated)
-				4: A dictionary where the key is the readable name for it, and the value is the correct arg 'codeType' for create()
-				5: A dictionary where the key is the correct arg 'codeType' for create(), and the value is a list of readable names for it
-
 			Example Input: getTypes()
-			Example Input: getTypes(1)
-			Example Input: getTypes(2)
 			"""
 
-			if (grouped == 0):
-				typeList = ["EAN-13", "EAN", "UCC-13", "JAN", "JAN-13", "EAN-13+2", "EAN-13+5", "EAN-99", "EAN-8", "UCC-8", "JAN-8", "EAN-8+2", "EAN-8+5", "EAN-Velocity", 
-					"UPC-A", "UPC", "UCC-12", "UPC-A+2", "UPC-A+5", "UPC-E", "UPC-E0", "UPC-E1", "UPC-E+2", "UPC-E+5", "ISBN", "ISBN-13", "ISBN-10", "Bookland EAN-13", 
-					"ISMN", "ISSN", "EAN-5", "EAN-2", "GS1 DataBar Omnidirectional", "RSS-14", "GS1 DataBar Stacked", "RSS-14 Stacked", 
-					"GS1 DataBar Stacked Omnidirectional", "RSS-14 Stacked Omnidirectional", "GS1 DataBar Truncated", "RSS-14 Truncated", 
-					"GS1 DataBar Limited", "RSS Limited", "GS1 DataBar Expanded", "RSS Expanded", "GS1 DataBar Expanded Stacked", "RSS Expanded Stacked", 
-					"GS1-128", "UCC/EAN-128", "EAN-128", "UCC-128", "SSCC-18", "EAN-18", "NVE", "EAN-14", "UCC-14", "ITF-14", "UPC SCS", "QR Code", 
-					"Micro QR Code", "GS1 QR Code", "Data Matrix", "Data Matrix ECC 200", "Data Matrix Rectangular Extension", "GS1 DataMatrix", 
-					"Aztec Code", "Compact Aztec Code", "Aztec Runes", "PDF417", "Compact PDF417", "Truncated PDF417", "MicroPDF417", "Han Xin Code", "Chinese Sensible", 
-					"MaxiCode", "UPS Code", "Code 6", "Codablock F", "Code 16K", "USS-16K", "Code 49", "USS-49", "Code 1", "Code 1S", "USPS POSTNET", 
-					"USPS PLANET", "USPS Intelligent Mail", "USPS OneCode", "USPS FIM", "Royal Mail", "RM4SCC", "CBC", "Royal TNT Post", "KIX", "Japan Post", 
-					"Australia Post", "Deutsche Post Identcode", "DHL Identcode", "Deutsche Post Leitcode", "DHL Leitcode", "Pharmacode", "Pharmaceutical Binary Code", 
-					"Two-track Pharmacode", "Two-track Pharmaceutical Binary Code", "Code 32", "Italian-Pharmacode", "IMH", "PZN", "Pharmazentralnummer", "PZN-8", "PZN-7", 
-					"Code 39", "Code 3 of 9", "LOGMARS", "Alpha39", "USD-3", "USD-2", "USS-39", "Code 39 Extended", "Code 39 Full ASCII", "Code 93", "USD-7", "USS-93", 
-					"Code 93 Extended", "Code 93 Full ASCII", "Code 128", "Code 128A", "Code 128B", "Code 128C", "USD-6", "USS-128", "Code 25", "Code 2 of 5", "Industrial 2 of 5", 
-					"IATA-2 of 5", "Datalogic 2 of 5", "Matrix 2 of 5", "COOP 2 of 5", "Interleaved 2 of 5", "ITF", "Code 2 of 5 Interleaved", "USD-1", "USS-Interleaved 2 of 5", 
-					"Code 11", "USD-8", "Codabar", "Rationalized Codabar", "Ames Code", "NW-7", "USD-4", "USS-Codabar", "Monarch", "Code 2 of 7", "Plessey", "Anker Code", 
-					"MSI Plessey", "MSI", "MSI Modified Plessey", "Telepen", "Telepen Alpha", "Telepen Full ASCII", "Telepen Numeric", "Channel Code", 
-					"PosiCode", "PosiCode A", "PosiCode B", "BC412", "BC412 SEMI", "BC412 IBM", "GS1 Composite Symbols", "EAN-13 Composite", "EAN-8 Composite", "UPC-A Composite", 
-					"UPC-E Composite", "GS1 DataBar Omnidirectional Composite", "GS1 DataBar Stacked Composite", "GS1 DataBar Stacked Omni Composite", 
-					"GS1 DataBar Truncated Composite", "GS1 DataBar Limited Composite", "GS1 DataBar Expanded Composite", "GS1 DataBar Expanded Stacked Composite", "GS1-128 Composite", 
-					"HIBC barcodes", "HIBC Code 39", "HIBC Code 128", "HIBC Data Matrix", "HIBC PDF417", "HIBC MicroPDF417", "HIBC QR Code", "HIBC Codablock F"]
-
-			elif (grouped == 1):
-				typeList = [["EAN-13", "EAN", "UCC-13", "JAN", "JAN-13", "EAN-13+2", "EAN-13+5", "EAN-99"], ["EAN-8", "UCC-8", "JAN-8", "EAN-8+2", "EAN-8+5", "EAN-Velocity"], 
-					["UPC-A", "UPC", "UCC-12", "UPC-A+2", "UPC-A+5"], ["UPC-E", "UPC-E0", "UPC-E1", "UPC-E+2", "UPC-E+5"], ["ISBN", "ISBN-13", "ISBN-10", "Bookland EAN-13"], 
-					["ISMN"], ["ISSN"], ["EAN-5"], ["EAN-2"], ["GS1 DataBar Omnidirectional", "RSS-14"], ["GS1 DataBar Stacked", "RSS-14 Stacked"], 
-					["GS1 DataBar Stacked Omnidirectional", "RSS-14 Stacked Omnidirectional"], ["GS1 DataBar Truncated", "RSS-14 Truncated"], 
-					["GS1 DataBar Limited", "RSS Limited"], ["GS1 DataBar Expanded", "RSS Expanded"], ["GS1 DataBar Expanded Stacked", "RSS Expanded Stacked"], 
-					["GS1-128", "UCC/EAN-128", "EAN-128", "UCC-128"], ["SSCC-18", "EAN-18", "NVE"], ["EAN-14", "UCC-14"], ["ITF-14", "UPC SCS"], ["QR Code"], 
-					["Micro QR Code"], ["GS1 QR Code"], ["Data Matrix", "Data Matrix ECC 200", "Data Matrix Rectangular Extension"], ["GS1 DataMatrix"], 
-					["Aztec Code", "Compact Aztec Code"], ["Aztec Runes"], ["PDF417"], ["Compact PDF417", "Truncated PDF417"], ["MicroPDF417"], ["Han Xin Code", "Chinese Sensible"], 
-					["MaxiCode", "UPS Code", "Code 6"], ["Codablock F"], ["Code 16K", "USS-16K"], ["Code 49", "USS-49"], ["Code 1", "Code 1S"], ["USPS POSTNET"], 
-					["USPS PLANET"], ["USPS Intelligent Mail", "USPS OneCode"], ["USPS FIM"], ["Royal Mail", "RM4SCC", "CBC"], ["Royal TNT Post", "KIX"], ["Japan Post"], 
-					["Australia Post"], ["Deutsche Post Identcode", "DHL Identcode"], ["Deutsche Post Leitcode", "DHL Leitcode"], ["Pharmacode", "Pharmaceutical Binary Code"], 
-					["Two-track Pharmacode", "Two-track Pharmaceutical Binary Code"], ["Code 32", "Italian-Pharmacode", "IMH"], ["PZN", "Pharmazentralnummer", "PZN-8", "PZN-7"], 
-					["Code 39", "Code 3 of 9", "LOGMARS", "Alpha39", "USD-3", "USD-2", "USS-39"], ["Code 39 Extended", "Code 39 Full ASCII"], ["Code 93", "USD-7", "USS-93"], 
-					["Code 93 Extended", "Code 93 Full ASCII"], ["Code 128", "Code 128A", "Code 128B", "Code 128C", "USD-6", "USS-128"], ["Code 25", "Code 2 of 5", "Industrial 2 of 5"], 
-					["IATA-2 of 5"], ["Datalogic 2 of 5"], ["Matrix 2 of 5"], ["COOP 2 of 5"], ["Interleaved 2 of 5", "ITF", "Code 2 of 5 Interleaved", "USD-1", "USS-Interleaved 2 of 5"], 
-					["Code 11", "USD-8"], ["Codabar", "Rationalized Codabar", "Ames Code", "NW-7", "USD-4", "USS-Codabar", "Monarch", "Code 2 of 7"], ["Plessey", "Anker Code"], 
-					["MSI Plessey", "MSI", "MSI Modified Plessey"], ["Telepen", "Telepen Alpha", "Telepen Full ASCII"], ["Telepen Numeric"], ["Channel Code"], 
-					["PosiCode", "PosiCode A", "PosiCode B"], ["BC412", "BC412 SEMI", "BC412 IBM"], ["GS1 Composite Symbols", "EAN-13 Composite", "EAN-8 Composite", "UPC-A Composite", 
-					"UPC-E Composite", "GS1 DataBar Omnidirectional Composite", "GS1 DataBar Stacked Composite", "GS1 DataBar Stacked Omni Composite", 
-					"GS1 DataBar Truncated Composite", "GS1 DataBar Limited Composite", "GS1 DataBar Expanded Composite", "GS1 DataBar Expanded Stacked Composite", "GS1-128 Composite"], 
-					["HIBC barcodes", "HIBC Code 39", "HIBC Code 128", "HIBC Data Matrix", "HIBC PDF417", "HIBC MicroPDF417", "HIBC QR Code", "HIBC Codablock F"]]
-
-			elif (grouped == 2):
-				typeList = ["EAN-13 (EAN, UCC-13, JAN, JAN-13, EAN-13+2, EAN-13+5, EAN-99)", "EAN-8 (UCC-8, JAN-8, EAN-8+2, EAN-8+5, EAN-Velocity)", 
-					"UPC-A (UPC, UCC-12, UPC-A+2, UPC-A+5)", "UPC-E (UPC-E0, UPC-E1, UPC-E+2, UPC-E+5)", "ISBN (ISBN-13, ISBN-10, Bookland EAN-13)", 
-					"ISMN, ISSN, EAN-5 & EAN-2 (EAN/UPC add-ons)", "GS1 DataBar Omnidirectional (RSS-14)", "GS1 DataBar Stacked (RSS-14 Stacked)", 
-					"GS1 DataBar Stacked Omnidirectional (RSS-14 Stacked Omnidirectional)", "GS1 DataBar Truncated (RSS-14 Truncated)", 
-					"GS1 DataBar Limited (RSS Limited)", "GS1 DataBar Expanded (RSS Expanded)", "GS1 DataBar Expanded Stacked (RSS Expanded Stacked)", 
-					"GS1-128 (UCC/EAN-128, EAN-128, UCC-128)", "SSCC-18 (EAN-18, NVE)", "EAN-14 (UCC-14)", "ITF-14 (UPC SCS)", "QR Code (Quick Response Code)", 
-					"Micro QR Code", "GS1 QR Code", "Data Matrix (Data Matrix ECC 200, Data Matrix Rectangular Extension)", "GS1 DataMatrix", 
-					"Aztec Code (Compact Aztec Code)", "Aztec Runes", "PDF417", "Compact PDF417 (Truncated PDF417)", "MicroPDF417", "Han Xin Code (Chinese Sensible)", 
-					"MaxiCode (UPS Code, Code 6)", "Codablock F", "Code 16K (USS-16K)", "Code 49 (USS-49)", "Code 1 (Code 1S)", "USPS POSTNET", 
-					"USPS PLANET", "USPS Intelligent Mail (USPS OneCode)", "USPS FIM", "Royal Mail (RM4SCC, CBC)", "Royal TNT Post (KIX)", "Japan Post", 
-					"Australia Post", "Deutsche Post Identcode (DHL Identcode)", "Deutsche Post Leitcode (DHL Leitcode)", "Pharmacode (Pharmaceutical Binary Code)", 
-					"Two-track Pharmacode (Two-track Pharmaceutical Binary Code)", "Code 32 (Italian-Pharmacode, IMH)", "PZN (Pharmazentralnummer, PZN-8, PZN-7)", 
-					"Code 39 (Code 3 of 9, LOGMARS, Alpha39, USD-3, USD-2, USS-39)", "Code 39 Extended (Code 39 Full ASCII)", "Code 93 (USD-7, USS-93)", 
-					"Code 93 Extended (Code 93 Full ASCII)", "Code 128 (Code 128A, Code 128B, Code 128C, USD-6, USS-128)","Code 25 (Code 2 of 5, Industrial 2 of 5)", 
-					"IATA-2 of 5", "Datalogic 2 of 5", "Matrix 2 of 5", "COOP 2 of 5", "Interleaved 2 of 5 (ITF, Code 2 of 5 Interleaved, USD-1, USS-Interleaved 2 of 5)", 
-					"Code 11 (USD-8)", "Codabar (Rationalized Codabar, Ames Code, NW-7, USD-4, USS-Codabar, Monarch, Code 2 of 7)", "Plessey (Anker Code)", 
-					"MSI Plessey (MSI, MSI Modified Plessey)", "Telepen (Telepen Alpha, Telepen Full ASCII)", "Telepen Numeric", "Channel Code", 
-					"PosiCode (PosiCode A, PosiCode B)", "BC412 (BC412 SEMI, BC412 IBM)", ("GS1 Composite Symbols (EAN-13 Composite, EAN-8 Composite, UPC-A Composite, " 
-					"UPC-E Composite, GS1 DataBar Omnidirectional Composite, GS1 DataBar Stacked Composite, GS1 DataBar Stacked Omni Composite, " 
-					"GS1 DataBar Truncated Composite, GS1 DataBar Limited Composite, GS1 DataBar Expanded Composite, GS1 DataBar Expanded Stacked Composite, GS1-128 Composite)"), 
-					"HIBC barcodes (HIBC Code 39, HIBC Code 128, HIBC Data Matrix, HIBC PDF417, HIBC MicroPDF417, HIBC QR Code, HIBC Codablock F)"]
-
-			elif (grouped == 3):
-				typeList = [["EAN-13", "EAN", "EAN-13+2", "EAN-13+5", "EAN-99", "EAN-8", "EAN-8+2", "EAN-8+5", "Bookland EAN-13", "EAN-Velocity", "EAN-5", "EAN-2", "UCC/EAN-128", 
-					"EAN-128", "EAN-18", "EAN-14", "EAN-13 Composite", "EAN-8 Composite"], ["UCC-13", "UCC-8", "UCC-12", "UCC/EAN-128", "UCC-128", "UCC-14"], ["JAN", "JAN-13", "JAN-8"], 
-					["UPC-A", "UPC", "UPC-A+2", "UPC-A+5", "UPC-E", "UPC-E0", "UPC-E1", "UPC-E+2", "UPC-E+5", "UPC SCS", "UPC-E Composite", "UPC-A Composite"], ["ISBN", "ISBN-13", "ISBN-10"], 
-					["ISMN"], ["ISSN"], ["GS1 DataBar Omnidirectional", "GS1 DataBar Stacked", "GS1 DataBar Stacked Omnidirectional", "GS1 DataBar Truncated", "GS1 DataBar Limited", 
-					"GS1 DataBar Expanded", "GS1 DataBar Expanded Stacked", "GS1-128", "GS1 QR Code", "GS1 DataMatrix", "GS1 Composite Symbols", "GS1 DataBar Omnidirectional Composite", 
-					"GS1 DataBar Stacked Composite", "GS1 DataBar Stacked Omni Composite", "GS1 DataBar Truncated Composite", "GS1 DataBar Limited Composite", "GS1 DataBar Expanded Composite", 
-					"GS1 DataBar Expanded Stacked Composite", "GS1-128 Composite"], ["RSS-14", "RSS-14 Stacked", "RSS-14 Stacked Omnidirectional", "RSS-14 Truncated", "RSS Limited", 
-					"RSS Expanded", "RSS Expanded Stacked"], ["SSCC-18"], ["NVE"], ["ITF-14", "ITF"], ["QR Code", "Micro QR Code", "GS1 QR Code", "HIBC QR Code"], ["Data Matrix", "Data Matrix ECC 200", 
-					"Data Matrix Rectangular Extension", "HIBC Data Matrix"], ["Aztec Code", "Compact Aztec Code", "Aztec Runes"], ["PDF417", "Compact PDF417", "Truncated PDF417", "MicroPDF417", 
-					"HIBC PDF417", "HIBC MicroPDF417", ], ["Han Xin Code", "Chinese Sensible"], ["MaxiCode"], ["UPS Code", "USPS POSTNET", "USPS PLANET", "USPS Intelligent Mail", "USPS OneCode", 
-					"USPS FIM", "Royal Mail", "RM4SCC", "CBC", "Royal TNT Post", "KIX", "Japan Post", "Australia Post", "Deutsche Post Identcode", "DHL Identcode", "Deutsche Post Leitcode", "DHL Leitcode"], 
-					["Code 6", "Code 16K", "Code 49", "Code 1", "Code 1S", "Code 32", "Code 39", "Code 39 Extended", "Code 39 Full ASCII", "Code 93", "Code 93 Extended", 
-					"Code 93 Full ASCII", "Code 128", "Code 128A", "Code 128B", "Code 128C", "Code 25", "Code 11", "HIBC Code 39", "HIBC Code 128"], ["Code 3 of 9", "Code 2 of 5", 
-					"Industrial 2 of 5", "IATA-2 of 5", "Datalogic 2 of 5", "Matrix 2 of 5", "COOP 2 of 5", "Interleaved 2 of 5", "Code 2 of 5 Interleaved", "USS-Interleaved 2 of 5", "Code 2 of 7"],
-					["Codablock F", "HIBC Codablock F"], ["Codabar", "Rationalized Codabar", "USS-Codabar"], ["USS-Interleaved 2 of 5", "USS-Codabar", "USS-16K", "USS-49", "USS-39", "USS-93", "USS-128"], 
-					["Pharmacode", "Pharmaceutical Binary Code", "Two-track Pharmacode", "Two-track Pharmaceutical Binary Code", "Italian-Pharmacode", "IMH", "PZN", 
-					"Pharmazentralnummer", "PZN-8", "PZN-7"], ["PZN", "PZN-8", "PZN-7"], ["LOGMARS"], ["Alpha39"], ["USD-3", "USD-2", "USD-7", "USD-6", "USD-1", "USD-8", "USD-4"], 
-					["Ames Code"], ["NW-7"], ["Monarch"], ["Plessey", "MSI Plessey", "MSI Modified Plessey"], ["Anker Code"], ["MSI", "MSI Plessey", "MSI Modified Plessey"], ["Telepen", 
-					"Telepen Alpha", "Telepen Full ASCII", "Telepen Numeric"], ["Channel Code"], ["PosiCode", "PosiCode A", "PosiCode B"], ["BC412", "BC412 SEMI", "BC412 IBM"],                    
-					["HIBC barcodes", "HIBC Code 39", "HIBC Code 128", "HIBC Data Matrix", "HIBC PDF417", "HIBC MicroPDF417", "HIBC QR Code", "HIBC Codablock F"], ["EAN-13 Composite", "EAN-8 Composite", 
-					"UPC-E Composite", "UPC-A Composite", "GS1 Composite Symbols", "GS1 DataBar Omnidirectional Composite", "GS1 DataBar Stacked Composite", "GS1 DataBar Stacked Omni Composite", 
-					"GS1 DataBar Truncated Composite", "GS1 DataBar Limited Composite", "GS1 DataBar Expanded Composite", "GS1 DataBar Expanded Stacked Composite", "GS1-128 Composite"],
-					["GS1 DataBar Truncated", "GS1 DataBar Truncated Composite", "RSS-14 Truncated", "Truncated PDF417", "GS1 DataBar Truncated Composite"], ["GS1 DataBar Expanded", 
-					"GS1 DataBar Expanded Stacked", "GS1 DataBar Expanded Composite", "GS1 DataBar Expanded Stacked Composite", "RSS Expanded", "RSS Expanded Stacked", "GS1 DataBar Expanded Composite", 
-					"GS1 DataBar Expanded Stacked Composite"], ["GS1 DataBar Stacked", "GS1 DataBar Stacked Omnidirectional", "GS1 DataBar Stacked Composite", "GS1 DataBar Stacked Omni Composite", 
-					"GS1 DataBar Expanded Stacked Composite", "RSS-14 Stacked", "RSS-14 Stacked Omnidirectional", "RSS Expanded Stacked"], ["GS1 DataBar Omnidirectional", "GS1 DataBar Stacked Omnidirectional", 
-					"GS1 DataBar Omnidirectional Composite", "GS1 DataBar Stacked Omni Composite", "GS1 DataBar Omnidirectional Composite", "RSS-14 Stacked Omnidirectional"]]
-
-			elif (grouped == 4):
-				typeList = {"EAN-13": "ean13", "EAN": "ean13", "UCC-13": "ean13", "JAN": "ean13", "JAN-13": "ean13", "EAN-13+2": "ean13", "EAN-13+5": "ean13", "EAN-99": "ean13",
-					"EAN-8": "ean8", "UCC-8": "ean8", "JAN-8": "ean8", "EAN-8+2": "ean8", "EAN-8+5": "ean8", "EAN-Velocity": "ean8",
-					"UPC-A": "upca", "UPC": "upca", "UCC-12": "upca", "UPC-A+2": "upca", "UPC-A+5": "upca",
-					"UPC-E": "upce", "UPC-E0": "upce", "UPC-E1": "upce", "UPC-E+2": "upce", "UPC-E+5": "upce",
-					"ISBN": "isbn", "ISBN-13": "isbn", "ISBN-10": "isbn", "Bookland EAN-13": "isbn",
-					"ISMN": "ismn",
-					"ISSN": "issn",
-					"EAN-5": "ean5",
-					"EAN-2": "ean2",
-					"GS1 DataBar Omnidirectional": "databaromni", "RSS-14": "databaromni",
-					"GS1 DataBar Stacked": "databarstacked", "RSS-14 Stacked": "databarstacked",
-					"GS1 DataBar Stacked Omnidirectional": "databarstackedomni", "RSS-14 Stacked Omnidirectional": "databarstackedomni",
-					"GS1 DataBar Truncated": "databartruncated", "RSS-14 Truncated": "databartruncated",
-					"GS1 DataBar Limited": "databarlimited", "RSS Limited": "databarlimited",
-					"GS1 DataBar Expanded": "databarexpanded", "RSS Expanded": "databarexpanded",
-					"GS1 DataBar Expanded Stacked": "databarexpandedstacked", "RSS Expanded Stacked": "databarexpandedstacked",
-					"GS1-128": "gs1-128", "UCC/EAN-128": "gs1-128", "EAN-128": "gs1-128", "UCC-128": "gs1-128",
-					"SSCC-18": "sscc18", "EAN-18": "sscc18", "NVE": "sscc18",
-					"EAN-14": "ean14", "UCC-14": "ean14",
-					"ITF-14": "itf14", "UPC SCS": "itf14",
-					"QR Code": "qrcode",
-					"Micro QR Code": "microqrcode",
-					"GS1 QR Code": "gs1qrcode",
-					"Data Matrix": "datamatrix", "Data Matrix ECC 200": "datamatrix", "Data Matrix Rectangular Extension": "datamatrix",
-					"GS1 DataMatrix": "gs1datamatrix",
-					"Aztec Code": "azteccode", "Compact Aztec Code": "azteccode",
-					"Aztec Runes": "aztecrune",
-					"PDF417": "pdf417",
-					"Compact PDF417": "pdf417compact", "Truncated PDF417": "pdf417compact",
-					"MicroPDF417": "micropdf417",
-					"Han Xin Code": "hanxin", "Chinese Sensible": "hanxin",
-					"MaxiCode": "maxicode", "UPS Code": "maxicode", "Code 6": "maxicode",
-					"Codablock F": "codablockf",
-					"Code 16K": "code16k", "USS-16K": "code16k",
-					"Code 49": "code49", "USS-49": "code49",
-					"Code 1": "codeone", "Code 1S": "codeone",
-					"USPS POSTNET": "postnet",
-					"USPS PLANET": "planet",
-					"USPS Intelligent Mail": "onecode", "USPS OneCode": "onecode",
-					"USPS FIM": "symbol",
-					"Royal Mail": "royalmail", "RM4SCC": "royalmail", "CBC": "royalmail",
-					"Royal TNT Post": "kix", "KIX": "kix",
-					"Japan Post": "japanpost",
-					"Australia Post": "auspost",
-					"Deutsche Post Identcode": "identcode", "DHL Identcode": "identcode",
-					"Deutsche Post Leitcode": "leitcode", "DHL Leitcode": "leitcode",
-					"Pharmacode": "pharmacode", "Pharmaceutical Binary Code": "pharmacode",
-					"Two-track Pharmacode": "pharmacode2", "Two-track Pharmaceutical Binary Code": "pharmacode2",
-					"Code 32": "code32", "Italian-Pharmacode": "code32", "IMH": "code32",
-					"PZN": "pzn", "Pharmazentralnummer": "pzn", "PZN-8": "pzn", "PZN-7": "pzn",
-					"Code 39": "code39", "Code 3 of 9": "code39", "LOGMARS": "code39", "Alpha39": "code39", "USD-3": "code39", "USD-2": "code39", "USS-39": "code39",
-					"Code 39 Extended": "code39ext", "Code 39 Full ASCII": "code39ext",
-					"Code 93": "code93", "USD-7": "code93", "USS-93": "code93",
-					"Code 93 Extended": "code93ext", "Code 93 Full ASCII": "code93ext",
-					"Code 128": "code128", "Code 128A": "code128", "Code 128B": "code128", "Code 128C": "code128", "USD-6": "code128", "USS-128": "code128",
-					"Code 25": "code2of5", "Code 2 of 5": "code2of5", "Industrial 2 of 5": "code2of5",
-					"IATA-2 of 5": "iata2of5",
-					"Datalogic 2 of 5": None,
-					"Matrix 2 of 5": None,
-					"COOP 2 of 5": None,
-					"Interleaved 2 of 5": "interleaved2of5", "ITF": "interleaved2of5", "Code 2 of 5 Interleaved": "interleaved2of5", "USD-1": "interleaved2of5", "USS-Interleaved 2 of 5": "interleaved2of5",
-					"Code 11": "code11", "USD-8": "code11",
-					"Codabar": "rationalizedCodabar", "Rationalized Codabar": "rationalizedCodabar", "Ames Code": "rationalizedCodabar", "NW-7": "rationalizedCodabar", "USD-4": "rationalizedCodabar", "USS-Codabar": "rationalizedCodabar", "Monarch": "rationalizedCodabar", "Code 2 of 7": "rationalizedCodabar",
-					"Plessey": "plessey", "Anker Code": "plessey",
-					"MSI Plessey": "msi", "MSI": "msi", "MSI Modified Plessey": "msi",
-					"Telepen": "telepen", "Telepen Alpha": "telepen", "Telepen Full ASCII": "telepen",
-					"Telepen Numeric": "telepennumeric",
-					"Channel Code": "channelcode",
-					"PosiCode": "posicode", "PosiCode A": "posicode", "PosiCode B": "posicode",
-					"BC412": "bc412", "BC412 SEMI": "bc412", "BC412 IBM": "bc412",
-					"GS1 Composite Symbols": "ean13composite", "EAN-13 Composite": "ean13composite", "EAN-8 Composite": "ean13composite", "UPC-A Composite": "ean13composite", "UPC-E Composite": "ean13composite", "GS1 DataBar Omnidirectional Composite": "ean13composite", "GS1 DataBar Stacked Composite": "ean13composite", "GS1 DataBar Stacked Omni Composite": "ean13composite", "GS1 DataBar Truncated Composite": "ean13composite", "GS1 DataBar Limited Composite": "ean13composite", "GS1 DataBar Expanded Composite": "ean13composite", "GS1 DataBar Expanded Stacked Composite": "ean13composite", "GS1-128 Composite": "ean13composite",
-					"HIBC barcodes": "hibccode39", "HIBC Code 39": "hibccode39", "HIBC Code 128": "hibccode39", "HIBC Data Matrix": "hibccode39", "HIBC PDF417": "hibccode39", "HIBC MicroPDF417": "hibccode39", "HIBC QR Code": "hibccode39", "HIBC Codablock F": "hibccode39"}
-
-			elif (grouped == 5):
-				typeList = {'ean13': ['EAN-13', 'EAN', 'UCC-13', 'JAN', 'JAN-13', 'EAN-13+2', 'EAN-13+5', 'EAN-99'], 
-					'ean8': ['EAN-8', 'UCC-8', 'JAN-8', 'EAN-8+2', 'EAN-8+5', 'EAN-Velocity'], 
-					'upca': ['UPC-A', 'UPC', 'UCC-12', 'UPC-A+2', 'UPC-A+5'], 
-					'upce': ['UPC-E', 'UPC-E0', 'UPC-E1', 'UPC-E+2', 'UPC-E+5'], 
-					'isbn': ['ISBN', 'ISBN-13', 'ISBN-10', 'Bookland EAN-13'], 
-					'ismn': ['ISMN'], 
-					'issn': ['ISSN'], 
-					'ean5': ['EAN-5'], 
-					'ean2': ['EAN-2'], 
-					'databaromni': ['GS1 DataBar Omnidirectional', 'RSS-14'], 
-					'databarstacked': ['GS1 DataBar Stacked', 'RSS-14 Stacked'], 
-					'databarstackedomni': ['GS1 DataBar Stacked Omnidirectional', 'RSS-14 Stacked Omnidirectional'], 
-					'databartruncated': ['GS1 DataBar Truncated', 'RSS-14 Truncated'], 
-					'databarlimited': ['GS1 DataBar Limited', 'RSS Limited'], 
-					'databarexpanded': ['GS1 DataBar Expanded', 'RSS Expanded'], 
-					'databarexpandedstacked': ['GS1 DataBar Expanded Stacked', 'RSS Expanded Stacked'], 
-					'gs1-128': ['GS1-128', 'UCC/EAN-128', 'EAN-128', 'UCC-128'], 
-					'sscc18': ['SSCC-18', 'EAN-18', 'NVE'], 
-					'ean14': ['EAN-14', 'UCC-14'], 
-					'itf14': ['ITF-14', 'UPC SCS'], 
-					'qrcode': ['QR Code'], 
-					'microqrcode': ['Micro QR Code'], 
-					'gs1qrcode': ['GS1 QR Code'], 
-					'datamatrix': ['Data Matrix', 'Data Matrix ECC 200', 'Data Matrix Rectangular Extension'], 
-					'gs1datamatrix': ['GS1 DataMatrix'], 
-					'azteccode': ['Aztec Code', 'Compact Aztec Code'], 
-					'aztecrune': ['Aztec Runes'], 
-					'pdf417': ['PDF417'], 
-					'pdf417compact': ['Compact PDF417', 'Truncated PDF417'], 
-					'micropdf417': ['MicroPDF417'], 
-					'hanxin': ['Han Xin Code', 'Chinese Sensible'], 
-					'maxicode': ['MaxiCode', 'UPS Code', 'Code 6'], 
-					'codablockf': ['Codablock F'], 
-					'code16k': ['Code 16K', 'USS-16K'], 
-					'code49': ['Code 49', 'USS-49'], 
-					'codeone': ['Code 1', 'Code 1S'], 
-					'postnet': ['USPS POSTNET'], 
-					'planet': ['USPS PLANET'], 
-					'onecode': ['USPS Intelligent Mail', 'USPS OneCode'], 
-					'symbol': ['USPS FIM'], 
-					'royalmail': ['Royal Mail', 'RM4SCC', 'CBC'], 
-					'kix': ['Royal TNT Post', 'KIX'], 
-					'japanpost': ['Japan Post'], 
-					'auspost': ['Australia Post'], 
-					'identcode': ['Deutsche Post Identcode', 'DHL Identcode'], 
-					'leitcode': ['Deutsche Post Leitcode', 'DHL Leitcode'], 
-					'pharmacode': ['Pharmacode', 'Pharmaceutical Binary Code'], 
-					'pharmacode2': ['Two-track Pharmacode', 'Two-track Pharmaceutical Binary Code'], 
-					'code32': ['Code 32', 'Italian-Pharmacode', 'IMH'], 
-					'pzn': ['PZN', 'Pharmazentralnummer', 'PZN-8', 'PZN-7'], 
-					'code39': ['Code 39', 'Code 3 of 9', 'LOGMARS', 'Alpha39', 'USD-3', 'USD-2', 'USS-39'], 
-					'code39ext': ['Code 39 Extended', 'Code 39 Full ASCII'], 
-					'code93': ['Code 93', 'USD-7', 'USS-93'], 
-					'code93ext': ['Code 93 Extended', 'Code 93 Full ASCII'], 
-					'code128': ['Code 128', 'Code 128A', 'Code 128B', 'Code 128C', 'USD-6', 'USS-128'], 
-					'code2of5': ['Code 25', 'Code 2 of 5', 'Industrial 2 of 5'], 
-					'iata2of5': ['IATA-2 of 5'], 
-					None: ['Datalogic 2 of 5', 'Matrix 2 of 5', 'COOP 2 of 5'], 
-					'interleaved2of5': ['Interleaved 2 of 5', 'ITF', 'Code 2 of 5 Interleaved', 'USD-1', 'USS-Interleaved 2 of 5'], 
-					'code11': ['Code 11', 'USD-8'], 
-					'rationalizedCodabar': ['Codabar', 'Rationalized Codabar', 'Ames Code', 'NW-7', 'USD-4', 'USS-Codabar', 'Monarch', 'Code 2 of 7'], 
-					'plessey': ['Plessey', 'Anker Code'], 
-					'msi': ['MSI Plessey', 'MSI', 'MSI Modified Plessey'], 
-					'telepen': ['Telepen', 'Telepen Alpha', 'Telepen Full ASCII'], 
-					'telepennumeric': ['Telepen Numeric'], 
-					'channelcode': ['Channel Code'], 
-					'posicode': ['PosiCode', 'PosiCode A', 'PosiCode B'], 
-					'bc412': ['BC412', 'BC412 SEMI', 'BC412 IBM'], 
-					'ean13composite': ['GS1 Composite Symbols', 'EAN-13 Composite', 'EAN-8 Composite', 'UPC-A Composite', 'UPC-E Composite', 'GS1 DataBar Omnidirectional Composite', 
-						'GS1 DataBar Stacked Composite', 'GS1 DataBar Stacked Omni Composite', 'GS1 DataBar Truncated Composite', 'GS1 DataBar Limited Composite', 
-						'GS1 DataBar Expanded Composite', 'GS1 DataBar Expanded Stacked Composite', 'GS1-128 Composite'], 
-					'hibccode39': ['HIBC barcodes', 'HIBC Code 39', 'HIBC Code 128', 'HIBC Data Matrix', 'HIBC PDF417', 'HIBC MicroPDF417', 'HIBC QR Code', 'HIBC Codablock F']}
+			typeList = sorted(barcode.PROVIDED_BARCODES)# + ["qr"])
 
 			return typeList
 
-		def create(self, text, codeType = None):
+		def create(self, text, codeType = None, filePath = None):
 			"""Returns a PIL image of the barcode for the user or saves it somewhere as an image.
 
 			text (str)     - What the barcode will say
@@ -21795,16 +21748,21 @@ class Communication():
 
 			if (codeType == None):
 				codeType = self.type
-			elif (codeType not in self.getTypes(5)):
-				if (codeType in self.getTypes(4)):
-					codeType = self.getTypes(4)[codeType]
-				else:
-					warnings.warn(f"Unknown type {codeType} in create() for {self.__repr__()}", Warning, stacklevel = 2)
-					return
+			elif (codeType not in self.getTypes()):
+				warnings.warn(f"Unknown type {codeType} in create() for {self.__repr__()}", Warning, stacklevel = 2)
+				return
 
 			#Create barcode
-			# self.myBarcode = elaphe.barcode(codeType, f"{text}", options = dict(version = 9, eclevel = 'M'), margin = 10, data_mode = '8bits')
-			self.myBarcode = elaphe.barcode(codeType, f"{text}", data_mode = '8bits')
+			if (codeType == "qr"):
+				#https://ourcodeworld.com/articles/read/554/how-to-create-a-qr-code-image-or-svg-in-python
+				self.myBarcode = None
+				pass
+			else:
+				thing = barcode.get(codeType, f"{text}", writer = barcode.writer.ImageWriter())
+				self.myBarcode = thing.render(writer_options = None)
+
+				if (filePath != None):
+					thing.save(filePath)
 
 			return self.myBarcode
 
@@ -22124,7 +22082,6 @@ class Controller(Utilities, CommonEventFunctions, Communication, Security):
 	def __delitem__(self, key):
 		"""Allows the user to index the handle to get nested elements with labels."""
 
-		print("@2.4", key)
 		del self.labelCatalogue[key]
 
 	def get(self, *args, returnExists = False, **kwargs):
@@ -22988,7 +22945,6 @@ class User_Utilities():
 		dataCatalogue[key] = value
 
 	def __delitem__(self, key):
-		print("@2.5", key)
 		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable != None)):
 			if (isinstance(self._catalogue_variable, Controller)):
 				return self._catalogue_variable.__delitem__(key)
