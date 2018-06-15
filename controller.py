@@ -2105,13 +2105,7 @@ class Utilities():
 		Example Input: _getImage("example.bmp", 0, alpha = True)
 		"""
 
-		#Determine if the image is a blank image
 		if ((imagePath != None) and (imagePath != "")):
-			#Determine if the image is a PIL image
-
-			print("@1", imagePath)
-			print("@2", type(imagePath))
-
 			if (type(imagePath) != str):
 				if (PIL.Image.isImageType(imagePath)):
 					image = self.convertPilToBitmap(imagePath, alpha)
@@ -2119,7 +2113,6 @@ class Utilities():
 					errorMessage = f"Unknown file type {type(imagePath)} for _getImage() in {self.__repr__()}"
 					raise KeyError(errorMessage)
 			else:
-				#Determine if the image is an internal image
 				if (internal):
 					if (imagePath == "error"):
 						image = wx.ArtProvider.GetBitmap(wx.ART_ERROR)
@@ -4724,6 +4717,8 @@ class CommonEventFunctions():
 	def onExit(self, event):
 		"""Closes all windows. Default of a quit (q) or exit (e) menu item."""
 
+		self.controller.exiting = True
+		
 		# #Make sure sub threads are closed
 		# if (threading.active_count() > 1):
 		#   for thread in threading.enumerate():
@@ -20131,9 +20126,11 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 
 #Classes
 class MyApp(wx.App):
-	"""Needed to make the GUI work."""
+	"""Needed to make the GUI work.
+	For more functions to override: https://wxpython.org/Phoenix/docs/html/wx.AppConsole.html
+	"""
 
-	def __init__(self, redirect=False, filename=None, useBestVisual=False, clearSigInt=True, parent = None):
+	def __init__(self, redirect = False, filename = None, useBestVisual = False, clearSigInt = True, parent = None):
 		"""Needed to make the GUI work."""
 
 		self.parent = parent
@@ -20157,6 +20154,13 @@ class MyApp(wx.App):
 
 		#Allow the app to progress
 		return True
+
+	def OnExit(self):
+		"""Notifies the controller that the exit process has begun."""
+
+		self.parent.exiting = True
+
+		return wx.App.OnExit(self)
 
 class Controller(Utilities, CommonEventFunctions):
 	"""This module will help to create a simple GUI using wxPython without 
@@ -20193,8 +20197,6 @@ class Controller(Utilities, CommonEventFunctions):
 		#Initialize Inherited classes
 		Utilities.__init__(self)
 		CommonEventFunctions.__init__(self)
-		Communication.__init__(self)
-		Security.__init__(self)
 
 		#Setup Internal Variables
 		self.labelCatalogue = {} #A dictionary that contains all the windows made for the gui. {windowLabel: myFrame}
@@ -20206,7 +20208,9 @@ class Controller(Utilities, CommonEventFunctions):
 		self.nested = True #Removes any warnings that may come up
 		self.checkComplexity = checkComplexity
 		self.windowDisabler = None
+		self.controller = self
 
+		self.exiting = False
 		self.loggingPrint = False
 		self.old_stdout = sys.stdout.write
 		self.old_stderr = sys.stderr.write
@@ -20711,6 +20715,14 @@ class Controller(Utilities, CommonEventFunctions):
 			sys.stderr.write = new_stderr
 		else:
 			warnings.warn(f"Already logging cmd outputs for {item.__repr__()}", Warning, stacklevel = 2)
+
+	def isClosing(self):
+		"""Returns if the GUI is trying to close or not.
+
+		Example Input: isClosing()
+		"""
+
+		return self.exiting
 
 	#Overloads - handle_Window
 	def setWindowSize(self, windowLabel, *args, **kwargs):
