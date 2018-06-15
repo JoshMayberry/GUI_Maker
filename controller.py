@@ -786,10 +786,10 @@ class Utilities():
 			nonlocal event, includeEvent
 
 			#Ensure the *args and **kwargs are formatted correctly 
-			if ((type(myFunctionArgs) != list) and (myFunctionArgs != None)):
+			if (not isinstance(myFunctionArgs, (list, tuple, type(None)))):
 				myFunctionArgs = [myFunctionArgs]
 
-			if ((type(myFunctionKwargs) != list) and (myFunctionKwargs != None)):
+			if (not isinstance(myFunctionKwargs, (list, tuple, type(None)))):
 				myFunctionKwargs = [myFunctionKwargs]
 
 			#Has both args and kwargs
@@ -822,13 +822,19 @@ class Utilities():
 
 		#Skip empty functions
 		if (myFunction != None):
-			myFunctionList, myFunctionArgsList, myFunctionKwargsList = self.formatFunctionInputList(myFunction, myFunctionArgs, myFunctionKwargs)
-			#Run each function
-			for i, myFunction in enumerate(myFunctionList):
-				#Skip empty functions
-				if (myFunction != None):
-					myFunctionEvaluated, myFunctionArgs, myFunctionKwargs = self.formatFunctionInput(i, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
-					runFunction(myFunctionEvaluated, myFunctionArgs, myFunctionKwargs)
+			if (not isinstance(myFunction, (list, tuple))):
+				if (isinstance(myFunction, str)):
+					myFunction = eval(myFunction, {'__builtins__': None}, {})
+
+				runFunction(myFunction, myFunctionArgs, myFunctionKwargs)
+			else:
+				myFunctionList, myFunctionArgsList, myFunctionKwargsList = self.formatFunctionInputList(myFunction, myFunctionArgs, myFunctionKwargs)
+				#Run each function
+				for i, myFunction in enumerate(myFunctionList):
+					#Skip empty functions
+					if (myFunction != None):
+						myFunctionEvaluated, myFunctionArgs, myFunctionKwargs = self.formatFunctionInput(i, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
+						runFunction(myFunctionEvaluated, myFunctionArgs, myFunctionKwargs)
 
 	def removeDuplicates(self, sequence, idFunction=None):
 		"""Removes duplicates from a list while preserving order.
@@ -1541,7 +1547,7 @@ class Utilities():
 	#Listen Functions
 	def listen(self, myFunction, myFunctionArgs = None, myFunctionKwargs = None,
 		resultFunction = None, resultFunctionArgs = None, resultFunctionKwargs = None, 
-		delay = 1000, shown = False, makeThread = True):
+		delay = 1000, shown = False, makeThread = True, pauseOnDialog = False, notPauseOnDialog = []):
 		"""Triggers the listen routine.
 
 		myFunction (function) - A function that checks certain conditions
@@ -1554,9 +1560,15 @@ class Utilities():
 		makeThread (bool) - Determines if this function runs on a different thread
 			- If True: A new thread will be created to run the function
 			- If False: The function will only run while the GUI is idle. Note: This can cause lag. Use this for operations that must be in the main thread.
+		
+		pauseOnDialog (bool) - Determines if the background function should wait if a dialog box is showing
+			- If True: Will pause for any dialog window
+			- If not bool: Will pause only if the dialog's label matches this
+		not_pauseOnDialog (str) - The label of a dialog window to not pause on (Overrides 'pauseOnDialog'). Can be a list of labels
 
 		Example Input: listen(self.checkCapsLock, shown = True)
-		Example Input: listen(self.checkAutoLogout, resultFunction = self.logout)
+		Example Input: listen(self.checkAutoLogout, resultFunction = self.logout, pauseOnDialog = True)
+		Example Input: listen(self.listenScanner, pauseOnDialog = True, not_pauseOnDialog = "modifyBarcode")
 		"""
 
 		def listenFunction():
@@ -1564,12 +1576,19 @@ class Utilities():
 			nonlocal self, myFunction, myFunctionArgs, myFunctionKwargs, resultFunction, resultFunctionArgs, resultFunctionKwargs, delay
 
 			#Account for other thread running this
-			while self.listeningCatalogue[myFunction]["stop"]:
-				time.sleep(1)
+			while (self.listeningCatalogue[myFunction]["listening"] > 0):
+				self.listeningCatalogue[myFunction]["stop"] = True
+				time.sleep(100 / 1000)
+			self.listeningCatalogue[myFunction]["stop"] = False
 
 			self.listeningCatalogue[myFunction]["listening"] += 1
 			while True:
-				#Listen for break
+				while (self.listeningCatalogue[myFunction]["pause"]):
+					if (self.listeningCatalogue[myFunction]["stop"]):
+						break
+					if ((delay != 0) and (delay != None)):
+						time.sleep(delay / 1000)
+
 				if (self.listeningCatalogue[myFunction]["stop"]):
 					self.listeningCatalogue[myFunction]["stop"] = False
 					break
@@ -1579,19 +1598,30 @@ class Utilities():
 					if (resultFunction != None):
 						self.runMyFunction(resultFunction, resultFunctionArgs, resultFunctionKwargs)
 
-				time.sleep(delay / 1000)
+				if ((delay != 0) and (delay != None)):
+					time.sleep(delay / 1000)
 
 			self.listeningCatalogue[myFunction]["listening"] -= 1
 
 		#########################################################
 
-		if (myFunction in self.listeningCatalogue):
-			while (self.listeningCatalogue[myFunction]["listening"] > 0):
-				self.listeningCatalogue[myFunction]["stop"] = True
-				time.sleep(100 / 1000)
-		else:
-			self.listeningCatalogue[myFunction] = {"listening": 0, "stop": False}
-	
+		if (myFunction not in self.listeningCatalogue):
+			self.listeningCatalogue[myFunction] = {"listening": 0, "stop": False, "pause": False}
+
+		if (pauseOnDialog not in [None, False]):
+			if ("listeningCatalogue" not in self.controller.backgroundFunction_pauseOnDialog):
+				self.controller.backgroundFunction_pauseOnDialog["listeningCatalogue"] = {}
+			if (self not in self.controller.backgroundFunction_pauseOnDialog["listeningCatalogue"]):
+				self.controller.backgroundFunction_pauseOnDialog["listeningCatalogue"][self] = {}
+
+			if (notPauseOnDialog == None):
+				notPauseOnDialog = []
+			elif (not isinstance(notPauseOnDialog, (list, tuple, range))):
+				notPauseOnDialog = [notPauseOnDialog]
+
+			self.controller.backgroundFunction_pauseOnDialog["listeningCatalogue"][self][myFunction] = {"state": pauseOnDialog, "exclude": notPauseOnDialog}
+
+
 		self.backgroundRun(listenFunction, shown = shown, makeThread = makeThread)
 
 	def stop_listen(self, myFunction):
@@ -1604,6 +1634,31 @@ class Utilities():
 
 		if (myFunction in self.listeningCatalogue):
 			self.listeningCatalogue[myFunction]["stop"] = True
+
+	def pause_listen(self, myFunction, state = True):
+		"""Pauses the listen routine.
+
+		myFunction (function) - A function that checks certain conditions
+		state (bool) - Determines if the function should be paused or not
+
+		Example Input: pause_listen(self.checkAutoLogout)
+		Example Input: pause_listen(self.checkAutoLogout, state = False)
+		"""
+
+		if (myFunction in self.listeningCatalogue):
+			self.listeningCatalogue[myFunction]["pause"] = state
+
+	def unpause_listen(self, myFunction, state = True):
+		"""Unpauses the listen routine.
+
+		myFunction (function) - A function that checks certain conditions
+		state (bool) - Determines if the function should be paused or not
+
+		Example Input: unpause_listen(self.checkAutoLogout)
+		Example Input: unpause_listen(self.checkAutoLogout, state = False)
+		"""
+
+		self.pause_listen(myFunction, not state)
 
 	#One-shot Functions
 	def oneShot(self, myFunction, myFunctionArgs = None, myFunctionKwargs = None,
@@ -10351,7 +10406,7 @@ class handle_MenuItem(handle_Widget_Base):
 		if (self.type.lower() == "menuitem"):
 			if ((self.thing.GetKind() == wx.ITEM_CHECK) or (self.thing.GetKind() == wx.ITEM_RADIO)):
 				if (isinstance(newValue, str)):
-					newValue = ast.literal_eval(newValue)
+					newValue = ast.literal_eval(re.sub("['\"]", "", newValue))
 				self.thing.Check(newValue) #(bool) - True: selected; False: un-selected
 			else:
 				errorMessage = f"Only a menu 'Check Box' or 'Radio Button' can be set to a different value for setValue() for {self.__repr__()}"
@@ -11561,7 +11616,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 			if (x == None):
 				x = 0
 			elif (isinstance(x, str)):
-				x = ast.literal_eval(x)
+				x = ast.literal_eval(re.sub("['\"]", "", x))
 
 			if (y == None):
 				if (isinstance(x, (list, tuple))):
@@ -11570,7 +11625,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 				else:
 					y = 0
 			elif (isinstance(y, str)):
-				y = ast.literal_eval(y)
+				y = ast.literal_eval(re.sub("['\"]", "", y))
 
 			#Draw the image
 			self.queue("dc.DrawBitmap", [image, x, y, alpha])
@@ -12950,7 +13005,7 @@ class handle_WidgetTable(handle_Widget_Base):
 				~ "dropList", {"choices": list contents (list), "endOnSelect": if focus should be lost after a selection is made (bool)}
 					~ Defaults: {"choices": [], "endOnSelect": True}
 
-				~ "dialog", {"myFrame": dialog window name (str) or dialog window handle (handle_Window)}
+				~ "dialog", {"myFrame": dialog window name (str) or dialog window handle (handle_Window), "label": The label fo the custom dialog (str)}
 					~ Must supply valid "myFrame"
 
 				~ "button", {"text": None, "myFunction": (function), "myFunctionArgs": (list), "myFunctionKwargs": (dict)}
@@ -13016,6 +13071,9 @@ class handle_WidgetTable(handle_Widget_Base):
 					cellType.setdefault("myFunction", None)
 					cellType.setdefault("myFunctionArgs", None)
 					cellType.setdefault("myFunctionKwargs", None)
+
+				elif (cellType[None].lower() == "dialog"):
+					cellType.setdefault("label", None)
 			else:
 				if (cellType[None] == int):
 					cellType.setdefault("minimum", -1)
@@ -14416,7 +14474,7 @@ class handle_WidgetTable(handle_Widget_Base):
 					self.myCellControl.SetValue(self.startValue)
 					self.myCellControl.SetFocus()
 
-					with self.parent.makeDialogCustom(self.cellType["myFrame"], self.cellType["myFrame"].getValueLabel()) as myDialog:
+					with self.parent.makeDialogCustom(self.cellType["myFrame"], self.cellType["myFrame"].getValueLabel(), label = self.cellType["label"]) as myDialog:
 						if (not myDialog.isCancel()):
 							value = myDialog.getValue()
 							self.myCellControl.SetValue(value)
@@ -16054,7 +16112,7 @@ class handle_Dialog(handle_Base):
 
 		state = handle_Base.__exit__(self, exc_type, exc_value, traceback)
 
-		if (self.type.lower() == "busy"):
+		if (self.type.lower() in ["busy"]): #, "printpreview"]):
 			self.hide()
 
 		return state
@@ -16491,36 +16549,30 @@ class handle_Dialog(handle_Base):
 			warnings.warn(f"The {self.type} dialogue box {self.__repr__()} must be shown in the main thread, not a background thread", Warning, stacklevel = 2)
 			return
 
+		#Pause background functions
+		for variable, handleDict in self.controller.backgroundFunction_pauseOnDialog.items():
+			for handle, functionDict in handleDict.items():
+				for function, attributes in functionDict.items():
+					if ((attributes["state"]) and ((self.label == None) or ((self.label != None) and (self.label not in attributes["exclude"])))):
+						catalogue = getattr(handle, variable)
+						catalogue[function]["pause"] = True
+
 		#Show dialogue
 		if (self.type.lower() == "message"):
 			self.answer = self.thing.ShowModal()
-
-			self.thing.Destroy()
-			self.thing = None
+			self.hide()
 
 		elif (self.type.lower() == "inputbox"):
 			self.answer = self.thing.ShowModal()
-			self.data = self.thing.GetValue()
-
-			self.thing.Destroy()
-			self.thing = None
+			self.hide()
 
 		elif (self.type.lower() == "choice"):
 			self.answer = self.thing.ShowModal()
-
-			if ((self.subType != None) and (self.subType.lower() == "single")):
-				self.data = self.thing.GetSelection()
-			else:
-				self.data = self.thing.GetSelections()
-
-			self.thing.Destroy()
-			self.thing = None
+			self.hide()
 
 		elif (self.type.lower() == "scroll"):
 			self.answer = self.thing.ShowModal()
-
-			self.thing.Destroy()
-			self.thing = None
+			self.hide()
 
 		elif (self.type.lower() == "custom"):
 			if (len(self.myFrame.preShowFunction) != 0):
@@ -16529,45 +16581,22 @@ class handle_Dialog(handle_Base):
 				self.myFrame.runMyFunction(self.myFrame.postShowFunction, self.myFrame.postShowFunctionArgs, self.myFrame.postShowFunctionKwargs)
 
 			self.answer = self.myFrame.thing.ShowModal()
-
-			if ((self.answer == wx.ID_CANCEL) and (len(self.myFrame.cancelFunction) != 0)):
-				self.myFrame.runMyFunction(self.myFrame.cancelFunction, self.myFrame.cancelFunctionArgs, self.myFrame.cancelFunctionKwargs)
-
-			if (len(self.myFrame.preHideFunction) != 0):
-				self.myFrame.runMyFunction(self.myFrame.preHideFunction, self.myFrame.preHideFunctionArgs, self.myFrame.preHideFunctionKwargs)
-			if (len(self.myFrame.postHideFunction) != 0):
-				self.myFrame.runMyFunction(self.myFrame.postHideFunction, self.myFrame.postHideFunctionArgs, self.myFrame.postHideFunctionKwargs)
-
-			# self.myFrame.thing.Destroy() #Don't destroy it so it can appear again without the user calling addDialog() again. Time will tell if this is a bad idea or not
-			self.thing = None
+			self.hide()
 
 		elif (self.type.lower() == "busyinfo"):
 			self.thing = wx.BusyInfo(self.thing)
 
 		elif (self.type.lower() == "file"):
 			self.answer = self.thing.ShowModal()
-
-			if ((self.subType != None) and ("single" in self.subType.lower())):
-				self.data = self.thing.GetPath()
-			else:
-				self.data = self.thing.GetPaths()
-
-			self.thing.Destroy()
-			self.thing = None
+			self.hide()
 
 		elif (self.type.lower() == "color"):
 			self.answer = self.thing.ShowModal()
-			self.data = self.thing.GetColourData()
-
-			self.thing.Destroy()
-			self.thing = None
+			self.hide()
 
 		elif (self.type.lower() == "print"):
 			self.answer = self.thing.ShowModal()
-			self.dialogData = self.thing.GetPrintDialogData()
-
-			self.thing.Destroy()
-			self.thing = None
+			self.hide()
 
 		elif (self.type.lower() == "printpreview"):
 			pass
@@ -16582,10 +16611,75 @@ class handle_Dialog(handle_Base):
 			del self.thing
 			self.thing = None
 		elif (self.type.lower() == "printpreview"):
-			self.thing.hide
+			self.thing.hide()
 			self.thing = None
+
+		if (self.type.lower() == "message"):
+			self.thing.Destroy()
+			self.thing = None
+
+		elif (self.type.lower() == "inputbox"):
+			self.data = self.thing.GetValue()
+
+			self.thing.Destroy()
+			self.thing = None
+
+		elif (self.type.lower() == "choice"):
+			if ((self.subType != None) and (self.subType.lower() == "single")):
+				self.data = self.thing.GetSelection()
+			else:
+				self.data = self.thing.GetSelections()
+
+			self.thing.Destroy()
+			self.thing = None
+
+		elif (self.type.lower() == "scroll"):
+			self.thing.Destroy()
+			self.thing = None
+
+		elif (self.type.lower() == "custom"):
+			if ((self.answer == wx.ID_CANCEL) and (len(self.myFrame.cancelFunction) != 0)):
+				self.myFrame.runMyFunction(self.myFrame.cancelFunction, self.myFrame.cancelFunctionArgs, self.myFrame.cancelFunctionKwargs)
+
+			if (len(self.myFrame.preHideFunction) != 0):
+				self.myFrame.runMyFunction(self.myFrame.preHideFunction, self.myFrame.preHideFunctionArgs, self.myFrame.preHideFunctionKwargs)
+			if (len(self.myFrame.postHideFunction) != 0):
+				self.myFrame.runMyFunction(self.myFrame.postHideFunction, self.myFrame.postHideFunctionArgs, self.myFrame.postHideFunctionKwargs)
+
+			# self.myFrame.thing.Destroy() #Don't destroy it so it can appear again without the user calling addDialog() again. Time will tell if this is a bad idea or not
+			self.thing = None
+
+		elif (self.type.lower() == "file"):
+			if ((self.subType != None) and ("single" in self.subType.lower())):
+				self.data = self.thing.GetPath()
+			else:
+				self.data = self.thing.GetPaths()
+
+			self.thing.Destroy()
+			self.thing = None
+
+		elif (self.type.lower() == "color"):
+			self.data = self.thing.GetColourData()
+
+			self.thing.Destroy()
+			self.thing = None
+
+		elif (self.type.lower() == "print"):
+			self.dialogData = self.thing.GetPrintDialogData()
+
+			self.thing.Destroy()
+			self.thing = None
+
 		else:
 			warnings.warn(f"Add {self.type} to hide() for {self.__repr__()}", Warning, stacklevel = 2)
+
+		#Unpause background functions
+		for variable, handleDict in self.controller.backgroundFunction_pauseOnDialog.items():
+			for handle, functionDict in handleDict.items():
+				for function, attributes in functionDict.items():
+					if ((attributes["state"]) and ((self.label == None) or ((self.label != None) and (self.label not in attributes["exclude"])))):
+						catalogue = getattr(handle, variable)
+						catalogue[function]["pause"] = False
 
 	#Getters
 	def getValue(self, event = None):
@@ -17171,7 +17265,7 @@ class handle_Window(handle_Container_Base):
 				self.thing.SetSize(wx.DefaultSize)
 				return
 			else:
-				x = ast.literal_eval(x)
+				x = ast.literal_eval(re.sub("['\"]", "", x))
 
 		if (y == None):
 			y = x[1]
@@ -17213,7 +17307,7 @@ class handle_Window(handle_Container_Base):
 				self.thing.SetPosition(wx.DefaultPosition)
 				return
 			else:
-				x = ast.literal_eval(x)
+				x = ast.literal_eval(re.sub("['\"]", "", x))
 
 		if (y == None):
 			y = x[1]
@@ -19050,7 +19144,7 @@ class handle_Splitter(handle_Container_Base):
 		
 		if (self.type.lower() == "double"):
 			if (isinstance(newValue, str)):
-				newValue = ast.literal_eval(newValue)
+				newValue = ast.literal_eval(re.sub("['\"]", "", newValue))
 
 			if (newValue != None):
 				self.thing.SetSashPosition(newValue)
@@ -20201,6 +20295,7 @@ class Controller(Utilities, CommonEventFunctions):
 		#Setup Internal Variables
 		self.labelCatalogue = {} #A dictionary that contains all the windows made for the gui. {windowLabel: myFrame}
 		self.labelCatalogueOrder = [] #A list of what order things were added to the label catalogue. [windowLabel 1, windowLabel 2]
+		self.backgroundFunction_pauseOnDialog = {} #A list of background functions to pause if a dialog box is being shown {catalogue variable (str): self: myFunction: {"state": if it should pause (bool), "exclude": what to not pause on (list)}
 		self.unnamedList = [] #A list of the windows created without labels
 		self.oneInstance = oneInstance #Allows the user to run only one instance of this gui at a time
 		self.allowBuildErrors = allowBuildErrors
