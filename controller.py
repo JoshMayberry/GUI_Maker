@@ -5,6 +5,8 @@ __version__ = "4.3.0"
 # - Add Wrap Sizer: https://www.blog.pythonlibrary.org/2014/01/22/wxpython-wrap-widgets-with-wrapsizer/
 # - Look through these demos for more things: https://github.com/wxWidgets/Phoenix/tree/master/demo
 # - Look through the menu examples: https://www.programcreek.com/python/example/44403/wx.EVT_FIND
+# https://wxpython.org/Phoenix/docs/html/wx.lib.agw.html
+# https://wxpython.org/Phoenix/docs/html/wx.html2.WebView.html
 
 # - Add handler indexing
 #       ~ See Operation Table on: https://docs.python.org/3/library/stdtypes.html#typeiter
@@ -3025,7 +3027,7 @@ class Utilities():
 	def makeListFull(self, choices = [], default = False, single = False, editable = False,
 		editOnClick = True, cellType = None, cellTypeDefault = "text", ultimate = False,
 
-		report = False, columns = 1, columnNames = {}, columnWidth = {}, 
+		report = True, columns = 1, columnNames = {}, columnWidth = {}, 
 		border = True, rowLines = True, columnLines = True, boldHeader = True,
 		drag = False, dragDelete = False, dragCopyOverride = False, 
 		allowExternalAppDelete = True, dragLabel = None, drop = False, dropIndex = 0,
@@ -3118,13 +3120,13 @@ class Utilities():
 		Example Input: makeListFull(["Lorem", "Ipsum", "Dolor"])
 		Example Input: makeListFull(["Lorem", "Ipsum", "Dolor"], myFunction = self.onChosen)
 
-		Example Input: makeListFull(["Lorem", "Ipsum", "Dolor"], report = True)
-		Example Input: makeListFull([["Lorem", "Ipsum"], ["Dolor"]], report = True, columns = 2)
-		Example Input: makeListFull([["Lorem", "Ipsum"], ["Dolor"]], report = True, columns = 2, columnNames = {0: "Sit", 1: "Amet"})
-		Example Input: makeListFull({"Sit": ["Lorem", "Ipsum"], "Amet": ["Dolor"]], report = True, columns = 2, columnNames = {0: "Sit", 1: "Amet"})
-		Example Input: makeListFull({"Sit": ["Lorem", "Ipsum"], 1: ["Dolor"]], report = True, columns = 2, columnNames = {0: "Sit"})
+		Example Input: makeListFull(["Lorem", "Ipsum", "Dolor"], report = False)
+		Example Input: makeListFull([["Lorem", "Ipsum"], ["Dolor"]], columns = 2)
+		Example Input: makeListFull([["Lorem", "Ipsum"], ["Dolor"]], columns = 2, columnNames = {0: "Sit", 1: "Amet"})
+		Example Input: makeListFull({"Sit": ["Lorem", "Ipsum"], "Amet": ["Dolor"]], columns = 2, columnNames = {0: "Sit", 1: "Amet"})
+		Example Input: makeListFull({"Sit": ["Lorem", "Ipsum"], 1: ["Dolor"]], columns = 2, columnNames = {0: "Sit"})
 
-		Example Input: makeListFull([["Lorem", "Ipsum"], ["Dolor"]], report = True, columns = 2, columnNames = {0: "Sit", 1: "Amet"}, editable = True)
+		Example Input: makeListFull([["Lorem", "Ipsum"], ["Dolor"]], columns = 2, columnNames = {0: "Sit", 1: "Amet"}, editable = True)
 
 		Example Input: makeListFull(["Lorem", "Ipsum", "Dolor"], drag = True)
 		Example Input: makeListFull(["Lorem", "Ipsum", "Dolor"], drag = True, dragDelete = True)
@@ -5692,6 +5694,18 @@ class handle_Widget_Base(handle_Base):
 	def setValue(self, newValue, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
+		if (self.type.lower() == "progressbar"):
+			if (not isinstance(newValue, int)):
+				newValue = int(newValue)
+
+			value = self.thing.SetValue(newValue)
+
+		else:
+			warnings.warn(f"Add {self.type} to getAll() for {self.__repr__()}", Warning, stacklevel = 2)
+			value = None
+
+		return value
+
 		warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setSelection(self, newValue, event = None):
@@ -6417,6 +6431,8 @@ class handle_WidgetList(handle_Widget_Base):
 			#Ensure correct formatting
 			if (isinstance(editable, (list, tuple, range))):
 				editable = {column: True for column in editable}
+			elif (editable in [False, None]):
+				editable = {}
 			elif (not isinstance(editable, dict)):
 				editable = {column: editable for column in range(self.columns)}
 
@@ -6542,8 +6558,10 @@ class handle_WidgetList(handle_Widget_Base):
 				style += "|wx.TR_HAS_VARIABLE_ROW_HEIGHT"
 
 			if (selectMultiple):
+				self.subType = "multiple"
 				style += "|wx.TR_MULTIPLE"
 			else:
+				self.subType = "single"
 				style += "|wx.TR_SINGLE"
 
 			myId = self.getArguments(argument_catalogue, ["myId"])
@@ -6691,6 +6709,19 @@ class handle_WidgetList(handle_Widget_Base):
 						subValue.append(item) #(list) - What is selected in the first column of the row selected in the full list as strings
 					value.append(subValue)
 
+		elif (self.type.lower() == "listtree"):
+			if (self.subType.lower() == "single"):
+				selection = self.thing.GetSelection()
+				if (selection.IsOk()):
+					value = self.thing.GetItemText(selection)
+				else:
+					value = None
+			else:
+				value = []
+				for selection in self.thing.GetSelections():
+					if (selection.IsOk()):
+						value.append(self.thing.GetItemText(selection))
+
 		else:
 			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
@@ -6745,6 +6776,25 @@ class handle_WidgetList(handle_Widget_Base):
 					subValue.append(self.thing.GetItem(row, column).GetText()) #(list) - What is in the full list as strings
 				value.append(subValue)
 	
+		elif (self.type.lower() == "listtree"):
+			value = {}
+			root = self.thing.GetRootItem()
+
+			print("@1", self.subType.lower())
+			if (self.subType.lower() == "hiddenroot"):
+				rootText = None
+			else:
+				rootText = self.thing.GetItemText(root)
+
+			if (self.thing.ItemHasChildren(root)):
+				first, cookie = self.thing.GetFirstChild(root)
+				text = self.thing.GetItemText(first)
+				print(text)
+				value[rootText] = {text: None}
+
+			if (self.subType.lower() == "hiddenroot"):
+				value = value[rootText]
+
 		else:
 			warnings.warn(f"Add {self.type} to getAll() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
@@ -6777,14 +6827,22 @@ class handle_WidgetList(handle_Widget_Base):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
 		if (self.type.lower() == "listdrop"):
+			if (isinstance(newValue, range)):
+				newValue = list(newValue)
+			elif (not isinstance(newValue, (list, tuple))):
+				newValue = [newValue]
+
 			if (filterNone != None):
 				if (filterNone):
 					if (None in newValue):
-						newValue[:] = [value for value in newValue if value is not None] #Filter out None
+						newValue[:] = [str(value) for value in newValue if value is not None] #Filter out None
 				else:
-					newValue[:] = [value if (value != None) else "" for value in newValue] #Replace None with blank space
+					newValue[:] = [str(value) if (value != None) else "" for value in newValue] #Replace None with blank space
 
-			self.thing.SetItems(newValue) #(list) - What the choice options will now be now
+			for i, item in enumerate(newValue): #(list) - What the choice options will now be now
+				self.thing.SetString(i, item)
+
+			self.setSelection(0)
 
 		elif (self.type.lower() == "listfull"):
 			columnCount = self.columns
@@ -6821,19 +6879,24 @@ class handle_WidgetList(handle_Widget_Base):
 					self.setCellType(column)
 
 			#Error Check
-			if (not isinstance(newValue, (list, tuple, range, dict))):
+			if (isinstance(newValue, range)):
+				newValue = list(newValue)
+			elif (not isinstance(newValue, (list, tuple, dict))):
 				newValue = [newValue]
 
-			if ((isinstance(newValue, (list, tuple, range))) and (len(newValue) != 0)):
-				if (not isinstance(newValue[0], (list, tuple, range))):
-					newValue = [[item] for item in newValue]
+			if ((isinstance(newValue, (list, tuple))) and (len(newValue) != 0)):
+				newValue = [item if isinstance(item, (list, tuple)) else list(item) if isinstance(item, range) else [item] for item in newValue]
+
+			for item in newValue:
+				while (len(item) < self.columns):
+					item.append("")
 
 			if (filterNone != None):
 				for item in newValue:
 					if (filterNone):
-						item[:] = [value for value in item if value is not None] #Filter out None
+						item[:] = [str(value) for value in item if value is not None] #Filter out None
 					else:
-						item[:] = [value if (value != None) else "" for value in item] #Replace None with blank space
+						item[:] = [str(value) if (value != None) else "" for value in item] #Replace None with blank space
 
 			#Setup
 			self.thing.ClearAll()
@@ -6909,14 +6972,15 @@ class handle_WidgetList(handle_Widget_Base):
 
 					#Add contents
 					if (self.subType.lower() != "ultimate"):
-						if (column == 0):
+						if ((column == 0) or (not self.thing.InReportView())):
 							self.thing.InsertItem(row, text)
 						else:
 							self.thing.SetItem(row, column, text)
+
 					else:
 						cellType = self.getCellType(column)
 						if (cellType[None].lower() == "text"):
-							if (column == 0):
+							if ((column == 0) or (not self.thing.InReportView())):
 								self.thing.InsertStringItem(row, text)
 							else:
 								self.thing.SetStringItem(row, column, text)
@@ -6948,6 +7012,9 @@ class handle_WidgetList(handle_Widget_Base):
 								self.thing.InsertStringItem(row, "")
 							self.thing.SetItemWindow(row, column, handle.thing, expand = True)
 
+			if (len(itemDict) > 0):
+				self.setSelection(0)
+		
 		elif (self.type.lower() == "listtree"):
 			if (not isinstance(newValue, dict)):
 				errorMessage = f"'newValue' must be a dict, not a {type(newValue)} in setValue() for {self.__repr__()}"
@@ -7880,11 +7947,13 @@ class handle_WidgetInput(handle_Widget_Base):
 
 			#Create the thing to put in the grid
 			if (ipAddress):
+				self.subType = "ipAddress"
 				self.thing = wx.lib.masked.ipaddrctrl.IpAddrCtrl(self.parent.thing, id = myId, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 				if (text != wx.EmptyString):
 					self.thing.SetValue(text)
 			else:
+				self.subType = "normal"
 				self.thing = wx.TextCtrl(self.parent.thing, id = myId, value = text, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 				#Set maximum length
@@ -8024,13 +8093,16 @@ class handle_WidgetInput(handle_Widget_Base):
 				if (digits == None):
 					digits = 1
 
-				self.thing = wx.lib.agw.floatspin.FloatSpin(self.parent.thing, wx.DefaultPosition, size, wx.SP_ARROW_KEYS|wx.SP_WRAP, myInitial, myMin, myMax, increment, digits, eval(style, {'__builtins__': None, "wx.lib.agw.floatspin": wx.lib.agw.floatspin}, {}), id = myId)
+				self.subType = "float"
+				self.thing = wx.lib.agw.floatspin.FloatSpin(self.parent.thing, id = myId, pos = wx.DefaultPosition, size = size, style = wx.SP_ARROW_KEYS|wx.SP_WRAP, value = myInitial, min_val = myMin, max_val = myMax, increment = increment, digits = digits, agwStyle = eval(style, {'__builtins__': None, "wx": wx}, {}))
 			else:
 				if (increment != None):
 					style = "wx.lib.agw.floatspin.FS_LEFT"
-					self.thing = wx.lib.agw.floatspin.FloatSpin(self.parent.thing, wx.DefaultPosition, size, wx.SP_ARROW_KEYS|wx.SP_WRAP, myInitial, myMin, myMax, increment, -1, eval(style, {'__builtins__': None, "wx.lib.agw.floatspin": wx.lib.agw.floatspin}, {}), id = myId)
+					self.subType = "float"
+					self.thing = wx.lib.agw.floatspin.FloatSpin(self.parent.thing, id = myId, pos = wx.DefaultPosition, size = size, style = wx.SP_ARROW_KEYS|wx.SP_WRAP, value = myInitial, min_val = myMin, max_val = myMax, increment = increment, digits = -1, agwStyle = eval(style, {'__builtins__': None, "wx": wx}, {}))
 					self.thing.SetDigits(0)
 				else:
+					self.subType = "normal"
 					self.thing = wx.SpinCtrl(self.parent.thing, id = myId, value = wx.EmptyString, size = size, style = eval(style, {'__builtins__': None, "wx": wx}, {}), min = myMin, max = myMax, initial = myInitial)
 
 				if (readOnly):
@@ -8509,7 +8581,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			#Error Check
 			image = imageCheck(idlePath)
 			if (image == None):
-				image = self._getImage(None)
+				image = self._getImage("error", internal = True)
 
 			#Remember values
 			self.toggle = toggle
@@ -8572,7 +8644,7 @@ class handle_WidgetButton(handle_Widget_Base):
 		elif (self.type.lower() == "buttonimage"):
 			build_buttonImage()
 		elif (self.type.lower() == "buttonhelp"):
-			build_buttonImage()
+			build_buttonHelp()
 		else:
 			warnings.warn(f"Add {self.type} to build() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -9403,6 +9475,9 @@ class handle_Menu(handle_Container_Base):
 				self.thing = wx.Menu()
 
 			self.text = text
+			
+			if (len(self.text) == 0):
+				self.text = " "
 
 			#Finish
 			if (isinstance(buildSelf, handle_Window)):
@@ -9738,7 +9813,7 @@ class handle_Menu(handle_Container_Base):
 	def addStretchableSpace(self, *args, **kwargs):
 		"""Adds a line to a specific pre-existing menu to separate menu items.
 
-		Example Input: addSeparator()
+		Example Input: addStretchableSpace()
 		"""
 
 		if (self.type.lower() == "toolbar"):
@@ -9763,9 +9838,9 @@ class handle_Menu(handle_Container_Base):
 
 		handle = handle_Menu()
 		if (self.type.lower() == "menu"):
-			handle.type = "MenuItem"
+			handle.type = "Menu"
 		elif (self.type.lower() == "toolbar"):
-			handle.type = "ToolBarItem"
+			handle.type = "ToolBar"
 		else:
 			warnings.warn(f"Add {self.type} to addSub() for {self.__repr__()}", Warning, stacklevel = 2)
 			return
@@ -9788,6 +9863,11 @@ class handle_Menu(handle_Container_Base):
 			return
 
 		return handle
+
+	def addEmpty(self, *args, **kwargs):
+		"""Alias function for addStretchableSpace()."""
+
+		return self.addStretchableSpace(*args, **kwargs)
 
 	def addHyperlink(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a hyperlink widget to the tool bar."""
@@ -9841,6 +9921,20 @@ class handle_Menu(handle_Container_Base):
 			handle.build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addListFull() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addListTree(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+		"""Adds a full list widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			handle = handle_MenuItem()
+			handle.type = "ToolBarItem"
+			handle.subHandle = [handle.makeListTree, args, kwargs]
+			handle.build(locals())
+		else:
+			warnings.warn(f"Add {self.type} to addListTree() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -10125,20 +10219,6 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addCanvas(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
-		"""Adds a canvas widget to the tool bar."""
-
-		if (self.type.lower() == "toolbar"):
-			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
-			handle.subHandle = [handle.makeCanvas, args, kwargs]
-			handle.build(locals())
-		else:
-			warnings.warn(f"Add {self.type} to addCanvas() for {self.__repr__()}", Warning, stacklevel = 2)
-			handle = None
-
-		return handle
-
 class handle_MenuItem(handle_Widget_Base):
 	"""A handle for working with menu widgets."""
 
@@ -10175,12 +10255,12 @@ class handle_MenuItem(handle_Widget_Base):
 			buildSelf, text, hidden = self.getArguments(argument_catalogue, ["self", "text", "hidden"])
 			myId = self.getArguments(argument_catalogue, ["myId"])
 
-
 			#Account for separators
 			if (text == None):
 				if (myId == None):
 					myId = wx.ID_ANY
-			
+
+				self.subType = "separator"
 				self.thing = wx.MenuItem(self.parent.thing, id = myId, kind = wx.ITEM_SEPARATOR)
 			else:
 				special, check, default = self.getArguments(argument_catalogue, ["special", "check", "default"])
@@ -10189,6 +10269,7 @@ class handle_MenuItem(handle_Widget_Base):
 				#Determine if the id is special
 				if (myId == None):
 					if (special != None):
+						#Use: https://wxpython.org/Phoenix/docs/html/stock_items.html#stock-items
 						special = special.lower()
 						if (special[0] == "n"):
 							myId = wx.ID_NEW
@@ -10211,8 +10292,12 @@ class handle_MenuItem(handle_Widget_Base):
 				else:
 					myId = wx.ID_ANY
 
+				if ((myId == wx.ID_ANY) and (len(text) == 0)):
+					text = " " #Must define text or wx.MenuItem will think myId is a stock item id
+
 				#Create Menu Item
 				if (check == None):
+					self.subType = "normal"
 					self.thing = wx.MenuItem(self.parent.thing, myId, text)
 
 					#Determine icon
@@ -10225,8 +10310,10 @@ class handle_MenuItem(handle_Widget_Base):
 						self.thing.SetBitmap(image)
 				else:
 					if (check):
+						self.subType = "check"
 						self.thing = wx.MenuItem(self.parent.thing, myId, text, kind = wx.ITEM_CHECK)
 					else:
+						self.subType = "radio"
 						self.thing = wx.MenuItem(self.parent.thing, myId, text, kind = wx.ITEM_RADIO)
 
 				#Determine initial value
@@ -10281,15 +10368,18 @@ class handle_MenuItem(handle_Widget_Base):
 			if (self.subHandle != None):
 				myFunction, myFunctionArgs, myFunctionKwargs = self.subHandle
 				self.subHandle = myFunction(*myFunctionArgs, **myFunctionKwargs)
+				self.subType = self.subHandle.type
 				self.thing = self.parent.thing.AddControl(self.subHandle.thing)
 			else:
 				text = self.getArguments(argument_catalogue, ["text"])
 				if (text == None):
 					stretchable = self.getArguments(argument_catalogue, ["stretchable"])
 					if (stretchable):
-						self.thing = self.parent.AddStretchableSpace()
+						self.subType = "stretchable"
+						self.thing = self.parent.thing.AddStretchableSpace()
 					else:
-						self.thing = self.parent.AddSeparator()
+						self.subType = "separator"
+						self.thing = self.parent.thing.AddSeparator()
 				else:
 					icon, internal, toolTip = self.getArguments(argument_catalogue, ["icon", "internal", "toolTip"])
 					disabled_icon, disabled_internal = self.getArguments(argument_catalogue, ["disabled_icon", "disabled_internal"])
@@ -10316,11 +10406,14 @@ class handle_MenuItem(handle_Widget_Base):
 						toolTip = f"{toolTip}"
 
 					if (check == None):
+						self.subType = "normal"
 						kind = "wx.ITEM_NORMAL"
 					else:
 						if (check):
+							self.subType = "check"
 							kind = "wx.ITEM_CHECK"
 						else:
+							self.subType = "radio"
 							kind = "wx.ITEM_RADIO"
 
 					self.thing = self.parent.thing.AddTool(wx.ID_ANY, text, image, imageDisabled, kind = eval(kind, {'__builtins__': None, "wx": wx}, {}), shortHelp = toolTip, longHelp = toolTip)
@@ -11013,6 +11106,9 @@ class handle_WidgetCanvas(handle_Widget_Base):
 	Special thanks to FogleBird for how to implement a double buffered canvas on https://stackoverflow.com/questions/16597110/best-canvas-for-wxpython
 	See: https://wiki.wxpython.org/DoubleBufferedDrawing
 	See: http://zetcode.com/wxpython/gdi/
+
+	See: https://wxpython.org/Phoenix/docs/html/wx.lib.plot.plotcanvas.PlotCanvas.html
+	See: https://wxpython.org/Phoenix/docs/html/wx.lib.floatcanvas.FloatCanvas.FloatCanvas.html
 	"""
 
 	def __init__(self):
@@ -14905,7 +15001,6 @@ class handle_Sizer(handle_Container_Base):
 		#Defaults
 		self.substitute = None
 		self.myWindow = None
-		self.text = None
 		self.rows = None
 		self.columns = None
 
@@ -15015,7 +15110,7 @@ class handle_Sizer(handle_Container_Base):
 					self.thing = wx.FlexGridSizer(rows, columns, rowGap, colGap)
 
 				elif (sizerType == "bag"):
-					self.thing = wx.GridBagSizer(rows, columns, rowGap, colGap)
+					self.thing = wx.GridBagSizer(rowGap, colGap)
 
 					emptySpace = self.getArguments(argument_catalogue, "emptySpace")
 					if (emptySpace != None):
