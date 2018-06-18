@@ -6373,7 +6373,11 @@ class handle_WidgetList(handle_Widget_Base):
 				myId = wx.ID_ANY
 
 			#Create the thing to put in the grid
-			self.thing = wx.Choice(self.parent.thing, id = myId, choices = choices, style = style)
+			inputBox = False
+			if (inputBox):
+				self.thing = wx.ComboBox(self.parent.thing, id = myId, choices = choices, style = style) #wx.CB_DROPDOWN wx.CB_SIMPLE wx.CB_READONLY wx.CB_SORT
+			else:
+				self.thing = wx.Choice(self.parent.thing, id = myId, choices = choices, style = style)
 			
 			#Set default position
 			if (type(default) == str):
@@ -6839,8 +6843,8 @@ class handle_WidgetList(handle_Widget_Base):
 				else:
 					newValue[:] = [str(value) if (value != None) else "" for value in newValue] #Replace None with blank space
 
-			for i, item in enumerate(newValue): #(list) - What the choice options will now be now
-				self.thing.SetString(i, item)
+			self.thing.Clear()
+			self.thing.AppendItems(newValue) #(list) - What the choice options will now be now
 
 			self.setSelection(0)
 
@@ -9647,8 +9651,14 @@ class handle_Menu(handle_Container_Base):
 
 			for item in label:
 				with self[item] as myWidget:
+					#Account for no wx.App.MainLoop yet
+					if ((wx.EventLoop.GetActive() == None) and (not self.controller.finishing)):
+						#Queue the current state to apply later; setting the enable twice before wx.App.MainLoop starts will cause the code to freeze
+						self.myWindow.addFinalFunction(self.setEnable, myFunctionKwargs = {"label": myWidget, "state": state}, label = (myWidget, self.setEnable))
+						continue
+
 					myId = myWidget.thing.GetId()
-					self.thing.EnableTool(myId, state)
+					self.thing.EnableTool(myId, state) 
 		else:
 			warnings.warn(f"Add {self.type} to setEnable() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -9664,12 +9674,21 @@ class handle_Menu(handle_Container_Base):
 			elif (not isinstance(label, (list, tuple, range))):
 				label = [label]
 
+			answer = []
 			for item in label:
 				with self[item] as myWidget:
+					#Account for no wx.App.MainLoop yet
+					if ((wx.EventLoop.GetActive() == None) and (not self.controller.finishing) and ((myWidget, self.setEnable) in self.finalFunctionCatalogue)):
+						answer.append(self.finalFunctionCatalogue[(myWidget, self.setEnable)][2]["state"])
+						continue
+
 					myId = myWidget.thing.GetId()
-					self.thing.GetToolEnabled(myId, state)
+					answer.append(self.thing.GetToolEnabled(myId, state))
 		else:
 			warnings.warn(f"Add {self.type} to checkEnabled() for {self.__repr__()}", Warning, stacklevel = 2)
+			answer = None
+
+		return answer
 		
 	def setShow(self, label = None, state = True):
 		"""Shows or hides an item based on the given input.
@@ -17007,6 +17026,7 @@ class handle_Window(handle_Container_Base):
 		self.postHideFunctionKwargs = []
 
 		self.finalFunctionList = []
+		self.finalFunctionCatalogue = {}
 		self.sizersIterating = {} #Keeps track of which sizers have been used in a while loop, as well as if they are still in the while loop {sizer (handle): [currently in a while loop (bool), order entered (int)]}
 		self.keyPressQueue = {} #A dictionary that contains all of the key events that need to be bound to this window
 		self.toolTipCatalogue = {} #A dictionary that contains all of the tool tips for this window
@@ -18233,10 +18253,13 @@ class handle_Window(handle_Container_Base):
 		outside = self.getSizer(outsideNumber)
 		self.nest(inside, outside, *args, **kwargs)
 
-	def addFinalFunction(self, myFunction, myFunctionArgs = None, myFunctionKwargs = None):
+	def addFinalFunction(self, myFunction, myFunctionArgs = None, myFunctionKwargs = None, label = None):
 		"""Adds a function to the queue that will run after building, but before launching, the app."""
 
-		self.finalFunctionList.append([myFunction, myFunctionArgs, myFunctionKwargs])
+		if (label == None):
+			self.finalFunctionList.append([myFunction, myFunctionArgs, myFunctionKwargs])
+		else:
+			self.finalFunctionCatalogue[label] = [myFunction, myFunctionArgs, myFunctionKwargs]
 
 	def addKeyPress(self, key, myFunction, myFunctionArgs = None, myFunctionKwargs = None, 
 		keyUp = True, numpad = False, ctrl = False, alt = False, shift = False):
@@ -20314,49 +20337,208 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 #Classes
-class MyApp(wx.App):
+# class MyApp(wx.App):
+# 	"""Needed to make the GUI work.
+# 	For more functions to override: https://wxpython.org/Phoenix/docs/html/wx.AppConsole.html
+# 	"""
+
+# 	def __init__(self, redirect = False, filename = None, useBestVisual = False, clearSigInt = True, parent = None):
+# 		"""Needed to make the GUI work."""
+
+# 		self.parent = parent
+# 		wx.App.__init__(self, redirect=redirect, filename = filename, useBestVisual = useBestVisual, clearSigInt = clearSigInt)
+
+# 	def OnInit(self):
+# 		"""Needed to make the GUI work.
+# 		Single instance code modified from: https://wxpython.org/Phoenix/docs/html/wx.SingleInstanceChecker.html
+# 		"""
+
+# 		#Account for multiple instances of the same app
+# 		if (self.parent != None):
+# 			if (self.parent.oneInstance):
+# 				#Ensure only one instance per user runs
+# 				self.parent.oneInstance_name = f"SingleApp-{wx.GetUserId()}"
+# 				self.parent.oneInstance_instance = wx.SingleInstanceChecker(self.parent.oneInstance_name)
+
+# 				if self.parent.oneInstance_instance.IsAnotherRunning():
+# 					wx.MessageBox("Cannot run multiple instances of this program", "Runtime Error")
+# 					return False
+
+# 		#Allow the app to progress
+# 		return True
+
+# 	def OnExit(self):
+# 		"""Notifies the controller that the exit process has begun."""
+
+# 		self.parent.exiting = True
+
+# 		return wx.App.OnExit(self)
+
+# class MyApp():
+# 	"""Needed to make the GUI work.
+# 	For more functions to override: https://wxpython.org/Phoenix/docs/html/wx.AppConsole.html
+# 	"""
+
+# 	def __init__(self, parent = None, startInThread = False, **kwargs):
+# 		self.app = self.App(parent = parent, **kwargs)
+
+# 		if (startInThread):
+# 			self.appThread = self.MyAppThread(parent = parent, app = self.app)
+# 		else:
+# 			self.appThread = None
+
+# 	def MainLoop(self):
+# 		if (self.appThread != None):
+# 			self.appThread.MainLoop()
+# 		else:
+# 			self.app.MainLoop()
+
+# 	class App(wx.App):
+# 		def __init__(self, redirect = False, filename = None, useBestVisual = False, clearSigInt = True, parent = None):
+# 			"""Needed to make the GUI work."""
+
+# 			self.parent = parent
+# 			wx.App.__init__(self, redirect = redirect, filename = filename, useBestVisual = useBestVisual, clearSigInt = clearSigInt)
+
+# 		def OnInit(self):
+# 			"""Needed to make the GUI work.
+# 			Single instance code modified from: https://wxpython.org/Phoenix/docs/html/wx.SingleInstanceChecker.html
+# 			"""
+
+# 			#Account for multiple instances of the same app
+# 			if (self.parent != None):
+# 				if (self.parent.oneInstance):
+# 					#Ensure only one instance per user runs
+# 					self.parent.oneInstance_name = f"SingleApp-{wx.GetUserId()}"
+# 					self.parent.oneInstance_instance = wx.SingleInstanceChecker(self.parent.oneInstance_name)
+
+# 					if self.parent.oneInstance_instance.IsAnotherRunning():
+# 						wx.MessageBox("Cannot run multiple instances of this program", "Runtime Error")
+# 						return False
+
+# 			#Allow the app to progress
+# 			return True
+
+# 		def OnExit(self):
+# 			"""Notifies the controller that the exit process has begun."""
+
+# 			self.parent.exiting = True
+
+# 			return wx.App.OnExit(self)
+
+# 	class MyAppThread(threading.Thread):
+# 		"""Allows the Main Loop for wx.App to run in a separate thread.
+# 		Modified code from: https://wiki.wxpython.org/MainLoopAsThread
+# 		"""
+
+# 		def __init__(self, parent, app):
+# 			#Create Thread
+# 			threading.Thread.__init__(self)
+# 			self.setDaemon(1)
+
+# 			#Internal Variables
+# 			self.app = app
+
+# 			#Lock until GUI is finished building
+# 			self.lock = threading.Lock()
+# 			self.start()
+# 			self.lock.acquire() #After thread has started, wait until the lock is released before starting the GUI
+		
+# 		def run(self):
+# 			pass
+
+# 		def MainLoop(self):
+# 			self.lock.release()
+# 			self.app.MainLoop()
+
+class MyApp():
 	"""Needed to make the GUI work.
 	For more functions to override: https://wxpython.org/Phoenix/docs/html/wx.AppConsole.html
 	"""
 
-	def __init__(self, redirect = False, filename = None, useBestVisual = False, clearSigInt = True, parent = None):
-		"""Needed to make the GUI work."""
+	def __init__(self, parent = None, startInThread = False, **kwargs):
+		self.startInThread = startInThread
 
-		self.parent = parent
-		wx.App.__init__(self, redirect=redirect, filename = filename, useBestVisual = useBestVisual, clearSigInt = clearSigInt)
+		if (startInThread):
+			self.app = self.MyAppThread(self, root = parent, kwargs = kwargs)
+		else:
+			self.app = self.App(self, root = parent, **kwargs)
 
-	def OnInit(self):
-		"""Needed to make the GUI work.
-		Single instance code modified from: https://wxpython.org/Phoenix/docs/html/wx.SingleInstanceChecker.html
+	def MainLoop(self):
+		self.app.MainLoop()
+
+	class App(wx.App):
+		def __init__(self, parent, root = None, redirect = False, filename = None, useBestVisual = False, clearSigInt = True, newMainLoop = None):
+			"""Needed to make the GUI work."""
+
+			self.root = root
+			self.parent = parent
+			self.newMainLoop = newMainLoop
+			wx.App.__init__(self, redirect = redirect, filename = filename, useBestVisual = useBestVisual, clearSigInt = clearSigInt)
+
+		def OnInit(self):
+			"""Needed to make the GUI work.
+			Single instance code modified from: https://wxpython.org/Phoenix/docs/html/wx.SingleInstanceChecker.html
+			"""
+
+			#Account for multiple instances of the same app
+			if (self.root != None):
+				if (self.root.oneInstance):
+					#Ensure only one instance per user runs
+					self.root.oneInstance_name = f"SingleApp-{wx.GetUserId()}"
+					self.root.oneInstance_instance = wx.SingleInstanceChecker(self.root.oneInstance_name)
+
+					if self.root.oneInstance_instance.IsAnotherRunning():
+						wx.MessageBox("Cannot run multiple instances of this program", "Runtime Error")
+						return False
+
+			if (self.newMainLoop != None):
+				self.newMainLoop()
+				wx.CallAfter(self.ExitMainLoop)
+
+			#Allow the app to progress
+			return True
+
+		def OnExit(self):
+			"""Notifies the controller that the exit process has begun."""
+
+			self.root.exiting = True
+
+			return wx.App.OnExit(self)
+
+	class MyAppThread(threading.Thread):
+		"""Allows the Main Loop for wx.App to run in a separate thread.
+		Modified code from: https://wiki.wxpython.org/MainLoopAsThread
 		"""
 
-		#Account for multiple instances of the same app
-		if (self.parent != None):
-			if (self.parent.oneInstance):
-				#Ensure only one instance per user runs
-				self.parent.oneInstance_name = f"SingleApp-{wx.GetUserId()}"
-				self.parent.oneInstance_instance = wx.SingleInstanceChecker(self.parent.oneInstance_name)
+		def __init__(self, parent, root = None, kwargs = {}):
+			#Create Thread
+			threading.Thread.__init__(self)
+			self.setDaemon(1)
 
-				if self.parent.oneInstance_instance.IsAnotherRunning():
-					wx.MessageBox("Cannot run multiple instances of this program", "Runtime Error")
-					return False
+			#Internal Variables
+			self.root = root
+			self.parent = parent
+			self.kwargs = kwargs
+			self.building = True
 
-		#Allow the app to progress
-		return True
+			self.start()
+		
+		def run(self):
+			self.app = self.parent.App(self.parent, root = self.root, **self.kwargs)
+			while (self.building):
+				time.sleep(100 / 1000)
+			self.app.MainLoop()
 
-	def OnExit(self):
-		"""Notifies the controller that the exit process has begun."""
-
-		self.parent.exiting = True
-
-		return wx.App.OnExit(self)
+		def MainLoop(self):
+			self.building = False
 
 class Controller(Utilities, CommonEventFunctions):
 	"""This module will help to create a simple GUI using wxPython without 
 	having to learn how to use the complicated program.
 	"""
 
-	def __init__(self, debugging = False, best = False, oneInstance = False, allowBuildErrors = None, checkComplexity = True):
+	def __init__(self, debugging = False, best = False, oneInstance = False, allowBuildErrors = None, checkComplexity = True, startInThread = False, newMainLoop = None):
 		"""Defines the internal variables needed to run.
 
 		debugging (bool) - Determiens if debugging information is given to the user
@@ -20376,10 +20558,16 @@ class Controller(Utilities, CommonEventFunctions):
 			- If False: Build-time errors will end the with statement, and the program will continue past it
 			- If None: Build-time errors will end the program
 
+		startInThread (bool) - Determines if wx.App.MainLoop runs in the main thread or not
+
+		newMainLoop (function) - A function to run instead of wx.App.MainLoop
+			- If None: Will run wx.App.MainLoop
+
 		Example Input: Controller()
 		Example Input: Controller(debugging = True)
 		Example Input: Controller(debugging = "log.txt")  
 		Example Input: Controller(oneInstance = True)
+		Example Input: Controller(startInThread = True)
 		"""
 		super(Controller, self).__init__()
 
@@ -20401,6 +20589,7 @@ class Controller(Utilities, CommonEventFunctions):
 		self.controller = self
 
 		self.exiting = False
+		self.finishing = False
 		self.loggingPrint = False
 		self.old_stdout = sys.stdout.write
 		self.old_stderr = sys.stderr.write
@@ -20412,7 +20601,7 @@ class Controller(Utilities, CommonEventFunctions):
 		self.threadQueue = ThreadQueue()
 
 		#Create the wx app object
-		self.app = MyApp(parent = self)
+		self.app = MyApp(parent = self, startInThread = startInThread, newMainLoop = newMainLoop)
 
 	def __str__(self):
 		"""Gives diagnostic information on the GUI when it is printed out."""
@@ -20683,6 +20872,8 @@ class Controller(Utilities, CommonEventFunctions):
 						if (not item.nested):
 							warnings.warn(f"{item.__repr__()} not nested", Warning, stacklevel = 2)
 
+		self.finishing = True
+
 		#Make sure all things are nested
 		nestCheck(nestingCatalogue)
 		
@@ -20722,7 +20913,9 @@ class Controller(Utilities, CommonEventFunctions):
 				myFrame.thing.SetAcceleratorTable(acceleratorTable)
 
 			#Run any final functions
-			for item in myFrame.finalFunctionList:
+			functionList = myFrame.finalFunctionList[:]
+			functionList.extend(list(myFrame.finalFunctionCatalogue.values()))
+			for item in functionList:
 				myFunctionList, myFunctionArgsList, myFunctionKwargsList = item
 
 				if (item[0] != None):
@@ -20752,6 +20945,8 @@ class Controller(Utilities, CommonEventFunctions):
 
 			#Make sure that the window is up to date
 			myFrame.updateWindow()
+
+		self.finishing = False
 
 		#Start the GUI
 		self.app.MainLoop()
