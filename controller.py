@@ -785,7 +785,7 @@ class Utilities():
 					else:
 						errorFunctionArgs = [error] + errorFunctionArgs
 				
-				answer = self.runMyFunction(errorFunction, errorFunctionArgs, errorFunctionKwargs)
+				answer = self.runMyFunction(errorFunction, errorFunctionArgs, errorFunctionKwargs, event = event, includeEvent = includeEvent)
 
 		return answer
 
@@ -1692,6 +1692,25 @@ class Utilities():
 			catalogue = catalogue.setdefault(key, {})
 		catalogue[address[-1]] = value
 
+	def removeAddress(self, target):
+		"""Removes the target from the nestingCatalogue under self.
+
+		target (handle) - What to remove
+			- If label: Will look up the handle in self
+
+		Example Input: removeAddress(key)
+		"""
+		global nestingCatalogue
+
+		if (not isinstance(target, (list, tuple, range))):
+			target = [target]
+
+		for item in target:
+			if (not isinstance(item, handle_Base)):
+				item = self[item]
+			catalogue = self.getAddressValue(self.nestingAddress + [id(self)])
+			del catalogue[id(item)]
+
 	def getNested(self, include = [], exclude = [], includeUnnamed = True):
 		"""Returns a list of handles of the immediate nested objects.
 
@@ -1759,40 +1778,6 @@ class Utilities():
 				nestedList.append(item)
 
 		return nestedList
-
-	def removeHandle(self, handle_remove, handle_source = None):
-		"""Removes a handle from the nested containers in 'self'.
-		The handle will not appear in self[:] after this.
-
-		handle_source (object) - What to remove from
-		handle_remove (object) - What to remove
-
-		Example Input: removeHandle(myPopupMenu)
-		Example Input: removeHandle(myPopupMenu, self.myWindow)
-		"""
-
-		if (handle_source == None):
-			handle_source = self
-
-		#Remove popup menu from nested catalogue
-		for label, handle in {key: value for key, value in handle_source.labelCatalogue.items()}.items():
-			if (handle == handle_remove):
-				del handle_source.labelCatalogue[label]
-				
-				for i, item in enumerate(handle_source.labelCatalogueOrder):
-					if (item == label):
-						handle_source.labelCatalogueOrder.pop(i)
-						break
-				else:
-					warnings.warn(f"Could not find {label} in labelCatalogueOrder for {handle_source.__repr__()}", Warning, stacklevel = 2)
-				break
-		else:
-			for i, handle in enumerate(handle_source.unnamedList):
-				if (handle == handle_remove):
-					handle_source.unnamedList.pop(i)
-					break
-			else:
-				warnings.warn(f"Could not find {handle_remove.__repr__()} in labelCatalogue or unnamedList for {handle_source.__repr__()}", Warning, stacklevel = 2)
 
 	def finalNest(self, handle):
 		"""The final step in the nesting process."""
@@ -4890,8 +4875,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 		Does not include elements that those nested elements may have nested.
 		"""
 
-		catalogue = self.getAddressValue(self.nestingAddress + [id(self)])
-		return len(catalogue) - 1
+		return len(self.labelCatalogue) + len(self.unnamedList)
 
 	def __iter__(self):
 		"""Returns an iterator object that provides the nested objects."""
@@ -4913,14 +4897,16 @@ class handle_Base(Utilities, CommonEventFunctions):
 		"""Allows the user to index the handle to get nested elements with labels."""
 
 		if (key in self):
+			self.removeAddress(key)
+
+			item = self[key]
 			if (key in self.unnamedList):
 				self.unnamedList.remove(key)
-				return
-
-			if (isinstance(key, handle_Base)):
-				key = key.label
-			del self.labelCatalogue[key]
-
+			else:
+				if (isinstance(key, handle_Base)):
+					key = key.label
+				self.labelCatalogueOrder.remove(key)
+				del self.labelCatalogue[key]
 		else:
 			if (isinstance(key, handle_Base)):
 				errorMessage = f"{key.__repr__()} not in {self.__repr__()}"
@@ -5151,7 +5137,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 
 		if (isinstance(self, handle_Sizer)):
 			self.clear()
-			del self
+			del self.nestedSizer[self]
 		else:
 			index = None
 			for i, item in enumerate(self.nestedSizer.thing.GetChildren()):
@@ -7286,7 +7272,7 @@ class handle_WidgetList(handle_Widget_Base):
 		self.parent[label] = textToDrag
 
 		#Run pre-functions
-		self.runMyFunction(self.preDragFunction, self.preDragFunctionArgs, self.preDragFunctionKwargs)
+		self.runMyFunction(self.preDragFunction, self.preDragFunctionArgs, self.preDragFunctionKwargs, event = event, includeEvent = True)
 
 		#Begin dragging item
 		originList_object.SetData(textToDrag_object)
@@ -7318,7 +7304,7 @@ class handle_WidgetList(handle_Widget_Base):
 		dragDropDestination = None
 
 		#Run post-functions
-		self.runMyFunction(self.postDragFunction, self.postDragFunctionArgs, self.postDragFunctionKwargs)
+		self.runMyFunction(self.postDragFunction, self.postDragFunctionArgs, self.postDragFunctionKwargs, event = event, includeEvent = True)
 
 		event.Skip()
 
@@ -10734,7 +10720,7 @@ class handle_MenuPopup(handle_Container_Base):
 			#Destroy the popup menu in memory
 			for item in self[:]:
 				if (isinstance(item, (handle_MenuPopupItem, handle_MenuPopupSubMenu, handle_Menu, handle_MenuItem))):
-					self.removeHandle(item)
+					del self[item]
 			self.popupMenu.thing.Destroy()
 			self.popupMenu = None
 			self.thing = None
@@ -16461,8 +16447,8 @@ class handle_Dialog(handle_Base):
 			self.hide()
 
 		elif (self.type.lower() == "custom"):
-			self.myFrame.runMyFunction(self.myFrame.preShowFunction, self.myFrame.preShowFunctionArgs, self.myFrame.preShowFunctionKwargs)
-			self.myFrame.runMyFunction(self.myFrame.postShowFunction, self.myFrame.postShowFunctionArgs, self.myFrame.postShowFunctionKwargs)
+			self.myFrame.runMyFunction(self.myFrame.preShowFunction, self.myFrame.preShowFunctionArgs, self.myFrame.preShowFunctionKwargs, includeEvent = True)
+			self.myFrame.runMyFunction(self.myFrame.postShowFunction, self.myFrame.postShowFunctionArgs, self.myFrame.postShowFunctionKwargs, includeEvent = True)
 
 			self.answer = self.myFrame.thing.ShowModal()
 			self.hide()
@@ -16523,10 +16509,10 @@ class handle_Dialog(handle_Base):
 
 		elif (self.type.lower() == "custom"):
 			if ((self.answer == wx.ID_CANCEL) and (len(self.myFrame.cancelFunction) != 0)):
-				self.myFrame.runMyFunction(self.myFrame.cancelFunction, self.myFrame.cancelFunctionArgs, self.myFrame.cancelFunctionKwargs)
+				self.myFrame.runMyFunction(self.myFrame.cancelFunction, self.myFrame.cancelFunctionArgs, self.myFrame.cancelFunctionKwargs, includeEvent = True)
 
-			self.myFrame.runMyFunction(self.myFrame.preHideFunction, self.myFrame.preHideFunctionArgs, self.myFrame.preHideFunctionKwargs)
-			self.myFrame.runMyFunction(self.myFrame.postHideFunction, self.myFrame.postHideFunctionArgs, self.myFrame.postHideFunctionKwargs)
+			self.myFrame.runMyFunction(self.myFrame.preHideFunction, self.myFrame.preHideFunctionArgs, self.myFrame.preHideFunctionKwargs, includeEvent = True)
+			self.myFrame.runMyFunction(self.myFrame.postHideFunction, self.myFrame.postHideFunctionArgs, self.myFrame.postHideFunctionKwargs, includeEvent = True)
 
 			# self.myFrame.thing.Destroy() #Don't destroy it so it can appear again without the user calling addDialog() again. Time will tell if this is a bad idea or not
 			self.thing = None
@@ -17320,7 +17306,7 @@ class handle_Window(handle_Container_Base):
 		Example Input: showWindow(asDialog = True)
 		"""
 
-		self.runMyFunction(self.preShowFunction, self.preShowFunctionArgs, self.preShowFunctionKwargs)
+		self.runMyFunction(self.preShowFunction, self.preShowFunctionArgs, self.preShowFunctionKwargs, includeEvent = True)
 
 		self.thing.Show()
 		# self.updateWindow()
@@ -17336,7 +17322,7 @@ class handle_Window(handle_Container_Base):
 			else:
 				self.thing.Raise()
 
-		self.runMyFunction(self.postShowFunction, self.postShowFunctionArgs, self.postShowFunctionKwargs)
+		self.runMyFunction(self.postShowFunction, self.postShowFunctionArgs, self.postShowFunctionKwargs, includeEvent = True)
 
 	def showWindowCheck(self, notShown = False, onScreen = False):
 		"""Checks if a window is currently being shown to the user.
@@ -17373,7 +17359,7 @@ class handle_Window(handle_Container_Base):
 		Example Input: hideWindow()
 		"""
 
-		self.runMyFunction(self.preHideFunction, self.preHideFunctionArgs, self.preHideFunctionKwargs)
+		self.runMyFunction(self.preHideFunction, self.preHideFunctionArgs, self.preHideFunctionKwargs, includeEvent = True)
 
 		if (self.controller.windowDisabler != None):
 			if (self.controller.windowDisabler[0] == self.thing):
@@ -17386,7 +17372,7 @@ class handle_Window(handle_Container_Base):
 		else:
 			warnings.warn(f"Window {self.label} is already hidden", Warning, stacklevel = 2)
 
-		self.runMyFunction(self.postHideFunction, self.postHideFunctionArgs, self.postHideFunctionKwargs)
+		self.runMyFunction(self.postHideFunction, self.postHideFunctionArgs, self.postHideFunctionKwargs, includeEvent = True)
 
 	def onHideWindow(self, event, *args, **kwargs):
 		"""Event function for hideWindow()"""
@@ -20473,8 +20459,7 @@ class Controller(Utilities, CommonEventFunctions):
 		Does not include elements that those nested elements may have nested.
 		"""
 
-		catalogue = self.getAddressValue(self.nestingAddress + [id(self)])
-		return len(catalogue) - 1
+		return len(self.labelCatalogue) + len(self.unnamedList)
 
 	def __iter__(self):
 		"""Returns an iterator object that provides the nested objects."""
@@ -20495,6 +20480,7 @@ class Controller(Utilities, CommonEventFunctions):
 	def __delitem__(self, key):
 		"""Allows the user to index the handle to get nested elements with labels."""
 
+		self.labelCatalogueOrder.remove(key)
 		del self.labelCatalogue[key]
 
 	def get(self, *args, returnExists = False, **kwargs):
