@@ -4898,8 +4898,6 @@ class handle_Base(Utilities, CommonEventFunctions):
 
 		if (key in self):
 			self.removeAddress(key)
-
-			item = self[key]
 			if (key in self.unnamedList):
 				self.unnamedList.remove(key)
 			else:
@@ -5137,24 +5135,13 @@ class handle_Base(Utilities, CommonEventFunctions):
 
 		if (isinstance(self, handle_Sizer)):
 			self.clear()
-			del self.nestedSizer[self]
-		else:
-			index = None
-			for i, item in enumerate(self.nestedSizer.thing.GetChildren()):
-				if (item == self.mySizerItem):
-					index = i
-					break
+			
+		index = self.getSizerIndex()
+		self.nestedSizer.thing.Hide(index)
+		self.nestedSizer.thing.Remove(index)
+		self.nestedSizer.thing.Layout()
 
-			if (index == None):
-				warnings.warn(f"Could not find sizer item index in remove() for {self.__repr__()}", Warning, stacklevel = 2)
-				jkjhjk
-				return
-
-			self.nestedSizer.thing.Hide(index)
-			self.nestedSizer.thing.Remove(index)
-			self.nestedSizer.thing.Layout()
-
-			del self.nestedSizer[self]
+		del self.nestedSizer[self]
 
 	#Etc
 	def readBuildInstructions_sizer(self, parent, i, instructions):
@@ -5209,6 +5196,92 @@ class handle_Base(Utilities, CommonEventFunctions):
 		panel.index = i
 
 		return panel
+
+	def getSizerCoordinates(self, n = 0):
+		"""Returns the current row and column this item is in it's nested sizer.
+		Returns None for row and/or column if it is not nested in a sizer or the respective variable is not defined in the sizer.
+
+		Example Input: getSizerCoordinates()
+		"""
+
+		if (n > 0):
+			return self.nestedSizer.getSizerCoordinates(n = n - 1)
+
+		index = self.getSizerIndex()
+		row = self.getSizerRow(index = index)
+		column = self.getSizerColumn(index = index)
+
+		return row, column
+
+	def getSizerRow(self, index = None, n = 0):
+		"""Returns the current row this item is in it's nested sizer.
+		Returns None if it is not nested in a sizer or the sizer has no defined rows.
+		Special thanks to user829323 for how to get row and column with a grid index on https://stackoverflow.com/questions/15510497/how-can-i-get-grid-row-col-position-given-an-item-index
+
+		Example Input: getSizerRow()
+		"""
+
+		if (n > 0):
+			return self.nestedSizer.getSizerRow(n = n - 1)
+
+		if (self.nestedSizer.type.lower() == "wrap"):
+			return #TO DO: Calculate what the position is
+
+		if (self.nestedSizer.rows == None):
+			return
+
+		if (index == None):
+			index = self.getSizerIndex()
+
+		if (self.nestedSizer.rows == -1):
+			return index
+
+		row = math.floor(index / self.nestedSizer.columns)
+
+		return row
+
+	def getSizerColumn(self, index = None, n = 0):
+		"""Returns the current column this item is in it's nested sizer.
+		Returns None if it is not nested in a sizer or the sizer has no defined columns.
+		Special thanks to user829323 for how to get row and column with a grid index on https://stackoverflow.com/questions/15510497/how-can-i-get-grid-row-col-position-given-an-item-index
+
+		Example Input: getSizerColumn()
+		"""
+
+		if (n > 0):
+			return self.nestedSizer.getSizerColumn(n = n - 1)
+
+		if (self.nestedSizer.type.lower() == "wrap"):
+			return #TO DO: Calculate what the position is
+
+		if (self.nestedSizer.columns == None):
+			return
+
+		if (index == None):
+			index = self.getSizerIndex()
+		
+		if (self.nestedSizer.columns == -1):
+			return index
+
+		column = index % self.nestedSizer.columns
+
+		return column
+
+	def getSizerIndex(self, n = 0):
+		"""Returns the index number of the sizer item in it's nested sizer.
+
+		Example Input: getSizerIndex()
+		"""
+
+		if (n > 0):
+			return self.nestedSizer.getSizerIndex(n = n - 1)
+
+		for i, item in enumerate(self.nestedSizer.thing.GetChildren()):
+			if (item == self.mySizerItem):
+				return i
+
+		errorMessage = f"Could not find sizer item index in remove() for {self.__repr__()}"
+		raise SyntaxError(errorMessage)
 
 class handle_Container_Base(handle_Base):
 	"""The base handler for all GUI handlers.
@@ -8526,11 +8599,14 @@ class handle_WidgetButton(handle_Widget_Base):
 		elif (self.type.lower() == "button"):
 			value = self.thing.GetLabel() #(str) - What the button says
 
-		elif ((self.type.lower() == "buttonimage") and (self.toggle)):
-			value = self.thing.GetToggle() #(bool) - True: Selected; False: Un-Selected
+		elif (self.type.lower() == "buttonimage"):
+			if (self.toggle):
+				value = self.thing.GetToggle() #(bool) - True: Selected; False: Un-Selected
+			else:
+				value = None
 
 		else:
-			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 3)
 			value = None
 
 		return value
@@ -14909,6 +14985,14 @@ class handle_Sizer(handle_Container_Base):
 		if (sizerType not in ["box", "text", "wrap"]):
 			self.rows = rows
 			self.columns = columns
+
+		elif (sizerType != "wrap"):
+			if (vertical):
+				self.columns = 1
+				self.rows = -1
+			else:
+				self.rows = 1
+				self.columns = -1
 
 		#Update catalogue
 		for key, value in locals().items():
