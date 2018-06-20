@@ -305,7 +305,10 @@ def wrap_threadedChange():
 		@functools.wraps(function)
 		def wrapper(self, *args, **kwargs):
 			"""Safely accesses the function if it is not run from the main thread.
+<<<<<<< HEAD
 			Modified code from: https://www.blog.pythonlibrary.org/2013/09/04/wxpython-how-to-update-a-progress-bar-from-a-thread/
+=======
+>>>>>>> 27744b77ec298eafda20358203c7eb38b3196300
 			Use: http://pypubsub.sourceforge.net/v3.1/apidocs/more_advanced_use.html
 			Use: https://pypubsub.readthedocs.io/en/v4.0.0/usage/module_pub.html
 
@@ -7783,7 +7786,11 @@ class handle_WidgetInput(handle_Widget_Base):
 		self.previousValue = None
 
 		#Publisher Subscriptions for functions with @wrap_threadedChange()
+<<<<<<< HEAD
 		# self.threadedChange_subscribe(self.setValue)
+=======
+		self.threadedChange_subscribe(self.setValue)
+>>>>>>> 27744b77ec298eafda20358203c7eb38b3196300
 
 	def __len__(self, returnMax = True):
 		"""Returns what the contextual length is for the object associated with this handle.
