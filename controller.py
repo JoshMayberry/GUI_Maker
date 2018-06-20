@@ -364,6 +364,7 @@ class ThreadQueue():
 class MyThread(threading.Thread):
 	"""Used to run functions in the background.
 	More information on threads can be found at: https://docs.python.org/3.4/library/threading.html
+	Use: https://wiki.wxpython.org/Non-Blocking%20Gui
 	_________________________________________________________________________
 
 	CREATE AND RUN A NEW THREAD
@@ -2749,22 +2750,38 @@ class Utilities():
 			# screen.GetSize()
 			screen.GetPPI() #Doing this causes it to be dpi aware
 
-	def getStringPixels(self, line):
+	def getStringPixels(self, line, multiLine = None, useDC = False):
 		"""Returns the length of a string in pixels.
 
 		line (str) - The string to measure
+		multiLine (bool) - Determines if "\n" should be taken into account
+			- If None: Will determine on its own if it should use multiLine
 
 		Example Input: getStringPixels("Lorem Ipsum")
+		Example Input: getStringPixels("Lorem Ipsum\nDolor Sit")
+		Example Input: getStringPixels("Lorem Ipsum\nDolor Sit", multiLine = False)
 		"""
 
-		#Get the current font
-		font = self.getFont()
-		dc = wx.WindowDC(self)
-		dc.SetFont(font)
+		if (multiLine == None):
+			multiLine = "\n" in line
 
-		#Get font pixel size
-		size = dc.GetTextExtent(line)
-		del dc
+		if (useDC):
+			#Get the current font
+			font = self.getFont()
+			dc = wx.WindowDC(self)
+			dc.SetFont(font)
+
+			#Get font pixel size
+			if (multiLine):
+				size = dc.GetMultilineTextExtent(line)
+			else:
+				size = dc.GetTextExtent(line)
+			del dc
+		else:
+			if (multiLine):
+				size = self.thing.GetMultilineTextExtent(line)
+			else:
+				size = self.thing.GetTextExtent(line)
 
 		return size
 
@@ -5032,21 +5049,6 @@ class handle_Base(Utilities, CommonEventFunctions):
 			else:
 				self.setEnable(False)
 
-	def getLabel(self, event = None):
-		"""Returns the label for this object."""
-
-		return self.label
-
-	def getType(self, event = None):
-		"""Returns the type for this object."""
-
-		data = {}
-		data["type"] = self.type
-		data["self"] = type(self).__name__
-		data["thing"] = type(self.thing).__name__
-
-		return data
-
 	def nest(self, handle = None, flex = 0, flags = "c1", selected = False):
 		"""Nests an object inside of self.
 
@@ -5142,6 +5144,29 @@ class handle_Base(Utilities, CommonEventFunctions):
 		self.nestedSizer.thing.Layout()
 
 		del self.nestedSizer[self]
+
+	#Getters
+	def getLabel(self, event = None):
+		"""Returns the label for this object."""
+
+		return self.label
+
+	def getType(self, event = None):
+		"""Returns the type for this object."""
+
+		data = {}
+		data["type"] = self.type
+		data["self"] = type(self).__name__
+		data["thing"] = type(self.thing).__name__
+
+		return data
+
+	#Setters
+	def setFunction_size(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self.betterBind(wx.EVT_SIZE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	def setFunction_position(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self.betterBind(wx.EVT_MOVE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
 	#Etc
 	def readBuildInstructions_sizer(self, parent, i, instructions):
@@ -8057,15 +8082,15 @@ class handle_WidgetInput(handle_Widget_Base):
 
 			if (myFunction != None):
 				myFunctionArgs, myFunctionKwargs = self.getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
-				self.betterBind(wx.EVT_SPINCTRL, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+				self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
 	
-			if (changeTextFunction != None):
-				if (isinstance(changeTextFunction, bool)):
-					if (changeTextFunction and (myFunction != None)):
-						self.betterBind(wx.EVT_TEXT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-				else:
-					changeTextFunctionArgs, changeTextFunctionKwargs = self.getArguments(argument_catalogue, ["changeTextFunctionArgs", "changeTextFunctionKwargs"])
-					self.betterBind(wx.EVT_TEXT, self.thing, changeTextFunction, changeTextFunctionArgs, changeTextFunctionKwargs)
+			# if (changeTextFunction != None):
+			# 	if (isinstance(changeTextFunction, bool)):
+			# 		if (changeTextFunction and (myFunction != None)):
+			# 			self.betterBind(wx.EVT_TEXT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			# 	else:
+			# 		changeTextFunctionArgs, changeTextFunctionKwargs = self.getArguments(argument_catalogue, ["changeTextFunctionArgs", "changeTextFunctionKwargs"])
+			# 		self.betterBind(wx.EVT_TEXT, self.thing, changeTextFunction, changeTextFunctionArgs, changeTextFunctionKwargs)
 
 			if (not ((self.exclude == None) or (isinstance(self.exclude, (list, tuple, range)) and (len(self.exclude) == 0)))):
 				self.betterBind(wx.EVT_KILL_FOCUS, self.thing, self.onCheckValue_exclude)
@@ -8119,7 +8144,9 @@ class handle_WidgetInput(handle_Widget_Base):
 			self.thing.SetValue(newValue) #(str) - What will be shown in the text box
 
 		elif (self.type.lower() == "inputspinner"):
+			print("@5.2", threading.current_thread())
 			self.thing.SetValue(newValue) #(int / float) - What will be shown in the input box
+			print("@5.3")
 
 		elif (self.type.lower() == "slider"):
 			self.thing.SetValue(newValue) #(int / float) - Where the slider position will be
@@ -8139,7 +8166,8 @@ class handle_WidgetInput(handle_Widget_Base):
 			self.betterBind(wx.EVT_TEXT_ENTER, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
 		elif (self.type.lower() == "inputspinner"):
-			self.betterBind(wx.EVT_SPINCTRL, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			self.betterBind(wx.EVT_TEXT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			# self.betterBind(wx.EVT_SPINCTRL, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
 		elif (self.type.lower() == "inputsearch"):
 			self.betterBind(wx.EVT_TEXT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
@@ -16839,6 +16867,7 @@ class handle_Window(handle_Container_Base):
 		self.statusBar = None
 		self.statusBarOn = True
 		self.statusTextDefault = {}
+		self.statusBar_autoWidth = None
 		self.statusTextTimer = {"listening": 0, "stop": False}
 
 		self.refreshFunction = []
@@ -17054,22 +17083,22 @@ class handle_Window(handle_Container_Base):
 					if (not isinstance(addNo, (bool, type(None)))):
 						self.idOverride[addNo] = wx.ID_NO
 					elif (addNo or ((addYes not in [False, None]) and (addNo == None))):
-						buttonSizer.addButton("Yes", myId = wx.ID_NO)
+						buttonSizer.addButton("No", myId = wx.ID_NO)
 
 					if (not isinstance(addOk, (bool, type(None)))):
 						self.idOverride[addOk] = wx.ID_OK
 					elif (addOk):
-						buttonSizer.addButton("Yes", myId = wx.ID_OK)
+						buttonSizer.addButton("Ok", myId = wx.ID_OK)
 
 					if (not isinstance(addApply, (bool, type(None)))):
 						self.idOverride[addApply] = wx.ID_APPLY
 					elif (addApply):
-						buttonSizer.addButton("Yes", myId = wx.ID_APPLY)
+						buttonSizer.addButton("Apply", myId = wx.ID_APPLY)
 
 					if (not isinstance(addCancel, (bool, type(None)))):
 						self.idOverride[addCancel] = wx.ID_CANCEL
 					elif (addCancel):
-						buttonSizer.addButton("Yes", myId = wx.ID_CANCEL)
+						buttonSizer.addButton("Cancel", myId = wx.ID_CANCEL)
 
 				if (panel):
 					self.mainPanel.thing.SetSizer(rootSizer.thing)
@@ -17157,12 +17186,6 @@ class handle_Window(handle_Container_Base):
 			warnings.warn(f"Add {self.type} to setValueLabel() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Event Functions
-	def setFunction_size(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		self.betterBind(wx.EVT_SIZE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-
-	def setFunction_position(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		self.betterBind(wx.EVT_MOVE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-
 	def setFunction_init(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		self.betterBind(wx.EVT_ACTIVATE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
@@ -17709,7 +17732,7 @@ class handle_Window(handle_Container_Base):
 			return True
 		return False
 
-	def addStatusBar(self, width = None):
+	def addStatusBar(self, width = None, autoWidth = False):
 		"""Adds a status bar to the bottom of the window.
 		If one already exists, adds another field to it.
 
@@ -17737,8 +17760,10 @@ class handle_Window(handle_Container_Base):
 			current = self.statusBar.GetFieldsCount()
 			self.statusBar.SetFieldsCount(current + 1)
 
-		self.setStatusTextDefault(number = self.statusBar.GetFieldsCount() - 1)
-		self.setStatusWidth(width, number = self.statusBar.GetFieldsCount() - 1)
+		number = self.statusBar.GetFieldsCount() - 1
+		self.setStatusTextDefault(number = number)
+		self.setStatusWidth(width = width, number = number, autoWidth = autoWidth)
+		self.setStatusText(number = number)
 
 	def removeStatusBar(self):
 		"""Removes a status bar if there is more than one.
@@ -17757,7 +17782,7 @@ class handle_Window(handle_Container_Base):
 
 		self.statusBar.SetFieldsCount(current - 1)
 
-	def setStatusWidth(self, width = None, number = None):
+	def setStatusWidth(self, width = None, number = None, autoWidth = False):
 		"""Changes the width of the status bar to match what was given.
 
 		width (int) - How wide the satus bar is in pixels
@@ -17769,11 +17794,18 @@ class handle_Window(handle_Container_Base):
 			- If None: Applies to all
 			- If list: Applies to only those in the list
 
+		autoWidth (bool) - Determines if 'width' should be overridden with the width of the text in the status bar
+			- If True: The status bar width will change to fit the text in it
+			- If False: 'width' will be used to set the status bar width
+
 		Example Input: setStatusWidth()
 		Example Input: setStatusWidth(100)
 		Example Input: setStatusWidth([100, -1])
 		Example Input: setStatusWidth([-2, -1])
 		Example Input: setStatusWidth([-2, 100, -1])
+		
+		Example Input: setStatusWidth(100, number = 1)
+		Example Input: setStatusWidth(number = 1, autoWidth = True)
 		"""
 
 		if (self.statusBar == None):
@@ -17784,6 +17816,12 @@ class handle_Window(handle_Container_Base):
 			number = []
 		elif (not isinstance(number, (list, tuple, range))):
 			number = [number]
+
+		if (autoWidth):
+			self.statusBar_autoWidth = number
+			return
+		elif (len(number) == 0):
+			self.statusBar_autoWidth = None
 
 		if (width == None):
 			width = -1
@@ -17797,7 +17835,7 @@ class handle_Window(handle_Container_Base):
 			else:
 				widthList = list(width)
 
-		elif (number == None):
+		elif (len(number) == 0):
 			widthList = [width] * self.statusBar.GetFieldsCount()
 		else:
 			widthList = []
@@ -17809,7 +17847,7 @@ class handle_Window(handle_Container_Base):
 
 		self.statusBar.SetStatusWidths(widthList)
 
-	def setStatusText(self, message = None, number = 0, autoAdd = False):
+	def setStatusText(self, message = None, number = 0, startDelay = 0, autoAdd = False):
 		"""Sets the text shown in the status bar.
 		If a message is on a timer and a new message gets sent, the timer message will stop and not overwrite the new message.
 		In a multi-field status bar, the fields are numbered starting with 0.
@@ -17819,6 +17857,7 @@ class handle_Window(handle_Container_Base):
 			- If None: Will use the defaultr status message
 			- If function: Will run the function and use the returned value as the message
 		number (int)   - Which field to place this status in on the status bar
+		startDelay (int)    - How long to wait in ms before showing the first message
 		autoAdd (bool) - If there is no status bar, add one
 
 		Example Input: setStatusText()
@@ -17827,37 +17866,45 @@ class handle_Window(handle_Container_Base):
 		Example Input: setStatusText({"Ready": 1000, "Set": 1000, "Go!": None, "This will not appear": 1000)
 		Example Input: setStatusText({"Changes Saved": 3000, None: None)
 		Example Input: setStatusText(self.checkStuff)
+		Example Input: setStatusText(startDelay = 3000)
 		"""
 
 		def timerMessage():
 			"""The thread function that runs for the timer status message."""
-			nonlocal self, message, number
+			nonlocal self, message, number, startDelay
 
 			#Account for other messages with timers before this one
-			if (self.statusTextTimer["listening"] > 0):
+			while (self.statusTextTimer["listening"] > 0):
 				self.statusTextTimer["stop"] = True
 				time.sleep(100 / 1000)
+			self.statusTextTimer["stop"] = False
 
 			self.statusTextTimer["listening"] += 1
 
-			for text, delay in message.items():
-				if (self.statusTextTimer["stop"]):
-					self.statusTextTimer["stop"] = False
-					break
+			if (startDelay not in [None, 0]):
+				time.sleep(startDelay / 1000)
 
-				applyMessage(text)
+			if (not isinstance(message, dict)):
+				applyMessage(message)
+			else:
+				for text, delay in message.items():
+					if (self.statusTextTimer["stop"]):
+						self.statusTextTimer["stop"] = False
+						break
 
-				if (text == None):
-					text = self.statusTextDefault.get(number, " ")
-				if (callable(text)):
-					text = text()
-				if (text == None):
-					text = " "
-				self.statusBar.SetStatusText(text, number)
+					applyMessage(text)
 
-				if (delay == None):
-					break
-				time.sleep(delay / 1000)
+					if (text == None):
+						text = self.statusTextDefault.get(number, " ")
+					if (callable(text)):
+						text = text()
+					if (text == None):
+						text = " "
+					self.statusBar.SetStatusText(text, number)
+
+					if (delay == None):
+						break
+					time.sleep(delay / 1000)
 
 			self.statusTextTimer["listening"] -= 1
 
@@ -17873,6 +17920,9 @@ class handle_Window(handle_Container_Base):
 				text = " "
 			self.statusBar.SetStatusText(text, number)
 
+			if (isinstance(self.statusBar_autoWidth, (list, tuple, range)) and ((len(self.statusBar_autoWidth) == 0) or (number in self.statusBar_autoWidth))):
+				self.setStatusWidth(width = self.getStringPixels(text)[0], number = number)
+
 		##################################################
 
 		#Error Checking
@@ -17887,10 +17937,7 @@ class handle_Window(handle_Container_Base):
 			warnings.warn(f"There are only {self.statusBar.GetFieldsCount()} fields in the status bar, so it cannot set the text for field {number} in setStatusText() for {self.__repr__()}", Warning, stacklevel = 2)
 			return
 
-		if (isinstance(message, dict)):
-			self.backgroundRun(timerMessage)
-		else:
-			applyMessage(message)
+		self.backgroundRun(timerMessage)
 
 	def setStatusTextDefault(self, message = " ", number = 0):
 		"""Sets the default status message for the status bar.
