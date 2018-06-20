@@ -45,6 +45,7 @@ import wx.lib.dialogs
 import wx.lib.agw.aui
 # import wx.lib.newevent
 import wx.lib.splitter
+import wx.lib.pubsub.pub
 import wx.lib.agw.floatspin
 import wx.lib.scrolledpanel
 import wx.lib.mixins.listctrl
@@ -93,6 +94,7 @@ import PIL
 valueQueue = {} #Used to keep track of values the user wants to have
 dragDropDestination = None #Used to help a source know if a destination is itself
 nestingCatalogue = {} #Used to keep track of what is nested in what
+topicManager = wx.lib.pubsub.pub.getDefaultTopicMgr()
 
 
 #Controllers
@@ -295,6 +297,33 @@ def wrap_eventAdd(myFunction, eventName = "event"):
 			answer = function(self, *args, **kwargs)
 
 			return answer
+		return wrapper
+	return decorator
+
+def wrap_threadedChange():
+	def decorator(function):
+		@functools.wraps(function)
+		def wrapper(self, *args, **kwargs):
+			"""Safely accesses the function if it is not run from the main thread.
+			Use: http://pypubsub.sourceforge.net/v3.1/apidocs/more_advanced_use.html
+			Use: https://pypubsub.readthedocs.io/en/v4.0.0/usage/module_pub.html
+
+			For this to work, the handle should have the following code in it's __init__:
+			self.threadedChange_subscribe(function)
+
+			Example Usage: @wrap_threadedChange()
+			"""
+
+			if (threading.current_thread() == threading.main_thread()):
+				function(self, *args, **kwargs)
+
+			elif ("threadedChange_catalogue" in kwargs):
+				catalogue = kwargs["threadedChange_catalogue"]
+				function(self, *catalogue["args"], **catalogue["kwargs"])
+
+			else:
+				wx.lib.pubsub.pub.sendMessage(f"{id(self)}:{function.__name__}", threadedChange_catalogue = {"args": args, "kwargs": kwargs})
+
 		return wrapper
 	return decorator
 
@@ -2543,76 +2572,27 @@ class Utilities():
 
 		return argList
 
-	def arrangeArguments(self, function, argList = [], kwargDict = {}, desiredArgs = None, notFound = {}):
+	def arrangeArguments(self, handle, function, argList = [], kwargDict = {}, exclude = []):
 		"""Returns a dictionary of the args and kwargs for a function.
 
 		function (function) - The function to inspect
 		argList (list)      - The *args of 'function'
 		kwargDict (dict)    - The **kwargs of 'function'
-		desiredArgs (str)   - Determines what is returned to the user. Can be a list of strings
-			- If None: A dictionary of all args and kwargs will be returned
-			- If not None: A dictionary of the provided args and kwargs will be returned if they exist
-		notFound (dict)     - Allows the user to define what an argument should be if it is not in the function's argument list. {kwarg (str): default (any)}
+		exclude (list)      - What args or kwargs to not include
 
-		Example Input: arrangeArguments(myFunction, args, kwargs)
-		Example Input: arrangeArguments(myFunction, args, kwargs, desiredArgs = "handler")
-		Example Input: arrangeArguments(myFunction, args, kwargs, desiredArgs = "handler")
-		Example Input: arrangeArguments(myFunction, args, kwargs, desiredArgs = ["handler", "flex", "flags"])
-		Example Input: arrangeArguments(myFunction, args, kwargs, desiredArgs = ["handler", "flex", "flags"], notFound = {"flex": 0, "flags" = "c1"})
+		Example Input: arrangeArguments(self, function, args, kwargs)
+		Example Input: arrangeArguments(self.controller, Controller.addWindow, kwargDict = argument_catalogue)
 		"""
 
-		#Ensure correct format
-		if (desiredArgs != None):
-			if (not isinstance(desiredArgs, (list, tuple, range))):
-				desiredArgs = [desiredArgs]
+		if (handle != None):
+			argList = [handle, *argList]
+		arguments = inspect.getcallargs(function, *argList, **kwargDict)
 
-		arguments = {}
-		arg_indexList = []
-		containsSelf = False
-		for i, item in enumerate(inspect.signature(function).parameters.values()):
-			#Skip inherited parameter 'self'
-			if (item.name == "self"):
-				containsSelf = True
-				continue
-
-			#Collect desired arguments
-			if ((desiredArgs == None) or (item.name in desiredArgs)):
-				if (i <= len(argList)):
-					#Account for kwarg being passed in as an arg
-					arguments[item.name] = argList[i - 1 * containsSelf]
-				else:
-					#Place defaults from function in catalogue
-					arguments[item.name] = item.default
-
-			#Track arg index positions
-			if (item.default == item.empty):
-				arg_indexList.append(item.name)
-
-		#Account for returning all arguments
-		if (desiredArgs == None):
-			desiredArgs = [item.name for item in inspect.signature(function).parameters.values()]
-
-		for item in desiredArgs:
-			#Place kwargs in catalogue
-			if (item in kwargDict):
-				arguments[item] = kwargDict[item]
-
-			#Account for requested arguments that were not found
-			elif (item not in arguments):
-				if (item in notFound):
-					arguments[item] = notFound[item]
-
-			elif (item in arg_indexList):
-				i = arg_indexList.index(item)
-				arguments[item] = argList[i]
-
-		for key, value in kwargDict.items():
-			if (key not in arguments):
-				arguments[key] = value
-
-		if (containsSelf and ("self" not in arguments)):
-			errorMessage = f"'self' not defined for arguments in arrangeArguments() for {self.__repr__()}"
-			raise KeyError(errorMessage)
+		if (not isinstance(exclude, (list, tuple, range))):
+			exclude = exclude
+		for item in exclude:
+			if (item in arguments):
+				del arguments[item]
 
 		return arguments
 
@@ -5697,6 +5677,22 @@ class handle_Widget_Base(handle_Base):
 
 		self.postBuild(argument_catalogue)
 
+	def threadedChange_subscribe(self, function):
+		"""Sets up a pubsub subscription for the given function.
+		Use this for functions with the @wrap_threadedChange() decorator
+
+		Example Input: threadedChange_subscribe(self.SetValue)
+		"""
+		global topicManager
+
+		catalogue = self.arrangeArguments(self, function)
+		topicManager.getOrCreateTopic(f"{id(self)}:{function.__name__}", 
+			protoListener = eval(f"lambda threadedChange_catalogue = {{}}, {', '.join(f'{item} = None' for item in catalogue)}: None"))
+		wx.lib.pubsub.pub.subscribe(function, f"{id(self)}:{function.__name__}")
+
+		#Wrap the given function
+		function = wrap_threadedChange()(function)
+
 	#Getters
 	def getValue(self, event = None):
 		"""Returns what the contextual value is for the object associated with this handle."""
@@ -7785,6 +7781,9 @@ class handle_WidgetInput(handle_Widget_Base):
 		self.exclude = None
 		self.previousValue = None
 
+		#Publisher Subscriptions for functions with @wrap_threadedChange()
+		self.threadedChange_subscribe(self.setValue)
+
 	def __len__(self, returnMax = True):
 		"""Returns what the contextual length is for the object associated with this handle.
 
@@ -8135,7 +8134,8 @@ class handle_WidgetInput(handle_Widget_Base):
 		return value
 
 	#Setters
-	def setValue(self, newValue, event = None):
+	# @wrap_threadedChange()
+	def setValue(self, newValue = None, event = None, **kwargs):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
 		if (self.type.lower() == "inputbox"):
@@ -8144,9 +8144,7 @@ class handle_WidgetInput(handle_Widget_Base):
 			self.thing.SetValue(newValue) #(str) - What will be shown in the text box
 
 		elif (self.type.lower() == "inputspinner"):
-			print("@5.2", threading.current_thread())
 			self.thing.SetValue(newValue) #(int / float) - What will be shown in the input box
-			print("@5.3")
 
 		elif (self.type.lower() == "slider"):
 			self.thing.SetValue(newValue) #(int / float) - Where the slider position will be
@@ -16797,8 +16795,8 @@ class handle_Dialog(handle_Base):
 			handle = handle_Window(self.myWindow.controller)
 			handle.type = "Preview"
 
-			argument_catalogue = {"self": self.controller, "canvas": self.MyPrintout(self, self.title), "enablePrint": True}
-			argument_catalogue = self.arrangeArguments(Controller.addWindow, kwargDict = argument_catalogue)
+			argument_catalogue = {"canvas": self.MyPrintout(self, self.title), "enablePrint": True}
+			argument_catalogue = self.arrangeArguments(self.controller, Controller.addWindow, kwargDict = argument_catalogue)
 			handle.build(argument_catalogue)
 
 			handle.setWindowSize(self.size)
@@ -17135,10 +17133,6 @@ class handle_Window(handle_Container_Base):
 			self.thing.Initialize()
 
 		#########################################################
-
-		#Fill in default values
-		# argument_catalogue["self"] = self.controller
-		# argument_catalogue = self.arrangeArguments(Controller.addWindow, kwargDict = argument_catalogue)
 
 		self.preBuild(argument_catalogue)
 
