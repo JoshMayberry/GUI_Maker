@@ -305,10 +305,7 @@ def wrap_threadedChange():
 		@functools.wraps(function)
 		def wrapper(self, *args, **kwargs):
 			"""Safely accesses the function if it is not run from the main thread.
-<<<<<<< HEAD
 			Modified code from: https://www.blog.pythonlibrary.org/2013/09/04/wxpython-how-to-update-a-progress-bar-from-a-thread/
-=======
->>>>>>> 27744b77ec298eafda20358203c7eb38b3196300
 			Use: http://pypubsub.sourceforge.net/v3.1/apidocs/more_advanced_use.html
 			Use: https://pypubsub.readthedocs.io/en/v4.0.0/usage/module_pub.html
 
@@ -2682,10 +2679,48 @@ class Utilities():
 
 		return parent
 
-	def getScreenSize(self):
-		"""Returns the screen resolution."""
+	def getScreenSize(self, number = None, combine = True):
+		"""Returns the screen resolution.
+		Special thanks to Frederic Hamidi for how to get the screen size from multple displays on https://stackoverflow.com/questions/10294920/how-to-find-the-screen-size-of-two-monitors-using-wx-displaysize
 
-		size = wx.GetDisplaySize()
+		number (int) - Which screen to get the size of
+			- If list: Which screens to get the size of
+			- If None: Gets the size of all screens
+
+		combine (bool) - Determines how the screen sizes are combined
+			- If True: A single size is returned
+			- If False: Each individual size is returned
+
+		Example Input: getScreenSize()
+		Example Input: getScreenSize(1)
+		"""
+
+		displays = (wx.Display(i) for i in range(wx.Display.GetCount()))
+
+		geometry = sorted((display.GetGeometry() for display in displays), key = lambda item: item[0]) #Sort displays from left most to right most
+		if (not combine):
+			size = [tuple(rectangle.GetSize()) for rectangle in geometry]
+			
+			if (number != None):
+				size = size[number]
+		else:
+			maxWidth = 0
+			maxHeight = 0
+			for rectangle in geometry:
+				maxWidth = max(maxWidth, rectangle[0])
+				maxHeight = max(maxHeight, rectangle[1])
+
+
+			# print("@1.2", size)
+
+			jkjkk
+
+
+
+
+
+		print("@1.2", size)
+		jkhjkhjk
 
 		return size
 
@@ -2822,7 +2857,8 @@ class Utilities():
 	def makeText(self, text = "", wrap = None, ellipsize = False, alignment = None,
 		size = None, bold = False, italic = False, color = None, family = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Creates a wx text object.
 		If you want to update this text, you will need to run the function setObjectValue() or setObjectValueWithLabel().
 		If you provide a variable to this function and that variable changes- the text on the GUI will not update.
@@ -2879,7 +2915,8 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds a hyperlink text to the next cell on the grid.
 
 		text (str)            - What text is shown
@@ -2901,7 +2938,8 @@ class Utilities():
 
 	def makeEmpty(self, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds an empty space to the next cell on the grid.
 
 		label (any)     - What this is catalogued as
@@ -2920,7 +2958,8 @@ class Utilities():
 
 	def makeLine(self, vertical = False,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds a simple line to the window.
 		It can be horizontal or vertical.
 
@@ -2943,7 +2982,8 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds a dropdown list with choices to the next cell on the grid.
 
 		choices (list)          - A list of the choices as strings
@@ -2987,7 +3027,8 @@ class Utilities():
 		postDropFunction = None, postDropFunctionArgs = None, postDropFunctionKwargs = None, 
 		dragOverFunction = None, dragOverFunctionArgs = None, dragOverFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds a full list with choices to the next cell on the grid.
 		https://wxpython.org/Phoenix/docs/html/wx.ListCtrl.html
 
@@ -3121,7 +3162,8 @@ class Utilities():
 		toolTipFunction = None, toolTipFunctionArgs = None, toolTipFunctionKwargs = None, 
 		itemMenuFunction = None, itemMenuFunctionArgs = None, itemMenuFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds a tree list to the next cell on the grid.
 
 		choices (list)          - A list of the choices as strings
@@ -3201,7 +3243,8 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds a slider bar to the next cell on the grid.
 
 		myMin (int)             - The minimum value of the slider bar
@@ -3227,10 +3270,11 @@ class Utilities():
 		
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 		enterFunction = None, enterFunctionArgs = None, enterFunctionKwargs = None, 
-		postEditFunction = None, postEditFunctionArgs = None, postEditFunctionKwargs = None,  
-		preEditFunction = None, preEditFunctionArgs = None, preEditFunctionKwargs = None,  
+		postEditFunction = None, postEditFunctionArgs = None, postEditFunctionKwargs = None, 
+		preEditFunction = None, preEditFunctionArgs = None, preEditFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds an input box to the next cell on the grid.
 
 		flags (list)    - A list of strings for which flag to add to the sizer
@@ -3286,7 +3330,8 @@ class Utilities():
 		cancelFunction = None, cancelFunctionArgs = None, cancelFunctionKwargs = None, 
 		menuFunction = None, menuFunctionArgs = None, menuFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds an input box to the next cell on the grid.
 
 		text (str)      - What is initially in the box
@@ -3337,13 +3382,14 @@ class Utilities():
 
 		return handle
 	
-	def makeInputSpinner(self, myMin = 0, myMax = 100, myInitial = 0, size = wx.DefaultSize, maxSize = None, minSize = None,
+	def makeInputSpinner(self, myMin = 0, myMax = 100, myInitial = 0, size = wx.DefaultSize, 
 		increment = None, digits = None, useFloat = False, readOnly = False, exclude = [],
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 		changeTextFunction = True, changeTextFunctionArgs = None, changeTextFunctionKwargs = None,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds a spin control to the next cell on the grid. This is an input box for numbers.
 
 		myMin (int)       - The minimum value of the input spinner
@@ -3384,7 +3430,8 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds a button to the next cell on the grid.
 
 		text (str)            - What will be written on the button
@@ -3411,7 +3458,8 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds a toggle button to the next cell on the grid.
 
 		text (str)             - What will be written on the button
@@ -3436,7 +3484,8 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds a check box to the next cell on the grid.
 		Event fires every time the check box is clicked
 
@@ -3463,7 +3512,8 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds a checklist to the next cell on the grid.
 
 		choices (list)          - A list of strings that are the choices for the check boxes
@@ -3488,7 +3538,8 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds a radio button to the next cell on the grid. If default, it will disable the other
 		radio buttons of the same group.
 
@@ -3515,7 +3566,8 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds a box filled with grouped radio buttons to the next cell on the grid.
 		Because these buttons are grouped, only one can be selected
 
@@ -3543,9 +3595,10 @@ class Utilities():
 	
 	def makeButtonHelp(self, 
 
-		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds a context help button to the next cell on the grid.
 
 		flags (list)            - A list of strings for which flag to add to the sizer
@@ -3573,7 +3626,8 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds a button to the next cell on the grid. You design what the button looks like yourself.
 
 		idlePath (str)         - Where the image of the button idling is on the computer
@@ -3600,7 +3654,8 @@ class Utilities():
 	
 	def makeImage(self, imagePath = "", internal = False, size = wx.DefaultSize,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds an embeded image to the next cell on the grid.
 
 		imagePath (str) - Where the image is on the computer. Can be a PIL image. If None, it will be a blank image
@@ -3675,7 +3730,8 @@ class Utilities():
 	
 	def makeProgressBar(self, myInitial = 0, myMax = 100, vertical = False,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds progress bar to the next cell on the grid.
 
 		myInitial (int)         - The value that the progress bar starts at
@@ -3698,7 +3754,8 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds a tool bar to the next cell on the grid.
 		Menu items can be added to this.
 
@@ -3719,7 +3776,8 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds a color picker to the next cell on the grid.
 		It can display the name or RGB of the color as well.
 
@@ -3738,15 +3796,16 @@ class Utilities():
 
 		return handle
 	
-	def makePickerFont(self, maxSize = 72, addInputBox = False, fontText = False,
+	def makePickerFont(self, maxFontSize = 72, addInputBox = False, fontText = False,
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds a color picker to the next cell on the grid.
 		It can display the name or RGB of the color as well.
 
-		maxSize (int)           - The maximum font size that can be chosen
+		maxFontSize (int)           - The maximum font size that can be chosen
 		myFunction (str)        - What function will be ran when the color is chosen
 		flags (list)            - A list of strings for which flag to add to the sizer
 		label (any)           - What this is catalogued as
@@ -3769,7 +3828,8 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds a file picker to the next cell on the grid.
 
 		flags (list)      - A list of strings for which flag to add to the sizer
@@ -3810,7 +3870,8 @@ class Utilities():
 		editLabelFunction = None, editLabelFunctionArgs = None, editLabelFunctionKwargs = None, 
 		rightClickFunction = None, rightClickFunctionArgs = None, rightClickFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds a file picker window to the next cell on the grid.
 
 		myFunction (str)               - What function will be ran when the file is chosen
@@ -3841,7 +3902,8 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds a time picker to the next cell on the grid.
 		The input time is in military time.
 
@@ -3869,7 +3931,8 @@ class Utilities():
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds a date picker to the next cell on the grid.
 
 		myFunction (str)        - What function will be ran when the date is changed
@@ -3900,7 +3963,8 @@ class Utilities():
 		monthFunction = None, monthFunctionArgs = None, monthFunctionKwargs = None, 
 		yearFunction = None, yearFunctionArgs = None, yearFunctionArgsKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds a date picker to the next cell on the grid.
 
 		myFunction (str)          - What function will be ran when the date is changed
@@ -3941,7 +4005,8 @@ class Utilities():
 
 		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Creates a blank canvas window.
 
 		panel (dict) - Instructions for the panel. Keys correspond to the args and kwargs for makePanel
@@ -3972,7 +4037,8 @@ class Utilities():
 		rightClickCellFunction = None, rightClickCellFunctionArgs = None, rightClickCellFunctionKwargs = None, 
 		rightClickLabelFunction = None, rightClickLabelFunctionArgs = None, rightClickLabelFunctionKwargs = None,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 
 		"""Adds a table to the next cell on the grid. 
 		If enabled, it can be edited; the column &  sizerNumber, size can be changed.
@@ -4092,7 +4158,8 @@ class Utilities():
 
 	def makeMenu(self, text = " ", detachable = False,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds a menu to a pre-existing menubar.
 		This is a collapsable array of menu items.
 
@@ -4116,7 +4183,8 @@ class Utilities():
 
 		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Creates a blank panel.
 
 		border (str)        - What style the border has. "simple", "raised", "sunken" or "none". Only the first two letters are necissary
@@ -4154,7 +4222,8 @@ class Utilities():
 		rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1,
 		size = wx.DefaultSize, scroll_x = False, scroll_y = False, scrollToTop = True, scrollToChild = True,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Creates a grid sizer to the specified size.
 
 		label (any)     - What this is catalogued as
@@ -4181,7 +4250,8 @@ class Utilities():
 		rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1, flexGrid = True,
 		size = wx.DefaultSize, scroll_x = False, scroll_y = False, scrollToTop = True, scrollToChild = True,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Creates a flex grid sizer.
 		############## NEEDS TO BE FIXED #################
 
@@ -4216,7 +4286,8 @@ class Utilities():
 		emptySpace = None, flexGrid = True,
 		size = wx.DefaultSize, scroll_x = False, scroll_y = False, scrollToTop = True, scrollToChild = True,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Creates a bag grid sizer.
 
 		label (any)      - What this is catalogued as
@@ -4249,7 +4320,8 @@ class Utilities():
 	def makeSizerBox(self, text = None, minWidth = -1, minHeight = -1, vertical = True,
 		size = wx.DefaultSize, scroll_x = False, scroll_y = False, scrollToTop = True, scrollToChild = True,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Creates a box sizer.
 
 		label (any)     - What this is catalogued as
@@ -4273,7 +4345,8 @@ class Utilities():
 	def makeSizerText(self, text = "", minWidth = -1, minHeight = -1, vertical = True, 
 		size = wx.DefaultSize, scroll_x = False, scroll_y = False, scrollToTop = True, scrollToChild = True,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Creates a static box sizer.
 		This is a sizer surrounded by a box with a title, much like a wxRadioBox.
 
@@ -4299,7 +4372,8 @@ class Utilities():
 	def makeSizerWrap(self, text = None, minWidth = -1, minHeight = -1, extendLast = False, vertical = True,
 		size = wx.DefaultSize, scroll_x = False, scroll_y = False, scrollToTop = True, scrollToChild = True,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Creates a wrap sizer.
 		The widgets will arrange themselves into rows and columns on their own, starting in the top-left corner.
 
@@ -4327,7 +4401,8 @@ class Utilities():
 	def makeDialogMessage(self, text = "", title = "", stayOnTop = False, icon = None, 
 		addYes = False, addOk = False, addCancel = False, addHelp = False, default = False,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Pauses the running code and shows a dialog box to get input from the user or display a message.
 		_________________________________________________________________________
 
@@ -4381,7 +4456,8 @@ class Utilities():
 
 	def makeDialogScroll(self, text = "", title = "",
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Pauses the running code and shows a dialog box that scrolls.
 		_________________________________________________________________________
 
@@ -4409,7 +4485,8 @@ class Utilities():
 
 	def makeDialogBusy(self, text = "",
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Does not pause the running code, but instead ignores user inputs by 
 		locking the GUI until the code tells the dialog box to go away. 
 		This is done by eitehr exiting a while loop or using the hide() function. 
@@ -4442,7 +4519,8 @@ class Utilities():
 
 	def makeDialogChoice(self, choices = [], text = "", title = "", single = True, default = None,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Pauses the running code and shows a dialog box that has choices in a list.
 
 		choices (list) - What can be chosen from
@@ -4476,7 +4554,8 @@ class Utilities():
 		addYes = False, addOk = True, addCancel = True, addHelp = False,
 		password = False, readOnly = False, tab = False, wrap = None, maximum = None,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Pauses the running code and shows a dialog box that has an input box.
 
 		password (bool) - If True: The text within is shown as dots
@@ -4512,7 +4591,8 @@ class Utilities():
 		directoryOnly = False, changeCurrentDirectory = False, fileMustExist = False, openFile = False, 
 		saveConfirmation = False, saveFile = False, preview = True, single = True, newDirButton = False,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Pauses the running code and shows a dialog box to get input from the user about files.
 		title (str)   - What is shown on the top of the popout window
 		default (str) - What the default value will be for the input box
@@ -4547,7 +4627,8 @@ class Utilities():
 
 	def makeDialogColor(self, simple = True,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Pauses the running code and shows a dialog box to get input from the user about color.
 
 		simple (bool) - Determines the amount of complexity the color picker window will have.
@@ -4580,7 +4661,8 @@ class Utilities():
 	def makeDialogPrint(self, pageNumbers = True, helpButton = False, printToFile = None, selection = None, 
 		pageFrom = None, pageTo = None, pageMin = None, pageMax = None, collate = None, copies = None,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Pauses the running code and shows a dialog box to get input from the user about printing.
 
 		pageNumbers (bool) - Determines the state of the 'page numbers' control box
@@ -4622,7 +4704,8 @@ class Utilities():
 
 	def makeDialogPrintPreview(self,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Pauses the running code and shows a dialog box to get input from the user about printing.
 		_________________________________________________________________________
 
@@ -4642,7 +4725,8 @@ class Utilities():
 
 	def makeDialogCustom(self, myFrame = None, valueLabel = None,
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Allows the user to define how the frame looks on their own.
 
 		myFrame (handle_Window) - What frame to use as the window
@@ -5012,6 +5096,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 		#Unpack arguments
 		buildSelf = argument_catalogue["self"]
 		hidden, enabled = self.getArguments(argument_catalogue, ["hidden", "enabled"])
+		maxSize, minSize = self.getArguments(argument_catalogue, ["maxSize", "minSize"])
 
 		#Determine visibility
 		if (isinstance(self, handle_Window)):
@@ -5032,6 +5117,19 @@ class handle_Base(Utilities, CommonEventFunctions):
 				self.addFinalFunction(self.setEnable, False)
 			else:
 				self.setEnable(False)
+
+		#Determine size constraints
+		if (isinstance(self, handle_Sizer)):
+			if (maxSize != None):
+				self.parent.thing.SetMaxSize(maxSize)
+			if (minSize != None):
+				self.parent.thing.SetMinSize(minSize)
+
+		else:
+			if (maxSize != None):
+				self.thing.SetMaxSize(maxSize)
+			if (minSize != None):
+				self.thing.SetMinSize(minSize)
 
 	def nest(self, handle = None, flex = 0, flags = "c1", selected = False):
 		"""Nests an object inside of self.
@@ -5135,6 +5233,16 @@ class handle_Base(Utilities, CommonEventFunctions):
 
 		return self.label
 
+	def getSize(self, event = None):
+		"""Returns the size of the wxObject."""
+
+		if (self.thing == None):
+			size = None
+		else:
+			size = self.thing.GetSize()
+
+		return size
+
 	def getType(self, event = None):
 		"""Returns the type for this object."""
 
@@ -5151,6 +5259,12 @@ class handle_Base(Utilities, CommonEventFunctions):
 
 	def setFunction_position(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		self.betterBind(wx.EVT_MOVE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	def setSize(self, size, event = None):
+		"""Sets the size of the wxObject."""
+
+		if (self.thing != None):
+			self.thing.SetSize(size)
 
 	#Etc
 	def readBuildInstructions_sizer(self, parent, i, instructions):
@@ -5773,7 +5887,8 @@ class handle_Widget_Base(handle_Base):
 		preFunction = None, preFunctionArgs = None, preFunctionKwargs = None, 
 		postFunction = None, postFunctionArgs = None, postFunctionKwargs = None,
 
-		parent = None, hidden = False, enabled = True, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		parent = None, handle = None, myId = None):
 		"""Enables a popup menu.
 
 		label (str) - A unique name for this popupMenu. Used to interact with it later.
@@ -6876,8 +6991,6 @@ class handle_WidgetList(handle_Widget_Base):
 			self.thing.Clear()
 			self.thing.AppendItems(newValue) #(list) - What the choice options will now be now
 
-			self.setSelection(0)
-
 		elif (self.type.lower() == "listfull"):
 			columnCount = self.columns
 			
@@ -7045,9 +7158,6 @@ class handle_WidgetList(handle_Widget_Base):
 							if (column == 0):
 								self.thing.InsertStringItem(row, "")
 							self.thing.SetItemWindow(row, column, handle.thing, expand = True)
-
-			if (len(itemDict) > 0):
-				self.setSelection(0)
 		
 		elif (self.type.lower() == "listtree"):
 			if (not isinstance(newValue, dict)):
@@ -7786,11 +7896,7 @@ class handle_WidgetInput(handle_Widget_Base):
 		self.previousValue = None
 
 		#Publisher Subscriptions for functions with @wrap_threadedChange()
-<<<<<<< HEAD
 		# self.threadedChange_subscribe(self.setValue)
-=======
-		self.threadedChange_subscribe(self.setValue)
->>>>>>> 27744b77ec298eafda20358203c7eb38b3196300
 
 	def __len__(self, returnMax = True):
 		"""Returns what the contextual length is for the object associated with this handle.
@@ -8036,7 +8142,7 @@ class handle_WidgetInput(handle_Widget_Base):
 			nonlocal self, argument_catalogue
 
 			useFloat, readOnly, increment, digits, size = self.getArguments(argument_catalogue, ["useFloat", "readOnly", "increment", "digits", "size"])
-			myInitial, myMin, myMax, maxSize, minSize, exclude = self.getArguments(argument_catalogue, ["myInitial", "myMin", "myMax", "maxSize", "minSize", "exclude"])
+			myInitial, myMin, myMax, exclude = self.getArguments(argument_catalogue, ["myInitial", "myMin", "myMax", "exclude"])
 
 			#Remember values
 			self.exclude = exclude
@@ -8073,13 +8179,6 @@ class handle_WidgetInput(handle_Widget_Base):
 
 				if (readOnly):
 					self.thing.SetReadOnly()
-
-			#Determine size constraints
-			if (maxSize != None):
-				self.thing.SetMaxSize(maxSize)
-
-			if (minSize != None):
-				self.thing.SetMinSize(minSize)
 
 			#Remember values
 			self.previousValue = self.thing.GetValue()
@@ -8142,7 +8241,6 @@ class handle_WidgetInput(handle_Widget_Base):
 		return value
 
 	#Setters
-	# @wrap_threadedChange()
 	def setValue(self, newValue = None, event = None, **kwargs):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
@@ -9095,7 +9193,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			"""Builds a wx font picker control object."""
 			nonlocal self, argument_catalogue
 
-			addInputBox, fontText, maxSize, myFunction = self.getArguments(argument_catalogue, ["addInputBox", "fontText", "maxSize", "myFunction"])
+			addInputBox, fontText, maxFontSize, myFunction = self.getArguments(argument_catalogue, ["addInputBox", "fontText", "maxFontSize", "myFunction"])
 
 			#Add settings
 			style = ""
@@ -9119,7 +9217,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			#Create the thing to put in the grid
 			self.thing = wx.FontPickerCtrl(self.parent.thing, id = myId, font = font, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 			
-			self.thing.SetMaxPointSize(maxSize) 
+			self.thing.SetMaxPointSize(maxFontSize) 
 
 			#Bind the function(s)
 			if (myFunction != None):
@@ -9692,7 +9790,8 @@ class handle_Menu(handle_Container_Base):
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None, flex = 0, flags = "c1"):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1"):
 		"""Adds a menu item to a specific pre-existing menu.
 		Note: More special IDs for future implementation can be found at: https://wiki.wxpython.org/SpecialIDs
 
@@ -9784,7 +9883,9 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addSub(self, text = "", flex = 0, flags = "c1", 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds a sub menu to a specific pre-existing menu.
 		To adding items to a sub menu is the same as for menus.
 
@@ -9809,7 +9910,8 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addText(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+	def addText(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a text widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -9828,7 +9930,8 @@ class handle_Menu(handle_Container_Base):
 
 		return self.addStretchableSpace(*args, **kwargs)
 
-	def addHyperlink(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+	def addHyperlink(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a hyperlink widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -9842,7 +9945,8 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addLine(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+	def addLine(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a line widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -9856,7 +9960,8 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addListDrop(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+	def addListDrop(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a drop list widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -9870,7 +9975,8 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addListFull(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+	def addListFull(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a full list widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -9884,7 +9990,8 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addListTree(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+	def addListTree(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a full list widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -9898,7 +10005,8 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addInputSlider(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+	def addInputSlider(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds an input slider widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -9912,7 +10020,8 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addInputBox(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+	def addInputBox(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds an input box widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -9926,7 +10035,8 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addInputSearch(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+	def addInputSearch(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a search box widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -9940,7 +10050,8 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addInputSpinner(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+	def addInputSpinner(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds an input spinner widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -9954,7 +10065,8 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addButton(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+	def addButton(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a button widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -9968,7 +10080,8 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addButtonToggle(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+	def addButtonToggle(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a toggle button widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -9982,7 +10095,8 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addButtonCheck(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+	def addButtonCheck(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a check button widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -9996,7 +10110,8 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addButtonCheckList(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+	def addButtonCheckList(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a check list widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10010,7 +10125,8 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addButtonRadio(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+	def addButtonRadio(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a radio button widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10024,7 +10140,8 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addButtonRadioBox(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+	def addButtonRadioBox(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a radio button box widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10038,7 +10155,8 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addButtonImage(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+	def addButtonImage(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds an image button widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10052,7 +10170,8 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addImage(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+	def addImage(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds an image widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10066,7 +10185,8 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addProgressBar(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+	def addProgressBar(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a progress bar widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10080,7 +10200,8 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addPickerColor(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+	def addPickerColor(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a color picker widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10094,7 +10215,8 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addPickerFont(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+	def addPickerFont(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a font picker widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10108,7 +10230,8 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addPickerFile(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+	def addPickerFile(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a file picker widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10122,7 +10245,8 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addPickerFileWindow(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+	def addPickerFileWindow(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a file window picker widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10136,7 +10260,8 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addPickerTime(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+	def addPickerTime(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a time picker widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10150,7 +10275,8 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addPickerDate(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+	def addPickerDate(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a date picker widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10164,7 +10290,8 @@ class handle_Menu(handle_Container_Base):
 
 		return handle
 
-	def addPickerDateWindow(self, *args, label = None, hidden = False, enabled = True, parent = None, handle = None, flex = 0, flags = "c1", **kwargs):
+	def addPickerDateWindow(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a text date window picker to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10705,7 +10832,8 @@ class handle_MenuPopup(handle_Container_Base):
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, parent = None, handle = None, myId = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds an item to a catalogued popup menu.
 
 		text (str)           - The label of the item. This is what is shown to the user
@@ -10763,8 +10891,10 @@ class handle_MenuPopup(handle_Container_Base):
 		handle = self.addItem(None, *args, **kwargs)
 		return handle
 
-	def addSub(self, text = None, label = None, 
-		parent = None, hidden = False, enabled = True, handle = None, myId = None):
+	def addSub(self, text = None, 
+
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Adds a sub menu to a specific pre-existing menu.
 		To adding items to a sub menu is the same as for menus.
 
@@ -10901,7 +11031,7 @@ class handle_MenuPopup(handle_Container_Base):
 					elif (handle.text != None):
 						menu.addItem(text = handle.text, icon = handle.icon, internal = handle.internal, special = None, check = handle.check, default = handle.default,
 							myFunction = handle.myFunction, myFunctionArgs = handle.myFunctionArgs, myFunctionKwargs = handle.myFunctionKwargs, 
-							label = handle.label, hidden = handle.hidden, enabled = handle.enabled)
+							label = handle.label, hidden = handle.hidden, enabled = handle.enabled, maxSize = handle.maxSize, minSize = handle.minSize)
 					else:
 						menu.addSeparator(label = handle.label, hidden = handle.hidden)
 
@@ -13610,8 +13740,8 @@ class handle_WidgetTable(handle_Widget_Base):
 		italic (bool) - If True: the font will be italicized
 		bold (bool)   - If True: the font will be bold
 
-		Example Input: setTableTextColor(1, 2, "TimesNewRoman")
-		Example Input: setTableTextColor(1, 2, wx.ROMAN)
+		Example Input: setTableCellFont(1, 2, "TimesNewRoman")
+		Example Input: setTableCellFont(1, 2, wx.ROMAN)
 		"""
 
 		#Configure the font object
@@ -13643,8 +13773,8 @@ class handle_WidgetTable(handle_Widget_Base):
 		italic (bool)     - If True: the font will be italicized
 		bold (bool)       - If True: the font will be bold
 
-		Example Input: setTableTextColor(1, 2, "TimesNewRoman")
-		Example Input: setTableTextColor(1, 2, wx.ROMAN)
+		Example Input: setTableMods(1, 2, "TimesNewRoman")
+		Example Input: setTableMods(1, 2, wx.ROMAN)
 		"""
 
 		#Configure the font object
@@ -13687,6 +13817,21 @@ class handle_WidgetTable(handle_Widget_Base):
 		"""
 
 		self.thing.SetColLabelSize(0) # hide the columns
+
+	def getTableTextColor(self, row, column):
+		"""Returns the color of the text in a cell.
+		The top-left corner is cell (0, 0) not (1, 1).
+
+		row (int)     - The index of the row
+			- If None: Will color all cells of the column if 'column' is not None
+		column (int)  - The index of the column
+			- If None: Will color all cells of the column if 'column' is not None
+
+		Example Input: getTableTextColor(1, 2)
+		"""
+
+		#Set the text color
+		return self.thing.GetCellTextColour(row, column)
 
 	def setTableTextColor(self, row, column, color):
 		"""Changes the color of the text in a cell.
@@ -14735,22 +14880,32 @@ class handle_WidgetTable(handle_Widget_Base):
 			self.cellType = cellType
 			# self.debugging = True
 
+			#Use: https://wxpython.org/Phoenix/docs/html/wx.SystemColour.enumeration.html
 			self.COLOR_BACKGROUND_SELECTED = wx.SystemSettings.GetColour(wx.SYS_COLOUR_HIGHLIGHT)
+			self.COLOR_BUTTON_SELECTED = wx.SystemSettings.GetColour(wx.SYS_COLOUR_BTNHIGHLIGHT)
 			self.COLOR_TEXT_SELECTED = wx.SystemSettings.GetColour(wx.SYS_COLOUR_HIGHLIGHTTEXT)
-			self.COLOR_BACKGROUND = wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW )
-			self.COLOR_TEXT = wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOWTEXT )
+
+			self.COLOR_BUTTON_BORDER = wx.SystemSettings.GetColour(wx.SYS_COLOUR_BTNSHADOW)
+
+			self.COLOR_BACKGROUND = wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW)
+			self.COLOR_BUTTON = wx.SystemSettings.GetColour(wx.SYS_COLOUR_BTNFACE)
+			self.COLOR_TEXT = wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOWTEXT)
 
 			#Write debug information
 			if (self.debugging):
 				print(f"TableCellRenderer.__init__(debugging = {debugging}, cellType = {cellType})")
 
 		def Draw(self, grid, attributes, dc, rectangle, row, column, isSelected):
-			"""Customisation Point: Draw the data from grid in the rectangle with attributes using the dc."""
+			"""Customisation Point: Draw the data from grid in the rectangle with attributes using the dc.
+			Use: https://github.com/wxWidgets/wxPython/blob/master/demo/RendererNative.py
+			"""
 			
 			if (self.debugging):
 				print(f"TableCellRenderer.Draw(grid = {grid}, attributes = {attributes}, dc = {dc}, rectangle = {rectangle}, row = {row}, column = {column}, isSelected = {isSelected})")
 
-			self.drawBackground(grid, dc, rectangle, isSelected)
+			cellColor = self.parent.getTableCellColor(row, column)
+			textColor = self.parent.getTableTextColor(row, column)
+			self.drawBackground(dc, rectangle, isSelected, color = cellColor)
 			
 			if (isinstance(self.cellType[None], str)):
 				if (self.cellType[None].lower() == "button"):
@@ -14766,13 +14921,17 @@ class handle_WidgetTable(handle_Widget_Base):
 
 					#Draw Button
 					if (self.parent.buttonPressCatalogue[row][column]["press"]):
-						state = wx.CONTROL_PRESSED | wx.CONTROL_SELECTED
+						colorOffset = 50
 					else:
-						state = 0
-					wx.RendererNative.Get().DrawPushButton(grid, dc, rectangle, state)
+						colorOffset = 25
+
+					buttonColor = tuple([item - colorOffset for item in cellColor[:-1]] + [cellColor[3]])
+					buttonBorderColor = tuple([item - colorOffset - 25 for item in cellColor[:-1]] + [cellColor[3]])
+					self.drawButton(dc, rectangle, isSelected, fitTo = self.cellType["text"], width_offset = 10, height_offset = 10, 
+						radius = 5, x_align = "center", y_align = "center", color = buttonColor, borderColor = buttonBorderColor)
 
 					if (self.cellType["text"] != None):
-						self.drawText(self.cellType["text"], dc, rectangle, isSelected, align = "center")
+						self.drawText(self.cellType["text"], dc, rectangle, isSelected, align = "center", color = textColor)
 
 					#Run Function
 					if ((self.parent.buttonPressCatalogue[row][column]["press"]) and (not self.parent.buttonPressCatalogue[row][column]["ranFunction"])):
@@ -14780,7 +14939,7 @@ class handle_WidgetTable(handle_Widget_Base):
 						self.parent.runMyFunction(self.cellType["myFunction"], self.cellType["myFunctionArgs"], self.cellType["myFunctionKwargs"])
 				else:
 					text = grid.GetCellValue(row, column)
-					self.drawText(text, dc, rectangle, isSelected, align = "left")
+					self.drawText(text, dc, rectangle, isSelected, align = "left", color = textColor)
 
 		def GetBestSize(self, grid, attributes, dc, row, column):
 			"""Customisation Point: Determine the appropriate (best) size for the control, return as wxSize.
@@ -14808,26 +14967,29 @@ class handle_WidgetTable(handle_Widget_Base):
 			return handle
 
 		#Utility Functions
-		def drawText(self, text, dc, rectangle, isSelected, x_offset = 0, y_offset = 0, align = None):
-			"""Draw a simple text label in appropriate colours with background
+		def drawText(self, text, dc, rectangle, isSelected, x_offset = 0, y_offset = 0, align = None, color = None):
+			"""Draw a simple text label in appropriate colors.
 			Special thanks to Milan Skala for how to center text on http://wxpython-users.1045709.n5.nabble.com/Draw-text-over-an-existing-bitmap-td5725527.html
 
-			Uses the system settings at application load to draw a rectangle
-			(rectangle) in either system window background or system selected window
-			background. Then draws the string "text" using either selected
-			text or normal text colours.
+			align (str) - Where the text should be aligned in the cell
+				~ "left", "right", "center"
+				- If None: No alignment will be done
+
+			Example Input: drawText(text, dc, rectangle, isSelected)
+			Example Input: drawText(text, dc, rectangle, isSelected, align = "left", color = textColor)
 			"""
 
 			oldColor = dc.GetTextForeground()
-			#Determine text color
-			if (isSelected):
-				dc.SetTextForeground(self.COLOR_TEXT_SELECTED)
-			else:
-				dc.SetTextForeground(self.COLOR_TEXT)
-			
-			#Draw Text
 			try:
-				#Determine text alignment
+				if (color != None):
+					color = tuple(min(255, max(0, item)) for item in color) #Ensure numbers are between 0 and 255
+				else:
+					if (isSelected):
+						color = self.COLOR_TEXT_SELECTED
+					else:
+						color = self.COLOR_TEXT
+				dc.SetTextForeground(color)
+
 				if (align == None):
 					x_align = 0
 					y_align = 0
@@ -14846,22 +15008,105 @@ class handle_WidgetTable(handle_Widget_Base):
 			finally:
 				dc.SetTextForeground(oldColor)
 
-		def drawBackground(self, grid, dc, rectangle, isSelected):
-			"""Draw an appropriate background based on selection state"""
+		def drawBackground(self, dc, rectangle, isSelected, color = None):
+			"""Draw an appropriate background based on selection state.
+
+			Example Input: drawText(dc, rectangle, isSelected)
+			Example Input: drawText(dc, rectangle, isSelected, color = cellColor)"""
 
 			oldPen = dc.GetPen()
 			oldBrush = dc.GetBrush()
 
-			#Determine background color
-			if isSelected:
-				dc.SetBrush(wx.Brush(self.COLOR_BACKGROUND_SELECTED, wx.SOLID))
-			else:
-				dc.SetBrush(wx.Brush(self.COLOR_BACKGROUND, wx.SOLID))
-			
-			#Draw Background
 			try:
+				if (color != None):
+					color = tuple(min(255, max(0, item)) for item in color) #Ensure numbers are between 0 and 255
+				else:
+					if (isSelected):
+						color = self.COLOR_BACKGROUND_SELECTED
+					else:
+						color = self.COLOR_BACKGROUND
+				dc.SetBrush(wx.Brush(color, style = wx.SOLID))
+			
 				dc.SetPen(wx.TRANSPARENT_PEN)
 				dc.DrawRectangle(rectangle.x, rectangle.y, rectangle.width, rectangle.height)
+			finally:
+				dc.SetPen(oldPen)
+				dc.SetBrush(oldBrush)
+
+		def drawButton(self, dc, rectangle, isSelected, fitTo = None, radius = 1, borderWidth = 1,
+			x_offset = 0, y_offset = 0, width_offset = 0, height_offset = 0,
+			x_align = None, y_align = None, color = None, borderColor = None):
+			"""Draw a button in appropriate colors.
+			If both 'x_align' and 'y_align' are None, no alignment will be done
+
+			fitTo (str)   - Determines the initial width and height of the button
+				- If str: Will use the size of the text if it were drawn
+				- If None: Will use 'rectangle'
+
+			x_align (str) - Where the button should be aligned with respect to the x-axis in the cell
+				~ "left", "right", "center"
+				- If None: Will use "center"
+
+			y_align (str) - Where the button should be aligned with respect to the x-axis in the cell
+				~ "top", "bottom", "center"
+				- If None: Will use "center"
+
+			Example Input: drawButton(dc, rectangle, isSelected)
+			Example Input: drawButton(dc, rectangle, isSelected, x_align = "right", y_align = "top")
+			Example Input: drawButton(dc, rectangle, isSelected, x_align = "center", y_align = "center", width_offset = -10, height_offset = -10)
+			Example Input: drawButton(dc, rectangle, isSelected, fitTo = "Lorem Ipsum", width_offset = 6)
+			"""
+
+			oldPen = dc.GetPen()
+			oldBrush = dc.GetBrush()
+
+			try:
+				if (color != None):
+					color = tuple(min(255, max(0, item)) for item in color) #Ensure numbers are between 0 and 255
+				else:
+					if (isSelected):
+						color = self.COLOR_BUTTON_SELECTED
+					else:
+						color = self.COLOR_BUTTON
+				dc.SetBrush(wx.Brush(color, style = wx.SOLID))
+
+				if (borderColor != None):
+					borderColor = tuple(min(255, max(0, item)) for item in borderColor) #Ensure numbers are between 0 and 255
+				else:
+					borderColor = self.COLOR_BUTTON_BORDER
+				dc.SetPen(wx.Pen(borderColor, width = borderWidth, style = wx.SOLID))
+				# dc.SetPen(wx.TRANSPARENT_PEN)
+
+				if (fitTo == None):
+					width = rectangle.width
+					height = rectangle.height
+				else:
+					width, height = dc.GetTextExtent(fitTo)
+
+				if ((x_align == None) and (y_align == None)):
+					x_align = 0
+					y_align = 0
+				else:
+					if (x_align == None):
+						x_align = "center"
+					elif (y_align == None):
+						y_align = "center"
+
+					if (x_align.lower()[0] == "l"):
+						x_align = 0
+					elif (x_align.lower()[0] == "r"):
+						x_align = rectangle.width - (width + width_offset)
+					else:
+						x_align = (rectangle.width - (width + width_offset)) / 2
+
+					if (y_align.lower()[0] == "t"):
+						y_align = 0
+					elif (y_align.lower()[0] == "b"):
+						y_align = rectangle.height - (height + height_offset)
+					else:
+						y_align = (rectangle.height - (height + height_offset)) / 2
+
+				dc.DrawRoundedRectangle(rectangle.x + x_align + x_offset, rectangle.y + y_align + y_offset, width + width_offset, height + height_offset, radius)
 			finally:
 				dc.SetPen(oldPen)
 				dc.SetBrush(oldBrush)
@@ -15054,10 +15299,12 @@ class handle_Sizer(handle_Container_Base):
 		if (self.substitute != None):
 			self.substitute.nest(self)
 
-		#Set sizer hints to main window
-		minSize = self.myWindow.thing.GetMinSize() #Preserve minimum size bounds
+		#Set sizer hints to main window while preserving size bounds
+		minSize = self.myWindow.thing.GetMinSize()
+		maxSize = self.myWindow.thing.GetMaxSize()
 		self.thing.SetSizeHints(self.myWindow.thing)
 		self.myWindow.thing.SetMinSize(minSize)
+		self.myWindow.thing.SetMaxSize(maxSize)
 
 	#Change Settings
 	def growFlexColumn(self, column, proportion = 0):
@@ -15748,8 +15995,8 @@ class handle_Sizer(handle_Container_Base):
 		
 		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None, 
 
-		label = None, hidden = False, enabled = True, selected = False, 
-		flex = 0, flags = "c1", parent = None, handle = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None, selected = False, flex = 0, flags = "c1"):
 		"""Creates two blank panels in next to each other. 
 		The border between double panels is dragable.
 
@@ -15786,7 +16033,8 @@ class handle_Sizer(handle_Container_Base):
 
 		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
 
-		label = None, hidden = False, enabled = True, handle = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Creates four blank panels next to each other like a grid.
 		The borders between quad panels are dragable. The itersection point is also dragable.
 		The panel order is top left, top right, bottom left, bottom right.
@@ -15813,7 +16061,8 @@ class handle_Sizer(handle_Container_Base):
 
 		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
 
-		label = None, hidden = False, enabled = True, handle = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None, myId = None):
 		"""Creates any number of panels side by side of each other.
 		The borders between poly panels are dragable.
 
@@ -15850,14 +16099,15 @@ class handle_Sizer(handle_Container_Base):
 		return handle.getSizers()
 
 	#Notebooks
-	def addNotebook(self, label = None, flags = None, tabSide = "top", flex = 0, 
+	def addNotebook(self, label = None, flags = None, tabSide = "top", flex = 0,
 		fixedWidth = False, multiLine = False, padding = None, reduceFlicker = True,
 
 		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
 		postPageChangeFunction = None, postPageChangeFunctionArgs = None, postPageChangeFunctionKwargs = None,
 		prePageChangeFunction = None, prePageChangeFunctionArgs = None, prePageChangeFunctionKwargs = None,
 
-		hidden = False, enabled = True, handle = None, parent = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, size = wx.DefaultSize, position = wx.DefaultPosition,
+		parent = None, handle = None, myId = None):
 		"""Creates a blank notebook.
 
 		label (str)        - What this is called in the idCatalogue
@@ -16751,6 +17001,20 @@ class handle_Dialog(handle_Base):
 			return True
 		return False
 
+	def isApply(self, event):
+		"""Returns if the closed dialog box answer was 'apply'."""
+
+		if (self.answer == wx.ID_APPLY):
+			return True
+		return False
+
+	def isClose(self, event):
+		"""Returns if the closed dialog box answer was 'close'."""
+
+		if (self.answer == wx.ID_CLOSE):
+			return True
+		return False
+
 	#Setters
 	def setValue(self, value, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
@@ -16956,8 +17220,15 @@ class handle_Window(handle_Container_Base):
 				title = ""
 
 			#Make the frame
-			size, position = self.getArguments(argument_catalogue, ["size", "position"])
+			size, position, smallerThanScreen = self.getArguments(argument_catalogue, ["size", "position", "smallerThanScreen"])
 			self.thing = wx.Frame(None, title = title, size = size, pos = position, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+
+			if (smallerThanScreen not in [None, False]):
+				screenSize = self.getScreenSize()
+				if (isinstance(smallerThanScreen, int)):
+					self.thing.SetMaxSize(screenSize[smallerThanScreen])
+				else:
+					self.thing.SetMaxSize(map(sum, zip(*screenSize)))
 			
 			#Add Properties
 			icon, internal = self.getArguments(argument_catalogue, ["icon", "internal"])
@@ -17015,8 +17286,8 @@ class handle_Window(handle_Container_Base):
 			tabTraversal, stayOnTop, resize, title = self.getArguments(argument_catalogue, ["tabTraversal", "stayOnTop", "resize", "title"])
 			topBar, minimize, maximize, close = self.getArguments(argument_catalogue, ["topBar", "minimize", "maximize", "close"])
 			size, position, panel, valueLabel = self.getArguments(argument_catalogue, ["size", "position", "panel", "valueLabel"])
-			addYes, addNo, addOk, addCancel, addHelp, addApply, addLine = self.getArguments(argument_catalogue, ["addYes", "addNo", "addOk", "addCancel", "addHelp", "addApply", "addLine"])
-			icon, internal = self.getArguments(argument_catalogue, ["icon", "internal"])
+			addYes, addNo, addOk, addCancel, addClose, addApply, addLine = self.getArguments(argument_catalogue, ["addYes", "addNo", "addOk", "addCancel", "addClose", "addApply", "addLine"])
+			icon, internal, smallerThanScreen = self.getArguments(argument_catalogue, ["icon", "internal", "smallerThanScreen"])
 			
 			#Configure Style
 			style = "wx.SYSTEM_MENU"
@@ -17050,6 +17321,13 @@ class handle_Window(handle_Container_Base):
 
 			#Create Object
 			self.thing = wx.Dialog(None, title=title, size = size, pos = position, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+
+			if (smallerThanScreen not in [None, False]):
+				screenSize = self.getScreenSize()
+				if (isinstance(smallerThanScreen, int)):
+					self.thing.SetMaxSize(screenSize[smallerThanScreen])
+				else:
+					self.thing.SetMaxSize(map(sum, zip(*screenSize)))
 
 			#Set Properties
 			if (icon != None):
@@ -17099,12 +17377,17 @@ class handle_Window(handle_Container_Base):
 					if (not isinstance(addApply, (bool, type(None)))):
 						self.idOverride[addApply] = wx.ID_APPLY
 					elif (addApply):
-						buttonSizer.addButton("Apply", myId = wx.ID_APPLY)
+						buttonSizer.addButton("Apply", myId = wx.ID_APPLY)#, myFunction = self.onHideWindow)
 
 					if (not isinstance(addCancel, (bool, type(None)))):
 						self.idOverride[addCancel] = wx.ID_CANCEL
 					elif (addCancel):
 						buttonSizer.addButton("Cancel", myId = wx.ID_CANCEL)
+
+					if (not isinstance(addClose, (bool, type(None)))):
+						self.idOverride[addClose] = wx.ID_CLOSE
+					elif (addClose):
+						buttonSizer.addButton("Cancel", myId = wx.ID_CLOSE)#, myFunction = self.onHideWindow)
 
 				if (panel):
 					self.mainPanel.thing.SetSizer(rootSizer.thing)
@@ -17336,46 +17619,36 @@ class handle_Window(handle_Container_Base):
 		#Set the size property
 		self.thing.SetMinSize((x, y))
 
-	def setMaximumFrameSize(self, x = (900, 700), y = None):
+	def setMaximumFrameSize(self, x = (900, 700), y = None, x_offset = False, y_offset = False):
 		"""Sets the maximum window size for the user
 		Note: the program can still explicity change the size to be smaller by using setWindowSize().
 
 		size (int tuple) - The size of the window. (length, width)
+		x_offset (bool) - Determines how 'size' is used in the x-axis
+		y_offset (bool) - Determines how 'size' is used in the y-axis
+			- If True: 'size' is an offset number from the combined screen size of all monitors
+			- If int: 'size' is an offset number from the size of this monitor (0 being the left most)
+			- If list: 'size' is an offset number from the combined screen size of the monitors listed
+			- If False: 'size' is the size of the window
+			- If None: 'size' is the size of the window
 
 		Example Input: setMaximumFrameSize()
 		Example Input: setMaximumFrameSize(700, 300)
 		Example Input: setMaximumFrameSize((700, 300))
+		Example Input: setMaximumFrameSize((700, 100), y_offset = 0)
 		"""
 
 		if (y == None):
 			y = x[1]
 			x = x[0]
 
+		# if ()
+		# screenSize = self.getScreenSize()
+
+
+
 		#Set the size property
 		self.thing.SetMaxSize((x, y))
-
-	def setAutoWindowSize(self, minimum = None):
-		"""Re-defines the size of the window.
-
-		minimum (bool) - Whether the window will be sized to the minimum best size or the maximum 
-			- If None: The auto size will not be set as a minimum or maximum.
-
-		Example Input: setAutoWindowSize()
-		Example Input: setAutoWindowSize(True)
-		Example Input: setAutoWindowSize(False)
-		"""
-
-		jkhkkj
-
-		#Determine best size
-		size = self.thing.GetBestSize()
-
-		#Set the size
-		if (minimum != None):
-			if (minimum):
-				self.thing.SetMinSize(size)
-			else:
-				self.thing.SetMaxSize(size)
 
 	def setWindowTitle(self, title):
 		"""Re-defines the title of the window.
@@ -17388,7 +17661,7 @@ class handle_Window(handle_Container_Base):
 		#Set the title
 		self.thing.SetTitle(title)
 
-	def centerWindow(self, offset = None):
+	def centerWindow(self, offset = None, number = 0):
 		"""Centers the window on the screen.
 
 		Example Input: centerWindow()
@@ -17398,7 +17671,7 @@ class handle_Window(handle_Container_Base):
 		if (offset == None):
 			offset = (0, 0)
 
-		screenSize = self.getScreenSize()
+		screenSize = self.getScreenSize(number = number)
 		windowSize = self.thing.GetSize()
 
 		size_x = math.floor(screenSize[0] / 2 - windowSize[0] / 2 + offset[0])
@@ -17687,7 +17960,8 @@ class handle_Window(handle_Container_Base):
 		preFunction = None, preFunctionArgs = None, preFunctionKwargs = None, 
 		postFunction = None, postFunctionArgs = None, postFunctionKwargs = None,
 
-		parent = None, hidden = False, enabled = True, handle = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		parent = None, handle = None, myId = None):
 		"""Enables a popup menu.
 
 		label (str) - A unique name for this popupMenu. Used to interact with it later.
@@ -19481,6 +19755,9 @@ class handle_Notebook(handle_Container_Base):
 			flags, tabSide, reduceFlicker, fixedWidth, padding, buildSelf = self.getArguments(argument_catalogue, ["flags", "tabSide", "reduceFlicker", "fixedWidth", "padding", "self"])
 			initFunction, postPageChangeFunction, prePageChangeFunction, multiLine = self.getArguments(argument_catalogue, ["initFunction", "postPageChangeFunction", "prePageChangeFunction", "multiLine"])
 
+			size, position = self.getArguments(argument_catalogue, ["size", "position"])
+
+
 			#Configure Flags            
 			flags, x, border = self.getItemMod(flags)
 
@@ -19510,8 +19787,10 @@ class handle_Notebook(handle_Container_Base):
 			if (multiLine):
 				flags += "|wx.NB_MULTILINE"
 
+			myId = self.getId(argument_catalogue)
+
 			#Create notebook object
-			self.thing = wx.Notebook(self.parent.thing, style = eval(flags, {'__builtins__': None, "wx": wx}, {}))
+			self.thing = wx.Notebook(self.parent.thing, id = myId, size = size, pos = position, style = eval(flags, {'__builtins__': None, "wx": wx}, {}))
 
 			#Bind Functions
 			if (initFunction != None):
@@ -19703,7 +19982,8 @@ class handle_Notebook(handle_Container_Base):
 	def addPage(self, text = None, panel = {}, sizer = {},
 		insert = None, default = False, icon_path = None, icon_internal = False,
 
-		label = None, hidden = False, enabled = True, parent = None):
+		hidden = False, enabled = True, maxSize = None, minSize = None, 
+		label = None, parent = None, handle = None):
 		"""Adds a gage to the notebook.
 		Lists can be given to add multiple pages. They are added in order from left to right.
 		If only a 'pageLabel' is a list, they will all have the same 'text'.
@@ -20678,14 +20958,15 @@ class Controller(Utilities, CommonEventFunctions):
 	
 	#Main Objects
 	def addWindow(self, label = None, title = "", size = wx.DefaultSize, position = wx.DefaultPosition, panel = True, autoSize = True,
-		tabTraversal = True, stayOnTop = False, floatOnParent = False, endProgram = True,
+		tabTraversal = True, stayOnTop = False, floatOnParent = False, endProgram = True, smallerThanScreen = True,
 		resize = True, minimize = True, maximize = True, close = True, icon = None, internal = False, topBar = True,
 
 		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None, 
 		delFunction = None, delFunctionArgs = None, delFunctionKwargs = None, 
 		idleFunction = None, idleFunctionArgs = None, idleFunctionKwargs = None, 
 
-		parent = None, handle = None, hidden = True, enabled = True):
+		hidden = True, enabled = True, maxSize = None, minSize = None, 
+		parent = None, handle = None):
 		"""Creates a new window.
 
 		label (any) - What this is catalogued as
@@ -20710,19 +20991,33 @@ class Controller(Utilities, CommonEventFunctions):
 			- If None: Will not override 'minimize', 'maximize', and 'close'.
 			- If True: The top of the window will have a minimize, maximize, and close button.
 			- If False: The top of the window will not have a minimize, maximize, and close button.
-		panel (bool)        - If True: All content within the window will be nested inside a main panel
-		autoSize (bool)     - If True: The window will determine the best size for itself
-		icon (str)          - The file path to the icon for the window
-			If None: No icon will be shown
-		internal (bool)     - If True: The icon provided is an internal icon, not an external file
-		endProgram (bool)   - Determines what happens when the close button is pressed
-			- If True: runs onExit()
-			- If False: runs onQuit()
-			- If None: runs onHideWindow()
 		
+		panel (bool)    - If True: All content within the window will be nested inside a main panel
+		autoSize (bool) - If True: The window will determine the best size for itself
+		icon (str)      - The file path to the icon for the window
+			If None: No icon will be shown
+		internal (bool) - If True: The icon provided is an internal icon, not an external file
+		
+		endProgram (bool) - Determines what happens when the close button is pressed
+			- If True: Runs onExit()
+			- If False: Runs onQuit()
+			- If None: Runs onHideWindow()
+		
+		smallerThanScreen (bool) - Determines if the window can be larger than the screen size
+			~ Calling the function setMaximumFrameSize() will overwrite this
+			- If True: The window cannot be larger than the combined size of all monitors
+			- If int: The window cannot be larger than the size of this monitor (0 being the left most)
+			- If list: The window cannot be larger than the sum of the size of the monitors listed
+			- If False: Does Nothing
+			- If None: Does Nothing
+
 		Example Input: addWindow()
 		Example Input: addWindow(0)
 		Example Input: addWindow(0, title = "Example")
+
+		Example Input: addWindow(smallerThanScreen = None)
+		Example Input: addWindow(smallerThanScreen = 0)
+		Example Input: addWindow(smallerThanScreen = [0, 2])
 		"""
 
 		handle = handle_Window(self)
@@ -20733,14 +21028,15 @@ class Controller(Utilities, CommonEventFunctions):
 		return handle
 
 	def addDialog(self, label = None, title = "", size = wx.DefaultSize, position = wx.DefaultPosition, panel = True, 
-		tabTraversal = True, stayOnTop = False, floatOnParent = False, valueLabel = None,
+		tabTraversal = True, stayOnTop = False, floatOnParent = False, valueLabel = None, smallerThanScreen = True,
 		resize = True, minimize = False, maximize = False, close = False, icon = None, internal = False, topBar = None,
-		addYes = False, addNo = None, addOk = False, addCancel = False, addHelp = False, addApply = False, addLine = False,
+		addYes = False, addNo = None, addOk = False, addCancel = False, addClose = False, addApply = False, addLine = False,
 
 		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None, 
 		delFunction = None, delFunctionArgs = None, delFunctionKwargs = None, 
 
-		parent = None, handle = None, hidden = True, enabled = True):
+		hidden = True, enabled = True, maxSize = None, minSize = None, 
+		parent = None, handle = None):
 		"""Creates a new dialog window.
 
 		label (any) - What this is catalogued as
@@ -20776,6 +21072,14 @@ class Controller(Utilities, CommonEventFunctions):
 			- If True: runs onExit()
 			- If False: runs onQuit()
 			- If None: runs onHideWindow()
+		
+		smallerThanScreen (bool) - Determines if the window can be larger than the screen size
+			~ Calling the function setMaximumFrameSize() will overwrite this
+			- If True: The window cannot be larger than the combined size of all monitors
+			- If int: The window cannot be larger than the size of this monitor (0 being the left most)
+			- If list: The window cannot be larger than the sum of the size of the monitors listed
+			- If False: Does Nothing
+			- If None: Does Nothing
 		
 		Example Input: addDialog()
 		Example Input: addDialog(0)
