@@ -27,7 +27,7 @@ def buildWindows():
 
 	with gui.addWindow(label = 1, title = "Window 2", position = (500, 100)) as myFrame:
 		with myFrame.addSizerBox() as mySizer:	
-			mySizer.nest(sharedWidget)
+			mySizer.nest(sharedWidget, linkCopy = True)
 			mySizer.nest(sharedSizer)
 
 		myFrame.showWindow()
