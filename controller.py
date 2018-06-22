@@ -112,6 +112,7 @@ class Iterator(object):
 			data = data[:]
 
 		self.data = data
+
 		if (isinstance(self.data, dict)):
 			self.order = list(self.data.keys())
 
@@ -132,7 +133,7 @@ class Iterator(object):
 			if not self.data:
 				raise StopIteration
 
-			return self.data.pop()
+			return self.data.pop(0)
 		else:
 			if not self.order:
 				raise StopIteration
@@ -1742,7 +1743,9 @@ class Utilities():
 			catalogue = self.getAddressValue(self.nestingAddress + [id(self)])
 			del catalogue[id(item)]
 
-	def getNested(self, include = [], exclude = [], includeUnnamed = True):
+			item.nestedParent.nestingOrder.remove(item)
+
+	def getNested(self, include = [], exclude = [], includeUnnamed = True, useNestingOrder = True):
 		"""Returns a list of handles of the immediate nested objects.
 
 		include (list)        - Determiens what is returned
@@ -1754,6 +1757,9 @@ class Utilities():
 		includeUnnamed (bool) - Determiens if nested items without a label will also be returned
 			- If True: Both labled and unlabled items will be returned
 			- If False: Only labled items will be returned
+		useNestingOrder (bool) - Determines what order the returned object is in
+			- If True: The returned order will be the order they were nested in
+			- If False: The returned order will be [items with labels] then [items without labels]
 
 		Example Input: getAddressValue()
 		Example Input: getAddressValue(include = handle_Sizer)
@@ -1762,51 +1768,34 @@ class Utilities():
 
 		#Ensure correct format
 		if (include == None):
-			include = []
-		elif (not isinstance(include, (list, tuple, range))):
-			include = [include]
+			include = ()
+		elif (isinstance(include, (list, range))):
+			include = tuple(include)
+		elif (not isinstance(include, tuple)):
+			include = tuple([include])
 
 		if (exclude == None):
-			exclude = []
-		elif (not isinstance(exclude, (list, tuple, range))):
-			exclude = [exclude]
+			exclude = ()
+		elif (isinstance(exclude, (list, range))):
+			exclude = tuple(exclude)
+		elif (not isinstance(exclude, tuple)):
+			exclude = tuple([exclude])
 
+		if (useNestingOrder):
+			nestedList = [item for item in self.nestingOrder if (
+				((len(include) == 0) or (isinstance(item, include))) and 
+				((len(exclude) == 0) or (not isinstance(item, exclude))))]
+		else:
+			catalogue = self.getAddressValue(self.nestingAddress + [id(self)])
+			nestedList = [value[None] for key, value in self.catalogue if (
+				(key != None) and (None in value) and 
+				((len(include) == 0) or (isinstance(value[None], include))) and 
+				((len(exclude) == 0) or (not isinstance(value[None], exclude))))]
 
-		catalogue = self.getAddressValue(self.nestingAddress + [id(self)])
-
-		nestedList = []
-		for key, value in catalogue.items():
-			if (key == None):
-				continue
-
-			if (None not in value):
-				kuiiul
-
-			if (len(include) != 0):
-				for item in include:
-					if (isinstance(value[None], item)):
-						break
-				else:
-					continue
-
-			if (len(exclude) != 0):
-				for item in exclude:
-					if (not isinstance(value[None], item)):
-						break
-				else:
-					continue
-
-			nestedList.append(value[None])
-
-		if (includeUnnamed):
-			for item in self.unnamedList:
-				if (not item in include):
-					continue
-
-				if (item in exclude):
-					continue
-
-				nestedList.append(item)
+			if (includeUnnamed):
+				nestedList.extend([item for item in self.unnamedList if (
+					((len(include) == 0) or (isinstance(item, include))) and 
+					((len(exclude) == 0) or (not isinstance(item, exclude))))])
 
 		return nestedList
 
@@ -1814,6 +1803,8 @@ class Utilities():
 		"""The final step in the nesting process."""
 
 		handle.nested = True
+		self.nestingOrder.append(handle)
+		handle.nestedParent = self
 		# handle.nestingAddress = self.nestingAddress + [id(self)]
 		# self.setAddressValue(handle.nestingAddress + [id(handle)], {None: handle})
 
@@ -2550,6 +2541,7 @@ class Utilities():
 
 		argument_catalogue (dict) - All locals() of the function
 		desiredArgs (str)   - Determines what is returned. Can be a list of values
+		addToPrint (bool)   - Determines if the loaded arguments will be displayed when the handle is printed out
 
 		Example Input: getArguments(argument_catalogue, desiredArgs = "handler")
 		Example Input: getArguments(argument_catalogue, desiredArgs = ["handler", "flex", "flags"])
@@ -2565,29 +2557,41 @@ class Utilities():
 				errorMessage = f"Must provide the argument {arg} to {self.__repr__()}"
 				raise KeyError(errorMessage)
 
-			argList.append(argument_catalogue[arg])
+			value = argument_catalogue[arg]
+			argList.append(value)
 
-		#Ensure correct format
+			if (arg not in ["self", "parent"]):
+				self.makeVariables[arg] = value
+
 		if (len(argList) == 1):
 			argList = argList[0]
 
 		return argList
 
-	def arrangeArguments(self, handle, function, argList = [], kwargDict = {}, exclude = []):
+	def arrangeArguments(self, handle, function, argList = [], kwargDict = {}, exclude = [], copyFrom = None):
 		"""Returns a dictionary of the args and kwargs for a function.
 
 		function (function) - The function to inspect
 		argList (list)      - The *args of 'function'
 		kwargDict (dict)    - The **kwargs of 'function'
 		exclude (list)      - What args or kwargs to not include
+		copyFrom (handle)   - What to copy values from
+			- If None: Does nothing
 
 		Example Input: arrangeArguments(self, function, args, kwargs)
 		Example Input: arrangeArguments(self.controller, Controller.addWindow, kwargDict = argument_catalogue)
+		Example Input: arrangeArguments(self, function, args, kwargs, copyFrom = handle)
 		"""
 
 		if (handle != None):
 			argList = [handle, *argList]
 		arguments = inspect.getcallargs(function, *argList, **kwargDict)
+
+		if (copyFrom != None):
+			if (not isinstance(copyFrom, handle_Base)):
+				errorMessage = f"'copyFrom' must be a GUI_Maker handle, not {copyFrom.__repr__()} for arrangeArguments() in {self.__repr__()}"
+				raise ValueError(errorMessage)
+			arguments = {key: value for key, value in vars(copyFrom).items() if (key in arguments)}
 
 		if (not isinstance(exclude, (list, tuple, range))):
 			exclude = exclude
@@ -2698,6 +2702,9 @@ class Utilities():
 		displays = (wx.Display(i) for i in range(wx.Display.GetCount()))
 
 		geometry = sorted((display.GetGeometry() for display in displays), key = lambda item: item[0]) #Sort displays from left most to right most
+		
+		combine = False
+		number = 0
 		if (not combine):
 			size = [tuple(rectangle.GetSize()) for rectangle in geometry]
 			
@@ -2707,8 +2714,10 @@ class Utilities():
 			maxWidth = 0
 			maxHeight = 0
 			for rectangle in geometry:
-				maxWidth = max(maxWidth, rectangle[0])
-				maxHeight = max(maxHeight, rectangle[1])
+				if (rectangle[0] > maxWidth):
+					pass
+
+
 
 
 			# print("@1.2", size)
@@ -2719,8 +2728,8 @@ class Utilities():
 
 
 
-		print("@1.2", size)
-		jkhjkhjk
+			print("@1.2", size)
+			jkhjkhjk
 
 		return size
 
@@ -2993,7 +3002,7 @@ class Utilities():
 		myFunctionArgs (any)    - The arguments for 'myFunction'
 		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
 		default (int)           - Which item in the droplist is selected
-			- If a string is given, it will select the first item in the list that matches that string. If noting matches, it will default to the first element
+			- If a string is given, it will select the first item in the list that matches that string. If nothing matches, it will default to the first element
 		enabled (bool)          - If True: The user can interact with this
 		alphabetic (bool)      - Determines if the list is automatically sorted alphabetically
 			- If True: The list is sorted alphabetically
@@ -3170,7 +3179,7 @@ class Utilities():
 		flags (list)            - A list of strings for which flag to add to the sizer
 		label (any)           - What this is catalogued as
 		default (int)           - Which item in the droplist is selected
-			- If a string is given, it will select the first item in the list that matches that string. If noting matches, it will default to the first element
+			- If a string is given, it will select the first item in the list that matches that string. If nothing matches, it will default to the first element
 		enabled (bool)          - If True: The user can interact with this
 
 		myFunction (str)        - The function that is ran when the user chooses something from the list. If a list is given, each function will be bound.
@@ -4914,10 +4923,13 @@ class handle_Base(Utilities, CommonEventFunctions):
 		self.nested = False
 		self.nestingAddress = []
 		self.allowBuildErrors = None
+		self.makeVariables = {}
+		self.flags_modification = []
 
 		self.unnamedList = []
 		self.labelCatalogue = {}
 		self.labelCatalogueOrder = []
+		self.nestingOrder = []
 
 	def __repr__(self):
 		representation = f"{type(self).__name__}(id = {id(self)}"
@@ -4953,6 +4965,11 @@ class handle_Base(Utilities, CommonEventFunctions):
 			output += f"-- unnamed items: {len(self.unnamedList)}\n"
 		if ((self.labelCatalogue != None) and (len(self.labelCatalogue) != 0)):
 			output += f"-- labeled items: {len(self.labelCatalogue)}\n"
+
+		if (self.controller.printMakeVariables):
+			for variable, value in self.makeVariables.items():
+				output += f"-- build - {variable}: {value}\n"
+
 		return output
 
 	def __len__(self):
@@ -5029,6 +5046,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 		#Store data
 		self.label = label
 		self.idOverride = {} #Stores myId overrides for children {label (str): myId (int or None)}
+		self.makeFunction = inspect.stack()[2].function #The function used to create this handle
 
 		#Determine native sizer
 		if (isinstance(buildSelf, handle_Sizer)):
@@ -5144,10 +5162,15 @@ class handle_Base(Utilities, CommonEventFunctions):
 			if ((handle.substitute != None) and (handle.substitute != self)):
 				handle = handle.substitute
 
-		#Do not nest already nested objects
+		#Create a link for multi-nested objects
 		if (handle.nested):
-			errorMessage = f"Cannot nest {handle.__repr__()} twice"
-			raise SyntaxError(errorMessage)
+			if (False):
+				errorMessage = f"Cannot nest {handle.__repr__()} twice"
+				raise SyntaxError(errorMessage)
+			else:
+				print("@1.1", handle)
+				handle = self.copy(handle)
+				print("@1.2", handle)
 
 		self.finalNest(handle)
 
@@ -5156,11 +5179,11 @@ class handle_Base(Utilities, CommonEventFunctions):
 
 		#Perform Nesting
 		if (isinstance(self, handle_Sizer)):
-			if ((isinstance(handle, handle_WidgetText)) and (self.type.lower() == "text")):
-				if (not isinstance(flags, (list, tuple, range))):
-					flags = [flags]
-				flags.append(handle.alignment)
-
+			if (isinstance(flags, (tuple, range))):
+				flags = list(flags)
+			elif (not isinstance(flags, list)):
+				flags = [flags]
+			flags.extend(handle.flags_modification)
 			flags, position, border = self.getItemMod(flags)
 			
 			if (isinstance(handle, handle_NotebookPage)):
@@ -5192,15 +5215,28 @@ class handle_Base(Utilities, CommonEventFunctions):
 		if (selected):
 			handle.thing.SetDefault()
 
-		# #Remember Values
-		# if (isinstance(self, handle_Sizer) and (not isinstance(handle, handle_Sizer))):
-		# 	for item in self.thing.GetChildren():
-		# 		if (item.GetWindow() == handle.thing):
-		# 			handle.mySizerItem = item
-		# 			# handle.nestedSizer = self
-		# 			break
-		# 	else:
-		# 		warnings.warn(f"Could not find sizer item for {handle.__repr__()} in nest() for {self.__repr__()}", Warning, stacklevel = 2)
+	def copy(self, handle, includeNested = True):
+		"""Creates a copy of this widget and everything that is nested in it, using 'self'.
+
+		handle (handle) - What to copy
+		includeNested (bool) - Determines if nested children are copied as well
+
+		Example Input: copy(handle)
+		"""
+
+		if (not hasattr(self, handle.makeFunction)):
+			errorMessage = f"The function {handle.makeFunction} is not in {self.__repr__()}"
+			raise SyntaxError(errorMessage)
+
+		makeFunction = getattr(self, handle.makeFunction)
+		newHandle = makeFunction(**handle.makeVariables)
+
+		if (includeNested):
+			for child in handle:#.nestingOrder:
+				newChild = self.copy(child)
+				newHandle.nest(newChild)
+
+		return newHandle
 
 	def clear(self):
 		"""Removes all nested widgets.
@@ -5219,13 +5255,17 @@ class handle_Base(Utilities, CommonEventFunctions):
 
 		if (isinstance(self, handle_Sizer)):
 			self.clear()
-			
-		index = self.getSizerIndex()
-		self.nestedSizer.thing.Hide(index)
-		self.nestedSizer.thing.Remove(index)
-		self.nestedSizer.thing.Layout()
+		
+		if (isinstance(self.nestedParent, handle_Sizer)):
+			index = self.getSizerIndex()
+			self.nestedParent.thing.Hide(index)
+			self.nestedParent.thing.Remove(index)
+			self.nestedParent.thing.Layout()
+		else:
+			errorMessage = f"Add {self.nestedParent.__class__} to remove() for {self.__repr__}"
+			raise KeyError(errorMessage)
 
-		del self.nestedSizer[self]
+		del self.nestedParent[self]
 
 	#Getters
 	def getLabel(self, event = None):
@@ -5328,7 +5368,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 		"""
 
 		if (n > 0):
-			return self.nestedSizer.getSizerCoordinates(n = n - 1)
+			return self.nestedParent.getSizerCoordinates(n = n - 1)
 
 		index = self.getSizerIndex()
 		row = self.getSizerRow(index = index)
@@ -5344,22 +5384,26 @@ class handle_Base(Utilities, CommonEventFunctions):
 		Example Input: getSizerRow()
 		"""
 
-		if (n > 0):
-			return self.nestedSizer.getSizerRow(n = n - 1)
+		if (not isinstance(self.nestedParent, handle_Sizer)):
+			errorMessage = f"Add {self.nestedParent.__class__} to getSizerRow() for {self.__repr__}"
+			raise KeyError(errorMessage)
 
-		if (self.nestedSizer.type.lower() == "wrap"):
+		if (n > 0):
+			return self.nestedParent.getSizerRow(n = n - 1)
+
+		if (self.nestedParent.type.lower() == "wrap"):
 			return #TO DO: Calculate what the position is
 
-		if (self.nestedSizer.rows == None):
+		if (self.nestedParent.rows == None):
 			return
 
 		if (index == None):
 			index = self.getSizerIndex()
 
-		if (self.nestedSizer.rows == -1):
+		if (self.nestedParent.rows == -1):
 			return index
 
-		row = math.floor(index / self.nestedSizer.columns)
+		row = math.floor(index / self.nestedParent.columns)
 
 		return row
 
@@ -5370,23 +5414,27 @@ class handle_Base(Utilities, CommonEventFunctions):
 
 		Example Input: getSizerColumn()
 		"""
+		
+		if (not isinstance(self.nestedParent, handle_Sizer)):
+			errorMessage = f"Add {self.nestedParent.__class__} to getSizerColumn() for {self.__repr__}"
+			raise KeyError(errorMessage)
 
 		if (n > 0):
-			return self.nestedSizer.getSizerColumn(n = n - 1)
+			return self.nestedParent.getSizerColumn(n = n - 1)
 
-		if (self.nestedSizer.type.lower() == "wrap"):
+		if (self.nestedParent.type.lower() == "wrap"):
 			return #TO DO: Calculate what the position is
 
-		if (self.nestedSizer.columns == None):
+		if (self.nestedParent.columns == None):
 			return
 
 		if (index == None):
 			index = self.getSizerIndex()
 		
-		if (self.nestedSizer.columns == -1):
+		if (self.nestedParent.columns == -1):
 			return index
 
-		column = index % self.nestedSizer.columns
+		column = index % self.nestedParent.columns
 
 		return column
 
@@ -5395,6 +5443,10 @@ class handle_Base(Utilities, CommonEventFunctions):
 
 		Example Input: getSizerIndex()
 		"""
+		
+		if (not isinstance(self.nestedParent, handle_Sizer)):
+			errorMessage = f"Add {self.nestedParent.__class__} to getSizerIndex() for {self.__repr__}"
+			raise KeyError(errorMessage)
 
 		if (n > 0):
 			return self.nestedSizer.getSizerIndex(n = n - 1)
@@ -6284,32 +6336,32 @@ class handle_WidgetText(handle_Widget_Base):
 				if (isinstance(alignment, bool)):
 					if (alignment):
 						style = "wx.ALIGN_LEFT"
-						self.alignment = "al"
+						self.flags_modification.append("al")
 					else:
 						style = "wx.ALIGN_CENTRE"
-						self.alignment = "ac"
+						self.flags_modification.append("ac")
 				elif (isinstance(alignment, str)):
 					if (alignment[0].lower() == "l"):
 						style = "wx.ALIGN_LEFT"
-						self.alignment = "al"
+						self.flags_modification.append("al")
 					elif (alignment[0].lower() == "r"):
 						style = "wx.ALIGN_RIGHT"
-						self.alignment = "ar"
+						self.flags_modification.append("ar")
 					else:
 						style = "wx.ALIGN_CENTRE"
-						self.alignment = "ac"
+						self.flags_modification.append("ac")
 				elif (alignment == 0):
 					style = "wx.ALIGN_LEFT"
-					self.alignment = "al"
+					self.flags_modification.append("al")
 				elif (alignment == 1):
 					style = "wx.ALIGN_RIGHT"
-					self.alignment = "ar"
+					self.flags_modification.append("ar")
 				else:
 					style = "wx.ALIGN_CENTRE"
-					self.alignment = "ac"
+					self.flags_modification.append("ac")
 			else:
 				style = "wx.ALIGN_CENTRE"
-				self.alignment = "ac"
+				self.flags_modification.append("ac")
 			
 			if (ellipsize != None):
 				if (isinstance(ellipsize, bool)):
@@ -17223,12 +17275,12 @@ class handle_Window(handle_Container_Base):
 			size, position, smallerThanScreen = self.getArguments(argument_catalogue, ["size", "position", "smallerThanScreen"])
 			self.thing = wx.Frame(None, title = title, size = size, pos = position, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
-			if (smallerThanScreen not in [None, False]):
-				screenSize = self.getScreenSize()
-				if (isinstance(smallerThanScreen, int)):
-					self.thing.SetMaxSize(screenSize[smallerThanScreen])
-				else:
-					self.thing.SetMaxSize(map(sum, zip(*screenSize)))
+			# if (smallerThanScreen not in [None, False]):
+			# 	screenSize = self.getScreenSize()
+			# 	if (isinstance(smallerThanScreen, int)):
+			# 		self.thing.SetMaxSize(screenSize[smallerThanScreen])
+			# 	else:
+			# 		self.thing.SetMaxSize(map(sum, zip(*screenSize)))
 			
 			#Add Properties
 			icon, internal = self.getArguments(argument_catalogue, ["icon", "internal"])
@@ -17776,7 +17828,7 @@ class handle_Window(handle_Container_Base):
 		self.controller.switchWindow(self, whichTo, hideFrom = hideFrom)
 
 	#Sizers
-	def getSizer(self, sizerLabel = None, returnAny = False):
+	def getSizer(self, sizerLabel = None, returnAny = False, useNestingOrder = True):
 		"""Returns a sizer when given the sizer's label.
 
 		sizerLabel (int)  - The label of the sizer. 
@@ -17788,7 +17840,7 @@ class handle_Window(handle_Container_Base):
 		Example Input: getSizer(returnAny = False)
 		"""
 
-		sizerList = self.getNested(include = handle_Sizer)
+		sizerList = self.getNested(include = handle_Sizer, useNestingOrder = useNestingOrder)
 
 		#Account for no sizers available
 		if (len(sizerList) == 0):
@@ -17897,7 +17949,7 @@ class handle_Window(handle_Container_Base):
 		return handle
 
 	#Menus
-	def getMenu(self, menuLabel = None):
+	def getMenu(self, menuLabel = None, useNestingOrder = True):
 		"""Returns a menu when given the menu's label.
 
 		menuLabel (int)  - The label of the menu. 
@@ -17907,7 +17959,7 @@ class handle_Window(handle_Container_Base):
 		Example Input: getMenu(0)
 		"""
 
-		menuList = self.getNested(include = handle_Menu)
+		menuList = self.getNested(include = handle_Menu, useNestingOrder = useNestingOrder)
 
 		#Account for no menus available
 		if (len(menuList) == 0):
@@ -20756,7 +20808,8 @@ class Controller(Utilities, CommonEventFunctions):
 	having to learn how to use the complicated program.
 	"""
 
-	def __init__(self, debugging = False, best = False, oneInstance = False, allowBuildErrors = None, checkComplexity = True, startInThread = False, newMainLoop = None):
+	def __init__(self, debugging = False, best = False, oneInstance = False, allowBuildErrors = None, 
+		checkComplexity = True, startInThread = False, newMainLoop = None, printMakeVariables = False):
 		"""Defines the internal variables needed to run.
 
 		debugging (bool) - Determiens if debugging information is given to the user
@@ -20777,6 +20830,7 @@ class Controller(Utilities, CommonEventFunctions):
 			- If None: Build-time errors will end the program
 
 		startInThread (bool) - Determines if wx.App.MainLoop runs in the main thread or not
+		printMakeVariables (bool) - Determines if the variables used to make a widget should be printed or not
 
 		newMainLoop (function) - A function to run instead of wx.App.MainLoop
 			- If None: Will run wx.App.MainLoop
@@ -20798,11 +20852,13 @@ class Controller(Utilities, CommonEventFunctions):
 		self.labelCatalogueOrder = [] #A list of what order things were added to the label catalogue. [windowLabel 1, windowLabel 2]
 		self.backgroundFunction_pauseOnDialog = {} #A list of background functions to pause if a dialog box is being shown {catalogue variable (str): self: myFunction: {"state": if it should pause (bool), "exclude": what to not pause on (list)}
 		self.unnamedList = [] #A list of the windows created without labels
+		self.nestingOrder = []
 		self.oneInstance = oneInstance #Allows the user to run only one instance of this gui at a time
 		self.allowBuildErrors = allowBuildErrors
 		self.nestingAddress = []
 		self.nested = True #Removes any warnings that may come up
 		self.checkComplexity = checkComplexity
+		self.printMakeVariables = printMakeVariables
 		self.windowDisabler = None
 		self.controller = self
 
