@@ -24,6 +24,7 @@ import sys
 import time
 import math
 import copy
+import types
 import bisect
 import ctypes
 import string
@@ -2552,6 +2553,7 @@ class Utilities():
 		Example Input: _arrangeArguments(self, function, args, kwargs)
 		Example Input: _arrangeArguments(self.controller, Controller.addWindow, kwargDict = argument_catalogue)
 		Example Input: _arrangeArguments(self, function, args, kwargs, copyFrom = handle)
+		Example Input: _arrangeArguments(self, function, args, kwargs, exclude = ["self"])
 		"""
 
 		if (handle != None):
@@ -5193,6 +5195,8 @@ class handle_Base(Utilities, CommonEventFunctions):
 		Modified code from: https://www.blog.pythonlibrary.org/2013/09/04/wxpython-how-to-update-a-progress-bar-from-a-thread/
 		Use: http://pypubsub.sourceforge.net/v3.1/apidocs/more_advanced_use.html
 		Use: https://pypubsub.readthedocs.io/en/v4.0.0/usage/module_pub.html
+		Special thanks to James Johnson for how to use types() to create a class on http://jelly.codes/articles/python-dynamically-creating-classes/
+		Special thanks to user166390 and pyfunc for how to replace a bound function respectively on https://stackoverflow.com/questions/1647586/is-it-possible-to-change-an-instances-method-implementation-without-changing-al and https://stackoverflow.com/questions/4364565/replacing-the-new-module
 
 		handle (handle) - What will be linked to this handle
 			- If list: A list of handles to be linked to this handle and together
@@ -5237,42 +5241,99 @@ class handle_Base(Utilities, CommonEventFunctions):
 		"""
 		global topicManager
 
+		def getTopicFunction(function):
+			"""Returns a configured function that will link with the wrapper in makeLink()."""
+
+			#Determine args, kwargs, and their respective defaults
+			argList, starArgs, starStarKwargs, argsDefaults, kwargList, kwargsDefaults, annotations = inspect.getfullargspec(function)
+			
+			args_noDefaults = []
+			args_withDefaults = {}
+			if (argsDefaults != None):
+				argsDefaults_startsAt = len(argList) - len(argsDefaults) - 1
+			for i, variable in enumerate(argList):
+				if ((i == 0) and (inspect.ismethod(function))):
+					args_noDefaults.append(variable)
+					continue #skip self
+
+				if ((argsDefaults == None) or (i < argsDefaults_startsAt)):
+					args_noDefaults.append(variable)
+				else:
+					args_withDefaults[variable] = argsDefaults[i - argsDefaults_startsAt - 1]
+
+			kwargs_noDefaults = []
+			kwargs_withDefaults = {}#"linkedHandle_catalogue": None}
+			for variable in kwargList:
+				if ((kwargsDefaults == None) or (variable not in kwargsDefaults)):
+					kwargs_noDefaults.append(variable)
+				else:
+					kwargs_withDefaults[variable] = kwargsDefaults[variable]
+
+			#The pypubsub module does not accept the names of the args and kwargs as valid values
+			#This patches that behavior
+			if (starArgs != None):
+				kwargs_withDefaults[starArgs] = []
+			else:
+				kwargs_withDefaults["args"] = []
+
+			if (starStarKwargs != None):
+				kwargs_withDefaults[starStarKwargs] = {}
+			else:
+				kwargs_withDefaults["args"] = {}
+
+			#Create function that will be used to create the subscription topic
+			recipe_part1 = ", ".join(args_noDefaults)
+			recipe_part2 = ", ".join(f"{key} = {value}" for key, value in args_withDefaults.items())
+			recipe_part3 = f"*{starArgs}_patchFor_pypubsub" if (starArgs != None) else "*args_patchFor_pypubsub"
+			recipe_part4 = ", ".join(kwargs_noDefaults)
+			recipe_part5 = ", ".join(f"{key} = {value}" for key, value in kwargs_withDefaults.items())
+			recipe_part6 = f"**{starStarKwargs}_patchFor_pypubsub" if (starStarKwargs != None) else "**kwargs_patchFor_pypubsub"
+			recipe = f"lambda {', '.join(filter(None, [recipe_part1, recipe_part2, recipe_part3, recipe_part4, recipe_part5, recipe_part6]))}: None"
+
+			if (inspect.ismethod(myFunction)):
+				topicFunction = type("Temp", (object,), {"tempFunction": eval(recipe)})().tempFunction
+			else:
+				topicFunction = eval(recipe)
+
+			return topicFunction
+
 		def makeLink(function, label):
 			@functools.wraps(function)
 			def wrapper(self, *args, **kwargs):
-				nonlocal label
-				if ("linkedHandle_catalogue" not in kwargs):
-					pubsub.pub.sendMessage(label, linkedHandle_catalogue = {"args": args, "kwargs": kwargs})
-				else:
-					catalogue = kwargs["linkedHandle_catalogue"]
-					function(self, *catalogue["args"], **catalogue["kwargs"])
-			
-			pubsub.pub.subscribe(function, label)
-			return wrapper
+				nonlocal function, label
 
-		def checkFit(function, topic):
+				print("@1", self.__repr__(), args, kwargs, function, label)
+				arguments = inspect.getcallargs(function, *args, **kwargs)
+				del arguments["self"]
+				pubsub.pub.sendMessage(label, **arguments)
+			
+			setattr(function.__self__, function.__name__, types.MethodType(wrapper, function.__self__)) #Replace function with wrapped function
+			pubsub.pub.subscribe(function, label)
+
+		def checkFit(function, topic, topicFunction):
 			"""Ensures that the function fits with the given topic."""
 				
-			
 			try:
 				topic.validate(function)
 				return
-			except:
-				pass
+			except Exception as error:
+				print("Origonal Error:", error)
 
 			required, optional = topic.getArgs()
 			argList, starArgs, starStarKwargs, argsDefaults, kwargList, kwargsDefaults, annotations = inspect.getfullargspec(handleFunction)
-
-			#Why did it fail?
+			
+			unknownList = [item for item in [*argList, *kwargList] if item not in [*required, *optional]]
+			errorMessage = f"The variables {unknownList} in the linked function {function} are not defined in the source function {topicFunction} labeled {topic.getName()}"
+			raise KeyError(errorMessage)
 
 		#########################################################################
 
-		
 		if (not isinstance(handle, (list, tuple))):
 			handle = [handle]
 
 		if (functionName == None):
-			functionName = [item[0] for item in inspect.getmembers(self, predicate = inspect.ismethod) if (item[0].startswith("set"))]
+			# functionName = [item[0] for item in inspect.getmembers(self, predicate = inspect.ismethod) if (item[0].startswith("set"))]
+			functionName = [self.setValue]
 		elif (not isinstance(functionName, (list, tuple, dict))):
 			functionName = [functionName]
 
@@ -5295,37 +5356,20 @@ class handle_Base(Utilities, CommonEventFunctions):
 
 		for _functionName, _label in linkCatalogue.items():
 			myFunction = getattr(self, _functionName)
-			argList, starArgs, starStarKwargs, argsDefaults, kwargList, kwargsDefaults, annotations = inspect.getfullargspec(myFunction)
-			topic = topicManager.getOrCreateTopic(_label, protoListener = eval(f"lambda linkedHandle_catalogue = {{}}, {', '.join(f'{item} = None' for item in [*argList, *kwargList])}: None"))
-			
-			myFunction = makeLink(myFunction, _label)
+			topicFunction = getTopicFunction(myFunction)
+			topic = topicManager.getOrCreateTopic(_label, protoListener = topicFunction)
+
+			# print("@1.1", myFunction)
+			makeLink(myFunction, _label)
+			# print("@1.2", myFunction)
 
 			for _handle in handle:
 				if (not isinstance(_handle, handle_Base)):
 					_handle = self[_handle]
 
 				handleFunction = getattr(_handle, _functionName)
-				checkFit(_handle, topic)
-
-				jhkhjkhj
-
-
-
-				# invalidList = []
-				# handleCatalogue = self._arrangeArguments(self, handleFunction)
-				# if (("args" not in handleCatalogue) and ("kwargs" not in handleCatalogue)):
-				# for key in handleCatalogue.keys():
-				# 	if (key not in catalogue):
-				# 		invalidList.append(key)
-
-
-				# {'self': handle_Sizer(id = 63644560, label = None), 'label': handle_Sizer(id = 63644560, label = None), 'args': (), 'kwargs': {}, 'window': False}
-				# {'self': handle_WidgetInput(id = 63644784, label = None), 'state': handle_Sizer(id = 63644560, label = None)}
-
-
-
-				
-				handleFunction = makeLink(handleFunction, _label)
+				checkFit(handleFunction, topic, myFunction)
+				makeLink(handleFunction, _label)
 
 	def copy(self, handle, includeNested = True, linkCopy = False):
 		"""Creates a copy of this widget and everything that is nested in it, using 'self'.
@@ -5348,7 +5392,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 		newHandle = makeFunction(**handle.makeVariables)
 
 		if (linkCopy):
-			self.link(newHandle)
+			handle.link(newHandle)
 
 		if (includeNested):
 			for child in handle:
@@ -8048,9 +8092,6 @@ class handle_WidgetInput(handle_Widget_Base):
 		self.exclude = None
 		self.previousValue = None
 
-		#Publisher Subscriptions for functions with @wrap_linkedHandle()
-		# self.linkedHandle_subscribe(self.setValue)
-
 	def __len__(self, returnMax = True):
 		"""Returns what the contextual length is for the object associated with this handle.
 
@@ -8396,6 +8437,8 @@ class handle_WidgetInput(handle_Widget_Base):
 	#Setters
 	def setValue(self, newValue = None, event = None, **kwargs):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
+
+		print("@2", self.__repr__(), newValue, event, kwargs)
 
 		if (self.type.lower() == "inputbox"):
 			if (newValue == None):
@@ -21751,7 +21794,7 @@ class _mp_CallArgsInfo:
 		args, varParamName, varOptParamName, argsDefaults, kwargs, kwargsDefaults, annotations = inspect.getfullargspec(func)
 		self.allArgs = {}
 
-		if(argsDefaults != None):
+		if (argsDefaults != None):
 			argsDefaults_startsAt = len(args) - len(argsDefaults) - 1
 		for i, variable in enumerate(args):
 			if ((i == 0) and (firstArgIdx > 0)):

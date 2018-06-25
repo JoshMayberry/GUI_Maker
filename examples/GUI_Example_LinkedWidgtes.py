@@ -32,6 +32,8 @@ def buildWindows():
 
 		myFrame.showWindow()
 
+		sharedWidget.setValue("Amet")
+
 #Run Program
 if __name__ == '__main__':
 	buildWindows()
