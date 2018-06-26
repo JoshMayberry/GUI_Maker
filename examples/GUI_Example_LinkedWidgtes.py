@@ -8,6 +8,9 @@ import GUI_Maker
 #Create GUI object
 gui = GUI_Maker.build()#printMakeVariables = True)
 
+def printValue(event):
+	print(id(gui[event]), gui[event].getValue())
+
 #Construction Functions
 def buildWindows():
 	"""Creates two simple windows."""
@@ -15,7 +18,8 @@ def buildWindows():
 	#Initialize Frame
 	with gui.addWindow(label = 0, title = "Window 1", position = (100, 100)) as myFrame:
 		with myFrame.addSizerBox() as mySizer:
-			sharedWidget = mySizer.addInputBox(text = "Lorem")
+			sharedWidget = mySizer.addInputBox(text = "Lorem", label = "shared")
+			sharedWidget.setFunction_click(printValue)
 			mySizer.addInputBox(text = "Ipsum")
 
 			with myFrame.addSizerBox() as mySubSizer:
@@ -24,6 +28,7 @@ def buildWindows():
 				mySubSizer.addText("Sit")
 
 		myFrame.showWindow()
+		print(id(myFrame["shared"]))
 
 	with gui.addWindow(label = 1, title = "Window 2", position = (500, 100)) as myFrame:
 		with myFrame.addSizerBox() as mySizer:	
@@ -31,6 +36,7 @@ def buildWindows():
 			mySizer.nest(sharedSizer)
 
 		myFrame.showWindow()
+		print(id(myFrame["shared"]))
 
 		sharedWidget.setValue("Amet")
 
