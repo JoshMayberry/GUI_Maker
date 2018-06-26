@@ -382,6 +382,7 @@ class _MyThread(threading.Thread):
 	"""Used to run functions in the background.
 	More information on threads can be found at: https://docs.python.org/3.4/library/threading.html
 	Use: https://wiki.wxpython.org/Non-Blocking%20Gui
+	Use: http://effbot.org/zone/thread-synchronization.htm
 	_________________________________________________________________________
 
 	CREATE AND RUN A NEW THREAD
@@ -5662,6 +5663,19 @@ class handle_Base(Utilities, CommonEventFunctions):
 		panel.index = i
 
 		return panel
+
+	def getNestedParent(self, n = 0):
+		"""Returns the requested nesting parent up the nest hiarchy.
+
+		n (int) - How many levels up the nesting hiarchy to go
+
+		Example Input: getNestedParent()
+		Example Input: getNestedParent(n = 1)
+		"""
+
+		if (n > 0):
+			return self.nestedParent.getNestedParent(n = n - 1)
+		return self.nestedParent
 
 	def getSizerCoordinates(self, n = 0):
 		"""Returns the current row and column this item is in it's nested sizer.
@@ -14443,7 +14457,7 @@ class handle_WidgetTable(handle_Widget_Base):
 						tooLong = {}
 					else:
 						for item, value in tooLong.items():
-							newValue = math.floor(value / (len(notIncluded) + 1))
+							newValue = math.floor(value / (len(notIncluded)))
 
 							for subItem in notIncluded:
 								if (subItem in itemSize):
@@ -14462,7 +14476,7 @@ class handle_WidgetTable(handle_Widget_Base):
 			else:
 				n = nColumns
 
-			itemSize = {None: math.floor(totalSize[int(row)] / (len(itemList) + 1))}
+			itemSize = {None: math.floor(totalSize[int(row)] / (len(itemList)))}
 
 			#Account for not converging upon a solution
 			for tries in range(distributeAttempts):
@@ -14503,7 +14517,7 @@ class handle_WidgetTable(handle_Widget_Base):
 			rowList = find(self.autoSizeRow, self.rowSize, row = True)
 			columnList = find(self.autoSizeColumn, self.columnSize, row = False)
 
-			totalSize = self.mySizerItem.GetSize()
+			totalSize = self.thing.GetGridWindow().GetSize()
 			rowSize = calculate(self.rowSizeMaximum, rowList, row = True)
 			columnSize = calculate(self.columnSizeMaximum, columnList, row = False)
 
