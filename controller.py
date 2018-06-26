@@ -5551,12 +5551,13 @@ class handle_Base(Utilities, CommonEventFunctions):
 
 		if (isinstance(self, handle_Sizer)):
 			self.clear()
-		
+
 		if (isinstance(self.nestedParent, handle_Sizer)):
 			index = self.getSizerIndex()
 			self.nestedParent.thing.Hide(index)
 			self.nestedParent.thing.Remove(index)
 			self.nestedParent.thing.Layout()
+
 		else:
 			errorMessage = f"Add {self.nestedParent.__class__} to remove() for {self.__repr__()}"
 			raise KeyError(errorMessage)
@@ -6368,6 +6369,32 @@ class handle_Widget_Base(handle_Base):
 		"""
 
 		self.thing.Show(state)
+
+		if (hasattr(self, "nestedSizer") and (self.nestedSizer.type.lower() == "flex")):
+			with self.nestedSizer as mySizer:
+				index = self.getSizerIndex()
+				row, column = self.getSizerCoordinates()
+
+				print("@1", index, row, column, mySizer.rows, mySizer.columns)
+
+				if ((row in mySizer.growFlexRow_notEmpty) and (state == (not mySizer.thing.IsRowGrowable(row)))):
+					leftBound = (row + 1) * mySizer.columns - mySizer.columns
+					rightBound = (row + 1) * mySizer.columns)
+					
+					if (any([mySizer.thing.GetItem(i).IsShown() for i in range(leftBound, rightBound)])):
+						mySizer.growFlexRow(row, proportion = mySizer.growFlexRow_notEmpty[row])
+					else:
+						mySizer.thing.RemoveGrowableRow(row)
+
+				if ((column in mySizer.growFlexColumn_notEmpty) and (state == (not mySizer.thing.IsColGrowable(column)))):
+					leftBound = column
+					rightBound = mySizer.rows * mySizer.columns
+					step = mySizer.columns
+					
+					if (any([mySizer.thing.GetItem(i).IsShown() for i in range(leftBound, rightBound, step)])):
+						mySizer.growFlexColumn(column, proportion = mySizer.growFlexColumn_notEmpty[column])
+					else:
+						mySizer.thing.RemoveGrowableCol(column)
 
 	def setHide(self, state = True):
 		"""Shows or hides an item based on the given input.
@@ -15428,6 +15455,8 @@ class handle_Sizer(handle_Container_Base):
 		self.myWindow = None
 		self.rows = None
 		self.columns = None
+		self.growFlexColumn_notEmpty = {} #{column (int): state (bool)}
+		self.growFlexRow_notEmpty = {} #{row (int): state (bool)}
 
 	def __str__(self):
 		"""Gives diagnostic information on the Sizer when it is printed out."""
@@ -15598,7 +15627,7 @@ class handle_Sizer(handle_Container_Base):
 		self.myWindow.thing.SetMaxSize(maxSize)
 
 	#Change Settings
-	def growFlexColumn(self, column, proportion = 0):
+	def growFlexColumn(self, column, proportion = 0, growOnEmpty = None):
 		"""Allows the column to grow as much as it can.
 
 		column (int)      - The column that will expand
@@ -15618,7 +15647,7 @@ class handle_Sizer(handle_Container_Base):
 		#Add attribute
 		self.thing.AddGrowableCol(column, proportion)
 
-	def growFlexRow(self, row, proportion = 0):
+	def growFlexRow(self, row, proportion = 0, growOnEmpty = None):
 		"""Allows the row to grow as much as it can.
 
 		row (int)      - The row that will expand
@@ -15630,20 +15659,30 @@ class handle_Sizer(handle_Container_Base):
 
 		self._checkHandleType("Flex", self.growFlexRow)
 
+		if (growOnEmpty != None):
+			if (growOnEmpty):
+				self.growFlexRow_notEmpty[row] = proportion
+			elif (row in self.growFlexRow_notEmpty):
+				del self.growFlexRow_notEmpty[row]
+
 		#Check growability
 		if (self.thing.IsRowGrowable(row)):
 			#The row must be growable. To change the proportion, it's growability must first be removed
 			self.thing.RemoveGrowableRow(row)
 
+		if (not growOnEmpty):
+			index = self.thing.GetItemCount()
+			_row = math.floor(index / self.columns)
+			_column = index % self.columns
+
+			print(index, row, _row, _column)
+			# return
+
 		#Add attribute
 		self.thing.AddGrowableRow(row, proportion)
 
-	def growFlexColumnAll(self, proportion = 0):
+	def growFlexColumnAll(self, *args, **kwargs):
 		"""Allows all the columns to grow as much as they can.
-
-		column (int)      - The column that will expand
-		proportion (int)  - How this column will grow compared to other growable columns
-							If all are zero, they will grow equally
 
 		Example Input: growFlexColumnAll()
 		"""
@@ -15651,14 +15690,10 @@ class handle_Sizer(handle_Container_Base):
 		self._checkHandleType("Flex", self.growFlexColumnAll)
 	
 		for column in range(self.thing.GetCols()):
-			self.growFlexColumn(column, proportion = proportion)
+			self.growFlexColumn(column, *args, **kwargs)
 
-	def growFlexRowAll(self, proportion = 0):
+	def growFlexRowAll(self, *args, **kwargs):
 		"""Allows all the rows to grow as much as they can.
-
-		row (int)      - The row that will expand
-		proportion (int)  - How this row will grow compared to other growable rows
-							If all are zero, they will grow equally
 
 		Example Input: growFlexRowAll()
 		"""
@@ -15666,7 +15701,7 @@ class handle_Sizer(handle_Container_Base):
 		self._checkHandleType("Flex", self.growFlexRowAll)
 		
 		for row in range(self.thing.GetRows()):
-			self.growFlexRow(row, proportion = proportion)
+			self.growFlexRow(row, *args, **kwargs)
 
 	def _addFinalFunction(self, *args, **kwargs):
 		"""Overload for addFinalFunction in handle_Window()."""
