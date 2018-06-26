@@ -1488,19 +1488,28 @@ class Utilities():
 	def listen(self, myFunction, myFunctionArgs = None, myFunctionKwargs = None,
 		resultFunction = None, resultFunctionArgs = None, resultFunctionKwargs = None, 
 		errorFunction = None, errorFunctionArgs = None, errorFunctionKwargs = None, includeError = True,
-		delay = 1000, shown = False, makeThread = True, pauseOnDialog = False, notPauseOnDialog = []):
+		delay = 1000, shown = False, trigger = None, makeThread = True, 
+		pauseOnDialog = False, notPauseOnDialog = []):
 		"""Triggers the listen routine.
 
-		myFunction (function) - A function that checks certain conditions
-		resultFunction (function)    - A funftion that runs when 'myFunction' returns True
+		myFunction (function)     - A function that checks certain conditions
+		resultFunction (function) - A funftion that runs when 'myFunction' returns True
 
-		delay (int)       - How long to wait in milliseconds before running 'myFunction'
-		shown (bool)      - Determines when to run the function
+		delay (int) - How long to wait in milliseconds before running 'myFunction'
+			- If 'trigger' is not None: How long to wait before listening for 'trigger'
+		
+		shown (bool) - Determines when to run the function
 			- If True: The function will only run if the window is being shown. If the window is not shown, it will terminate the function. It will wait for the window to first be shown to run
 			- If False: The function will run regardless of whether the window is being shown or not
+		
 		makeThread (bool) - Determines if this function runs on a different thread
 			- If True: A new thread will be created to run the function
 			- If False: The function will only run while the GUI is idle. Note: This can cause lag. Use this for operations that must be in the main thread.
+		
+		trigger (bool) - Determines if trigger_listen() will cause 'myFunction' to run
+			- If True: Will wait for a signal from trigger_listen() before running 'myFunction'
+			- If False: Will run 'myFunction' after 'delay' is over
+			- If None: Will run 'myFunction' after 'delay' is over
 		
 		pauseOnDialog (bool) - Determines if the background function should wait if a dialog box is showing
 			- If True: Will pause for any dialog window
@@ -1510,6 +1519,7 @@ class Utilities():
 		Example Input: listen(self.checkCapsLock, shown = True)
 		Example Input: listen(self.checkAutoLogout, resultFunction = self.logout, pauseOnDialog = True)
 		Example Input: listen(self.listenScanner, pauseOnDialog = True, not_pauseOnDialog = "modifyBarcode")
+		Example Input: listen(self.autoSave, trigger = True)
 		"""
 
 		def listenFunction():
@@ -1536,21 +1546,32 @@ class Utilities():
 					self.listeningCatalogue[myFunction]["stop"] = False
 					break
 
+				if ((delay != 0) and (delay != None)):
+					time.sleep(delay / 1000)
+
+				if (self.listeningCatalogue[myFunction]["trigger"] != None):
+					while (not self.listeningCatalogue[myFunction]["trigger"]):
+						if (self.listeningCatalogue[myFunction]["stop"]):
+							break
+						if ((delay != 0) and (delay != None)):
+							time.sleep(delay / 1000)
+					self.listeningCatalogue[myFunction]["trigger"] = False
+
 				answer = self.runMyFunction(myFunction, myFunctionArgs, myFunctionKwargs, includeError = includeError,
 					errorFunction = errorFunction, errorFunctionArgs = errorFunctionArgs, errorFunctionKwargs = errorFunctionKwargs)
 				if (answer):
 					self.runMyFunction(resultFunction, resultFunctionArgs, resultFunctionKwargs, includeError = includeError,
 						errorFunction = errorFunction, errorFunctionArgs = errorFunctionArgs, errorFunctionKwargs = errorFunctionKwargs)
 
-				if ((delay != 0) and (delay != None)):
-					time.sleep(delay / 1000)
-
 			self.listeningCatalogue[myFunction]["listening"] -= 1
 
 		#########################################################
 
 		if (myFunction not in self.listeningCatalogue):
-			self.listeningCatalogue[myFunction] = {"listening": 0, "stop": False, "pause": False}
+			self.listeningCatalogue[myFunction] = {"listening": 0, "stop": False, "pause": False, "trigger": None}
+
+		if (trigger):
+			self.listeningCatalogue[myFunction]["trigger"] = False
 
 		if (pauseOnDialog not in [None, False]):
 			if ("listeningCatalogue" not in self.controller.backgroundFunction_pauseOnDialog):
@@ -1564,7 +1585,6 @@ class Utilities():
 				notPauseOnDialog = [notPauseOnDialog]
 
 			self.controller.backgroundFunction_pauseOnDialog["listeningCatalogue"][self][myFunction] = {"state": pauseOnDialog, "exclude": notPauseOnDialog}
-
 
 		self.backgroundRun(listenFunction, shown = shown, makeThread = makeThread)
 
@@ -1591,6 +1611,19 @@ class Utilities():
 
 		if (myFunction in self.listeningCatalogue):
 			self.listeningCatalogue[myFunction]["pause"] = state
+
+	def trigger_listen(self, myFunction, state = True):
+		"""Turns on/off the trigger for the listen routine.
+
+		myFunction (function) - A function that checks certain conditions
+		state (bool) - Determines if the function should be paused or not
+
+		Example Input: pause_listen(self.checkAutoLogout)
+		Example Input: pause_listen(self.checkAutoLogout, state = False)
+		"""
+
+		if (myFunction in self.listeningCatalogue):
+			self.listeningCatalogue[myFunction]["trigger"] = state
 
 	def unpause_listen(self, myFunction, state = True):
 		"""Unpauses the listen routine.
@@ -18244,7 +18277,7 @@ class handle_Window(handle_Container_Base):
 		return handle
 
 	#Status Bars
-	def checkStatusBar(self):
+	def checkStatusBar(self, timer = False):
 		"""Returns the state of the status bar.
 		True: The status bar is not currently on a timer
 		False: The status bar is currently on a timer
@@ -18255,9 +18288,13 @@ class handle_Window(handle_Container_Base):
 
 		if (self.statusBar == None):
 			return
-		if (self.statusTextTimer["listening"] > 0):
-			return True
-		return False
+
+		if (timer):
+			if (self.statusTextTimer["listening"] > 0):
+				return True
+			return False
+		else:
+			return self.statusBar.GetFieldsCount()
 
 	def addStatusBar(self, width = None, autoWidth = False):
 		"""Adds a status bar to the bottom of the window.
