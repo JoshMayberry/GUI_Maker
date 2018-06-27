@@ -52,6 +52,7 @@ import wx.lib.mixins.listctrl
 import wx.lib.agw.multidirdialog
 import wx.lib.agw.fourwaysplitter
 import wx.lib.agw.ultimatelistctrl
+import ObjectListView
 
 #Import matplotlib elements to add plots to the GUI
 # import matplotlib
@@ -79,6 +80,7 @@ import PIL
 	# cx_Freeze
 	# pillow
 	# pypubsub
+	# objectlistview
 
 #Maybe Required Modules?
 	# numpy
@@ -3055,9 +3057,9 @@ class Utilities():
 		return handle
 
 	def _makeListFull(self, choices = [], default = False, single = False, editable = False,
-		editOnClick = True, cellType = None, cellTypeDefault = "text", ultimate = False,
+		editOnClick = True, cellType = None, cellTypeDefault = "text", engine = 1,
 
-		report = True, columns = 1, columnNames = {}, columnWidth = {}, 
+		report = True, columns = 1, columnNames = {}, columnWidth = {}, columnLabels = {},
 		border = True, rowLines = True, columnLines = True, boldHeader = True,
 		drag = False, dragDelete = False, dragCopyOverride = False, 
 		allowExternalAppDelete = True, dragLabel = None, drop = False, dropIndex = 0,
@@ -3091,9 +3093,19 @@ class Utilities():
 			- If dict: {column (int): state (bool)}
 		editOnClick (bool) - Determines how many clicks it takes to open the editor
 			- If True: one click
-			- If False: two clicks to edit, one click to select
-			- If None: two clicks to edit
-		ultimate (bool) - Determines if UltimateListCtrl is used instead of ListCtrl
+			- If False: Depends on engine
+				~ engine 0:	two clicks to edit, one click to select
+				~ engine 1: two clicks to edit
+				~ engine 2: two clicks to edit
+			- If None: Depends on engine
+				~ engine 1: two clicks to edit
+				~ engine 1: Pressing F2 edits the primary cell. Tab/Shift-Tab can be used to edit other cells
+				~ engine 2: two clicks to edit
+		engine (int) - Determines what library base to use for creating the list
+			- If 0: Will use wx.ListCtrl
+			- If 1: Will use ObjectListView
+			- If 2: Will use UltimateListCtrl
+			- If None: Will use wx.ListCtrl
 
 		cellType (dict)       - Determines the widget type used for a specific cell in the list
 				~ {column number (int): cell type for the cell (str)}
@@ -3104,7 +3116,8 @@ class Utilities():
 			- If True: The list will be arranged in a grid
 			- If False: Rows and columns will be dynamically calculated
 		columns (int)      - How many columns the report will have
-		columnNames (dict) - What the column headers will say. If not given, the column will be blank. {row index: name}
+		columnNames (dict) - What the column headers will say. If not given, the column will be blank. {row index (int) or column label (str): name}
+		columnLabels (dict) - Used to interact with columns instead of using their column numbers (because tehse might change). {row index (int): column label (str)}
 		
 		drag (bool)       - If True: The user can drag text away from this list
 		dragDelete (bool) - If True: Text dragged away from this list will be deleted after dropping
@@ -6966,12 +6979,12 @@ class handle_WidgetList(handle_Widget_Base):
 			nonlocal self, argument_catalogue
 
 			columnNames, columnWidth, cellType, cellTypeDefault = self._getArguments(argument_catalogue, ["columnNames", "columnWidth", "cellType", "cellTypeDefault"])
+			report, single, editable, editOnClick, columnLabels = self._getArguments(argument_catalogue, ["report", "single", "editable", "editOnClick", "columnLabels"])
 			border, rowLines, columnLines, boldHeader = self._getArguments(argument_catalogue, ["border", "rowLines", "columnLines", "boldHeader"])
-			report, single, editable, editOnClick = self._getArguments(argument_catalogue, ["report", "single", "editable", "editOnClick"])
-			columns, drag, drop, choices, ultimate = self._getArguments(argument_catalogue, ["columns", "drag", "drop", "choices", "ultimate"])
+			columns, drag, drop, choices, engine = self._getArguments(argument_catalogue, ["columns", "drag", "drop", "choices", "engine"])
 
 			#Determine style
-			if (ultimate):
+			if (engine == 2):
 				stylePath = "wx.lib.agw.ultimatelistctrl.U"
 			else:
 				stylePath = "wx."
@@ -6992,6 +7005,7 @@ class handle_WidgetList(handle_Widget_Base):
 				style += f"|{stylePath}LC_SINGLE_SEL" #Default: Can select multiple with shift
 
 			#Remember key variables
+			self.columnLabels = columnLabels
 			self.columnNames = columnNames
 			self.columnWidth = columnWidth
 			self.boldHeader = boldHeader
@@ -7012,7 +7026,19 @@ class handle_WidgetList(handle_Widget_Base):
 			myId = self._getId(argument_catalogue)
 
 			#Create the thing to put in the grid
-			if (ultimate):
+			if (engine == 1):
+				self.subType = "normal"
+				self.thing = ObjectListView.ObjectListView(self.parent.thing, id = myId, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+
+				if (editOnClick != None):
+					if (editOnClick):
+						self.thing.cellEditMode = ObjectListView.ObjectListView.CELLEDIT_SINGLECLICK
+					else:
+						self.thing.cellEditMode = ObjectListView.ObjectListView.CELLEDIT_DOUBLECLICK
+				else:
+					self.thing.cellEditMode = ObjectListView.ObjectListView.CELLEDIT_F2ONLY
+
+			elif (engine == 2):
 				self.subType = "ultimate"
 				self.thing = self._ListFull(self, self.parent.thing, myId = myId, style = style)
 			else:
@@ -7020,7 +7046,7 @@ class handle_WidgetList(handle_Widget_Base):
 					self.subType = "editable"
 					self.thing = self._ListFull_Editable(self, self.parent.thing, myId = myId, style = style, editable = editable, editOnClick = editOnClick)
 				else:
-					self.subType = "normal"
+					self.subType = "classic"
 					self.thing = wx.ListCtrl(self.parent.thing, id = myId, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 			
 			#Create cell types
@@ -7028,11 +7054,12 @@ class handle_WidgetList(handle_Widget_Base):
 			self.cellTypeCatalogue = {}
 			self.setCellType()
 
-			for column, state in editable.items():
-				if (state):
-					self.setCellType(column, "inputBox")
+			if (self.subType == "ultimate"):
+				for column, state in editable.items():
+					if (state):
+						self.setCellType(column, "inputBox")
 			for column in cellType:
-				self.setCellType(column, cellType[column])
+				self.setCellType(column, cellType[column], editable = editable)
 
 			#Add Items
 			self.setValue(choices)
@@ -7461,11 +7488,51 @@ class handle_WidgetList(handle_Widget_Base):
 					else:
 						item[:] = [str(value) if (value != None) else "" for value in item] #Replace None with blank space
 
+			if (not isinstance(newValue, dict)):
+				itemDict = {}
+				for row, columnList in enumerate(newValue):
+					if (row not in itemDict):
+						itemDict[row] = {}
+					
+					for column, text in enumerate(columnList):
+						itemDict[row][column] = text
+			else:
+				itemDict = newValue
+
 			#Setup
 			self.thing.ClearAll()
-
+			
 			#Create columns
-			if (self.thing.InReportView()):
+			if (self.subType.lower() == "normal"):
+				columnList = []
+				for i in range(columns):
+					if (i in columnNames):
+						name = columnNames[i]
+					else:
+						name = ""
+
+					if (i in columnWidth):
+						width = columnWidth[i]
+						isSpaceFilling = False
+					else:
+						width = -1
+						isSpaceFilling = True
+
+					if (i in self.cellTypeCatalogue):
+						editable = self.cellTypeCatalogue[i]["editable"]
+					else:
+						editable = False
+
+					if (i in self.columnLabels):
+						label = self.columnLabels[i]
+					else:
+						label = f"tempLabel_forColumn_{i}"
+
+					columnList.append(ObjectListView.ColumnDefn(title = name, align = "left", width = width, valueGetter = label, 
+						isEditable = editable, isSpaceFilling = isSpaceFilling, minimumWidth = 5))
+				self.thing.SetColumns(columnList)
+
+			elif (self.thing.InReportView()):
 				if (self.subType.lower() == "ultimate"):
 					for i in range(columns):
 						info = wx.lib.agw.ultimatelistctrl.UltimateListItem()
@@ -7508,73 +7575,91 @@ class handle_WidgetList(handle_Widget_Base):
 							self.thing.SetColumn(i, item)
 
 			#Add Items
-			if (not isinstance(newValue, dict)):
-				itemDict = {}
-				for row, columnList in enumerate(newValue):
-					if (row not in itemDict):
-						itemDict[row] = {}
-					
-					for column, text in enumerate(columnList):
-						itemDict[row][column] = text
-			else:
-				itemDict = newValue
+			if (self.subType.lower() == "normal"):
+				objectList = []
+				for row, columnDict in itemDict.items():
+					contents = {}
+					for column, text in columnDict.items():
+						if (not isinstance(text, str)):
+							text = str(text)
 
-			for row, columnDict in itemDict.items():
-				for column, text in columnDict.items():
-					if (not isinstance(text, str)):
-						text = str(text)
+						#Account for column label instead of index
+						if (isinstance(column, str)):
+							index = [key for key, value in columnNames.items() if value == column]
+							if (len(index) == 0):
+								warnings.warn(f"There is no column {column} for the list {label} in the column names {columnNames}\nAdding value to the first column instead", Warning, stacklevel = 2)
+								column = 0
+							else:
+								column = index[0]
 
-					#Account for column label instead of index
-					if (isinstance(column, str)):
-						index = [key for key, value in columnNames.items() if value == column]
-						if (len(index) == 0):
-							warnings.warn(f"There is no column {column} for the list {label} in the column names {columnNames}\nAdding value to the first column instead", Warning, stacklevel = 2)
-							column = 0
+						if (column in self.columnLabels):
+							variable = self.columnLabels[column]
 						else:
-							column = index[0]
+							variable = f"tempLabel_forColumn_{column}"
+						contents[variable] = text
 
 					#Add contents
-					if (self.subType.lower() != "ultimate"):
-						if ((column == 0) or (not self.thing.InReportView())):
-							self.thing.InsertItem(row, text)
-						else:
-							self.thing.SetItem(row, column, text)
+					# item = type("Temp", (object,), contents)
+					# objectList.append(item)
+					objectList.append(contents)
+				self.thing.SetObjects(objectList)
+			else:
+				for row, columnDict in itemDict.items():
+					for column, text in columnDict.items():
+						if (not isinstance(text, str)):
+							text = str(text)
 
-					else:
-						cellType = self.getCellType(column)
-						if (cellType[None].lower() == "text"):
+						#Account for column label instead of index
+						if (isinstance(column, str)):
+							index = [key for key, value in columnNames.items() if value == column]
+							if (len(index) == 0):
+								warnings.warn(f"There is no column {column} for the list {label} in the column names {columnNames}\nAdding value to the first column instead", Warning, stacklevel = 2)
+								column = 0
+							else:
+								column = index[0]
+
+						#Add contents
+						if (self.subType.lower() != "ultimate"):
 							if ((column == 0) or (not self.thing.InReportView())):
-								self.thing.InsertStringItem(row, text)
+								self.thing.InsertItem(row, text)
 							else:
-								self.thing.SetStringItem(row, column, text)
+								self.thing.SetItem(row, column, text)
+
 						else:
-							if (cellType[None].lower() == "inputbox"):
-								handle = self._makeInputBox(text = cellType["text"], maxLength = cellType["maxLength"], parent = self, 
-									myFunction = cellType["myFunction"], myFunctionArgs = cellType["myFunctionArgs"], myFunctionKwargs = cellType["myFunctionKwargs"])
-								cellType["handle"] = handle
-
-							elif (cellType[None].lower() == "button"):
-								if (cellType["idlePath"] != None):
-									handle = self._makeButtonImage(text = cellType["text"], parent = self,
-										internal = cellType["internal"], idlePath = cellType["idlePath"], disabledPath = cellType["disabledPath"], 
-										selectedPath = cellType["selectedPath"], focusPath = cellType["focusPath"], hoverPath = cellType["hoverPath"])
+							cellType = self.getCellType(column)
+							if (cellType[None].lower() == "text"):
+								if ((column == 0) or (not self.thing.InReportView())):
+									self.thing.InsertStringItem(row, text)
 								else:
-									handle = self._makeButton(text = cellType["text"], parent = self, 
-										myFunction = cellType["myFunction"], myFunctionArgs = cellType["myFunctionArgs"], myFunctionKwargs = cellType["myFunctionKwargs"])
-								cellType["handle"] = handle
-
-							elif (cellType[None].lower() == "image"):
-								handle = self._makeImage(cellType["imagePath"], internal = cellType["internal"], parent = self)
-								cellType["handle"] = handle
-							
+									self.thing.SetStringItem(row, column, text)
 							else:
-								warnings.warn(f"Add cellType {cellType[None]} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
-								return
+								if (cellType[None].lower() == "inputbox"):
+									handle = self._makeInputBox(text = cellType["text"], maxLength = cellType["maxLength"], parent = self, 
+										myFunction = cellType["myFunction"], myFunctionArgs = cellType["myFunctionArgs"], myFunctionKwargs = cellType["myFunctionKwargs"])
+									cellType["handle"] = handle
 
-							if (column == 0):
-								self.thing.InsertStringItem(row, "")
-							self.thing.SetItemWindow(row, column, handle.thing, expand = True)
-		
+								elif (cellType[None].lower() == "button"):
+									if (cellType["idlePath"] != None):
+										handle = self._makeButtonImage(text = cellType["text"], parent = self,
+											internal = cellType["internal"], idlePath = cellType["idlePath"], disabledPath = cellType["disabledPath"], 
+											selectedPath = cellType["selectedPath"], focusPath = cellType["focusPath"], hoverPath = cellType["hoverPath"])
+									else:
+										handle = self._makeButton(text = cellType["text"], parent = self, 
+											myFunction = cellType["myFunction"], myFunctionArgs = cellType["myFunctionArgs"], myFunctionKwargs = cellType["myFunctionKwargs"])
+									cellType["handle"] = handle
+
+								elif (cellType[None].lower() == "image"):
+									handle = self._makeImage(cellType["imagePath"], internal = cellType["internal"], parent = self)
+									cellType["handle"] = handle
+								
+								else:
+									warnings.warn(f"Add cellType {cellType[None]} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+									return
+
+								if (column == 0):
+									self.thing.InsertStringItem(row, "")
+								self.thing.SetItemWindow(row, column, handle.thing, expand = True)
+
 		elif (self.type.lower() == "listtree"):
 			if (not isinstance(newValue, dict)):
 				errorMessage = f"'newValue' must be a dict, not a {type(newValue)} in setValue() for {self.__repr__()}"
@@ -7672,15 +7757,21 @@ class handle_WidgetList(handle_Widget_Base):
 
 	def setFunction_preEdit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
-			self._betterBind(wx.EVT_LIST_BEGIN_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			if (self.subType.lower() == "normal"):
+				self._betterBind(ObjectListView.ObjectListView.EVT_CELL_EDIT_STARTING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			else:
+				self._betterBind(wx.EVT_LIST_BEGIN_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		elif (self.type.lower() == "listtree"):
 			self._betterBind(wx.EVT_TREE_BEGIN_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to EVT_LIST_BEGIN_LABEL_EDIT() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_preEdit() for {self.__repr__()}", Warning, stacklevel = 2)
 			
 	def setFunction_postEdit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
-			self._betterBind(wx.EVT_LIST_END_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			if (self.subType.lower() == "normal"):
+				self._betterBind(ObjectListView.ObjectListView.EVT_CELL_EDIT_FINISHING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			else:
+				self._betterBind(wx.EVT_LIST_END_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		elif (self.type.lower() == "listtree"):
 			self._betterBind(wx.EVT_TREE_END_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
@@ -7959,7 +8050,7 @@ class handle_WidgetList(handle_Widget_Base):
 		cellType = self.cellTypeCatalogue[column]
 		return cellType
 
-	def setCellType(self, column = None, cellType = None):
+	def setCellType(self, column = None, cellType = None, editable = None):
 		"""Changes the cell types for the table.
 
 		column (int) - Which column to apply this cell type to. Can be a list. Must be in the dict for 'cellType' or 'cellType' must be a string
@@ -7977,8 +8068,13 @@ class handle_WidgetList(handle_Widget_Base):
 				
 				~ "image", {"imagePath": (str), "internal": (bool), "size": (int, int)}
 					~ Defaults: {"imagePath": None, "internal": False, size = (16, 16)}
+		editable (bool) - Determines if the column is editable or not
+			- If None: Does not change the column's editability if it has already been set, otherwise it is False
+			- If True: The column is editable
+			- If False: The column is not editable
 
 		Example Input: setCellType()
+		Example Input: setCellType(editable = {2: True})
 		Example Input: setCellType(cellType = {None: "inputBox"})
 		Example Input: setCellType(2, {None: "button", "text": "Open", "myFunction": self.onOpen})
 		Example Input: setCellType(2, {None: "image", "imagePath": "error", "internal": True})
@@ -7988,6 +8084,11 @@ class handle_WidgetList(handle_Widget_Base):
 			cellType = self.cellTypeDefault
 		if (not isinstance(column, (list, tuple, range))):
 			column = [column]
+
+		if (editable == None):
+			editable = {i: False for i in range(self.columns)}
+		elif (not isinstance(editable, dict)):
+			editable = {key: editable for key in column}
 
 		for _column in column:
 			#Ensure cellType is structured correctly
@@ -8034,6 +8135,13 @@ class handle_WidgetList(handle_Widget_Base):
 			#Assign cell type to list
 			columnList = range(self.columns) if (_column == None) else [_column]
 			for i in columnList:
+				if ((i in editable) and (editable[i] != None)):
+					cellType["editable"] = editable[i]
+				elif ((i in self.cellTypeCatalogue) and (self.cellTypeCatalogue[i] != None)):
+					cellType["editable"] = self.cellTypeCatalogue[i]
+				else:
+					cellType["editable"] = False
+
 				self.cellTypeCatalogue[i] = cellType
 
 			if (self.subType.lower() == "ultimate"):
@@ -13032,7 +13140,6 @@ class handle_WidgetTable(handle_Widget_Base):
 		"""
 
 		current = self.thing.GetNumberCols()
-		print("@3.1", number, current)
 		if (number != current):
 			if (number > current):
 				self.thing.AppendCols(number - current)
@@ -13053,7 +13160,6 @@ class handle_WidgetTable(handle_Widget_Base):
 		"""
 
 		current = self.thing.GetNumberRows()
-		print("@3.2", number, current)
 		if (number != current):
 			if (number > current):
 				self.thing.AppendRows(number - current)
