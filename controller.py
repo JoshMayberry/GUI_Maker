@@ -111,6 +111,26 @@ for module_name, module in sys.modules.items():
 				if (isinstance(event, wx.PyEventBinder)):
 					eventCatalogue[event.typeId] = (name, f"{module_name}.{name}", eval(f"{module_name}.{name}"))
 
+#Debugging Functions
+def printCurrentTrace():
+	"""Prints out the stack trace for the current place in the program.
+	Modified Code from codeasone on https://stackoverflow.com/questions/1032813/dump-stacktraces-of-all-active-threads
+
+	Example Input: printCurrentTrace()
+	"""
+
+	code = []
+	for threadId, stack in sys._current_frames().items():
+		code.append("\n# ThreadID: %s" % threadId)
+		for filename, lineno, name, line in traceback.extract_stack(stack):
+			code.append('File: "%s", line %d, in %s' % (filename,
+														lineno, name))
+			if line:
+				code.append("  %s" % (line.strip()))
+
+	for line in code:
+		print (line)
+
 #Controllers
 def build(*args, **kwargs):
 	"""Starts the GUI making process."""
@@ -6374,13 +6394,13 @@ class handle_Widget_Base(handle_Base):
 			with self.nestedSizer as mySizer:
 				index = self.getSizerIndex()
 				row, column = self.getSizerCoordinates()
-
-				print("@1", index, row, column, mySizer.rows, mySizer.columns)
+				updateNeeded = False
 
 				if ((row in mySizer.growFlexRow_notEmpty) and (state == (not mySizer.thing.IsRowGrowable(row)))):
 					leftBound = (row + 1) * mySizer.columns - mySizer.columns
-					rightBound = (row + 1) * mySizer.columns)
-					
+					rightBound = (row + 1) * mySizer.columns
+					updateNeeded = True
+
 					if (any([mySizer.thing.GetItem(i).IsShown() for i in range(leftBound, rightBound)])):
 						mySizer.growFlexRow(row, proportion = mySizer.growFlexRow_notEmpty[row])
 					else:
@@ -6390,11 +6410,15 @@ class handle_Widget_Base(handle_Base):
 					leftBound = column
 					rightBound = mySizer.rows * mySizer.columns
 					step = mySizer.columns
+					updateNeeded = True
 					
 					if (any([mySizer.thing.GetItem(i).IsShown() for i in range(leftBound, rightBound, step)])):
 						mySizer.growFlexColumn(column, proportion = mySizer.growFlexColumn_notEmpty[column])
 					else:
 						mySizer.thing.RemoveGrowableCol(column)
+
+				if (updateNeeded):
+					self.myWindow.updateWindow()
 
 	def setHide(self, state = True):
 		"""Shows or hides an item based on the given input.
@@ -15622,9 +15646,12 @@ class handle_Sizer(handle_Container_Base):
 		#Set sizer hints to main window while preserving size bounds
 		minSize = self.myWindow.thing.GetMinSize()
 		maxSize = self.myWindow.thing.GetMaxSize()
+		size = self.myWindow.thing.GetSize()
 		self.thing.SetSizeHints(self.myWindow.thing)
 		self.myWindow.thing.SetMinSize(minSize)
 		self.myWindow.thing.SetMaxSize(maxSize)
+		self.myWindow.thing.SetSize(size)
+		self.myWindow.updateWindow()
 
 	#Change Settings
 	def growFlexColumn(self, column, proportion = 0, growOnEmpty = None):
@@ -15638,6 +15665,12 @@ class handle_Sizer(handle_Container_Base):
 		"""
 
 		self._checkHandleType("Flex", self.growFlexColumn)
+
+		if (growOnEmpty != None):
+			if (growOnEmpty):
+				self.growFlexColumn_notEmpty[column] = proportion
+			elif (column in self.growFlexColumn_notEmpty):
+				del self.growFlexColumn_notEmpty[column]
 
 		#Check growability
 		if (self.thing.IsColGrowable(column)):
@@ -15660,7 +15693,7 @@ class handle_Sizer(handle_Container_Base):
 		self._checkHandleType("Flex", self.growFlexRow)
 
 		if (growOnEmpty != None):
-			if (growOnEmpty):
+			if (not growOnEmpty):
 				self.growFlexRow_notEmpty[row] = proportion
 			elif (row in self.growFlexRow_notEmpty):
 				del self.growFlexRow_notEmpty[row]
@@ -15669,14 +15702,6 @@ class handle_Sizer(handle_Container_Base):
 		if (self.thing.IsRowGrowable(row)):
 			#The row must be growable. To change the proportion, it's growability must first be removed
 			self.thing.RemoveGrowableRow(row)
-
-		if (not growOnEmpty):
-			index = self.thing.GetItemCount()
-			_row = math.floor(index / self.columns)
-			_column = index % self.columns
-
-			print(index, row, _row, _column)
-			# return
 
 		#Add attribute
 		self.thing.AddGrowableRow(row, proportion)
@@ -18757,6 +18782,14 @@ class handle_Window(handle_Container_Base):
 
 				self.thing.InvalidateBestSize()
 				self.thing.SetSize(self.thing.GetBestSize())
+			else:
+				if (self.mainPanel != None):
+					size = self.mainPanel.thing.GetSize()
+					self.mainPanel.thing.SetSize((size[0] + 1, size[0] + 1))
+					self.mainPanel.thing.SetSize(size)
+				size = self.thing.GetSize()
+				self.thing.SetSize((size[0] + 1, size[0] + 1))
+				self.thing.SetSize(size)
 
 	def setRefresh(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Sets the functions to call for refresh()."""
