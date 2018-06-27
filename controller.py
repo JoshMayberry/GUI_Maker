@@ -5248,7 +5248,8 @@ class handle_Base(Utilities, CommonEventFunctions):
 		elif (isinstance(self, handle_Panel)):
 			if (isinstance(handle, handle_Sizer)):
 				self.thing.SetSizer(handle.thing)
-
+				# self.thing.SetAutoLayout(True)
+				# handle.thing.Fit(self.thing)
 			else:
 				warnings.warn(f"Add {handle.__class__} as a handle for handle_Panel to nest() in {self.__repr__()}", Warning, stacklevel = 2)
 				return
@@ -6418,7 +6419,7 @@ class handle_Widget_Base(handle_Base):
 						mySizer.thing.RemoveGrowableCol(column)
 
 				if (updateNeeded):
-					self.myWindow.updateWindow()
+					self.myWindow.updateWindow()#updateNested = True)
 
 	def setHide(self, state = True):
 		"""Shows or hides an item based on the given input.
@@ -6957,7 +6958,11 @@ class handle_WidgetList(handle_Widget_Base):
 			self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
 
 		def _build_listFull():
-			"""Builds a wx choice object."""
+			"""Builds a wx choice object.
+			Use: https://pypi.org/project/ObjectListView/1.3.1/
+			Use: http://objectlistview-python-edition.readthedocs.io/en/latest/
+			Use: http://www.blog.pythonlibrary.org/index.php?s=medialocker&submit=Search
+			"""
 			nonlocal self, argument_catalogue
 
 			columnNames, columnWidth, cellType, cellTypeDefault = self._getArguments(argument_catalogue, ["columnNames", "columnWidth", "cellType", "cellTypeDefault"])
@@ -7601,7 +7606,6 @@ class handle_WidgetList(handle_Widget_Base):
 					raise ValueError(errorMessage)
 			else:
 				newValue = 0
-				
 			self.thing.SetSelection(newValue) #(int) - What the choice options will now be
 
 		elif (self.type.lower() == "listfull"):
@@ -7614,9 +7618,7 @@ class handle_WidgetList(handle_Widget_Base):
 					raise ValueError(errorMessage)
 			else:
 				newValue = 0
-				
 			self.thing.Select(newValue) #(int) - What the choice options will now be
-
 
 		else:
 			warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -12696,7 +12698,9 @@ class handle_WidgetCanvas(handle_Widget_Base):
 			self._queue("dc.DrawEllipse", [x, y, width, height])
 
 class handle_WidgetTable(handle_Widget_Base):
-	"""A handle for working with table widgets."""
+	"""A handle for working with table widgets.
+	Use: https://stackoverflow.com/questions/46199205/using-pythons-wx-grid-how-can-you-merge-columns
+	"""
 
 	def __init__(self):
 		"""Initializes defaults."""
@@ -13028,12 +13032,13 @@ class handle_WidgetTable(handle_Widget_Base):
 		"""
 
 		current = self.thing.GetNumberCols()
+		print("@3.1", number, current)
 		if (number != current):
 			if (number > current):
 				self.thing.AppendCols(number - current)
 				self.disableTableEditing(column = range(current - 1, number))
 			else:
-				self.thing.DeleteCols(number, current - number)
+				self.thing.DeleteCols(number - 1, current - number)
 
 			self.thing.ForceRefresh()
 			self._onTableAutoSize()
@@ -13048,6 +13053,7 @@ class handle_WidgetTable(handle_Widget_Base):
 		"""
 
 		current = self.thing.GetNumberRows()
+		print("@3.2", number, current)
 		if (number != current):
 			if (number > current):
 				self.thing.AppendRows(number - current)
@@ -14765,6 +14771,60 @@ class handle_WidgetTable(handle_Widget_Base):
 				event = wx.grid.GridEvent(self.GetId(), wx.grid.EVT_GRID_CELL_CHANGED.typeId, self, row = row, col = column, sel = True, kbd = wx.KeyboardState(controlDown = True))
 				# wx.PostEvent(self.GetEventHandler(), event)
 				self.GetEventHandler().ProcessEvent(event)
+
+		# def AppendCols(self, number = 1, updateLabels = True):
+		# 	"""Notifies the table when changes are made.
+		# 	Modified Code from Frank Millman on https://groups.google.com/forum/#!msg/wxpython-users/z4iobAKq0os/zzUL70WzL_AJ
+		# 	"""
+
+		# 	wx.grid.Grid.AppendCols(self, numCols = number, updateLabels = updateLabels)
+		# 	# msg = wx.grid.GridTableMessage(self.GetTable(), wx.grid.GRIDTABLE_NOTIFY_COLS_APPENDED, number)
+		# 	# self.ProcessTableMessage(msg)
+
+		# def AppendRows(self, number = 1, updateLabels = True):
+		# 	"""Notifies the table when changes are made.
+		# 	Modified Code from Frank Millman on https://groups.google.com/forum/#!msg/wxpython-users/z4iobAKq0os/zzUL70WzL_AJ
+		# 	"""
+
+		# 	wx.grid.Grid.AppendRows(self, numRows = number, updateLabels = updateLabels)
+		# 	# msg = wx.grid.GridTableMessage(self.GetTable(), wx.grid.GRIDTABLE_NOTIFY_ROWS_APPENDED, number)
+		# 	# self.ProcessTableMessage(msg)
+
+		# def InsertCols(self, position = 0, number = 1):
+		# 	"""Notifies the table when changes are made.
+		# 	Modified Code from Frank Millman on https://groups.google.com/forum/#!msg/wxpython-users/z4iobAKq0os/zzUL70WzL_AJ
+		# 	"""
+
+		# 	wx.grid.Grid.InsertCols(self, pos = position, numCols = number)
+		# 	# msg = wx.grid.GridTableMessage(self.GetTable(), wx.grid.GRIDTABLE_NOTIFY_COLS_INSERTED, position, number)
+		# 	# self.ProcessTableMessage(msg)
+
+		# def InsertRows(self, position = 0, number = 1):
+		# 	"""Notifies the table when changes are made.
+		# 	Modified Code from Frank Millman on https://groups.google.com/forum/#!msg/wxpython-users/z4iobAKq0os/zzUL70WzL_AJ
+		# 	"""
+
+		# 	wx.grid.Grid.InsertRows(self, pos = position, numRows = number)
+		# 	# msg = wx.grid.GridTableMessage(self.GetTable(), wx.grid.GRIDTABLE_NOTIFY_ROWS_INSERTED, position, number)
+		# 	# self.ProcessTableMessage(msg)
+
+		# def DeleteCols(self, position = 0, number = 1, updateLabels = True):
+		# 	"""Notifies the table when changes are made.
+		# 	Modified Code from Frank Millman on https://groups.google.com/forum/#!msg/wxpython-users/z4iobAKq0os/zzUL70WzL_AJ
+		# 	"""
+
+		# 	wx.grid.Grid.DeleteCols(self, pos = position, numCols = number, updateLabels = updateLabels)
+		# 	# msg = wx.grid.GridTableMessage(self.GetTable(), wx.grid.GRIDTABLE_NOTIFY_COLS_DELETED, position, number)
+		# 	# self.ProcessTableMessage(msg)
+
+		# def DeleteRows(self, position = 0, number = 1, updateLabels = True):
+		# 	"""Notifies the table when changes are made.
+		# 	Modified Code from Frank Millman on https://groups.google.com/forum/#!msg/wxpython-users/z4iobAKq0os/zzUL70WzL_AJ
+		# 	"""
+
+		# 	wx.grid.Grid.DeleteRows(self, pos = position, numRows = number, updateLabels = updateLabels)
+		# 	# msg = wx.grid.GridTableMessage(self.GetTable(), wx.grid.GRIDTABLE_NOTIFY_ROWS_DELETED, position, number)
+		# 	# self.ProcessTableMessage(msg)
 
 	####################################################################################################        
 	class _TableCellEditor(wx.grid.GridCellEditor):
@@ -17628,8 +17688,12 @@ class handle_Window(handle_Container_Base):
 
 			if (panel):
 				self.mainPanel.thing.SetSizer(self.mainSizer.thing)
+				# self.mainPanel.thing.SetAutoLayout(True)
+				# self.mainSizer.thing.Fit(self.mainPanel.thing)
 			else:
 				self.thing.SetSizer(self.mainSizer.thing)
+				# self.thing.SetAutoLayout(True)
+				# self.mainSizer.thing.Fit(self.thing)
 
 		def _build_dialog():
 			"""Builds a wx dialog object."""
@@ -17743,8 +17807,12 @@ class handle_Window(handle_Container_Base):
 
 				if (panel):
 					self.mainPanel.thing.SetSizer(rootSizer.thing)
+					# self.mainPanel.thing.SetAutoLayout(True)
+					# rootSizer.thing.Fit(self.mainPanel.thing)
 				else:
 					self.thing.SetSizer(rootSizer.thing)
+					# self.thing.SetAutoLayout(True)
+					# rootSizer.thing.Fit(self.thing)
 
 		def _build_preview():
 			"""Builds a wx preview frame object."""
@@ -18729,8 +18797,9 @@ class handle_Window(handle_Container_Base):
 		#   self.addPopupMenuItem("-1", "Maximize", "self.onMaximize")
 		#   self.addPopupMenuItem("-1", "Close", "self.onExit")
 
-	def updateWindow(self, autoSize = None):
+	def updateWindow(self, autoSize = None, updateNested = False, invalidateNested = False, useSizeEvent = True):
 		"""Refreshes what the window looks like when things on the top-level sizer are changed.
+		Use: https://wiki.wxpython.org/WhenAndHowToCallLayout
 
 		autoSize (bool) - Determines how the autosizing behavior is applied
 			- If True: The window size will be changed to fit the sizers within
@@ -18741,20 +18810,59 @@ class handle_Window(handle_Container_Base):
 		Example Input: updateWindow(autoSize = False)
 		"""
 
-		def invalidateNested(itemList):
+		def applyInvalidateNested(itemList):
 			"""Invalidates the 'best size' calculation for everything nested."""
 
-			# for item in catalogue.values():
 			for item in itemList:
-				if (isinstance(item, handle_NotebookPage)):
-					invalidateNested([item.mySizer, item.myPanel])
+				if (item == None):
+					continue
+				elif (isinstance(item, handle_NotebookPage)):
+					applyInvalidateNested([item.mySizer, item.myPanel])
+					continue
+				elif (isinstance(item, handle_MenuPopup)):
 					continue
 				elif (item.thing == None):
 					khikukuhk
 
 				if (hasattr(item.thing, "InvalidateBestSize")):
 					item.thing.InvalidateBestSize()
-				invalidateNested(item[:])
+				applyInvalidateNested(item[:])
+
+		def applyUpdateNested(itemList):
+			"""Makes sure that all nested objects call their update functions."""
+
+			for item in itemList:
+				if (item is None):
+					continue
+
+				elif (isinstance(item, (handle_MenuPopup, handle_Menu, handle_MenuItem, handle_MenuPopupItem, handle_MenuPopupSubMenu))):
+					applyUpdateNested(item[:])
+
+				elif (isinstance(item, handle_NotebookPage)):
+					applyUpdateNested([item.mySizer, item.myPanel])
+
+				elif (item.thing is None):
+					hjhkjjh
+
+				elif (isinstance(item, handle_WidgetTable)):
+					#Not working
+					item.thing.ForceRefresh()
+					item.thing.Layout()
+
+					if (useSizeEvent):
+						self.thing.SendSizeEvent()
+					else:
+						self.thing.Layout()
+						self.thing.Refresh()
+
+				elif (isinstance(item, handle_Sizer)):
+					item.thing.Layout()
+					applyUpdateNested(item[:])
+
+				else:
+					item.thing.Refresh()
+					item.thing.Layout()
+					applyUpdateNested(item[:])
 
 		catalogue = self._getAddressValue(self.nestingAddress + [id(self)])
 
@@ -18763,33 +18871,40 @@ class handle_Window(handle_Container_Base):
 			if (autoSize == None):
 				autoSize = self.autoSize
 
-			#Refresh the window
-			if (self.mainPanel != None):
-				self.mainPanel.thing.Refresh()
-				self.mainPanel.thing.Update()
-
-			self.thing.Refresh()
-			self.thing.Update()
-
 			#Auto-size the window
 			if (autoSize):
-				# invalidateNested(self[:])
+				if (invalidateNested):
+					applyInvalidateNested(self[:])
 
 				if (self.mainPanel != None):
-					# invalidateNested(self.mainPanel[:])
+					if (invalidateNested):
+						applyInvalidateNested(self.mainPanel[:])
 					self.mainPanel.thing.InvalidateBestSize()
 					self.mainPanel.thing.SetSize(self.mainPanel.thing.GetBestSize())
 
 				self.thing.InvalidateBestSize()
 				self.thing.SetSize(self.thing.GetBestSize())
+
+			#Redraw the window
+			if (updateNested):
+				applyUpdateNested(self[:])
+
+			if (useSizeEvent):
+				if (self.mainPanel != None):
+					self.mainPanel.thing.SendSizeEvent()
+				self.thing.SendSizeEvent()
 			else:
 				if (self.mainPanel != None):
-					size = self.mainPanel.thing.GetSize()
-					self.mainPanel.thing.SetSize((size[0] + 1, size[0] + 1))
-					self.mainPanel.thing.SetSize(size)
-				size = self.thing.GetSize()
-				self.thing.SetSize((size[0] + 1, size[0] + 1))
-				self.thing.SetSize(size)
+					self.mainPanel.thing.Layout()
+					self.mainPanel.thing.Refresh()
+					# self.mainPanel.thing.Update()
+
+				# if (self.mainSizer != None):
+				# 	self.mainSizer.thing.Layout() 
+
+				self.thing.Layout()
+				self.thing.Refresh()
+				# self.thing.Update()
 
 	def setRefresh(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Sets the functions to call for refresh()."""
