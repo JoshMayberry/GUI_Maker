@@ -859,8 +859,8 @@ class Utilities():
 		##Functions
 		if (myFunctionList != None):
 			#Compensate for the user not making it a list
-			if (type(myFunctionList) != list):
-				if (type(myFunctionList) == tuple):
+			if (not isinstance(myFunctionList, list)):
+				if (isinstance(myFunctionList, (tuple, types.GeneratorType))):
 					myFunctionList = list(myFunctionList)
 				else:
 					myFunctionList = [myFunctionList]
@@ -872,8 +872,8 @@ class Utilities():
 		##args
 		if (myFunctionArgsList != None):
 			#Compensate for the user not making it a list
-			if (type(myFunctionArgsList) != list):
-				if (type(myFunctionArgsList) == tuple):
+			if (not isinstance(myFunctionArgsList, list)):
+				if (isinstance(myFunctionArgsList, (tuple, types.GeneratorType))):
 					myFunctionArgsList = list(myFunctionArgsList)
 				else:
 					myFunctionArgsList = [myFunctionArgsList]
@@ -888,8 +888,8 @@ class Utilities():
 		##kwargs
 		if (myFunctionKwargsList != None):
 			#Compensate for the user not making it a list
-			if (type(myFunctionKwargsList) != list):
-				if (type(myFunctionKwargsList) == tuple):
+			if (not isinstance(myFunctionKwargsList, list)):
+				if (isinstance(myFunctionKwargsList, (tuple, types.GeneratorType))):
 					myFunctionKwargsList = list(myFunctionKwargsList)
 				else:
 					myFunctionKwargsList = [myFunctionKwargsList]
@@ -1203,9 +1203,9 @@ class Utilities():
 		keyList = args[0]
 
 		#Format keyList correctly
-		if (type(keyList) == tuple):
+		if (isinstance(keyList, (tuple, types.GeneratorType))):
 			keyList = list(keyList)
-		elif (type(keyList) != list):
+		elif (not isinstance(keyList, list)):
 			keyList = [keyList]
 
 		#Read current keyboard state
@@ -1260,15 +1260,15 @@ class Utilities():
 			#Skip empty functions
 			if (myFunctionList != None):
 				#Ensure that multiple function capability is given
-				if ((type(myFunctionList) != list) and (myFunctionList != None)):
-					if (type(myFunctionList) == tuple):
+				if ((not isinstance(myFunctionList, list)) and (myFunctionList != None)):
+					if (isinstance(myFunctionList, (tuple, types.GeneratorType))):
 						myFunctionList = list(myFunctionList)
 					else:
 						myFunctionList = [myFunctionList]
 
 				#args
-				if ((type(myFunctionArgsList) != list) and (myFunctionArgsList != None)):
-					if (type(myFunctionArgsList) == tuple):
+				if ((not isinstance(myFunctionArgsList, list)) and (myFunctionArgsList != None)):
+					if (isinstance(myFunctionArgsList, (tuple, types.GeneratorType))):
 						myFunctionArgsList = list(myFunctionArgsList)
 					else:
 						myFunctionArgsList = [myFunctionArgsList]
@@ -1285,8 +1285,8 @@ class Utilities():
 						myFunctionArgsList = [myFunctionArgsList]
 
 				#kwargs
-				if ((type(myFunctionKwargsList) != list) and (myFunctionKwargsList != None)):
-					if (type(myFunctionKwargsList) == tuple):
+				if ((not isinstance(myFunctionKwargsList, list)) and (myFunctionKwargsList != None)):
+					if (isinstance(myFunctionKwargsList, (tuple, types.GeneratorType))):
 						myFunctionKwargsList = list(myFunctionKwargsList)
 					else:
 						myFunctionKwargsList = [myFunctionKwargsList]
@@ -2540,19 +2540,13 @@ class Utilities():
 
 		self._logPrint(*args, fileName = fileName, timestamp = timestamp, **kwargs)
 
-	def _getId(self, argument_catalogue, checkSpecial = False, checkOverride = True):
+	def _getId(self, argument_catalogue, checkSpecial = False):
 		"""Returns the appropriate id to use for the wxObject.
 
 		Example Input: _getId(argument_catalogue)
 		"""
 
-		if (checkOverride and (self.label != None) and (self.label in self.parent.idOverride)):
-			myId = self.parent.idOverride[self.label]
-		elif (checkOverride and (self.label != None) and (self.label in self.myWindow.idOverride)):
-			myId = self.myWindow.idOverride[self.label]
-		else:
-			myId = self._getArguments(argument_catalogue, ["myId"])
-	
+		myId = self._getArguments(argument_catalogue, ["myId"])
 		if (myId == None):
 			if (checkSpecial and ("special" in argument_catalogue)):
 				special = self._getArguments(argument_catalogue, ["special"])
@@ -2581,7 +2575,7 @@ class Utilities():
 				myId = wx.ID_ANY
 		return myId
 
-	def _getArguments(self, argument_catalogue, desiredArgs):
+	def _getArguments(self, argument_catalogue, desiredArgs, checkOverride = True, checkAppend = True):
 		"""Returns a list of the values for the desired arguments from a dictionary.
 
 		argument_catalogue (dict) - All locals() of the function
@@ -2596,22 +2590,76 @@ class Utilities():
 		if (not isinstance(desiredArgs, (list, tuple, range))):
 			desiredArgs = [desiredArgs]
 
+		if (self.label != None):
+			if (not checkOverride):
+				_checkOverride = {}
+			elif ((self.parent != None) and (self.label in self.parent.attributeOverride)):
+				_checkOverride = self.parent.attributeOverride[self.label]
+			elif ((self.myWindow != None) and (self.label in self.myWindow.attributeOverride)):
+				_checkOverride = self.myWindow.attributeOverride[self.label]
+			else:
+				_checkOverride = {}
+
+			if (not checkAppend):
+				_checkAppend = {}
+			elif ((self.parent != None) and (self.label in self.parent.attributeAppend)):
+				_checkAppend = self.parent.attributeAppend[self.label]
+			elif ((self.myWindow != None) and (self.label in self.myWindow.attributeAppend)):
+				_checkAppend = self.myWindow.attributeAppend[self.label]
+			else: 
+				_checkAppend = {}
+		else:
+			_checkOverride = {}
+			_checkAppend = {}
+
 		argList = []
 		for arg in desiredArgs:
 			if (arg not in argument_catalogue):
 				errorMessage = f"Must provide the argument {arg} to {self.__repr__()}"
 				raise KeyError(errorMessage)
 
-			value = argument_catalogue[arg]
+			if (arg in _checkOverride):
+				value = _checkOverride[arg]
+			else:
+				value = argument_catalogue[arg]
+
+			if (arg in _checkAppend):
+				if (isinstance(value, (tuple, range, types.GeneratorType))):
+					value = list(value)
+				elif (not isinstance(value, list)):
+					value = [value]
+				value.extend(_checkAppend[arg])
 			argList.append(value)
 
 			if (arg not in ["self", "parent"]):
 				self.makeVariables[arg] = value
-
+						
 		if (len(argList) == 1):
 			argList = argList[0]
 
 		return argList
+
+	def _addAttributeOverride(self, label, variable, value):
+		"""Will override 'variable' with 'value' for future children labeled 'label'.
+
+		Example Input: _addAttributeOverride(addApply, "myId", wx.ID_APPLY)
+		"""
+
+		if (label not in self.attributeOverride):
+			self.attributeOverride[label] = {}
+		self.attributeOverride[label][variable] = value
+
+	def _addAttributeAppend(self, label, variable, value):
+		"""Will append 'variable' with 'value' for future children labeled 'label'.
+
+		Example Input: _addAttributeAppend(addApply, "myFunction", self.onHideWindow)
+		"""
+
+		if (label not in self.attributeAppend):
+			self.attributeAppend[label] = {}
+		if (variable not in self.attributeAppend[label]):
+			self.attributeAppend[label][variable] = []
+		self.attributeAppend[label][variable].append(value)
 
 	def _arrangeArguments(self, handle, function, argList = [], kwargDict = {}, exclude = [], copyFrom = None):
 		"""Returns a dictionary of the args and kwargs for a function.
@@ -3057,10 +3105,12 @@ class Utilities():
 		return handle
 
 	def _makeListFull(self, choices = [], default = False, single = False, editable = False,
-		editOnClick = True, cellType = None, cellTypeDefault = "text", engine = 1,
+		editOnClick = True, cellType = None, cellTypeDefault = "text", engine = 1, sortable = True,
 
-		report = True, columns = 1, columnNames = {}, columnWidth = {}, columnLabels = {},
-		border = True, rowLines = True, columnLines = True, boldHeader = True,
+		columns = None, columnTitles = {}, columnWidth = {}, columnLabels = {},
+		columnImage = {}, columnAlign = {}, columnFormatter = {}, check = None,
+		border = True, rowLines = True, columnLines = True, report = True,
+		
 		drag = False, dragDelete = False, dragCopyOverride = False, 
 		allowExternalAppDelete = True, dragLabel = None, drop = False, dropIndex = 0,
 
@@ -3078,18 +3128,21 @@ class Utilities():
 		"""Adds a full list with choices to the next cell on the grid.
 		https://wxpython.org/Phoenix/docs/html/wx.ListCtrl.html
 
-		choices (list  - A list of the choices as strings
-			- If 'report' is True: Can be given as either [[row 1 column 1, row 2 column 1], [row 1 column 2, row 2 column 2]] or {column name 1: [row 1, row 2], column name 2: [row 1, row 2]}
-			- If an integer is given instead of a string for the column name, it will use that as the column index
-			- If more than one column have the same header, it will be added to the left most one
+		choices (list) - A list of the choices as strings
+			- If list: [[row 1 column 1, row 2 column 1], [row 1 column 2, row 2 column 2]]
+			- If dict: {column name 1: [row 1, row 2], column name 2: [row 1, row 2]}
+				~ If an integer is given instead of a string for the column name, it will use that as the column index
+
+
 		default (bool) - If True: This is the default thing selected
 		enabled (bool) - If True: The user can interact with this
 		single (bool)  - Determines how many things the user can select
 			- If True: The user can only select one thing
 			- If False: The user can select multiple things using the shift key
 		
-		editable (bool)    - Determines if the user can edit the first item in the list
+		editable (bool) - Determines if the user can edit the first item in the list
 			- If True: The user can edit all items in the list
+			- If False: The user can edit none of the items in the list
 			- If dict: {column (int): state (bool)}
 		editOnClick (bool) - Determines how many clicks it takes to open the editor
 			- If True: one click
@@ -3116,7 +3169,7 @@ class Utilities():
 			- If True: The list will be arranged in a grid
 			- If False: Rows and columns will be dynamically calculated
 		columns (int)      - How many columns the report will have
-		columnNames (dict) - What the column headers will say. If not given, the column will be blank. {row index (int) or column label (str): name}
+		columnTitles (dict) - What the column headers will say. If not given, the column will be blank. {row index (int) or column label (str): name}
 		columnLabels (dict) - Used to interact with columns instead of using their column numbers (because tehse might change). {row index (int): column label (str)}
 		
 		drag (bool)       - If True: The user can drag text away from this list
@@ -3166,11 +3219,11 @@ class Utilities():
 
 		Example Input: _makeListFull(["Lorem", "Ipsum", "Dolor"], report = False)
 		Example Input: _makeListFull([["Lorem", "Ipsum"], ["Dolor"]], columns = 2)
-		Example Input: _makeListFull([["Lorem", "Ipsum"], ["Dolor"]], columns = 2, columnNames = {0: "Sit", 1: "Amet"})
-		Example Input: _makeListFull({"Sit": ["Lorem", "Ipsum"], "Amet": ["Dolor"]], columns = 2, columnNames = {0: "Sit", 1: "Amet"})
-		Example Input: _makeListFull({"Sit": ["Lorem", "Ipsum"], 1: ["Dolor"]], columns = 2, columnNames = {0: "Sit"})
+		Example Input: _makeListFull([["Lorem", "Ipsum"], ["Dolor"]], columns = 2, columnTitles = {0: "Sit", 1: "Amet"})
+		Example Input: _makeListFull({"Sit": ["Lorem", "Ipsum"], "Amet": ["Dolor"]], columns = 2, columnTitles = {0: "Sit", 1: "Amet"})
+		Example Input: _makeListFull({"Sit": ["Lorem", "Ipsum"], 1: ["Dolor"]], columns = 2, columnTitles = {0: "Sit"})
 
-		Example Input: _makeListFull([["Lorem", "Ipsum"], ["Dolor"]], columns = 2, columnNames = {0: "Sit", 1: "Amet"}, editable = True)
+		Example Input: _makeListFull([["Lorem", "Ipsum"], ["Dolor"]], columns = 2, columnTitles = {0: "Sit", 1: "Amet"}, editable = True)
 
 		Example Input: _makeListFull(["Lorem", "Ipsum", "Dolor"], drag = True)
 		Example Input: _makeListFull(["Lorem", "Ipsum", "Dolor"], drag = True, dragDelete = True)
@@ -3483,10 +3536,11 @@ class Utilities():
 
 		return handle
 	
-	def _makeButton(self, text = "", valueLabel = None,
-
+	def _makeButton(self, text = "", 
+		
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
-
+		
+		valueLabel = None,
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
 		label = None, parent = None, handle = None, myId = None):
 		"""Adds a button to the next cell on the grid.
@@ -5094,7 +5148,8 @@ class handle_Base(Utilities, CommonEventFunctions):
 		
 		#Store data
 		self.label = label
-		self.idOverride = {} #Stores myId overrides for children {label (str): myId (int or None)}
+		self.attributeOverride = {} #Stores variables to override for children {label (str): {variable (str): value (any)}}
+		self.attributeAppend = {} #Stores variables to add to the current variables for children {label (str): {variable (str): value (any)}}
 		self.makeFunction = inspect.stack()[2].function #The function used to create this handle
 
 		#Determine native sizer
@@ -5234,7 +5289,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 
 		#Perform Nesting
 		if (isinstance(self, handle_Sizer)):
-			if (isinstance(flags, (tuple, range))):
+			if (isinstance(flags, (tuple, range, types.GeneratorType))):
 				flags = list(flags)
 			elif (not isinstance(flags, list)):
 				flags = [flags]
@@ -6887,9 +6942,9 @@ class handle_WidgetList(handle_Widget_Base):
 		self.dragable = False
 		self.myDropTarget = None
 
-		self.columns = None
-		self.columnNames = None
-		self.cellTypeCatalogue = {}
+		self.checkColumn = None
+		self.columnCatalogue = {}
+		self.selectionColor = None
 
 		self.preDragFunction = None
 		self.preDragFunctionArgs = None
@@ -6914,7 +6969,7 @@ class handle_WidgetList(handle_Widget_Base):
 			if (returnRows):
 				value = self.thing.GetItemCount()
 			else:
-				value = self.columns
+				value = len(self.columnCatalogue)
 
 		else:
 			warnings.warn(f"Add {self.type} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -6932,7 +6987,7 @@ class handle_WidgetList(handle_Widget_Base):
 			choices, alphabetic, default = self._getArguments(argument_catalogue, ["choices", "alphabetic", "default"])
 
 			#Ensure that the choices given are a list or tuple
-			if ((type(choices) != list) and (type(choices) != tuple)):
+			if (not isinstance(choices, (list, tuple))):
 				choices = list(choices)
 
 			#Ensure that the choices are all strings
@@ -6975,142 +7030,140 @@ class handle_WidgetList(handle_Widget_Base):
 			Use: https://pypi.org/project/ObjectListView/1.3.1/
 			Use: http://objectlistview-python-edition.readthedocs.io/en/latest/
 			Use: http://www.blog.pythonlibrary.org/index.php?s=medialocker&submit=Search
+			Use: https://www.codeproject.com/KB/list/objectlistview.aspx
+			Use: https://www.codeproject.com/Articles/16009/A-Much-Easier-to-Use-ListView
+			Use: http://code.activestate.com/recipes/577543-objectlistview-getcolumnclickedevent-handler/
 			"""
 			nonlocal self, argument_catalogue
 
-			columnNames, columnWidth, cellType, cellTypeDefault = self._getArguments(argument_catalogue, ["columnNames", "columnWidth", "cellType", "cellTypeDefault"])
+			def formatCatalogue(columns, catalogue, default):
+				"""Ensures the provided catalogue is in the correct format."""
+
+				if (isinstance(catalogue, (list, tuple, range))):
+					return {i: catalogue[i] if (len(catalogue) > i) else default for i in range(columns)}
+				elif (isinstance(catalogue, dict)):
+					return {i: catalogue[i] if (i in catalogue) else default for i in range(columns)}
+				return {i: catalogue for i in range(columns)}
+
+			####################################################################
+
+			columnTitles, columnWidth, check = self._getArguments(argument_catalogue, ["columnTitles", "columnWidth", "check"])
 			report, single, editable, editOnClick, columnLabels = self._getArguments(argument_catalogue, ["report", "single", "editable", "editOnClick", "columnLabels"])
-			border, rowLines, columnLines, boldHeader = self._getArguments(argument_catalogue, ["border", "rowLines", "columnLines", "boldHeader"])
+			columnImage, columnAlign, columnFormatter = self._getArguments(argument_catalogue, ["columnImage", "columnAlign", "columnFormatter"])
+			border, rowLines, columnLines, sortable = self._getArguments(argument_catalogue, ["border", "rowLines", "columnLines", "sortable"])
 			columns, drag, drop, choices, engine = self._getArguments(argument_catalogue, ["columns", "drag", "drop", "choices", "engine"])
 
 			#Determine style
-			if (engine == 2):
-				stylePath = "wx.lib.agw.ultimatelistctrl.U"
-			else:
-				stylePath = "wx."
-
 			if (report):
-				style = f"{stylePath}LC_REPORT"
+				style = "wx.LC_REPORT"
 			else:
-				style = f"{stylePath}LC_LIST" #Auto calculate columns and rows
+				style = "wx.LC_LIST" #Auto calculate columns and rows
+				columns = 1
 
-			# if (border):
-			# 	style += f"|{stylePath}.BORDER_SUNKEN"
+			if (border):
+				style += "|wx.BORDER_SUNKEN"
 			if (rowLines):
-				style += f"|{stylePath}LC_HRULES"
+				style += "|wx.LC_HRULES"
 			if (columnLines):
-				style += f"|{stylePath}LC_VRULES"
+				style += "|wx.LC_VRULES"
 
 			if (single):
-				style += f"|{stylePath}LC_SINGLE_SEL" #Default: Can select multiple with shift
+				style += "|wx.LC_SINGLE_SEL" #Default: Can select multiple with shift
 
-			#Remember key variables
-			self.columnLabels = columnLabels
-			self.columnNames = columnNames
-			self.columnWidth = columnWidth
-			self.boldHeader = boldHeader
-			self.columns = columns
-			
+			if (columns == None):
+				if ((choices == None) or (not isinstance(choices, (list, tuple, range, dict))) or (len(choices) == 0)):
+					columns = 0
+				elif (isinstance(choices, dict)):
+					columns = max((len(value) if (isinstance(value, (list, tuple, range))) else 1 for value in choices.values()))
+				else:
+					columns = max((len(value) if (isinstance(value, (list, tuple, range))) else 1 for value in choices))
+
 			#Ensure correct formatting
 			if (isinstance(editable, (list, tuple, range))):
-				editable = {column: True for column in editable}
-			elif (editable in [False, None]):
-				editable = {}
-			elif (not isinstance(editable, dict)):
-				editable = {column: editable for column in range(self.columns)}
+				editable = {i: True for i in editable}
+			elif (isinstance(editable, dict)):
+				editable = {i: editable[i] if (i in editable) else False for i in range(columns)}
+			else:
+				editable = {i: editable for i in range(columns)}
 
-			if ((not isinstance(cellType, dict)) or (not isinstance(list(cellType.values())[0], dict))):
-				cellType = {column: cellType for column in range(self.columns)}
+			columnTitles = formatCatalogue(columns, columnTitles, "")
+			columnWidth = formatCatalogue(columns, columnWidth, -1)
+			columnLabels = formatCatalogue(columns, columnLabels, None)
+			columnImage = formatCatalogue(columns, columnImage, None)
+			columnAlign = formatCatalogue(columns, columnAlign, "left")
+			columnFormatter = formatCatalogue(columns, columnFormatter, None)
 
 			#Create widget id
 			myId = self._getId(argument_catalogue)
 
 			#Create the thing to put in the grid
-			if (engine == 1):
-				self.subType = "normal"
-				self.thing = ObjectListView.ObjectListView(self.parent.thing, id = myId, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+			self.thing = self._ListFull(self, self.parent.thing, myId = myId, style = style, sortable = sortable)
 
-				if (editOnClick != None):
-					if (editOnClick):
-						self.thing.cellEditMode = ObjectListView.ObjectListView.CELLEDIT_SINGLECLICK
-					else:
-						self.thing.cellEditMode = ObjectListView.ObjectListView.CELLEDIT_DOUBLECLICK
+			if (editOnClick != None):
+				if (editOnClick):
+					self.thing.cellEditMode = ObjectListView.ObjectListView.CELLEDIT_SINGLECLICK
 				else:
-					self.thing.cellEditMode = ObjectListView.ObjectListView.CELLEDIT_F2ONLY
-
-			elif (engine == 2):
-				self.subType = "ultimate"
-				self.thing = self._ListFull(self, self.parent.thing, myId = myId, style = style)
+					self.thing.cellEditMode = ObjectListView.ObjectListView.CELLEDIT_DOUBLECLICK
 			else:
-				if (len(editable) > 0):
-					self.subType = "editable"
-					self.thing = self._ListFull_Editable(self, self.parent.thing, myId = myId, style = style, editable = editable, editOnClick = editOnClick)
-				else:
-					self.subType = "classic"
-					self.thing = wx.ListCtrl(self.parent.thing, id = myId, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
-			
-			#Create cell types
-			self.cellTypeDefault = cellTypeDefault
-			self.cellTypeCatalogue = {}
-			self.setCellType()
+				self.thing.cellEditMode = ObjectListView.ObjectListView.CELLEDIT_F2ONLY
 
-			if (self.subType == "ultimate"):
-				for column, state in editable.items():
-					if (state):
-						self.setCellType(column, "inputBox")
-			for column in cellType:
-				self.setCellType(column, cellType[column], editable = editable)
+			#Create columns
+			self.checkColumn = check
+			for i in range(columns):
+				self.setColumn(i, title = columnTitles[i], label = columnLabels[i], width = columnWidth[i], editable = editable[i], 
+					align = columnAlign[i], image = columnImage[i], formatter = columnFormatter[i], minWidth = None, refresh = False)
+			self.refreshColumns()
 
 			#Add Items
 			self.setValue(choices)
 
-			#Determine if it's contents are dragable
-			if (drag):
-				dragLabel, dragDelete, dragCopyOverride, allowExternalAppDelete = self._getArguments(argument_catalogue, ["dragLabel", "dragDelete", "dragCopyOverride", "allowExternalAppDelete"])
-				preDragFunction, preDragFunctionArgs, preDragFunctionKwargs = self._getArguments(argument_catalogue, ["preDragFunction", "preDragFunctionArgs", "preDragFunctionKwargs"])
-				postDragFunction, postDragFunctionArgs, postDragFunctionKwargs = self._getArguments(argument_catalogue, ["postDragFunction", "postDragFunctionArgs", "postDragFunctionKwargs"])
+			# #Determine if it's contents are dragable
+			# if (drag):
+			# 	dragLabel, dragDelete, dragCopyOverride, allowExternalAppDelete = self._getArguments(argument_catalogue, ["dragLabel", "dragDelete", "dragCopyOverride", "allowExternalAppDelete"])
+			# 	preDragFunction, preDragFunctionArgs, preDragFunctionKwargs = self._getArguments(argument_catalogue, ["preDragFunction", "preDragFunctionArgs", "preDragFunctionKwargs"])
+			# 	postDragFunction, postDragFunctionArgs, postDragFunctionKwargs = self._getArguments(argument_catalogue, ["postDragFunction", "postDragFunctionArgs", "postDragFunctionKwargs"])
 				
-				self.dragable = True
-				self._betterBind(wx.EVT_LIST_BEGIN_DRAG, self.thing, self._onDragList_beginDragAway, None, 
-					{"label": dragLabel, "deleteOnDrop": dragDelete, "overrideCopy": dragCopyOverride, "allowExternalAppDelete": allowExternalAppDelete})
+			# 	self.dragable = True
+			# 	self._betterBind(wx.EVT_LIST_BEGIN_DRAG, self.thing, self._onDragList_beginDragAway, None, 
+			# 		{"label": dragLabel, "deleteOnDrop": dragDelete, "overrideCopy": dragCopyOverride, "allowExternalAppDelete": allowExternalAppDelete})
 				
-				self.preDragFunction = preDragFunction
-				self.preDragFunctionArgs = preDragFunctionArgs
-				self.preDragFunctionKwargs = preDragFunctionKwargs
+			# 	self.preDragFunction = preDragFunction
+			# 	self.preDragFunctionArgs = preDragFunctionArgs
+			# 	self.preDragFunctionKwargs = preDragFunctionKwargs
 
-				self.postDragFunction = postDragFunction
-				self.postDragFunctionArgs = postDragFunctionArgs
-				self.postDragFunctionKwargs = postDragFunctionKwargs
+			# 	self.postDragFunction = postDragFunction
+			# 	self.postDragFunctionArgs = postDragFunctionArgs
+			# 	self.postDragFunctionKwargs = postDragFunctionKwargs
 
-			#Determine if it accepts dropped items
-			if (drop):
-				dropIndex = self._getArguments(argument_catalogue, ["dropIndex"])
-				preDropFunction, preDropFunctionArgs, preDropFunctionKwargs = self._getArguments(argument_catalogue, ["preDropFunction", "preDropFunctionArgs", "preDropFunctionKwargs"])
-				postDropFunction, postDropFunctionArgs, postDropFunctionKwargs = self._getArguments(argument_catalogue, ["postDropFunction", "postDropFunctionArgs", "postDropFunctionKwargs"])
-				dragOverFunction, dragOverFunctionArgs, postDropFunctionKwargs = self._getArguments(argument_catalogue, ["dragOverFunction", "dragOverFunctionArgs", "postDropFunctionKwargs"])
+			# #Determine if it accepts dropped items
+			# if (drop):
+			# 	dropIndex = self._getArguments(argument_catalogue, ["dropIndex"])
+			# 	preDropFunction, preDropFunctionArgs, preDropFunctionKwargs = self._getArguments(argument_catalogue, ["preDropFunction", "preDropFunctionArgs", "preDropFunctionKwargs"])
+			# 	postDropFunction, postDropFunctionArgs, postDropFunctionKwargs = self._getArguments(argument_catalogue, ["postDropFunction", "postDropFunctionArgs", "postDropFunctionKwargs"])
+			# 	dragOverFunction, dragOverFunctionArgs, postDropFunctionKwargs = self._getArguments(argument_catalogue, ["dragOverFunction", "dragOverFunctionArgs", "postDropFunctionKwargs"])
 				
-				self.myDropTarget = self._DragTextDropTarget(self.thing, dropIndex,
-					preDropFunction = preDropFunction, preDropFunctionArgs = preDropFunctionArgs, preDropFunctionKwargs = preDropFunctionKwargs, 
-					postDropFunction = postDropFunction, postDropFunctionArgs = postDropFunctionArgs, postDropFunctionKwargs = postDropFunctionKwargs,
-					dragOverFunction = dragOverFunction, dragOverFunctionArgs = dragOverFunctionArgs, dragOverFunctionKwargs = postDropFunctionKwargs)
-				self.thing.SetDropTarget(self.myDropTarget)
+			# 	self.myDropTarget = self._DragTextDropTarget(self.thing, dropIndex,
+			# 		preDropFunction = preDropFunction, preDropFunctionArgs = preDropFunctionArgs, preDropFunctionKwargs = preDropFunctionKwargs, 
+			# 		postDropFunction = postDropFunction, postDropFunctionArgs = postDropFunctionArgs, postDropFunctionKwargs = postDropFunctionKwargs,
+			# 		dragOverFunction = dragOverFunction, dragOverFunctionArgs = dragOverFunctionArgs, dragOverFunctionKwargs = postDropFunctionKwargs)
+			# 	self.thing.SetDropTarget(self.myDropTarget)
 
-			#Bind the function(s)
-			myFunction, preEditFunction, postEditFunction = self._getArguments(argument_catalogue, ["myFunction", "preEditFunction", "postEditFunction"])
-			if (myFunction != None):
-				myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
-				self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
+			# #Bind the function(s)
+			# myFunction, preEditFunction, postEditFunction = self._getArguments(argument_catalogue, ["myFunction", "preEditFunction", "postEditFunction"])
+			# if (myFunction != None):
+			# 	myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
+			# 	self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
 
-			if (preEditFunction):
-				preEditFunctionArgs, preEditFunctionKwargs = self._getArguments(argument_catalogue, ["preEditFunctionArgs", "preEditFunctionKwargs"])
-				self.setFunction_preEdit(preEditFunction, preEditFunctionArgs, preEditFunctionKwargs)
+			# if (preEditFunction):
+			# 	preEditFunctionArgs, preEditFunctionKwargs = self._getArguments(argument_catalogue, ["preEditFunctionArgs", "preEditFunctionKwargs"])
+			# 	self.setFunction_preEdit(preEditFunction, preEditFunctionArgs, preEditFunctionKwargs)
 
-			if (postEditFunction):
-				postEditFunctionArgs, postEditFunctionKwargs = self._getArguments(argument_catalogue, ["postEditFunctionArgs", "postEditFunctionKwargs"])
-				self.setFunction_postEdit(postEditFunction, postEditFunctionArgs, postEditFunctionKwargs)
+			# if (postEditFunction):
+			# 	postEditFunctionArgs, postEditFunctionKwargs = self._getArguments(argument_catalogue, ["postEditFunctionArgs", "postEditFunctionKwargs"])
+			# 	self.setFunction_postEdit(postEditFunction, postEditFunctionArgs, postEditFunctionKwargs)
 
-			if (editOnClick):
-				pass
+			# if (editOnClick):
+			# 	pass
 
 		def _build_listTree():
 			"""Builds a wx choice object."""
@@ -7282,24 +7335,10 @@ class handle_WidgetList(handle_Widget_Base):
 			value = self.thing.GetString(index) #(str) - What is selected in the drop list
 
 		elif (self.type.lower() == "listfull"):
-			value = []
-			columnCount = self.columns
+			value = self.thing.GetSelectedObjects()
 
-			row = -1
-			while True:
-				row = self.thing.GetNextSelected(row)
-				if row == -1:
-					break
-				else:
-					subValue = []
-					for column in range(columnCount):
-						#If the event is a postEdit event, then the value is not applied until after the event is over and not vetoed. (See: http://wxpython-users.1045709.n5.nabble.com/wx-ListCtrl-Problem-editing-td2342724.html)
-						if ((event != None) and (event.GetClassName() == "wxListEvent") and (column == event.GetColumn())):
-							item = event.GetText()
-						else:
-							item = self.thing.GetItem(row, column).GetText()
-						subValue.append(item) #(list) - What is selected in the first column of the row selected in the full list as strings
-					value.append(subValue)
+			if (not self.thing.InReportView()):
+				value = [item.value for item in value]
 
 		elif (self.type.lower() == "listtree"):
 			if (self.subType.lower() == "single"):
@@ -7318,6 +7357,13 @@ class handle_WidgetList(handle_Widget_Base):
 			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
+		return value
+
+	def getChecked(self, event = None):
+		value = []
+		for item in self.thing.GetObjects():
+			if (self.thing.IsChecked(item)):
+				value.append(item)
 		return value
 
 	def getIndex(self, event = None):
@@ -7415,11 +7461,70 @@ class handle_WidgetList(handle_Widget_Base):
 		return column
 
 	#Setters
-	def setValue(self, newValue, columns = None, columnNames = None, columnWidth = None, filterNone = False, boldHeader = None, event = None):
+	def _formatList(self, newValue, filterNone = False):
+
+		if (isinstance(newValue, (range, types.GeneratorType))):
+			newValue = list(newValue)
+		elif (not isinstance(newValue, (list, tuple, dict))):
+			newValue = [newValue]
+
+		if (any((not hasattr(item, '__dict__') for item in newValue))):
+			#The user gave a list of non objects
+			if ((isinstance(newValue, (list, tuple))) and (len(newValue) != 0)):
+				newValue = [item if isinstance(item, (list, tuple)) else list(item) if isinstance(item, range) else [item] for item in newValue]		
+
+			#Ensure correct length
+			for item in newValue:
+				while (len(item) < len(self.columnCatalogue)):
+					item.append("")
+
+			#Handle None
+			if (filterNone != None):
+				for item in newValue:
+					if (filterNone):
+						item[:] = [str(value) for value in item if value is not None] #Filter out None
+					else:
+						item[:] = [str(value) if (value != None) else "" for value in item] #Replace None with blank space
+
+			#Finish formatting insurance
+			if (not isinstance(newValue, dict)):
+				itemDict = {}
+				for row, columnList in enumerate(newValue):
+					if (row not in itemDict):
+						itemDict[row] = {}
+					
+					for column, text in enumerate(columnList):
+						itemDict[row][column] = text
+			else:
+				itemDict = newValue
+
+			#Add Items
+			objectList = []
+			for row, columnDict in itemDict.items():
+				contents = {}
+				for column, text in columnDict.items():
+					while (column not in self.columnCatalogue):
+						self.addColumn()
+
+					if (isinstance(column, int)):
+						variable = self.columnCatalogue[column]["valueGetter"]
+					else:
+						variable = column
+
+					contents[variable] = f"{text}"
+				contents["__repr__"] = lambda self: f"""ListItem({", ".join(f"{variable} = {getattr(self, variable).__repr__() if hasattr(getattr(self, variable), '__repr__') else getattr(self, variable)}" for variable in dir(self) if not variable.startswith("__"))})"""
+
+				objectList.append(type("ListItem", (object,), contents)())
+		else:
+			#The user gave a list of objects
+			objectList = newValue
+		return objectList
+
+	def setValue(self, newValue, filterNone = False, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
 		if (self.type.lower() == "listdrop"):
-			if (isinstance(newValue, range)):
+			if (isinstance(newValue, (range, types.GeneratorType))):
 				newValue = list(newValue)
 			elif (not isinstance(newValue, (list, tuple))):
 				newValue = [newValue]
@@ -7435,230 +7540,8 @@ class handle_WidgetList(handle_Widget_Base):
 			self.thing.AppendItems(newValue) #(list) - What the choice options will now be now
 
 		elif (self.type.lower() == "listfull"):
-			columnCount = self.columns
-			
-			#Account for redefining columns
-			if (columns == None):
-				columns = self.columns
-			else:
-				self.columns = columns
-
-			#Account for redefining column names
-			if (columnNames == None):
-				columnNames = self.columnNames
-			else:
-				for key, value in columnNames.items():
-					self.columnNames[key] = value
-
-			#Account for redefining column widths
-			if (columnWidth == None):
-				columnWidth = self.columnWidth
-			else:
-				for key, value in columnWidth.items():
-					self.columnWidth[key] = value
-			
-			#Account for redefining column style
-			if (boldHeader == None):
-				boldHeader = self.boldHeader
-			else:
-				self.boldHeader = boldHeader
-
-			#Account for columns that are not in the type catalogue
-			for column in range(self.columns):
-				if (column not in self.cellTypeCatalogue):
-					self.setCellType(column)
-
-			#Error Check
-			if (isinstance(newValue, range)):
-				newValue = list(newValue)
-			elif (not isinstance(newValue, (list, tuple, dict))):
-				newValue = [newValue]
-
-			if ((isinstance(newValue, (list, tuple))) and (len(newValue) != 0)):
-				newValue = [item if isinstance(item, (list, tuple)) else list(item) if isinstance(item, range) else [item] for item in newValue]
-
-			for item in newValue:
-				while (len(item) < self.columns):
-					item.append("")
-
-			if (filterNone != None):
-				for item in newValue:
-					if (filterNone):
-						item[:] = [str(value) for value in item if value is not None] #Filter out None
-					else:
-						item[:] = [str(value) if (value != None) else "" for value in item] #Replace None with blank space
-
-			if (not isinstance(newValue, dict)):
-				itemDict = {}
-				for row, columnList in enumerate(newValue):
-					if (row not in itemDict):
-						itemDict[row] = {}
-					
-					for column, text in enumerate(columnList):
-						itemDict[row][column] = text
-			else:
-				itemDict = newValue
-
-			#Setup
-			self.thing.ClearAll()
-			
-			#Create columns
-			if (self.subType.lower() == "normal"):
-				columnList = []
-				for i in range(columns):
-					if (i in columnNames):
-						name = columnNames[i]
-					else:
-						name = ""
-
-					if (i in columnWidth):
-						width = columnWidth[i]
-						isSpaceFilling = False
-					else:
-						width = -1
-						isSpaceFilling = True
-
-					if (i in self.cellTypeCatalogue):
-						editable = self.cellTypeCatalogue[i]["editable"]
-					else:
-						editable = False
-
-					if (i in self.columnLabels):
-						label = self.columnLabels[i]
-					else:
-						label = f"tempLabel_forColumn_{i}"
-
-					columnList.append(ObjectListView.ColumnDefn(title = name, align = "left", width = width, valueGetter = label, 
-						isEditable = editable, isSpaceFilling = isSpaceFilling, minimumWidth = 5))
-				self.thing.SetColumns(columnList)
-
-			elif (self.thing.InReportView()):
-				if (self.subType.lower() == "ultimate"):
-					for i in range(columns):
-						info = wx.lib.agw.ultimatelistctrl.UltimateListItem()
-
-						info.SetMask(wx.LIST_MASK_TEXT | wx.LIST_MASK_IMAGE | wx.LIST_MASK_FORMAT | wx.lib.agw.ultimatelistctrl.ULC_MASK_FONT)
-						info.SetAlign(wx.lib.agw.ultimatelistctrl.ULC_FORMAT_LEFT)
-						info.SetKind(0) #0: A normal item, 1: A checkbox-like item, 2: A radiobutton-type item
-
-						if (i in columnNames):
-							info.SetText(columnNames[i])
-						else:
-							info.SetText("")
-
-						if (boldHeader):
-							attributes = wx.ListCtrl.GetClassDefaultAttributes()
-							attributes.font.MakeBold()
-							info.SetFont(attributes.font)
-
-						if (i in columnWidth):
-							info.SetWidth(columnWidth[i])
-
-						self.thing.InsertColumnInfo(i, info)
-				else:
-					for i in range(columns):
-						if (i in columnNames):
-							name = columnNames[i]
-						else:
-							name = ""
-
-						if (i in columnWidth):
-							self.thing.InsertColumn(i, name, width = columnWidth[i])
-						else:
-							self.thing.InsertColumn(i, name)
-
-						if (boldHeader):
-							item = wx.ListItem()
-							font = wx.Font(self.thing.GetClassDefaultAttributes().font)
-							font.MakeBold()
-							item.SetFont(font)
-							self.thing.SetColumn(i, item)
-
-			#Add Items
-			if (self.subType.lower() == "normal"):
-				objectList = []
-				for row, columnDict in itemDict.items():
-					contents = {}
-					for column, text in columnDict.items():
-						if (not isinstance(text, str)):
-							text = str(text)
-
-						#Account for column label instead of index
-						if (isinstance(column, str)):
-							index = [key for key, value in columnNames.items() if value == column]
-							if (len(index) == 0):
-								warnings.warn(f"There is no column {column} for the list {label} in the column names {columnNames}\nAdding value to the first column instead", Warning, stacklevel = 2)
-								column = 0
-							else:
-								column = index[0]
-
-						if (column in self.columnLabels):
-							variable = self.columnLabels[column]
-						else:
-							variable = f"tempLabel_forColumn_{column}"
-						contents[variable] = text
-
-					#Add contents
-					# item = type("Temp", (object,), contents)
-					# objectList.append(item)
-					objectList.append(contents)
-				self.thing.SetObjects(objectList)
-			else:
-				for row, columnDict in itemDict.items():
-					for column, text in columnDict.items():
-						if (not isinstance(text, str)):
-							text = str(text)
-
-						#Account for column label instead of index
-						if (isinstance(column, str)):
-							index = [key for key, value in columnNames.items() if value == column]
-							if (len(index) == 0):
-								warnings.warn(f"There is no column {column} for the list {label} in the column names {columnNames}\nAdding value to the first column instead", Warning, stacklevel = 2)
-								column = 0
-							else:
-								column = index[0]
-
-						#Add contents
-						if (self.subType.lower() != "ultimate"):
-							if ((column == 0) or (not self.thing.InReportView())):
-								self.thing.InsertItem(row, text)
-							else:
-								self.thing.SetItem(row, column, text)
-
-						else:
-							cellType = self.getCellType(column)
-							if (cellType[None].lower() == "text"):
-								if ((column == 0) or (not self.thing.InReportView())):
-									self.thing.InsertStringItem(row, text)
-								else:
-									self.thing.SetStringItem(row, column, text)
-							else:
-								if (cellType[None].lower() == "inputbox"):
-									handle = self._makeInputBox(text = cellType["text"], maxLength = cellType["maxLength"], parent = self, 
-										myFunction = cellType["myFunction"], myFunctionArgs = cellType["myFunctionArgs"], myFunctionKwargs = cellType["myFunctionKwargs"])
-									cellType["handle"] = handle
-
-								elif (cellType[None].lower() == "button"):
-									if (cellType["idlePath"] != None):
-										handle = self._makeButtonImage(text = cellType["text"], parent = self,
-											internal = cellType["internal"], idlePath = cellType["idlePath"], disabledPath = cellType["disabledPath"], 
-											selectedPath = cellType["selectedPath"], focusPath = cellType["focusPath"], hoverPath = cellType["hoverPath"])
-									else:
-										handle = self._makeButton(text = cellType["text"], parent = self, 
-											myFunction = cellType["myFunction"], myFunctionArgs = cellType["myFunctionArgs"], myFunctionKwargs = cellType["myFunctionKwargs"])
-									cellType["handle"] = handle
-
-								elif (cellType[None].lower() == "image"):
-									handle = self._makeImage(cellType["imagePath"], internal = cellType["internal"], parent = self)
-									cellType["handle"] = handle
-								
-								else:
-									warnings.warn(f"Add cellType {cellType[None]} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
-									return
-
-								if (column == 0):
-									self.thing.InsertStringItem(row, "")
-								self.thing.SetItemWindow(row, column, handle.thing, expand = True)
+			objectList = self._formatList(newValue, filterNone = filterNone)
+			self.thing.SetObjects(objectList)
 
 		elif (self.type.lower() == "listtree"):
 			if (not isinstance(newValue, dict)):
@@ -7708,7 +7591,162 @@ class handle_WidgetList(handle_Widget_Base):
 		else:
 			warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
 
-	def appendValue(self, newValue, where = -1):
+	def addColumn(self, *args, **kwargs):
+		self.setColumn(column = len(self.columnCatalogue), *args, **kwargs)
+
+	def setColumn(self, column = None, title = None, label = None, width = None, editable = None, align = None, image = None, formatter = None, minWidth = None, refresh = True):
+		"""Sets the contextual column for this handle."""
+
+		#Create columns
+		if (self.type.lower() == "listfull"):
+			if (column == None):
+				column = len(self.columnCatalogue)
+
+			if (column not in self.columnCatalogue):
+				self.columnCatalogue[column] = {}
+
+			self.columnCatalogue[column].setdefault("title", "")
+			self.columnCatalogue[column].setdefault("align", "left")
+			self.columnCatalogue[column].setdefault("width", -1)
+			self.columnCatalogue[column].setdefault("valueGetter", None)
+			self.columnCatalogue[column].setdefault("isEditable", True)
+			self.columnCatalogue[column].setdefault("minimumWidth", 5)
+			self.columnCatalogue[column].setdefault("isSpaceFilling", False)
+			self.columnCatalogue[column].setdefault("imageGetter", None)
+			self.columnCatalogue[column].setdefault("stringConverter", None)
+
+			if (title != None):
+				self.columnCatalogue[column]["title"] = title
+			if (align != None):
+				self.columnCatalogue[column]["align"] = align
+			if (label != None):
+				self.columnCatalogue[column]["valueGetter"] = label
+			if (image != None):
+				self.columnCatalogue[column]["imageGetter"] = image
+			if (editable != None):
+				self.columnCatalogue[column]["isEditable"] = editable
+			if (minWidth != None):
+				self.columnCatalogue[column]["minimumWidth"] = minWidth
+			if (formatter != None):
+				self.columnCatalogue[column]["stringConverter"] = formatter
+
+			if (width != None):
+				self.columnCatalogue[column]["width"] = width
+			else:
+				self.columnCatalogue[column]["width"] = self.getStringPixels(self.columnCatalogue[column]["title"])[0] + 40
+
+			if (self.columnCatalogue[column]["width"] == -1):
+				self.columnCatalogue[column]["isSpaceFilling"] = True
+			else:
+				self.columnCatalogue[column]["isSpaceFilling"] = False
+
+			#Everything must have a label
+			if (not self.thing.InReportView()):
+				self.columnCatalogue[column]["valueGetter"] = f"value" 
+			elif (self.columnCatalogue[column]["valueGetter"] == None):
+				self.columnCatalogue[column]["valueGetter"] = f"unnamed_{column}" 
+
+			#All images must be callable
+			if ((self.columnCatalogue[column]["imageGetter"] != None) and (not callable(self.columnCatalogue[column]["imageGetter"]))):
+				value = self.columnCatalogue[column]["imageGetter"]
+				self.columnCatalogue[column]["imageGetter"] = lambda item: value
+
+			if (refresh):
+				self.refreshColumns()
+		else:
+			warnings.warn(f"Add {self.type} to setColumns() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def refreshColumns(self):
+		if (self.type.lower() == "listfull"):
+			self.thing.SetColumns((ObjectListView.ColumnDefn(**kwargs) for column, kwargs in sorted(self.columnCatalogue.items())))
+
+			if (self.checkColumn != None):
+				self.thing.CreateCheckStateColumn(self.checkColumn)
+		else:
+			warnings.warn(f"Add {self.type} to setColumns() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def refresh(self):
+		self.thing.RepopulateList()
+
+	def clearAll(self):
+		self.columnCatalogue = {}
+		self.thing.ClearAll()
+
+	def addColumnCheck(self, *args, **kwargs):
+		self.setColumnCheck(column = len(self.columnCatalogue), *args, **kwargs)
+	
+	def setColumnCheck(self, column, refresh = True):
+		self.checkColumn = column
+		if (refresh):
+			self.refreshColumns()
+
+	def uncheck(self, row = None, state = True):
+		self.check(row = row, state = not state)
+
+	def check(self, row = None, state = True):
+		if (row == None):
+			row = self.thing.GetObjects()
+		elif (isinstance(row, (range, types.GeneratorType))):
+			row = list(row)
+		elif (not isinstance(row, (list, tuple))):
+			row = [row]
+
+		for _row in row:
+			if (not hasattr(_row, '__dict__')):
+				#The user passed in a non-object
+				item = self.thing.GetObjectAt(_row)
+			else:
+				#The user passed in an object
+				item = _row
+
+			if (state != None):
+				if (state):
+					self.thing.Check(item)
+				else:
+					self.thing.Uncheck(item)
+			else:
+				self.thing.ToggleCheck(item)
+		self.thing.RefreshObjects(row)
+
+	def checkChecked(self, row = None):
+		if (isinstance(row, (range, types.GeneratorType))):
+			row = list(row)
+		elif (not isinstance(row, (list, tuple))):
+			row = [row]
+
+		valueList = []
+		for _row in row:
+			if (hasattr(_row, '__dict__')):
+				#The user passed in a non-object
+				item = self.thing.GetObjectAt(_row)
+			else:
+				#The user passed in an object
+				item = _row
+
+			valueList.append(item.IsChecked(item))
+
+		return valueList
+
+	def setColor(self, even = None, odd = None, selected = None):
+		if (even != None):
+			self.thing.evenRowsBackColor = self._getColor(even)
+		if (odd != None):
+			self.thing.oddRowsBackColor = self._getColor(odd)
+		if (selected != None):
+			self.selectionColor = self._getColor(selected)
+
+	def addImage(self, label, imagePath, internal = False):
+		"""Adds an image to the image catalogue.
+
+		Example Input: addImage("correct", "markCheck", internal = True)
+		"""
+
+		image_16 = self._getImage(imagePath, internal = internal, scale = (16, 16))
+		image_32 = self._getImage(imagePath, internal = internal, scale = (32, 32))
+
+		self.thing.AddNamedImages(label, image_16, image_32)
+
+	def appendValue(self, newValue, where = -1, filterNone = None):
 		"""Appends the given value to the current contextual value for this handle."""
 
 		if (self.type.lower() == "listtree"):
@@ -7732,6 +7770,11 @@ class handle_WidgetList(handle_Widget_Base):
 				else:
 					if (newValue != None):
 						branch = self.thing.AppendItem(where, str(newValue))
+
+		elif (self.type.lower() == "listfull"):
+			objectList = self._formatList(newValue, filterNone = filterNone)
+			self.thing.AddObjects(objectList)
+
 		else:
 			warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -7746,7 +7789,9 @@ class handle_WidgetList(handle_Widget_Base):
 		if (self.type.lower() == "listdrop"):
 			self._betterBind(wx.EVT_CHOICE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		elif (self.type.lower() == "listfull"):
+			# self._betterBind(wx.EVT_LIST_ITEM_SELECTED, self.thing, self.thing.onSelect, rebind = False)
 			self._betterBind(wx.EVT_LIST_ITEM_SELECTED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
 		elif (self.type.lower() == "listtree"):
 			self._betterBind(wx.EVT_TREE_SEL_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
@@ -8038,185 +8083,18 @@ class handle_WidgetList(handle_Widget_Base):
 
 	#   event.Skip()
 
-	def getCellType(self, column):
-		"""Returns the widget type of the given cell.
-		The top-left corner is cell (0, 0) not (1, 1).
-
-		column (int) - The index of the column
-
-		Example Input: getCellType(1)
-		"""
-
-		cellType = self.cellTypeCatalogue[column]
-		return cellType
-
-	def setCellType(self, column = None, cellType = None, editable = None):
-		"""Changes the cell types for the table.
-
-		column (int) - Which column to apply this cell type to. Can be a list. Must be in the dict for 'cellType' or 'cellType' must be a string
-			- If None: Will apply to all columns
-		cellType (dict) - {None: keyword (str), **kwargs}
-			- Can be a string that applies to the given row and column
-			- If None: will apply the default cell type
-			- Possible Inputs: 
-				~ "text"
-
-				~ "inputBox"
-
-				~ "button", {"text": None, "myFunction": (function), "myFunctionArgs": (list), "myFunctionKwargs": (dict)}
-					~ Defaults: {"text": None, "myFunction": None, "myFunctionArgs": None, "myFunctionKwargs": None}
-				
-				~ "image", {"imagePath": (str), "internal": (bool), "size": (int, int)}
-					~ Defaults: {"imagePath": None, "internal": False, size = (16, 16)}
-		editable (bool) - Determines if the column is editable or not
-			- If None: Does not change the column's editability if it has already been set, otherwise it is False
-			- If True: The column is editable
-			- If False: The column is not editable
-
-		Example Input: setCellType()
-		Example Input: setCellType(editable = {2: True})
-		Example Input: setCellType(cellType = {None: "inputBox"})
-		Example Input: setCellType(2, {None: "button", "text": "Open", "myFunction": self.onOpen})
-		Example Input: setCellType(2, {None: "image", "imagePath": "error", "internal": True})
-		"""
-
-		if (cellType == None):
-			cellType = self.cellTypeDefault
-		if (not isinstance(column, (list, tuple, range))):
-			column = [column]
-
-		if (editable == None):
-			editable = {i: False for i in range(self.columns)}
-		elif (not isinstance(editable, dict)):
-			editable = {key: editable for key in column}
-
-		for _column in column:
-			#Ensure cellType is structured correctly
-			if (isinstance(cellType, dict)):
-				if (None not in cellType):
-					errorMessage = f"The key word for the cell type must have the dictionary key None for {self.__repr__()}"
-					raise KeyError(errorMessage)
-			else:
-				cellType = {None: cellType}
-			cellType[None] = str(cellType[None])
-
-			#Error Checking
-			if (cellType[None].lower() not in ["text", "inputbox", "button", "image"]):
-				errorMessage = f"Unknown cell type {cellType[None]} in {self.__repr__()}\ncellType: {cellType}"
-				raise KeyError(errorMessage)
-
-			#Apply Defaults				
-			cellType.setdefault("handle", None)
-			if (cellType[None].lower() == "inputbox"):
-				cellType.setdefault("text", None)
-				cellType.setdefault("maxLength", None)
-				cellType.setdefault("myFunction", None)
-				cellType.setdefault("myFunctionArgs", None)
-				cellType.setdefault("myFunctionKwargs", None)
-
-			elif (cellType[None].lower() == "button"):
-				cellType.setdefault("text", None)
-				cellType.setdefault("myFunction", None)
-				cellType.setdefault("myFunctionArgs", None)
-				cellType.setdefault("myFunctionKwargs", None)
-				cellType.setdefault("idlePath", None)
-				cellType.setdefault("disabledPath", None)
-				cellType.setdefault("selectedPath", None)
-				cellType.setdefault("focusPath", None)
-				cellType.setdefault("hoverPath", None)
-				cellType.setdefault("internal", False)
-				cellType.setdefault("size", None)
-			
-			elif (cellType[None].lower() == "image"):
-				cellType.setdefault("imagePath", None)
-				cellType.setdefault("internal", False)
-				cellType.setdefault("size", (16, 16))
-
-			#Assign cell type to list
-			columnList = range(self.columns) if (_column == None) else [_column]
-			for i in columnList:
-				if ((i in editable) and (editable[i] != None)):
-					cellType["editable"] = editable[i]
-				elif ((i in self.cellTypeCatalogue) and (self.cellTypeCatalogue[i] != None)):
-					cellType["editable"] = self.cellTypeCatalogue[i]
-				else:
-					cellType["editable"] = False
-
-				self.cellTypeCatalogue[i] = cellType
-
-			if (self.subType.lower() == "ultimate"):
-				if (cellType[None].lower() != "text"):
-					if (not self.thing.InReportView()):
-						errorMessage = f"{self.__repr__()} must be in report mode to have non-text objects"
-						raise ValueError(errorMessage)
-
-					elif (not self.thing.HasAGWFlag(wx.lib.agw.ultimatelistctrl.ULC_HAS_VARIABLE_ROW_HEIGHT)):
-						flags = self.thing.GetAGWWindowStyleFlag()
-						self.thing.SetAGWWindowStyleFlag(flags | wx.lib.agw.ultimatelistctrl.ULC_HAS_VARIABLE_ROW_HEIGHT)
-
-	class _ListFull(wx.lib.agw.ultimatelistctrl.UltimateListCtrl):
-		"""Allows different cell types for different columns. """
-		def __init__(self, parent, widget, myId = wx.ID_ANY, position = wx.DefaultPosition, size = wx.DefaultSize, style = "0", autoSizeColumns = True):
+	class _ListFull(ObjectListView.ObjectListView):
+		def __init__(self, parent, widget, myId = wx.ID_ANY, position = wx.DefaultPosition, size = wx.DefaultSize, style = "0", **kwargs):
 			"""Creates the list control object."""
 			
 			#Load in modules
-			wx.lib.agw.ultimatelistctrl.UltimateListCtrl.__init__(self, widget, agwStyle = eval(style, {'__builtins__': None, "wx": wx}, {}))
+			ObjectListView.ObjectListView.__init__(self, widget, id = myId, pos = position, size = size, style = eval(style, {'__builtins__': None, "wx": wx}, {}), **kwargs)
 
 			#Fix class type
 			self.__name__ = "wxListCtrl"
 			
 			#Internal variables
 			self.parent = parent
-
-			#Auto Sizing
-			if (autoSizeColumns):
-				self.parent._betterBind(wx.EVT_SIZE, self, self._onSize)
-				self.parent._betterBind(wx.EVT_SHOW, self.parent.myWindow.thing, self._onSize)
-
-			#Fix colors
-			attributes = wx.ListCtrl.GetClassDefaultAttributes()
-			self.SetBackgroundColour(attributes.colBg)
-			self.SetForegroundColour(attributes.colFg)
-			self.SetFont(attributes.font)
-
-			# self.SetDisabledTextColour(wx.ListCtrl.GetDisabledTextColour())
-			# self.SetFirstGradientColour(wx.ListCtrl.GetFirstGradientColour())
-
-		def _onSize(self, event):
-			"""Fits the list control in it's sizer item."""
-
-			if (self.InReportView()):
-				widgetList = [column for column in range(self.parent.columns) if (self.parent.cellTypeCatalogue[column][None].lower() != "text")]
-				
-				if (len(widgetList) != 0):
-					dc = wx.MemoryDC()
-					for column in widgetList:
-						if (self.parent.cellTypeCatalogue[column]["handle"] != None):
-							info = self.GetColumn(column)
-							dc.SetFont(info.GetFont())
-							self.SetColumnWidth(column, max(dc.GetTextExtent(info.GetText())[0] + 16, self.parent.cellTypeCatalogue[column]["handle"].thing.GetBestSize()[0]))
-							# self.SetColumnWidth(column, max(dc.GetTextExtent(info.GetText())[0] + 16, self.parent.cellTypeCatalogue[column]["handle"].thing.GetSize()[0], self.parent.cellTypeCatalogue[column]["handle"].thing.GetBestSize()[0]))
-				
-				columnList = [column for column in range(self.parent.columns) if ((column not in self.parent.columnWidth) and (column not in widgetList))]
-				if (len(columnList) > 0):
-					width = math.ceil(self.GetSize()[0] / len(columnList) 
-						- sum([self.GetColumnWidth(column) for column in self.parent.columnWidth]) 
-						- sum([self.GetColumnWidth(column) for column in widgetList]))
-					
-					for column in columnList:
-						self.SetColumnWidth(column, width)
-
-			event.Skip()
-
-		def GetScrollPos(self, *args, **kwargs):
-			"""Overridden because of error in ultimatelistctrl."""
-
-			return self._mainWin.GetScrollPos(wx.HORIZONTAL)
-
-		def InReportView(self, *args, **kwargs):
-			"""Overridden because of error in ultimatelistctrl."""
-
-			return self._mainWin.InReportView()
 
 	class _ListFull_Editable(wx.ListCtrl, wx.lib.mixins.listctrl.TextEditMixin):
 		"""Allows a list control to have editable text."""
@@ -16017,11 +15895,11 @@ class handle_Sizer(handle_Container_Base):
 
 		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], report = True)
 		Example Input: addListFull([["Lorem", "Ipsum"], ["Dolor"]], report = True, columns = 2)
-		Example Input: addListFull([["Lorem", "Ipsum"], ["Dolor"]], report = True, columns = 2, columnNames = {0: "Sit", 1: "Amet"})
-		Example Input: addListFull({"Sit": ["Lorem", "Ipsum"], "Amet": ["Dolor"]], report = True, columns = 2, columnNames = {0: "Sit", 1: "Amet"})
-		Example Input: addListFull({"Sit": ["Lorem", "Ipsum"], 1: ["Dolor"]], report = True, columns = 2, columnNames = {0: "Sit"})
+		Example Input: addListFull([["Lorem", "Ipsum"], ["Dolor"]], report = True, columns = 2, columnTitles = {0: "Sit", 1: "Amet"})
+		Example Input: addListFull({"Sit": ["Lorem", "Ipsum"], "Amet": ["Dolor"]], report = True, columns = 2, columnTitles = {0: "Sit", 1: "Amet"})
+		Example Input: addListFull({"Sit": ["Lorem", "Ipsum"], 1: ["Dolor"]], report = True, columns = 2, columnTitles = {0: "Sit"})
 
-		Example Input: addListFull([["Lorem", "Ipsum"], ["Dolor"]], report = True, columns = 2, columnNames = {0: "Sit", 1: "Amet"}, editable = True)
+		Example Input: addListFull([["Lorem", "Ipsum"], ["Dolor"]], report = True, columns = 2, columnTitles = {0: "Sit", 1: "Amet"}, editable = True)
 
 		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], drag = True)
 		Example Input: addListFull(["Lorem", "Ipsum", "Dolor"], drag = True, dragDelete = True)
@@ -17882,32 +17760,34 @@ class handle_Window(handle_Container_Base):
 
 				with rootSizer.addSizerBox(vertical = False, flex = 0) as buttonSizer:
 					if (not isinstance(addYes, (bool, type(None)))):
-						self.idOverride[addYes] = wx.ID_YES
+						self._addAttributeOverride(addYes, "myId", wx.ID_YES)
 					elif (addYes):
 						buttonSizer.addButton("Yes", myId = wx.ID_YES)
 
 					if (not isinstance(addNo, (bool, type(None)))):
-						self.idOverride[addNo] = wx.ID_NO
+						self._addAttributeOverride(addNo, "myId", wx.ID_NO)
 					elif (addNo or ((addYes not in [False, None]) and (addNo == None))):
-						buttonSizer.addButton("No", myId = wx.ID_NO)
+						buttonSizer.addButton("No", myId = {"myId": wx.ID_NO})
 
 					if (not isinstance(addOk, (bool, type(None)))):
-						self.idOverride[addOk] = wx.ID_OK
+						self._addAttributeOverride(addOk, "myId", wx.ID_OK)
 					elif (addOk):
 						buttonSizer.addButton("Ok", myId = wx.ID_OK)
 
 					if (not isinstance(addApply, (bool, type(None)))):
-						self.idOverride[addApply] = wx.ID_APPLY
+						self._addAttributeOverride(addApply, "myId", wx.ID_APPLY)
+						self._addAttributeAppend(addApply, "myFunction", self.onHideWindow)
 					elif (addApply):
 						buttonSizer.addButton("Apply", myId = wx.ID_APPLY, myFunction = self.onHideWindow)
 
 					if (not isinstance(addCancel, (bool, type(None)))):
-						self.idOverride[addCancel] = wx.ID_CANCEL
+						self._addAttributeOverride(addCancel, "myId", wx.ID_CANCEL)
 					elif (addCancel):
 						buttonSizer.addButton("Cancel", myId = wx.ID_CANCEL)
 
 					if (not isinstance(addClose, (bool, type(None)))):
-						self.idOverride[addClose] = wx.ID_CLOSE
+						self._addAttributeOverride(addClose, "myId", wx.ID_CLOSE)
+						self._addAttributeAppend(addClose, "myFunction", self.onHideWindow)
 					elif (addClose):
 						buttonSizer.addButton("Close", myId = wx.ID_CLOSE, myFunction = self.onHideWindow)
 
