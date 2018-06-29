@@ -5701,6 +5701,58 @@ class handle_Base(Utilities, CommonEventFunctions):
 			self.thing.SetSize(size)
 
 	#Etc
+	def refresh(self, updateNested = True, useSizeEvent = True):
+		def applyUpdateNested(itemList):
+			"""Makes sure that all nested objects call their update functions."""
+
+			for item in itemList:
+				if (item is None):
+					continue
+
+				elif (isinstance(item, (handle_MenuPopup, handle_Menu, handle_MenuItem, handle_MenuPopupItem, handle_MenuPopupSubMenu))):
+					applyUpdateNested(item[:])
+
+				elif (isinstance(item, handle_NotebookPage)):
+					applyUpdateNested([item.mySizer, item.myPanel])
+
+				elif (item.thing is None):
+					hjhkjjh
+
+				elif (isinstance(item, handle_WidgetTable)):
+					#Not working
+					item.thing.ForceRefresh()
+					item.thing.Layout()
+
+					if (useSizeEvent):
+						self.thing.SendSizeEvent()
+					else:
+						self.thing.Layout()
+						self.thing.Refresh()
+
+				elif (isinstance(item, handle_Sizer)):
+					item.thing.Layout()
+					applyUpdateNested(item[:])
+
+				else:
+					item.thing.Refresh()
+					item.thing.Layout()
+					applyUpdateNested(item[:])
+
+			##################################################
+
+		if (updateNested):
+			applyUpdateNested(self[:])
+
+		if (useSizeEvent and (hasattr(self.thing, "SendSizeEvent"))):
+			self.thing.SendSizeEvent()
+		else:
+			if (hasattr(self.thing, "ForceRefresh")):
+				self.thing.ForceRefresh()
+			if (hasattr(self.thing, "Layout")):
+				self.thing.Layout()
+			if (hasattr(self.thing, "Refresh")):
+				self.thing.Refresh()
+	
 	def _readBuildInstructions_sizer(self, parent, i, instructions):
 		"""Interprets instructions given by the user for what sizer to make and how to make it."""
 
@@ -17216,6 +17268,7 @@ class handle_Dialog(handle_Base):
 
 			self.myFrame.visible = True
 			self.answer = self.myFrame.thing.ShowModal()
+			self.hide()
 
 		elif (self.type.lower() == "busyinfo"):
 			self.thing = wx.BusyInfo(self.thing)
