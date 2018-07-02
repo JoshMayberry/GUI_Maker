@@ -4111,6 +4111,15 @@ class Utilities():
 
 		return handle
 
+	def makeCanvas(self, *args, **kwargs):
+		"""Returns a canvas handle that has no panel.
+
+		Example Input: makeCanvas()
+		"""
+
+		handle = self._makeCanvas(*args, panel = None, **kwargs)
+		return handle
+
 	def _makeCanvas(self, size = wx.DefaultSize, position = wx.DefaultPosition, 
 		panel = {}, metric = None,
 
@@ -5752,7 +5761,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 				self.thing.Layout()
 			if (hasattr(self.thing, "Refresh")):
 				self.thing.Refresh()
-	
+
 	def _readBuildInstructions_sizer(self, parent, i, instructions):
 		"""Interprets instructions given by the user for what sizer to make and how to make it."""
 
@@ -17516,8 +17525,9 @@ class handle_Dialog(handle_Base):
 			handle = handle_Window(self.myWindow.controller)
 			handle.type = "Preview"
 
-			argument_catalogue = {"canvas": self._MyPrintout(self, self.title), "enablePrint": True}
-			argument_catalogue = self._arrangeArguments(self.controller, Controller.addWindow, kwargDict = argument_catalogue)
+			argument_catalogue = self._arrangeArguments(self.controller, Controller.addWindow)
+			argument_catalogue["canvas"] = self._MyPrintout(self, self.title)
+			argument_catalogue["enablePrint"] = True
 			handle._build(argument_catalogue)
 
 			handle.setWindowSize(self.size)
