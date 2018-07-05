@@ -156,7 +156,6 @@ class _Iterator(object):
 				self.order = [key for key in self.data.keys() if key != None]
 			else:
 				self.order = [key if key != None else "" for key in self.data.keys()]
-
 			self.order.sort()
 
 			self.order = [key if key != "" else None for key in self.order]
@@ -2415,6 +2414,37 @@ class Utilities():
 
 		return font
 
+	def _getWildcard(self, wildcard = None):
+		"""Returns a formatted file picker wildcard.
+
+		Example Input: _getWildcard()
+		Example Input: _getWildcard(wildcard)
+		"""
+
+		if (wildcard == None):
+			answer = "All files (*.*)|*.*"
+
+		elif (isinstance(wildcard, dict)):
+			myList = []
+			for key, valueList in {key: value if (isinstance(value, (list, tuple, types.GeneratorType))) else [value] for key, value in wildcard.items()}.items():
+				fileTypes = "; ".join(f"*.{value}" if (value != None) else "*.*" for value in valueList)
+				if (key != None):
+					myList.append(f"{key} ({fileTypes})|{fileTypes}")
+				else:
+					if (fileTypes == "*.*"):
+						myList.append(f"All Files (*.*)|*.*")
+					else:
+						myList.append(f"{fileTypes}|{fileTypes}")
+			answer = '|'.join(myList)
+
+		elif (isinstance(wildcard, (list, tuple, types.GeneratorType))):
+			answer = '|'.join(f"*.{item}|*.{item}" if (item != None) else "All files (*.*)|*.*" for item in wildcard)
+
+		else:
+			answer = wildcard
+
+		return answer
+
 	#Converters
 	def _convertImageToBitmap(self, imgImage):
 		"""Converts a wxImage image (wxPython) to a wxBitmap image (wxPython).
@@ -3933,7 +3963,7 @@ class Utilities():
 
 		return handle
 	
-	def _makePickerFile(self, text = "Select a File", default = "", initialDir = "*.*", 
+	def _makePickerFile(self, text = "Select a File", default = "", initialDir = "", wildcard = "*.*", 
 		directoryOnly = False, changeCurrentDirectory = False, fileMustExist = False, openFile = False, 
 		saveConfirmation = False, saveFile = False, smallButton = False, addInputBox = False, 
 
@@ -9350,10 +9380,12 @@ class handle_WidgetPicker(handle_Widget_Base):
 		"""Determiens which build system to use for this handle."""
 
 		def _build_pickerFile():
-			"""Builds a wx file picker control or directory picker control object."""
+			"""Builds a wx file picker control or directory picker control object.
+			Use: https://www.blog.pythonlibrary.org/2011/02/10/wxpython-showing-2-filetypes-in-wx-filedialog/
+			"""
 			nonlocal self, argument_catalogue
 
-			default, text, initialDir, myFunction = self._getArguments(argument_catalogue, ["default", "text", "initialDir", "myFunction"])
+			default, text, initialDir, wildcard, myFunction = self._getArguments(argument_catalogue, ["default", "text", "initialDir", "wildcard", "myFunction"])
 			directoryOnly, openFile, saveFile, saveConfirmation = self._getArguments(argument_catalogue, ["directoryOnly", "openFile", "saveFile", "saveConfirmation"])
 			changeCurrentDirectory, fileMustExist, smallButton, addInputBox = self._getArguments(argument_catalogue, ["changeCurrentDirectory", "fileMustExist", "smallButton", "addInputBox"])
 
@@ -9402,12 +9434,20 @@ class handle_WidgetPicker(handle_Widget_Base):
 				style = "0"
 
 			myId = self._getId(argument_catalogue)
-		
+
+			# if (initialDir == None):
+			# 	initialDir = ""
+
+			# if (initialFile == None):
+			# 	initialFile = ""
+
+			wildcard = self._getWildcard(wildcard)
+
 			#Create the thing to put in the grid
 			if (directoryOnly):
 				self.thing = wx.DirPickerCtrl(self.parent.thing, id = myId, path = default, message = text, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 			else:
-				self.thing = wx.FilePickerCtrl(self.parent.thing, id = myId, path = default, message = text, wildcard = initialDir, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+				self.thing = wx.FilePickerCtrl(self.parent.thing, id = myId, path = default, message = text, wildcard = wildcard, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 			#Set Initial directory
 			self.thing.SetInitialDirectory(initialDir)
@@ -17064,8 +17104,7 @@ class handle_Dialog(handle_Base):
 			if (initialFile == None):
 				initialFile = ""
 
-			if (wildcard == None):
-				wildcard = ""
+			wildcard = self._getWildcard(wildcard)
 
 			#Create the thing to put in the grid
 			if (directoryOnly):
@@ -17380,7 +17419,9 @@ class handle_Dialog(handle_Base):
 		"""Returns what the contextual value is for the object associated with this handle."""
 
 		if (self.type.lower() == "choice"):
-			if ((self.subType != None) and (self.subType.lower() == "single")):
+			if (self.data == None):
+				value = None
+			elif ((self.subType != None) and (self.subType.lower() == "single")):
 				value = self.choices[self.data]
 			else:
 				value = [self.choices[i] for i in self.data]
