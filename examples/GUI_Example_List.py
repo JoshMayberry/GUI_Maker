@@ -64,6 +64,11 @@ def formatText(value):
 		return ""
 	return "*" * int(value)
 
+def formatGroup(value):
+	if (value is None):
+		return "No Stars"
+	return f"{value} Stars"
+
 #Construction Functions
 def buildWindow():
 	"""Creates a simple window."""
@@ -75,15 +80,19 @@ def buildWindow():
 		# myFrame.setWindowSize((400, 300))
 
 		#Add Content
-		with myFrame.addSizerGridFlex(rows = 2, columns = 1) as mySizer:
+		with myFrame.addSizerGridFlex(rows = 3, columns = 1) as mySizer:
 			mySizer.growFlexRowAll()
 			mySizer.growFlexColumn(0)
 
-			with mySizer.addListFull(label = "list_1", choices = makeList(4, 7), columns = 2, columnLabels = {1: "text"}, columnFormatter = {0: formatText}, check = 2,
-				columnTitles = {0: "rating", 1: "text", 2: "select"}, columnWidth = {0: 100}, editable = {1: True}, columnImage = {0: "bullet", 1: getStatus}) as myWidget:
+			with mySizer.addListFull(label = "list_1", choices = makeList(4, 7), columns = 2, columnLabels = {1: "text"}, columnFormatter = {0: formatText}, 
+				check = 2, group = {1: True}, groupFormatter = {0: formatGroup}, columnTitles = {0: "rating", 1: "text", 2: "select"}, 
+				columnWidth = {0: 100}, editable = {1: True}, columnImage = {0: "bullet", 1: getStatus}) as myWidget:
+
 				myWidget.addImage("bullet", "info", internal = True)
 				myWidget.addImage("good", "lightBulb", internal = True)
 				myWidget.addImage("bad", "error", internal = True)
+				myWidget.showGroup(1)
+				myWidget.refreshColumns()
 				myWidget.refresh()
 
 				myWidget.setFunction_click(onClick)
@@ -95,10 +104,12 @@ def buildWindow():
 				myWidget.addImage("good", "lightBulb", internal = True)
 				myWidget.addImage("bad", "error", internal = True)
 
-				myWidget.addColumn(title = "rating", width = 100, align = "right", image = "bullet", formatter = formatText)
-				myWidget.addColumn(title = "text", label = "text", editable = True, image = getStatus)
+				myWidget.addColumn(title = "rating", width = 100, align = "right", image = "bullet", formatter = formatText, groupFormatter = formatGroup)
+				myWidget.addColumn(title = "text", width = -1, label = "text", editable = True, image = getStatus, group = True)
+				myWidget.showGroup(1)
 				myWidget.addColumnCheck()
 				myWidget.setValue(makeList(4, 7))
+				myWidget.refresh()
 
 				myWidget.setFunction_click(onClick)
 

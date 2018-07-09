@@ -3139,7 +3139,8 @@ class Utilities():
 
 		columns = None, columnTitles = {}, columnWidth = {}, columnLabels = {},
 		columnImage = {}, columnAlign = {}, columnFormatter = {}, check = None,
-		border = True, rowLines = True, columnLines = True, report = True,
+		border = True, rowLines = True, columnLines = True, report = True, 
+		group = {}, groupFormatter = {}, groupSeparator = True,
 		
 		drag = False, dragDelete = False, dragCopyOverride = False, 
 		allowExternalAppDelete = True, dragLabel = None, drop = False, dropIndex = 0,
@@ -7036,6 +7037,7 @@ class handle_WidgetList(handle_Widget_Base):
 		self.checkColumn = None
 		self.columnCatalogue = {}
 		self.selectionColor = None
+		self.lastSelection = None
 
 		self.preDragFunction = None
 		self.preDragFunctionArgs = None
@@ -7143,6 +7145,7 @@ class handle_WidgetList(handle_Widget_Base):
 			columnImage, columnAlign, columnFormatter = self._getArguments(argument_catalogue, ["columnImage", "columnAlign", "columnFormatter"])
 			border, rowLines, columnLines, sortable = self._getArguments(argument_catalogue, ["border", "rowLines", "columnLines", "sortable"])
 			columns, drag, drop, choices, engine = self._getArguments(argument_catalogue, ["columns", "drag", "drop", "choices", "engine"])
+			group, groupFormatter, groupSeparator = self._getArguments(argument_catalogue, ["group", "groupFormatter", "groupSeparator"])
 
 			#Determine style
 			if (report):
@@ -7183,12 +7186,16 @@ class handle_WidgetList(handle_Widget_Base):
 			columnImage = formatCatalogue(columns, columnImage, None)
 			columnAlign = formatCatalogue(columns, columnAlign, "left")
 			columnFormatter = formatCatalogue(columns, columnFormatter, None)
+			groupFormatter = formatCatalogue(columns, groupFormatter, None)
+			group = formatCatalogue(columns, group, None)
 
 			#Create widget id
 			myId = self._getId(argument_catalogue)
 
 			#Create the thing to put in the grid
 			self.thing = self._ListFull(self, self.parent.thing, myId = myId, style = style, sortable = sortable)
+			self.thing.SetShowGroups(any((value != None) for value in group.values()))
+			self.thing.putBlankLineBetweenGroups = groupSeparator
 
 			if (editOnClick != None):
 				if (editOnClick):
@@ -7202,7 +7209,7 @@ class handle_WidgetList(handle_Widget_Base):
 			self.checkColumn = check
 			for i in range(columns):
 				self.setColumn(i, title = columnTitles[i], label = columnLabels[i], width = columnWidth[i], editable = editable[i], 
-					align = columnAlign[i], image = columnImage[i], formatter = columnFormatter[i], minWidth = None, refresh = False)
+					align = columnAlign[i], image = columnImage[i], formatter = columnFormatter[i], group = group[i], groupFormatter = groupFormatter[i], minWidth = None, refresh = False)
 			self.refreshColumns()
 
 			#Add Items
@@ -7240,6 +7247,8 @@ class handle_WidgetList(handle_Widget_Base):
 			# 	self.thing.SetDropTarget(self.myDropTarget)
 
 			# #Bind the function(s)
+			self._betterBind(wx.EVT_LIST_ITEM_SELECTED, self.thing, self._onSelect, rebind = False)
+
 			# myFunction, preEditFunction, postEditFunction = self._getArguments(argument_catalogue, ["myFunction", "preEditFunction", "postEditFunction"])
 			# if (myFunction != None):
 			# 	myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
@@ -7430,6 +7439,8 @@ class handle_WidgetList(handle_Widget_Base):
 
 			if (not self.thing.InReportView()):
 				value = [item.value for item in value]
+			elif (self.thing.GetShowGroups()):
+				value = {"group": [item.key for item in self.thing.GetSelectedGroups()], "row": value}
 
 		elif (self.type.lower() == "listtree"):
 			if (self.subType.lower() == "single"):
@@ -7550,6 +7561,10 @@ class handle_WidgetList(handle_Widget_Base):
 			column = None
 
 		return column
+
+	def getLastSelected(self, event = None):
+
+		return self.lastSelection
 
 	#Setters
 	def _formatList(self, newValue, filterNone = False):
@@ -7685,7 +7700,8 @@ class handle_WidgetList(handle_Widget_Base):
 	def addColumn(self, *args, **kwargs):
 		self.setColumn(column = len(self.columnCatalogue), *args, **kwargs)
 
-	def setColumn(self, column = None, title = None, label = None, width = None, editable = None, align = None, image = None, formatter = None, minWidth = None, refresh = True):
+	def setColumn(self, column = None, title = None, label = None, width = None, editable = None, align = None, 
+		image = None, formatter = None, group = None, groupFormatter = None, minWidth = None, refresh = True):
 		"""Sets the contextual column for this handle."""
 
 		#Create columns
@@ -7705,6 +7721,12 @@ class handle_WidgetList(handle_Widget_Base):
 			self.columnCatalogue[column].setdefault("isSpaceFilling", False)
 			self.columnCatalogue[column].setdefault("imageGetter", None)
 			self.columnCatalogue[column].setdefault("stringConverter", None)
+			
+			self.columnCatalogue[column].setdefault("groupKeyGetter", None)
+			self.columnCatalogue[column].setdefault("groupKeyConverter", None)
+			self.columnCatalogue[column].setdefault("useInitialLetterForGroupKey", False)
+			self.columnCatalogue[column].setdefault("groupTitleSingleItem", None)
+			self.columnCatalogue[column].setdefault("groupTitlePluralItems", None)
 
 			if (title != None):
 				self.columnCatalogue[column]["title"] = title
@@ -7720,6 +7742,15 @@ class handle_WidgetList(handle_Widget_Base):
 				self.columnCatalogue[column]["minimumWidth"] = minWidth
 			if (formatter != None):
 				self.columnCatalogue[column]["stringConverter"] = formatter
+			if (group != None):
+				if (isinstance(group, bool)):
+					if (group):
+						self.columnCatalogue[column]["useInitialLetterForGroupKey"] = True
+				else:
+					self.columnCatalogue[column]["useInitialLetterForGroupKey"] = False
+					self.columnCatalogue[column]["groupKeyGetter"] = group
+			if (groupFormatter != None):
+				self.columnCatalogue[column]["groupKeyConverter"] = groupFormatter
 
 			if (width != None):
 				self.columnCatalogue[column]["width"] = width
@@ -7749,10 +7780,13 @@ class handle_WidgetList(handle_Widget_Base):
 
 	def refreshColumns(self):
 		if (self.type.lower() == "listfull"):
-			self.thing.SetColumns((ObjectListView.ColumnDefn(**kwargs) for column, kwargs in sorted(self.columnCatalogue.items())))
+			self.thing.SetColumns([ObjectListView.ColumnDefn(**kwargs) for column, kwargs in sorted(self.columnCatalogue.items())])
 
 			if (self.checkColumn != None):
-				self.thing.CreateCheckStateColumn(self.checkColumn)
+				if (self.thing.GetShowGroups()):
+					self.thing.CreateCheckStateColumn(self.checkColumn + 1)
+				else:
+					self.thing.CreateCheckStateColumn(self.checkColumn)
 		else:
 			warnings.warn(f"Add {self.type} to setColumns() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -7770,6 +7804,78 @@ class handle_WidgetList(handle_Widget_Base):
 		self.checkColumn = column
 		if (refresh):
 			self.refreshColumns()
+
+	def hideGroup(self, column = None, state = True, refresh = True):
+		"""Turns off row grouping.
+
+		state (bool) - Determines if grouping is hidden or not
+		column (int) - Which column to stop grouping by
+			- If None: Will hide all grouping
+			- If str: Will stop grouping by whichever column has this as it's variable
+
+		Example Input: hideGroup()
+		Example Input: hideGroup(column = 1)
+		Example Input: hideGroup(column = "lorem")
+		"""
+
+		if (not state):
+			self.showGroup(column = column, state = True, refresh = refresh)
+			return
+
+		if (column != None):
+			if (not isinstance(column, int)):
+				for _column, catalogue in self.columnCatalogue.items():
+					if (catalogue["label"] == column):
+						column = _column
+						break
+				else:
+					errorMessage = f"There is no column with the label {column} in showGroup() for {self.__repr__()}"
+					raise KeyError(errorMessage)
+						
+			if (self.thing.GetAlwaysGroupByColumn() == column):
+				self.thing.SetAlwaysGroupByColumn(None)
+			return
+
+		self.thing.SetShowGroups(False)
+
+	def showGroup(self, column = None, state = True, refresh = True):
+		"""Turns on row grouping.
+
+		state (bool) - Determines if grouping is shown or not
+		column (int) - Which column to group by
+			- If None: Will group by whichever column is being sorted by
+			- If str: Will group by whichever column has this as it's variable
+
+		Example Input: showGroup()
+		Example Input: showGroup(column = 1)
+		Example Input: showGroup(column = "lorem")
+		"""
+
+		if (not state):
+			self.hideGroup(column = column, state = True, refresh = refresh)
+			return
+
+		self.thing.SetShowGroups(True)
+
+		if (column == None):
+			self.thing.SetAlwaysGroupByColumn(None)
+		else:
+			if (not isinstance(column, int)):
+				for _column, catalogue in self.columnCatalogue.items():
+					if (catalogue["label"] == column):
+						column = _column
+						break
+				else:
+					errorMessage = f"There is no column with the label {column} in showGroup() for {self.__repr__()}"
+					raise KeyError(errorMessage)
+
+			self.thing.SetAlwaysGroupByColumn(self.thing.columns[column + 1])
+
+	def showGroupCount(self, state = True):
+		self.thing.SetShowItemCounts(state)
+
+	def hideGroupCount(self, state = True):
+		self.showGroupCount(not state)
 
 	def uncheck(self, row = None, state = True):
 		self.check(row = row, state = not state)
@@ -7818,13 +7924,15 @@ class handle_WidgetList(handle_Widget_Base):
 
 		return valueList
 
-	def setColor(self, even = None, odd = None, selected = None):
+	def setColor(self, even = None, odd = None, selected = None, group = None):
 		if (even != None):
 			self.thing.evenRowsBackColor = self._getColor(even)
 		if (odd != None):
 			self.thing.oddRowsBackColor = self._getColor(odd)
 		if (selected != None):
 			self.selectionColor = self._getColor(selected)
+		if (group != None):
+			self.thing.groupBackgroundColour = self._getColor(group)
 
 	def addImage(self, label, imagePath, internal = False):
 		"""Adds an image to the image catalogue.
@@ -7880,7 +7988,7 @@ class handle_WidgetList(handle_Widget_Base):
 		if (self.type.lower() == "listdrop"):
 			self._betterBind(wx.EVT_CHOICE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		elif (self.type.lower() == "listfull"):
-			# self._betterBind(wx.EVT_LIST_ITEM_SELECTED, self.thing, self.thing.onSelect, rebind = False)
+			self._betterBind(wx.EVT_LIST_ITEM_SELECTED, self.thing, self._onSelect, rebind = False)
 			self._betterBind(wx.EVT_LIST_ITEM_SELECTED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
 		elif (self.type.lower() == "listtree"):
@@ -8014,6 +8122,18 @@ class handle_WidgetList(handle_Widget_Base):
 			# self._betterBind(wx.EVT_LIST_ITEM_ACTIVATED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_middleClick() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_clickLabel(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listfull"):
+			self._betterBind(wx.EVT_LIST_COL_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_labelClick() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_rightClickLabel(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listfull"):
+			self._betterBind(wx.EVT_LIST_COL_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_rightClickLabel() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_keyDown(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listtree"):
@@ -8174,12 +8294,18 @@ class handle_WidgetList(handle_Widget_Base):
 
 	#   event.Skip()
 
-	class _ListFull(ObjectListView.ObjectListView):
+	def _onSelect(self, event):
+		"""Tracks the last selection made."""
+
+		self.lastSelection = self.getValue()
+		event.Skip()
+
+	class _ListFull(ObjectListView.GroupListView):
 		def __init__(self, parent, widget, myId = wx.ID_ANY, position = wx.DefaultPosition, size = wx.DefaultSize, style = "0", **kwargs):
 			"""Creates the list control object."""
 			
 			#Load in modules
-			ObjectListView.ObjectListView.__init__(self, widget, id = myId, pos = position, size = size, style = eval(style, {'__builtins__': None, "wx": wx}, {}), **kwargs)
+			ObjectListView.GroupListView.__init__(self, widget, id = myId, pos = position, size = size, style = eval(style, {'__builtins__': None, "wx": wx}, {}), **kwargs)
 
 			#Fix class type
 			self.__name__ = "wxListCtrl"
@@ -22209,7 +22335,7 @@ pubsub.core.callables.CallArgsInfo = _mp_CallArgsInfo
 
 #User Things
 class User_Utilities():
-	def __init__(self, catalogue_variable = None, label_variable = None):
+	def __init__(self, catalogue_variable = None, label_variable = None, **kwargs):
 		if ((catalogue_variable != None) and (not isinstance(catalogue_variable, (str, Controller)))):
 			errorMessage = f"'catalogue_variable' must be a str, not a {type(catalogue_variable)}"
 			raise ValueError(errorMessage)
@@ -22424,11 +22550,12 @@ class User_Utilities():
 
 		return data
 
-	def getOrder(self, variable, includeMissing = True, exclude = [], sortNone = False, reverse = False, getFunction = None):
+	def getOrder(self, variable, includeMissing = True, where = None, exclude = [], sortNone = False, reverse = False, getFunction = None, compareFunction = None):
 		"""Returns a list of children in order according to the variable given.
 		Special thanks to Andrew Dalke for how to sort objects by attributes on https://wiki.python.org/moin/HowTo/Sorting#Key_Functions
 
 		variable (str) - what variable to use for sorting
+			- If None: Will not sort it
 		includeMissing (bool) - Determiens what to do with children who do not have the requested variable
 		getFunction (function) - What function to run to get the value of this variable where the args are [handle, variable]
 			- If None: will use getattr
@@ -22436,6 +22563,7 @@ class User_Utilities():
 		Example Input: getOrder("order")
 		Example Input: getOrder("order", includeMissing = False, sortNone = None)
 		Example Input: getOrder("order", getFunction = lambda item, variable: getattr(item, variable.name))
+		Example Input: getOrder("order", where = {"inventoryTitle": None}, compareFunction = lambda item, where: all(item.getAttribute(variable) != value for variable, value in where.items()))
 		"""
 
 		if (not isinstance(exclude, (list, tuple, range))):
@@ -22443,21 +22571,29 @@ class User_Utilities():
 		if (getFunction == None):
 			getFunction = getattr
 
-		handleList = sorted(filter(lambda item: hasattr(item, variable) and (item not in exclude) and ((sortNone != None) or (getFunction(item, variable) != None)), self), 
-			key = lambda item: (((getFunction(item, variable) is None)     if (reverse) else (getFunction(item, variable) is not None)) if (sortNone) else
-								((getFunction(item, variable) is not None) if (reverse) else (getFunction(item, variable) is None)), getFunction(item, variable)), 
-			reverse = reverse)
-		
-		if (includeMissing):
-			handleList.extend([item for item in self if (not hasattr(item, variable) and (item not in exclude))])
+		if (variable == None):
+			handleList = self.getHandle(where = where, exclude = exclude, getFunction = getFunction, compareFunction = compareFunction)
+		else:
+			handleList = sorted(filter(lambda item: hasattr(item, variable) and (item not in exclude) and ((sortNone != None) or (getFunction(item, variable) != None)), 
+				self.getHandle(where = where, exclude = exclude, getFunction = getFunction, compareFunction = compareFunction)), 
+				key = lambda item: (((getFunction(item, variable) is None)     if (reverse) else (getFunction(item, variable) is not None)) if (sortNone) else
+									((getFunction(item, variable) is not None) if (reverse) else (getFunction(item, variable) is None)), getFunction(item, variable)), 
+				reverse = reverse)
+
+			if (includeMissing):
+				handleList.extend([item for item in self if (not hasattr(item, variable) and (item not in exclude))])
 
 		return handleList
 
-	def getHandle(self, where = None, exclude = []):
+	def getHandle(self, where = None, exclude = [], getFunction = None, compareFunction = None):
 		"""Returns a list of children whose variables are equal to what is given.
 
 		where (dict) - {variable (str): value (any)}
 			- If None, will not check the values given
+		getFunction (function) - What function to run to get the value of this variable where the args are [handle, variable]
+			- If None: will use getattr
+		compareFunction (function) - What function to run to evaluate 'where' where the args are [handle, where]
+			- If None: will use getattr
 
 		Example Input: getHandle()
 		Example Input: getHandle({"order": 4})
@@ -22466,19 +22602,19 @@ class User_Utilities():
 
 		if (not isinstance(exclude, (list, tuple, range))):
 			exclude = [exclude]
+		if (getFunction == None):
+			getFunction = getattr
+		if (compareFunction == None):
+			compareFunction = lambda handle, where: all(hasattr(handle, variable) and (getFunction(handle, variable) == value) for variable, value in where.items())
 
 		handleList = []
 		for handle in self:
 			if (handle not in exclude):
-				if ((where != None) and (len(where) != 0)):
-					for variable, value in where.items():
-						if (hasattr(handle, variable) and (getattr(handle, variable) == value)):
-							continue
-						break
-					else:
-						handleList.append(handle)
-				else:
+				if ((where == None) or (len(where) == 0)):
 					handleList.append(handle)
+				elif (compareFunction(handle, where)):
+					handleList.append(handle)
+
 		return handleList
 
 	def getUnique(self, base = "{}", increment = 1, start = 1, exclude = []):
