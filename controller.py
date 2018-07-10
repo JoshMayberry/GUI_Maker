@@ -3178,7 +3178,7 @@ class Utilities():
 		editOnClick (bool) - Determines how many clicks it takes to open the editor
 			- If True: one click
 			- If False: Depends on engine
-				~ engine 0:	two clicks to edit, one click to select
+				~ engine 0: two clicks to edit, one click to select
 				~ engine 1: two clicks to edit
 				~ engine 2: two clicks to edit
 			- If None: Depends on engine
@@ -5557,7 +5557,6 @@ class handle_Base(Utilities, CommonEventFunctions):
 			def wrapper(self, *args, **kwargs):
 				nonlocal function, label
 
-				print("@1", self.__repr__(), args, kwargs, function, label)
 				arguments = inspect.getcallargs(function, *args, **kwargs)
 				del arguments["self"]
 				pubsub.pub.sendMessage(label, **arguments)
@@ -5617,10 +5616,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 			myFunction = getattr(self, _functionName)
 			topicFunction = getTopicFunction(myFunction)
 			topic = topicManager.getOrCreateTopic(_label, protoListener = topicFunction)
-
-			# print("@1.1", myFunction)
 			makeLink(myFunction, _label)
-			# print("@1.2", myFunction)
 
 			for _handle in handle:
 				if (not isinstance(_handle, handle_Base)):
@@ -6689,7 +6685,7 @@ class handle_Widget_Base(handle_Base):
 			if (not isinstance(text, str)):
 				text = f"{text}"
 
-		if (isinstance(self, (handle_MenuItem, handle_MenuPopupItem))):		
+		if (isinstance(self, (handle_MenuItem, handle_MenuPopupItem))):     
 			#Do not add empty tool tips
 			if (len(text) != 0):
 				if (self.type.lower() == "menuitem"):
@@ -7217,53 +7213,53 @@ class handle_WidgetList(handle_Widget_Base):
 
 			# #Determine if it's contents are dragable
 			# if (drag):
-			# 	dragLabel, dragDelete, dragCopyOverride, allowExternalAppDelete = self._getArguments(argument_catalogue, ["dragLabel", "dragDelete", "dragCopyOverride", "allowExternalAppDelete"])
-			# 	preDragFunction, preDragFunctionArgs, preDragFunctionKwargs = self._getArguments(argument_catalogue, ["preDragFunction", "preDragFunctionArgs", "preDragFunctionKwargs"])
-			# 	postDragFunction, postDragFunctionArgs, postDragFunctionKwargs = self._getArguments(argument_catalogue, ["postDragFunction", "postDragFunctionArgs", "postDragFunctionKwargs"])
+			#   dragLabel, dragDelete, dragCopyOverride, allowExternalAppDelete = self._getArguments(argument_catalogue, ["dragLabel", "dragDelete", "dragCopyOverride", "allowExternalAppDelete"])
+			#   preDragFunction, preDragFunctionArgs, preDragFunctionKwargs = self._getArguments(argument_catalogue, ["preDragFunction", "preDragFunctionArgs", "preDragFunctionKwargs"])
+			#   postDragFunction, postDragFunctionArgs, postDragFunctionKwargs = self._getArguments(argument_catalogue, ["postDragFunction", "postDragFunctionArgs", "postDragFunctionKwargs"])
 				
-			# 	self.dragable = True
-			# 	self._betterBind(wx.EVT_LIST_BEGIN_DRAG, self.thing, self._onDragList_beginDragAway, None, 
-			# 		{"label": dragLabel, "deleteOnDrop": dragDelete, "overrideCopy": dragCopyOverride, "allowExternalAppDelete": allowExternalAppDelete})
+			#   self.dragable = True
+			#   self._betterBind(wx.EVT_LIST_BEGIN_DRAG, self.thing, self._onDragList_beginDragAway, None, 
+			#       {"label": dragLabel, "deleteOnDrop": dragDelete, "overrideCopy": dragCopyOverride, "allowExternalAppDelete": allowExternalAppDelete})
 				
-			# 	self.preDragFunction = preDragFunction
-			# 	self.preDragFunctionArgs = preDragFunctionArgs
-			# 	self.preDragFunctionKwargs = preDragFunctionKwargs
+			#   self.preDragFunction = preDragFunction
+			#   self.preDragFunctionArgs = preDragFunctionArgs
+			#   self.preDragFunctionKwargs = preDragFunctionKwargs
 
-			# 	self.postDragFunction = postDragFunction
-			# 	self.postDragFunctionArgs = postDragFunctionArgs
-			# 	self.postDragFunctionKwargs = postDragFunctionKwargs
+			#   self.postDragFunction = postDragFunction
+			#   self.postDragFunctionArgs = postDragFunctionArgs
+			#   self.postDragFunctionKwargs = postDragFunctionKwargs
 
 			# #Determine if it accepts dropped items
 			# if (drop):
-			# 	dropIndex = self._getArguments(argument_catalogue, ["dropIndex"])
-			# 	preDropFunction, preDropFunctionArgs, preDropFunctionKwargs = self._getArguments(argument_catalogue, ["preDropFunction", "preDropFunctionArgs", "preDropFunctionKwargs"])
-			# 	postDropFunction, postDropFunctionArgs, postDropFunctionKwargs = self._getArguments(argument_catalogue, ["postDropFunction", "postDropFunctionArgs", "postDropFunctionKwargs"])
-			# 	dragOverFunction, dragOverFunctionArgs, postDropFunctionKwargs = self._getArguments(argument_catalogue, ["dragOverFunction", "dragOverFunctionArgs", "postDropFunctionKwargs"])
+			#   dropIndex = self._getArguments(argument_catalogue, ["dropIndex"])
+			#   preDropFunction, preDropFunctionArgs, preDropFunctionKwargs = self._getArguments(argument_catalogue, ["preDropFunction", "preDropFunctionArgs", "preDropFunctionKwargs"])
+			#   postDropFunction, postDropFunctionArgs, postDropFunctionKwargs = self._getArguments(argument_catalogue, ["postDropFunction", "postDropFunctionArgs", "postDropFunctionKwargs"])
+			#   dragOverFunction, dragOverFunctionArgs, postDropFunctionKwargs = self._getArguments(argument_catalogue, ["dragOverFunction", "dragOverFunctionArgs", "postDropFunctionKwargs"])
 				
-			# 	self.myDropTarget = self._DragTextDropTarget(self.thing, dropIndex,
-			# 		preDropFunction = preDropFunction, preDropFunctionArgs = preDropFunctionArgs, preDropFunctionKwargs = preDropFunctionKwargs, 
-			# 		postDropFunction = postDropFunction, postDropFunctionArgs = postDropFunctionArgs, postDropFunctionKwargs = postDropFunctionKwargs,
-			# 		dragOverFunction = dragOverFunction, dragOverFunctionArgs = dragOverFunctionArgs, dragOverFunctionKwargs = postDropFunctionKwargs)
-			# 	self.thing.SetDropTarget(self.myDropTarget)
+			#   self.myDropTarget = self._DragTextDropTarget(self.thing, dropIndex,
+			#       preDropFunction = preDropFunction, preDropFunctionArgs = preDropFunctionArgs, preDropFunctionKwargs = preDropFunctionKwargs, 
+			#       postDropFunction = postDropFunction, postDropFunctionArgs = postDropFunctionArgs, postDropFunctionKwargs = postDropFunctionKwargs,
+			#       dragOverFunction = dragOverFunction, dragOverFunctionArgs = dragOverFunctionArgs, dragOverFunctionKwargs = postDropFunctionKwargs)
+			#   self.thing.SetDropTarget(self.myDropTarget)
 
 			# #Bind the function(s)
 			self._betterBind(wx.EVT_LIST_ITEM_SELECTED, self.thing, self._onSelect, rebind = False)
 
 			# myFunction, preEditFunction, postEditFunction = self._getArguments(argument_catalogue, ["myFunction", "preEditFunction", "postEditFunction"])
 			# if (myFunction != None):
-			# 	myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
-			# 	self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
+			#   myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
+			#   self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
 
 			# if (preEditFunction):
-			# 	preEditFunctionArgs, preEditFunctionKwargs = self._getArguments(argument_catalogue, ["preEditFunctionArgs", "preEditFunctionKwargs"])
-			# 	self.setFunction_preEdit(preEditFunction, preEditFunctionArgs, preEditFunctionKwargs)
+			#   preEditFunctionArgs, preEditFunctionKwargs = self._getArguments(argument_catalogue, ["preEditFunctionArgs", "preEditFunctionKwargs"])
+			#   self.setFunction_preEdit(preEditFunction, preEditFunctionArgs, preEditFunctionKwargs)
 
 			# if (postEditFunction):
-			# 	postEditFunctionArgs, postEditFunctionKwargs = self._getArguments(argument_catalogue, ["postEditFunctionArgs", "postEditFunctionKwargs"])
-			# 	self.setFunction_postEdit(postEditFunction, postEditFunctionArgs, postEditFunctionKwargs)
+			#   postEditFunctionArgs, postEditFunctionKwargs = self._getArguments(argument_catalogue, ["postEditFunctionArgs", "postEditFunctionKwargs"])
+			#   self.setFunction_postEdit(postEditFunction, postEditFunctionArgs, postEditFunctionKwargs)
 
 			# if (editOnClick):
-			# 	pass
+			#   pass
 
 		def _build_listTree():
 			"""Builds a wx choice object."""
@@ -7520,7 +7516,6 @@ class handle_WidgetList(handle_Widget_Base):
 			value = {}
 			root = self.thing.GetRootItem()
 
-			print("@1.1", self.subType.lower())
 			if (self.subType.lower() == "hiddenroot"):
 				rootText = None
 			else:
@@ -7529,7 +7524,6 @@ class handle_WidgetList(handle_Widget_Base):
 			if (self.thing.ItemHasChildren(root)):
 				first, cookie = self.thing.GetFirstChild(root)
 				text = self.thing.GetItemText(first)
-				print("@1.2", text)
 				value[rootText] = {text: None}
 
 			if (self.subType.lower() == "hiddenroot"):
@@ -7577,7 +7571,7 @@ class handle_WidgetList(handle_Widget_Base):
 		if (any((not hasattr(item, '__dict__') for item in newValue))):
 			#The user gave a list of non objects
 			if ((isinstance(newValue, (list, tuple))) and (len(newValue) != 0)):
-				newValue = [item if isinstance(item, (list, tuple)) else list(item) if isinstance(item, range) else [item] for item in newValue]		
+				newValue = [item if isinstance(item, (list, tuple)) else list(item) if isinstance(item, range) else [item] for item in newValue]        
 
 			#Ensure correct length
 			for item in newValue:
@@ -7667,7 +7661,7 @@ class handle_WidgetList(handle_Widget_Base):
 		else:
 			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
-	def setSelection(self, newValue, event = None):
+	def setSelection(self, newValue, event = None, deselectOthers = True, ensureVisible = True, group = False):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
 		if (self.type.lower() == "listdrop"):
@@ -7683,17 +7677,27 @@ class handle_WidgetList(handle_Widget_Base):
 			self.thing.SetSelection(newValue) #(int) - What the choice options will now be
 
 		elif (self.type.lower() == "listfull"):
-			if (newValue != None):
-				if (isinstance(newValue, str)):
-					newValue = self.thing.FindItem(-1, newValue)
+			if (isinstance(newValue, (range, types.GeneratorType))):
+				newValue = list(newValue)
+			elif (not isinstance(newValue, (list, tuple, dict))):
+				newValue = [newValue]
 
-				if (newValue == None):
-					errorMessage = f"Invalid drop list selection in setSelection() for {self.__repr__()}"
-					raise ValueError(errorMessage)
+			if (any((not hasattr(item, '__dict__') for item in newValue))):
+				ikiklk
 			else:
-				newValue = 0
-			self.thing.Select(newValue) #(int) - What the choice options will now be
+				objectList = newValue
 
+			if (group):
+				self.thing.SelectGroups(objectList, deselectOthers = deselectOthers)
+				if (ensureVisible):
+					self.thing.SelectGroup(objectList[0], deselectOthers = False, ensureVisible = ensureVisible)
+					self.thing.Reveal(objectList[0])
+			else:
+				self.thing.SelectObjects(objectList, deselectOthers = deselectOthers)
+				if (ensureVisible):
+					self.thing.SelectObject(objectList[0], deselectOthers = False, ensureVisible = ensureVisible)
+					self.thing.Reveal(objectList[0])
+			
 		else:
 			warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -8186,7 +8190,7 @@ class handle_WidgetList(handle_Widget_Base):
 			if (row == None):
 				rowList = range(rowCount)
 
-			elif (isinstance(row, slice)):				
+			elif (isinstance(row, slice)):              
 				if (row.start != None):
 					if (row.start > rowCount):
 						errorMessage = f"{row.start} is less than {rowCount}; not enough rows for start in setRowColor for {self.__repr__()}"
@@ -8799,12 +8803,12 @@ class handle_WidgetInput(handle_Widget_Base):
 				self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
 	
 			# if (changeTextFunction != None):
-			# 	if (isinstance(changeTextFunction, bool)):
-			# 		if (changeTextFunction and (myFunction != None)):
-			# 			self._betterBind(wx.EVT_TEXT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-			# 	else:
-			# 		changeTextFunctionArgs, changeTextFunctionKwargs = self._getArguments(argument_catalogue, ["changeTextFunctionArgs", "changeTextFunctionKwargs"])
-			# 		self._betterBind(wx.EVT_TEXT, self.thing, changeTextFunction, changeTextFunctionArgs, changeTextFunctionKwargs)
+			#   if (isinstance(changeTextFunction, bool)):
+			#       if (changeTextFunction and (myFunction != None)):
+			#           self._betterBind(wx.EVT_TEXT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			#   else:
+			#       changeTextFunctionArgs, changeTextFunctionKwargs = self._getArguments(argument_catalogue, ["changeTextFunctionArgs", "changeTextFunctionKwargs"])
+			#       self._betterBind(wx.EVT_TEXT, self.thing, changeTextFunction, changeTextFunctionArgs, changeTextFunctionKwargs)
 
 			if (not ((self.exclude == None) or (isinstance(self.exclude, (list, tuple, range)) and (len(self.exclude) == 0)))):
 				self._betterBind(wx.EVT_KILL_FOCUS, self.thing, self._onCheckValue_exclude)
@@ -9562,10 +9566,10 @@ class handle_WidgetPicker(handle_Widget_Base):
 			myId = self._getId(argument_catalogue)
 
 			# if (initialDir == None):
-			# 	initialDir = ""
+			#   initialDir = ""
 
 			# if (initialFile == None):
-			# 	initialFile = ""
+			#   initialFile = ""
 
 			wildcard = self._getWildcard(wildcard)
 
@@ -11043,9 +11047,9 @@ class handle_MenuItem(handle_Widget_Base):
 
 					#Configure Settings
 					# if (toolTip == None):
-					# 	toolTip = ""
+					#   toolTip = ""
 					# elif (not isinstance(toolTip, str)):
-					# 	toolTip = f"{toolTip}"
+					#   toolTip = f"{toolTip}"
 
 					if (check == None):
 						self.subType = "normal"
@@ -13796,14 +13800,14 @@ class handle_WidgetTable(handle_Widget_Base):
 			# rowList = range(self.thing.GetNumberRows()) if (row == None) else [row]
 			# columnList = range(self.thing.GetNumberCols()) if (column == None) else [column]
 			# for _row in rowList:
-			# 	for _column in columnList:
-			# 		if (isinstance(cellType[None], str) and (cellType[None].lower() in ["button"])):
-			# 			if (not self.thing.IsReadOnly(_row, _column)):
-			# 				self.thing.SetReadOnly(_row, _column, True)
-			# 		else:
-			# 			readOnly = self.getTableReadOnly(_row, _column)
-			# 			if (self.thing.IsReadOnly(_row, _column) != readOnly):
-			# 				self.thing.SetReadOnly(_row, _column, readOnly)
+			#   for _column in columnList:
+			#       if (isinstance(cellType[None], str) and (cellType[None].lower() in ["button"])):
+			#           if (not self.thing.IsReadOnly(_row, _column)):
+			#               self.thing.SetReadOnly(_row, _column, True)
+			#       else:
+			#           readOnly = self.getTableReadOnly(_row, _column)
+			#           if (self.thing.IsReadOnly(_row, _column) != readOnly):
+			#               self.thing.SetReadOnly(_row, _column, readOnly)
 
 			return cellType
 
@@ -13850,7 +13854,7 @@ class handle_WidgetTable(handle_Widget_Base):
 				# if (isinstance(item, wx.grid.GridCellRenderer)):
 				item.IncRef()
 			
-		#########################################################	
+		#########################################################   
 
 		if (cellType == None):
 			cellType = self.cellTypeDefault
@@ -14984,58 +14988,58 @@ class handle_WidgetTable(handle_Widget_Base):
 				self.GetEventHandler().ProcessEvent(event)
 
 		# def AppendCols(self, number = 1, updateLabels = True):
-		# 	"""Notifies the table when changes are made.
-		# 	Modified Code from Frank Millman on https://groups.google.com/forum/#!msg/wxpython-users/z4iobAKq0os/zzUL70WzL_AJ
-		# 	"""
+		#   """Notifies the table when changes are made.
+		#   Modified Code from Frank Millman on https://groups.google.com/forum/#!msg/wxpython-users/z4iobAKq0os/zzUL70WzL_AJ
+		#   """
 
-		# 	wx.grid.Grid.AppendCols(self, numCols = number, updateLabels = updateLabels)
-		# 	# msg = wx.grid.GridTableMessage(self.GetTable(), wx.grid.GRIDTABLE_NOTIFY_COLS_APPENDED, number)
-		# 	# self.ProcessTableMessage(msg)
+		#   wx.grid.Grid.AppendCols(self, numCols = number, updateLabels = updateLabels)
+		#   # msg = wx.grid.GridTableMessage(self.GetTable(), wx.grid.GRIDTABLE_NOTIFY_COLS_APPENDED, number)
+		#   # self.ProcessTableMessage(msg)
 
 		# def AppendRows(self, number = 1, updateLabels = True):
-		# 	"""Notifies the table when changes are made.
-		# 	Modified Code from Frank Millman on https://groups.google.com/forum/#!msg/wxpython-users/z4iobAKq0os/zzUL70WzL_AJ
-		# 	"""
+		#   """Notifies the table when changes are made.
+		#   Modified Code from Frank Millman on https://groups.google.com/forum/#!msg/wxpython-users/z4iobAKq0os/zzUL70WzL_AJ
+		#   """
 
-		# 	wx.grid.Grid.AppendRows(self, numRows = number, updateLabels = updateLabels)
-		# 	# msg = wx.grid.GridTableMessage(self.GetTable(), wx.grid.GRIDTABLE_NOTIFY_ROWS_APPENDED, number)
-		# 	# self.ProcessTableMessage(msg)
+		#   wx.grid.Grid.AppendRows(self, numRows = number, updateLabels = updateLabels)
+		#   # msg = wx.grid.GridTableMessage(self.GetTable(), wx.grid.GRIDTABLE_NOTIFY_ROWS_APPENDED, number)
+		#   # self.ProcessTableMessage(msg)
 
 		# def InsertCols(self, position = 0, number = 1):
-		# 	"""Notifies the table when changes are made.
-		# 	Modified Code from Frank Millman on https://groups.google.com/forum/#!msg/wxpython-users/z4iobAKq0os/zzUL70WzL_AJ
-		# 	"""
+		#   """Notifies the table when changes are made.
+		#   Modified Code from Frank Millman on https://groups.google.com/forum/#!msg/wxpython-users/z4iobAKq0os/zzUL70WzL_AJ
+		#   """
 
-		# 	wx.grid.Grid.InsertCols(self, pos = position, numCols = number)
-		# 	# msg = wx.grid.GridTableMessage(self.GetTable(), wx.grid.GRIDTABLE_NOTIFY_COLS_INSERTED, position, number)
-		# 	# self.ProcessTableMessage(msg)
+		#   wx.grid.Grid.InsertCols(self, pos = position, numCols = number)
+		#   # msg = wx.grid.GridTableMessage(self.GetTable(), wx.grid.GRIDTABLE_NOTIFY_COLS_INSERTED, position, number)
+		#   # self.ProcessTableMessage(msg)
 
 		# def InsertRows(self, position = 0, number = 1):
-		# 	"""Notifies the table when changes are made.
-		# 	Modified Code from Frank Millman on https://groups.google.com/forum/#!msg/wxpython-users/z4iobAKq0os/zzUL70WzL_AJ
-		# 	"""
+		#   """Notifies the table when changes are made.
+		#   Modified Code from Frank Millman on https://groups.google.com/forum/#!msg/wxpython-users/z4iobAKq0os/zzUL70WzL_AJ
+		#   """
 
-		# 	wx.grid.Grid.InsertRows(self, pos = position, numRows = number)
-		# 	# msg = wx.grid.GridTableMessage(self.GetTable(), wx.grid.GRIDTABLE_NOTIFY_ROWS_INSERTED, position, number)
-		# 	# self.ProcessTableMessage(msg)
+		#   wx.grid.Grid.InsertRows(self, pos = position, numRows = number)
+		#   # msg = wx.grid.GridTableMessage(self.GetTable(), wx.grid.GRIDTABLE_NOTIFY_ROWS_INSERTED, position, number)
+		#   # self.ProcessTableMessage(msg)
 
 		# def DeleteCols(self, position = 0, number = 1, updateLabels = True):
-		# 	"""Notifies the table when changes are made.
-		# 	Modified Code from Frank Millman on https://groups.google.com/forum/#!msg/wxpython-users/z4iobAKq0os/zzUL70WzL_AJ
-		# 	"""
+		#   """Notifies the table when changes are made.
+		#   Modified Code from Frank Millman on https://groups.google.com/forum/#!msg/wxpython-users/z4iobAKq0os/zzUL70WzL_AJ
+		#   """
 
-		# 	wx.grid.Grid.DeleteCols(self, pos = position, numCols = number, updateLabels = updateLabels)
-		# 	# msg = wx.grid.GridTableMessage(self.GetTable(), wx.grid.GRIDTABLE_NOTIFY_COLS_DELETED, position, number)
-		# 	# self.ProcessTableMessage(msg)
+		#   wx.grid.Grid.DeleteCols(self, pos = position, numCols = number, updateLabels = updateLabels)
+		#   # msg = wx.grid.GridTableMessage(self.GetTable(), wx.grid.GRIDTABLE_NOTIFY_COLS_DELETED, position, number)
+		#   # self.ProcessTableMessage(msg)
 
 		# def DeleteRows(self, position = 0, number = 1, updateLabels = True):
-		# 	"""Notifies the table when changes are made.
-		# 	Modified Code from Frank Millman on https://groups.google.com/forum/#!msg/wxpython-users/z4iobAKq0os/zzUL70WzL_AJ
-		# 	"""
+		#   """Notifies the table when changes are made.
+		#   Modified Code from Frank Millman on https://groups.google.com/forum/#!msg/wxpython-users/z4iobAKq0os/zzUL70WzL_AJ
+		#   """
 
-		# 	wx.grid.Grid.DeleteRows(self, pos = position, numRows = number, updateLabels = updateLabels)
-		# 	# msg = wx.grid.GridTableMessage(self.GetTable(), wx.grid.GRIDTABLE_NOTIFY_ROWS_DELETED, position, number)
-		# 	# self.ProcessTableMessage(msg)
+		#   wx.grid.Grid.DeleteRows(self, pos = position, numRows = number, updateLabels = updateLabels)
+		#   # msg = wx.grid.GridTableMessage(self.GetTable(), wx.grid.GRIDTABLE_NOTIFY_ROWS_DELETED, position, number)
+		#   # self.ProcessTableMessage(msg)
 
 	####################################################################################################        
 	class _TableCellEditor(wx.grid.GridCellEditor):
@@ -15124,14 +15128,14 @@ class handle_WidgetTable(handle_Widget_Base):
 					self.myCellControl.Enable(False)
 
 			#Use a text box
-			else:				
+			else:               
 				#Check how the enter key is processed
 				if (self.downOnEnter):
 					style += "|wx.TE_PROCESS_ENTER"
 
 				# #Check readOnly
 				# if (self.parent.getTableCurrentCellReadOnly(event = event)):
-				# 	style += "|wx.TE_READONLY"
+				#   style += "|wx.TE_READONLY"
 
 				#Strip of extra divider
 				if (style != ""):
@@ -17850,11 +17854,11 @@ class handle_Window(handle_Container_Base):
 			self.thing = wx.Frame(None, title = title, size = size, pos = position, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 			# if (smallerThanScreen not in [None, False]):
-			# 	screenSize = self.getScreenSize()
-			# 	if (isinstance(smallerThanScreen, int)):
-			# 		self.thing.SetMaxSize(screenSize[smallerThanScreen])
-			# 	else:
-			# 		self.thing.SetMaxSize(map(sum, zip(*screenSize)))
+			#   screenSize = self.getScreenSize()
+			#   if (isinstance(smallerThanScreen, int)):
+			#       self.thing.SetMaxSize(screenSize[smallerThanScreen])
+			#   else:
+			#       self.thing.SetMaxSize(map(sum, zip(*screenSize)))
 			
 			#Add Properties
 			icon, internal = self._getArguments(argument_catalogue, ["icon", "internal"])
@@ -17926,7 +17930,7 @@ class handle_Window(handle_Container_Base):
 				style += "|wx.STAY_ON_TOP"
 
 			# if (helpButton):
-			# 	style += "|wx.DIALOG_EX_CONTEXTHELP"
+			#   style += "|wx.DIALOG_EX_CONTEXTHELP"
 
 			if (resize):
 				style += "|wx.RESIZE_BORDER"
@@ -19116,7 +19120,7 @@ class handle_Window(handle_Container_Base):
 					# self.mainPanel.thing.Update()
 
 				# if (self.mainSizer != None):
-				# 	self.mainSizer.thing.Layout() 
+				#   self.mainSizer.thing.Layout() 
 
 				self.thing.Layout()
 				self.thing.Refresh()
@@ -22333,6 +22337,36 @@ class _mp_CallArgsInfo:
 
 pubsub.core.callables.CallArgsInfo = _mp_CallArgsInfo
 
+def _mp_SelectGroup(self, modelObject, deselectOthers=True, ensureVisible=False):
+	"""Overridden to allow group selections."""
+
+	if (deselectOthers):
+		self.DeselectAll()
+
+	item = self.GetNextItem(-1, wx.LIST_NEXT_ALL, wx.LIST_STATE_DONTCARE)
+	while (item != -1):
+		model = self.innerList[item]
+		if ((isinstance(model, ObjectListView.ListGroup)) and (modelObject in model.modelObjects)):
+			realIndex = self._MapModelIndexToListIndex(item)
+			self.SetItemState(realIndex, wx.LIST_STATE_SELECTED, wx.LIST_STATE_SELECTED)
+
+			if (ensureVisible):
+				self.EnsureVisible(realIndex)
+			break
+
+		item = self.GetNextItem(item, wx.LIST_NEXT_ALL, wx.LIST_STATE_DONTCARE)
+
+def _mp_SelectGroups(self, modelObjects, deselectOthers=True):
+	"""Overridden to allow group selections."""
+	if deselectOthers:
+		self.DeselectAll()
+
+	for x in modelObjects:
+		self.SelectGroup(x, False)
+
+ObjectListView.GroupListView.SelectGroup = _mp_SelectGroup
+ObjectListView.GroupListView.SelectGroups = _mp_SelectGroups
+
 #User Things
 class User_Utilities():
 	def __init__(self, catalogue_variable = None, label_variable = None, **kwargs):
@@ -22373,13 +22407,13 @@ class User_Utilities():
 		return self._get(dataCatalogue, key, returnExists = True)
 
 		# if (key in self[:]):
-		# 	return True
+		#   return True
 		# else:
-		# 	if (hasattr(self, "_catalogue_variable") and (self._label_variable != None)):
-		# 		for item in self[:]:
-		# 			if (hasattr(item, self._label_variable)):
-		# 				if (key == getattr(item, self._label_variable)):
-		# 					return True
+		#   if (hasattr(self, "_catalogue_variable") and (self._label_variable != None)):
+		#       for item in self[:]:
+		#           if (hasattr(item, self._label_variable)):
+		#               if (key == getattr(item, self._label_variable)):
+		#                   return True
 		# return False
 
 	def __iter__(self):
