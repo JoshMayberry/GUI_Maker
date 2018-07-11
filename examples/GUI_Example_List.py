@@ -53,6 +53,26 @@ def onCheck(event):
 			print(subItem.text)
 	event.Skip()
 
+def onSort(event):
+	for item in ["list_1", "list_2"]:
+		myWidget = gui[0][item]
+
+		if (myWidget.getSortColumn() == None):
+			myWidget.sortBy("text")
+		elif (myWidget.getSortColumn() == "text"):
+			myWidget.sortBy("rating")
+		else:
+			myWidget.sortBy()
+	event.Skip()
+
+def onUserSort(event):
+	state = gui[0].getValue(event)
+	for item in ["list_1", "list_2"]:
+		myWidget = gui[0][item]
+		myWidget.enableUserSort(state)
+		
+	event.Skip()
+
 #Manipulator Functions
 def getStatus(item):
 	if (item.text in ["Lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit", "sed"]):
@@ -85,7 +105,7 @@ def buildWindow():
 			mySizer.growFlexColumn(0)
 
 			with mySizer.addListFull(label = "list_1", choices = makeList(4, 7), columns = 2, columnLabels = {1: "text"}, columnFormatter = {0: formatText}, 
-				check = 2, group = {1: True}, groupFormatter = {0: formatGroup}, columnTitles = {0: "rating", 1: "text", 2: "select"}, 
+				check = 2, group = {1: True}, groupFormatter = {0: formatGroup}, columnTitles = {0: "rating", 1: "text", 2: "select"}, sortable = False,
 				columnWidth = {0: 100}, editable = {1: True}, columnImage = {0: "bullet", 1: getStatus}) as myWidget:
 
 				myWidget.addImage("bullet", "info", internal = True)
@@ -99,6 +119,7 @@ def buildWindow():
 
 			with mySizer.addListFull(label = "list_2") as myWidget:
 				myWidget.setColor(even = (200, 200, 200), odd = (250, 180, 180))
+				myWidget.enableUserSort(False)
 
 				myWidget.addImage("bullet", "info", internal = True)
 				myWidget.addImage("good", "lightBulb", internal = True)
@@ -118,6 +139,8 @@ def buildWindow():
 			mySizer.addButton("Append", myFunction = onAppend)
 			mySizer.addButton("Color", myFunction = onColor)
 			mySizer.addButton("Get Checked", myFunction = onCheck)
+			mySizer.addButton("Sort", myFunction = onSort)
+			mySizer.addButtonToggle("Allow User Sort", myFunction = onUserSort)
 
 #Run Program
 if __name__ == '__main__':

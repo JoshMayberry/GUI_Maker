@@ -156,8 +156,7 @@ class _Iterator(object):
 				self.order = [key for key in self.data.keys() if key != None]
 			else:
 				self.order = [key if key != None else "" for key in self.data.keys()]
-			self.order.sort()
-
+			self.order = sorted(self.order, key = lambda item: f"{item}")
 			self.order = [key if key != "" else None for key in self.order]
 
 	def __iter__(self):
@@ -3135,7 +3134,9 @@ class Utilities():
 		return handle
 
 	def _makeListFull(self, choices = [], default = False, single = False, editable = False,
-		editOnClick = True, cellType = None, cellTypeDefault = "text", engine = 1, sortable = True,
+		editOnClick = True, cellType = None, cellTypeDefault = "text", engine = 1, 
+
+		sortable = True, sortFunction = None,
 
 		columns = None, columnTitles = {}, columnWidth = {}, columnLabels = {},
 		columnImage = {}, columnAlign = {}, columnFormatter = {}, check = None,
@@ -3599,6 +3600,7 @@ class Utilities():
 	def _makeButtonToggle(self, text = "", 
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
+		pressed = False,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
 		label = None, parent = None, handle = None, myId = None):
@@ -7029,6 +7031,7 @@ class handle_WidgetList(handle_Widget_Base):
 		#Internal Variables
 		self.dragable = False
 		self.myDropTarget = None
+		self.groupOrder = None
 
 		self.checkColumn = None
 		self.columnCatalogue = {}
@@ -7122,6 +7125,8 @@ class handle_WidgetList(handle_Widget_Base):
 			Use: https://www.codeproject.com/KB/list/objectlistview.aspx
 			Use: https://www.codeproject.com/Articles/16009/A-Much-Easier-to-Use-ListView
 			Use: http://code.activestate.com/recipes/577543-objectlistview-getcolumnclickedevent-handler/
+			Use: http://www.blog.pythonlibrary.org/2013/12/12/wxpython-adding-tooltips-objectlistview/
+			Use: http://www.blog.pythonlibrary.org/2017/11/16/wxpython-moving-items-in-objectlistview/
 			"""
 			nonlocal self, argument_catalogue
 
@@ -7139,9 +7144,10 @@ class handle_WidgetList(handle_Widget_Base):
 			columnTitles, columnWidth, check = self._getArguments(argument_catalogue, ["columnTitles", "columnWidth", "check"])
 			report, single, editable, editOnClick, columnLabels = self._getArguments(argument_catalogue, ["report", "single", "editable", "editOnClick", "columnLabels"])
 			columnImage, columnAlign, columnFormatter = self._getArguments(argument_catalogue, ["columnImage", "columnAlign", "columnFormatter"])
-			border, rowLines, columnLines, sortable = self._getArguments(argument_catalogue, ["border", "rowLines", "columnLines", "sortable"])
+			border, rowLines, columnLines = self._getArguments(argument_catalogue, ["border", "rowLines", "columnLines"])
 			columns, drag, drop, choices, engine = self._getArguments(argument_catalogue, ["columns", "drag", "drop", "choices", "engine"])
 			group, groupFormatter, groupSeparator = self._getArguments(argument_catalogue, ["group", "groupFormatter", "groupSeparator"])
+			sortable, sortFunction = self._getArguments(argument_catalogue, ["sortable", "sortFunction"])
 
 			#Determine style
 			if (report):
@@ -7192,6 +7198,7 @@ class handle_WidgetList(handle_Widget_Base):
 			self.thing = self._ListFull(self, self.parent.thing, myId = myId, style = style, sortable = sortable)
 			self.thing.SetShowGroups(any((value != None) for value in group.values()))
 			self.thing.putBlankLineBetweenGroups = groupSeparator
+			self.setSortFunction(sortFunction)
 
 			if (editOnClick != None):
 				if (editOnClick):
@@ -7244,6 +7251,7 @@ class handle_WidgetList(handle_Widget_Base):
 
 			# #Bind the function(s)
 			self._betterBind(wx.EVT_LIST_ITEM_SELECTED, self.thing, self._onSelect, rebind = False)
+			self._betterBind(ObjectListView.EVT_GROUP_SORT, self.thing, self._onSortGroup, mode = 2)
 
 			# myFunction, preEditFunction, postEditFunction = self._getArguments(argument_catalogue, ["myFunction", "preEditFunction", "postEditFunction"])
 			# if (myFunction != None):
@@ -7779,6 +7787,7 @@ class handle_WidgetList(handle_Widget_Base):
 
 			if (refresh):
 				self.refreshColumns()
+				self.refresh()
 		else:
 			warnings.warn(f"Add {self.type} to setColumns() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -7808,6 +7817,7 @@ class handle_WidgetList(handle_Widget_Base):
 		self.checkColumn = column
 		if (refresh):
 			self.refreshColumns()
+			self.refresh()
 
 	def hideGroup(self, column = None, state = True, refresh = True):
 		"""Turns off row grouping.
@@ -7937,6 +7947,76 @@ class handle_WidgetList(handle_Widget_Base):
 			self.selectionColor = self._getColor(selected)
 		if (group != None):
 			self.thing.groupBackgroundColour = self._getColor(group)
+
+	def getSortColumn(self):
+		column = self.thing.GetSortColumn()
+		
+		if (column != None):
+			return self.thing.columns.index(column)
+
+	def getGroupColumn(self):
+		column = self.thing.GetGroupByColumn()
+
+		if (column != None):
+			return self.thing.columns.index(column)
+
+	def sortBy(self, label = None, ascending = True):
+		if (label == None):
+			self.thing.SetSortColumn(None, resortNow = True)
+			self.refreshColumns()
+			self.refresh()
+			return
+
+		if (not hasattr(label, '__dict__')):
+			#The user passed in a non-object
+			for _column, catalogue in self.columnCatalogue.items():
+				if ((label == _column) or (label == catalogue["title"])):
+					column = _column
+					break
+			else:
+				errorMessage = f"Unknown column {label} in sortBy() for {self.__repr__()}"
+				raise KeyError(errorMessage)
+		else:
+			#The user passed in an object
+			jhkjkkjhjk
+
+		if (self.thing.GetShowGroups()):
+			self.thing.SortBy(column + 1)#, resortNow = True)
+		else:
+			self.thing.SortBy(column)#, resortNow = True)
+
+	def sortGroups(self, ascending = True):
+		# self.thing.SortGroups(ascending = ascending)
+
+		def _getLowerCaseKey(group):
+			try:
+				return group.key.lower()
+			except:
+				return group.key
+
+		if (self.thing.defaultGroupSortFunction == None):
+			sortFunction = _getLowerCaseKey
+		else:
+			sortFunction = self.thing.defaultGroupSortFunction
+
+		groups = sorted(self.thing.groups, key = sortFunction, reverse = not ascending)
+
+		#Order the groups
+		self.thing._SetGroups(groups)
+
+	def enableUserSort(self, state = True):
+		if (state):
+			self.thing.EnableSorting()
+		else:
+			self.thing.DisableSorting()
+
+	def setSortFunction(self, myFunction = None):
+		self.thing.SetDefaultSortFunction(myFunction)
+
+	def setGroupSortFunction(self, myFunction = None):
+		self.thing.SetDefaultGroupSortFunction(myFunction) 
+		# self.thing.SetDefaultGroupSortFunction(lambda *args, **kwargs: myFunction(*args, 
+		# 	sortColumn = self.thing.GetSortColumn().title if self.thing.GetAlwaysGroupByColumn() else self.thing.GetGroupByColumn().title, **kwargs))
 
 	def addImage(self, label, imagePath, internal = False):
 		"""Adds an image to the image catalogue.
@@ -8302,6 +8382,31 @@ class handle_WidgetList(handle_Widget_Base):
 		"""Tracks the last selection made."""
 
 		self.lastSelection = self.getValue()
+		event.Skip()
+
+	def _onSortGroup(self, event):
+		"""Uses the left most column to sort groups, and the rest to sort items."""
+
+		def _getLowerCaseKey(group):
+			try:
+				return group.key.lower()
+			except:
+				return group.key
+
+		self.thing.rebuildGroup_onColumnClick = False
+
+		if ((event.sortColumn != None) and (self.thing.columns.index(event.sortColumn) == 0)):
+			if (self.thing.defaultGroupSortFunction == None):
+				sortFunction = _getLowerCaseKey
+			else:
+				sortFunction = self.thing.defaultGroupSortFunction
+			groups = sorted(event.groups, key = sortFunction, reverse = not event.sortAscending)
+			self.thing.groups = groups
+		else:
+			for x in event.groups:
+				self.thing._SortObjects(x.modelObjects, event.sortColumn, self.thing.GetPrimaryColumn())
+
+		event.Handled()
 		event.Skip()
 
 	class _ListFull(ObjectListView.GroupListView):
@@ -9083,13 +9188,13 @@ class handle_WidgetButton(handle_Widget_Base):
 			"""Builds a wx toggle button object."""
 			nonlocal self, argument_catalogue
 
-			text, myFunction = self._getArguments(argument_catalogue, ["text", "myFunction"])
+			text, myFunction, pressed = self._getArguments(argument_catalogue, ["text", "myFunction", "pressed"])
 
 			myId = self._getId(argument_catalogue)
 
 			#Create the thing to put in the grid
 			self.thing = wx.ToggleButton(self.parent.thing, id = myId, label = text, style = 0)
-			self.thing.SetValue(True) 
+			self.thing.SetValue(pressed) 
 
 			#Bind the function(s)
 			if (myFunction != None):
@@ -22370,6 +22475,7 @@ def _mp_SelectGroup(self, modelObject, deselectOthers=True, ensureVisible=False)
 
 def _mp_SelectGroups(self, modelObjects, deselectOthers=True):
 	"""Overridden to allow group selections."""
+
 	if deselectOthers:
 		self.DeselectAll()
 
@@ -22378,6 +22484,135 @@ def _mp_SelectGroups(self, modelObjects, deselectOthers=True):
 
 ObjectListView.GroupListView.SelectGroup = _mp_SelectGroup
 ObjectListView.GroupListView.SelectGroups = _mp_SelectGroups
+
+def _mp_DisableSorting(self):
+	"""Created to allow undoing EnableSorting()."""
+
+	self.Unbind(wx.EVT_LIST_COL_CLICK, handler = self._HandleColumnClick)
+
+ObjectListView.ObjectListView.DisableSorting = _mp_DisableSorting
+
+def _mp_SortObjects(self, modelObjects=None, sortColumn=None, secondarySortColumn=None):
+	"""Overriden to enable sorting None and using a different sorting key"""
+	if modelObjects is None:
+		modelObjects = self.modelObjects
+	if sortColumn is None:
+		sortColumn = self.GetSortColumn()
+	if secondarySortColumn == sortColumn:
+		secondarySortColumn = None
+
+	# If we don't have a sort column, we can't sort -- duhh
+	if sortColumn is None:
+		return
+
+	# Let the world have a chance to sort the model objects
+	evt = ObjectListView.OLVEvent.SortEvent(
+		self,
+		self.sortColumnIndex,
+		self.sortAscending,
+		True)
+	self.GetEventHandler().ProcessEvent(evt)
+	if evt.IsVetoed() or evt.wasHandled:
+		return
+
+	# When sorting large groups, this is called a lot. Make it efficent.
+	# It is more efficient (by about 30%) to try to call lower() and catch the
+	# exception than it is to test for the class
+	def _getSortValue(x):
+		primary = sortColumn.GetValue(x)
+		try:
+			primary = primary.lower()
+		except AttributeError:
+			pass
+		if secondarySortColumn:
+			secondary = secondarySortColumn.GetValue(x)
+			try:
+				secondary = secondary.lower()
+			except AttributeError:
+				pass
+			return (primary is None, primary, secondary)
+		else:
+			return (primary is None, primary)
+
+	if (not hasattr(self, "defaultSortFunction")):
+		self.defaultSortFunction = None
+
+	if (self.defaultSortFunction != None):
+		modelObjects.sort(key=self.defaultSortFunction, reverse=(not self.sortAscending))
+	else:
+		modelObjects.sort(key=_getSortValue, reverse=(not self.sortAscending))
+
+	# Sorting invalidates our object map
+	self.objectToIndexMap = None
+
+def _mp_SetDefaultSortFunction(self, function):
+	self.defaultSortFunction = function
+
+def _mp_SortGroups(self, groups=None, ascending=None):
+	"""Overriden to allow using a different sorting key"""
+
+	if groups is None:
+		groups = self.groups
+	if ascending is None:
+		ascending = self.sortAscending
+
+	# If the groups are locked, we sort by the sort column, otherwise by the grouping column.
+	# The primary column is always used as a secondary sort key.
+	if self.GetAlwaysGroupByColumn():
+		sortCol = self.GetSortColumn()
+	else:
+		sortCol = self.GetGroupByColumn()
+
+	# Let the world have a change to sort the items
+	evt = ObjectListView.OLVEvent.SortGroupsEvent(self, groups, sortCol, ascending)
+	self.GetEventHandler().ProcessEvent(evt)
+	if evt.wasHandled:
+		return
+
+	# Sorting event wasn't handled, so we do the default sorting
+	def _getLowerCaseKey(group):
+		try:
+			return group.key.lower()
+		except:
+			return group.key
+
+	if (not hasattr(self, "defaultGroupSortFunction")):
+		self.defaultGroupSortFunction = None
+
+	if (self.defaultGroupSortFunction == None):
+		sortFunction = _getLowerCaseKey
+	else:
+		sortFunction = self.defaultGroupSortFunction
+
+	groups = sorted(groups, key = sortFunction, reverse = not ascending)
+	self.groups = groups
+
+	# Sort the model objects within each group.
+	for x in groups:
+		self._SortObjects(x.modelObjects, sortCol, self.GetPrimaryColumn())
+
+def _mp_SetDefaultGroupSortFunction(self, function):
+	self.defaultGroupSortFunction = function
+
+ObjectListView.GroupListView.SortGroups = _mp_SortGroups
+ObjectListView.ObjectListView._SortObjects = _mp_SortObjects
+ObjectListView.ObjectListView.SetDefaultSortFunction = _mp_SetDefaultSortFunction
+ObjectListView.ObjectListView.SetDefaultGroupSortFunction = _mp_SetDefaultGroupSortFunction
+
+def _mp_HandleColumnClick(self, event):
+	"""Overridden to allow for user customization."""
+
+	if (not hasattr(self, "rebuildGroup_onColumnClick")):
+		self.defaultGroupSortFunction = True
+
+	# If they click on a new column, we have to rebuild our groups
+	if (self.rebuildGroup_onColumnClick and (evt.GetColumn() != self.sortColumnIndex)):
+		self.groups = None
+
+	ObjectListView.FastObjectListView._HandleColumnClick(self, event)
+
+ObjectListView.GroupListView._HandleColumnClick = _mp_HandleColumnClick
+
 
 #User Things
 class User_Utilities():
@@ -22527,7 +22762,7 @@ class User_Utilities():
 
 			handleList = []
 			begin = False
-			for item in sorted(itemCatalogue.keys()):
+			for item in sorted(itemCatalogue.keys(), key = lambda item: f"{item}"):
 				#Allow for slicing with non-integers
 				if ((not begin) and ((itemLabel.start == None) or (itemCatalogue[item].label == itemLabel.start))):
 					begin = True
