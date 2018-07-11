@@ -7819,6 +7819,12 @@ class handle_WidgetList(handle_Widget_Base):
 			self.refreshColumns()
 			self.refresh()
 
+	def expandAll(self):
+		self.thing.ExpandAll()
+
+	def collapseAll(self):
+		self.thing.CollapseAll()
+
 	def hideGroup(self, column = None, state = True, refresh = True):
 		"""Turns off row grouping.
 
