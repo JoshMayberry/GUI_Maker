@@ -5222,7 +5222,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 		if (not isinstance(self, handle_Dialog)):
 			if (label != None):
 				if (label in buildSelf.labelCatalogue):
-					warnings.warn(f"Overwriting label association for {label} in {buildSelf.__repr__()}", Warning, stacklevel = 2)
+					warnings.warn(f"Overwriting label association for {label} in {buildSelf.__repr__()}", Warning, stacklevel = 4)
 
 				buildSelf.labelCatalogue[self.label] = self
 				buildSelf.labelCatalogueOrder.append(self.label)
@@ -13961,7 +13961,9 @@ class handle_WidgetTable(handle_Widget_Base):
 		Example Input: getTableCellValue(1, 2)
 		"""
 
-		#Error Checking
+		if ((row == -1) or (column == -1)):
+			return None #Nothing Selected
+
 		if ((row == None) and (column == None)):
 			value = []
 			for i in range(self.thing.GetNumberRows()):
@@ -14748,7 +14750,11 @@ class handle_WidgetTable(handle_Widget_Base):
 			else:
 				n = nColumns
 
-			itemSize = {None: math.floor(totalSize[int(row)] / (len(itemList)))}
+			if (len(itemList) == 0):
+				itemSize = None
+				return itemSize
+			else:
+				itemSize = {None: math.floor(totalSize[int(row)] / (len(itemList)))}
 
 			#Account for not converging upon a solution
 			for tries in range(distributeAttempts):
@@ -14781,23 +14787,29 @@ class handle_WidgetTable(handle_Widget_Base):
 				else:
 					myFunction(item, itemSize[None])
 
-		#Enable Disableing
-		if ((self.autoSizeRow[None] != None) or (self.autoSizeColumn[None] != None)):
-			nRows = self.thing.GetNumberRows()
-			nColumns = self.thing.GetNumberCols()
+		##############################################################
 
-			rowList = find(self.autoSizeRow, self.rowSize, row = True)
-			columnList = find(self.autoSizeColumn, self.columnSize, row = False)
+		try:
+			if ((self.autoSizeRow[None] != None) or (self.autoSizeColumn[None] != None)):
+				nRows = self.thing.GetNumberRows()
+				nColumns = self.thing.GetNumberCols()
 
-			totalSize = self.thing.GetGridWindow().GetSize()
-			rowSize = calculate(self.rowSizeMaximum, rowList, row = True)
-			columnSize = calculate(self.columnSizeMaximum, columnList, row = False)
+				rowList = find(self.autoSizeRow, self.rowSize, row = True)
+				columnList = find(self.autoSizeColumn, self.columnSize, row = False)
 
-			apply(rowList, rowSize, row = True)
-			apply(columnList, columnSize, row = False)
+				totalSize = self.thing.GetGridWindow().GetSize()
+				rowSize = calculate(self.rowSizeMaximum, rowList, row = True)
+				columnSize = calculate(self.columnSizeMaximum, columnList, row = False)
 
-		if (event != None):
-			event.Skip()
+				if ((rowSize == None) or (columnSize == None)):
+					return
+
+				apply(rowList, rowSize, row = True)
+				apply(columnList, columnSize, row = False)
+
+		finally:
+			if (event != None):
+				event.Skip()
 	
 	def _onTableButton(self, event, pressed):
 		"""Allows "button" cell types to function properly."""
@@ -22584,7 +22596,8 @@ class User_Utilities():
 
 		return data
 
-	def getOrder(self, variable, includeMissing = True, where = None, exclude = [], sortNone = False, reverse = False, getFunction = None, compareFunction = None):
+	def getOrder(self, variable, includeMissing = True, where = None, exclude = [], sortNone = False, reverse = False, 
+		getFunction = None, compareFunction = None):
 		"""Returns a list of children in order according to the variable given.
 		Special thanks to Andrew Dalke for how to sort objects by attributes on https://wiki.python.org/moin/HowTo/Sorting#Key_Functions
 
@@ -22593,29 +22606,36 @@ class User_Utilities():
 		includeMissing (bool) - Determiens what to do with children who do not have the requested variable
 		getFunction (function) - What function to run to get the value of this variable where the args are [handle, variable]
 			- If None: will use getattr
+		exclude (list) - What handles should not be included
+			- If function: Determine if the handle should be excluded where the args are [handle]
 
 		Example Input: getOrder("order")
 		Example Input: getOrder("order", includeMissing = False, sortNone = None)
 		Example Input: getOrder("order", getFunction = lambda item, variable: getattr(item, variable.name))
 		Example Input: getOrder("order", where = {"inventoryTitle": None}, compareFunction = lambda item, where: all(item.getAttribute(variable) != value for variable, value in where.items()))
+		Example Input: getOrder("order", exclude = lambda handle: not handle.removePending)
 		"""
 
-		if (not isinstance(exclude, (list, tuple, range))):
-			exclude = [exclude]
+		if (not callable(exclude)):
+			if (not isinstance(exclude, (list, tuple, range, types.GeneratorType))):
+				exclude = [exclude]
+			excludeFunction = lambda handle: handle in exclude
+		else:
+			excludeFunction = exclude
 		if (getFunction == None):
 			getFunction = getattr
 
 		if (variable == None):
-			handleList = self.getHandle(where = where, exclude = exclude, getFunction = getFunction, compareFunction = compareFunction)
+			handleList = self.getHandle(where = where, exclude = excludeFunction, getFunction = getFunction, compareFunction = compareFunction)
 		else:
-			handleList = sorted(filter(lambda item: hasattr(item, variable) and (item not in exclude) and ((sortNone != None) or (getFunction(item, variable) != None)), 
-				self.getHandle(where = where, exclude = exclude, getFunction = getFunction, compareFunction = compareFunction)), 
+			handleList = sorted(filter(lambda item: hasattr(item, variable) and (not excludeFunction(item)) and ((sortNone != None) or (getFunction(item, variable) != None)), 
+				self.getHandle(where = where, exclude = excludeFunction, getFunction = getFunction, compareFunction = compareFunction)), 
 				key = lambda item: (((getFunction(item, variable) is None)     if (reverse) else (getFunction(item, variable) is not None)) if (sortNone) else
 									((getFunction(item, variable) is not None) if (reverse) else (getFunction(item, variable) is None)), getFunction(item, variable)), 
 				reverse = reverse)
 
 			if (includeMissing):
-				handleList.extend([item for item in self if (not hasattr(item, variable) and (item not in exclude))])
+				handleList.extend([item for item in self if (not hasattr(item, variable) and (not excludeFunction(item)))])
 
 		return handleList
 
@@ -22624,6 +22644,8 @@ class User_Utilities():
 
 		where (dict) - {variable (str): value (any)}
 			- If None, will not check the values given
+		exclude (list) - What handles should not be included
+			- If function: Determine if the handle should be excluded where the args are [handle]
 		getFunction (function) - What function to run to get the value of this variable where the args are [handle, variable]
 			- If None: will use getattr
 		compareFunction (function) - What function to run to evaluate 'where' where the args are [handle, where]
@@ -22632,10 +22654,15 @@ class User_Utilities():
 		Example Input: getHandle()
 		Example Input: getHandle({"order": 4})
 		Example Input: getHandle(exclude = ["main"])
+		Example Input: getHandle(exclude = lambda handle: not handle.removePending)
 		"""
 
-		if (not isinstance(exclude, (list, tuple, range))):
-			exclude = [exclude]
+		if (not callable(exclude)):
+			if (not isinstance(exclude, (list, tuple, range, types.GeneratorType))):
+				exclude = [exclude]
+			excludeFunction = lambda handle: handle in exclude
+		else:
+			excludeFunction = exclude
 		if (getFunction == None):
 			getFunction = getattr
 		if (compareFunction == None):
@@ -22643,7 +22670,7 @@ class User_Utilities():
 
 		handleList = []
 		for handle in self:
-			if (handle not in exclude):
+			if (not excludeFunction(handle)):
 				if ((where == None) or (len(where) == 0)):
 					handleList.append(handle)
 				elif (compareFunction(handle, where)):
