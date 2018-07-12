@@ -3136,8 +3136,7 @@ class Utilities():
 	def _makeListFull(self, choices = [], default = False, single = False, editable = False,
 		editOnClick = True, cellType = None, cellTypeDefault = "text", engine = 1, 
 
-		sortable = True, sortFunction = None,
-
+		sortable = True, sortFunction = None, rowFormatter = None,
 		columns = None, columnTitles = {}, columnWidth = {}, columnLabels = {},
 		columnImage = {}, columnAlign = {}, columnFormatter = {}, check = None,
 		border = True, rowLines = True, columnLines = True, report = True, 
@@ -7206,7 +7205,7 @@ class handle_WidgetList(handle_Widget_Base):
 			border, rowLines, columnLines = self._getArguments(argument_catalogue, ["border", "rowLines", "columnLines"])
 			columns, drag, drop, choices, engine = self._getArguments(argument_catalogue, ["columns", "drag", "drop", "choices", "engine"])
 			group, groupFormatter, groupSeparator = self._getArguments(argument_catalogue, ["group", "groupFormatter", "groupSeparator"])
-			sortable, sortFunction = self._getArguments(argument_catalogue, ["sortable", "sortFunction"])
+			sortable, sortFunction, rowFormatter = self._getArguments(argument_catalogue, ["sortable", "sortFunction", "rowFormatter"])
 
 			#Determine style
 			if (report):
@@ -7254,7 +7253,7 @@ class handle_WidgetList(handle_Widget_Base):
 			myId = self._getId(argument_catalogue)
 
 			#Create the thing to put in the grid
-			self.thing = self._ListFull(self, self.parent.thing, myId = myId, style = style, sortable = sortable)
+			self.thing = self._ListFull(self, self.parent.thing, myId = myId, style = style, sortable = sortable, rowFormatter = rowFormatter)
 			self.thing.SetShowGroups(any((value != None) for value in group.values()))
 			self.thing.putBlankLineBetweenGroups = groupSeparator
 			self.setSortFunction(sortFunction)
@@ -8319,6 +8318,7 @@ class handle_WidgetList(handle_Widget_Base):
 			- If slice: Will change the color of all rows in the slice
 		color (str) - What color to make the rows
 			- If tuple: Will interperet as (Red, Green, Blue). Values can be integers from 0 to 255 or floats from 0.0 to 1.0
+			- If None: Will use the origonal color for the row
 
 		Example Input: setRowColor(0, color = "grey")
 		Example Input: setRowColor(0, color = (255, 0, 0))
@@ -8329,7 +8329,10 @@ class handle_WidgetList(handle_Widget_Base):
 		"""
 
 		if (self.type.lower() == "listfull"):
-			colorHandle = self._getColor(color)
+			if (color == None):
+				colorHandle = None
+			else:
+				colorHandle = self._getColor(color)
 			rowCount = self.thing.GetItemCount()
 
 			if (row == None):
@@ -8363,7 +8366,23 @@ class handle_WidgetList(handle_Widget_Base):
 				rowList = [row]
 
 			for i in rowList:
-				self.thing.SetItemBackgroundColour(i, colorHandle)
+				if (colorHandle == None):
+					if (isinstance(i, wx.ListItemAttr)):
+						continue
+					elif (isinstance(i, wx.ListItem)):
+						continue #Get row number
+
+					if (i % 2):
+						_colorHandle = self.thing.oddRowsBackColor
+					else:
+						_colorHandle = self.thing.evenRowsBackColor
+				else:
+					_colorHandle = colorHandle
+
+				if (isinstance(i, (wx.ListItemAttr, wx.ListItem))):
+					i.SetBackgroundColour(_colorHandle)
+				else:
+					self.thing.SetItemBackgroundColour(i, _colorHandle)
 			
 		else:
 			warnings.warn(f"Add {self.type} to setRowColor() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -22996,7 +23015,7 @@ class User_Utilities():
 		"""
 
 		if (not callable(exclude)):
-			if (not isinstance(exclude, (list, tuple, range, types.GeneratorType))):
+			if (not isinstance(exclude, (list, tuple, range, set, types.GeneratorType))):
 				exclude = [exclude]
 			excludeFunction = lambda handle: handle in exclude
 		else:
@@ -23024,7 +23043,7 @@ class User_Utilities():
 		Example Input: getUnique(exclude = [item.database_id for item in self.parent])
 		"""
 
-		if (not isinstance(exclude, (list, tuple, range))):
+		if (not isinstance(exclude, (list, tuple, range, set, types.GeneratorType))):
 			exclude = [exclude]
 
 		while True:
