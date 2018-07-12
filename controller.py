@@ -3480,6 +3480,7 @@ class Utilities():
 		label (any)     - What this is catalogued as
 		menuLabel (any) - What the menu associated with this is catalogued as
 			- If None: Will not show the menu
+			- If handle_Menu: Will use that menu
 		searchButton (any) - If the search button should be shown
 		cancelButton (any) - If the cancel button should be shown
 		menuReplaceText(bool) - If the selection from the menu should replace the text in the input box
@@ -4309,11 +4310,20 @@ class Utilities():
 
 		return handle
 
-	def _makeMenu(self, text = " ", detachable = False,
+	def makeMenu(self, *args, **kwargs):
+		"""Returns a menu handle without a menuBar.
+
+		Example Input: makeCanvas()
+		"""
+
+		handle = self._makeMenu(*args, menuBar = None, **kwargs)
+		return handle
+
+	def _makeMenu(self, text = " ", detachable = False, menuBar = True,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
 		label = None, parent = None, handle = None, myId = None):
-		"""Adds a menu to a pre-existing menubar.
+		"""Adds a menu to a pre-existing menuBar.
 		This is a collapsable array of menu items.
 
 		text (str)        - What the menu is called
@@ -5094,6 +5104,8 @@ class handle_Base(Utilities, CommonEventFunctions):
 			output += f"-- parent id: {id(self.parent)}\n"
 		if (self.nestingAddress != None):
 			output += f"-- nesting address: {self.nestingAddress}\n"
+		if (not self.nested):
+			output += f"-- Not Nested\n"
 		if (self.label != None):
 			output += f"-- label: {self.label}\n"
 		if (self.type != None):
@@ -5317,7 +5329,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 				handle = handle.substitute
 
 		#Create a link for multi-nested objects
-		if (handle.nested):
+		if ((handle.nested) and (not isinstance(handle, handle_Menu))):
 			if (linkCopy == None):
 				errorMessage = f"Cannot nest {handle.__repr__()} twice"
 				raise SyntaxError(errorMessage)
@@ -5399,7 +5411,18 @@ class handle_Base(Utilities, CommonEventFunctions):
 			else:
 				warnings.warn(f"Add {handle.__class__} as a handle for handle_Menu in nest() in {self.__repr__()}", Warning, stacklevel = 2)
 				return
-		
+
+		elif (isinstance(self, handle_MenuItem)):
+			if (isinstance(handle, handle_Widget_Base)):
+				if (self.type.lower() == "toolbaritem"):
+					self.thing = self.parent.thing.AddControl(handle.thing)
+				else:
+					warnings.warn(f"Add {handle.type} as a self type for handle_Widget_Base nesting in a handle_MenuItem for nest() in {self.__repr__()}", Warning, stacklevel = 2)
+					return
+			else:
+				warnings.warn(f"Add {handle.__class__} as a handle for handle_MenuItem in nest() in {self.__repr__()}", Warning, stacklevel = 2)
+				return
+
 		elif (isinstance(self, handle_MenuPopup)):
 			if (isinstance(handle, handle_MenuPopup)):
 				if (handle.type.lower() == "menu"):
@@ -5724,6 +5747,42 @@ class handle_Base(Utilities, CommonEventFunctions):
 		data["thing"] = type(self.thing).__name__
 
 		return data
+
+	def getFocus(self, event = None):
+		"""Returns the item that is focused.
+		Does not need to be nested in self or on the same window as self.
+		"""
+
+		def nestCheck(itemList, wxObject):
+			"""Makes sure everything is nested."""
+
+			answer = None
+			for item in itemList:
+				if (wxObject == item.thing):
+					return item
+				
+				answer = nestCheck(item[:], wxObject)
+				if (answer != None):
+					return answer
+			return answer
+
+		##################################################
+
+		if (isinstance(self.thing, wx.Window)):
+			wxObject = self.thing.FindFocus()
+		elif (self.myWindow != None):
+			wxObject = self.myWindow.thing.FindFocus()
+		else:
+			return
+		if (wxObject == None):
+			jkhkhjjk
+
+		handle = nestCheck(self[:], wxObject)
+		if ((handle == None) and (self.myWindow != None)):
+			handle = nestCheck(self.myWindow[:], wxObject)
+		if ((handle == None) and (self.controller != None)):
+			handle = nestCheck(self.controller[:], wxObject)
+		return handle
 
 	#Setters
 	def setFunction_size(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
@@ -8826,7 +8885,10 @@ class handle_WidgetInput(handle_Widget_Base):
 			self.thing = wx.SearchCtrl(self.parent.thing, id = myId, value = wx.EmptyString, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 			#Create the menu associated with this widget
-			self.myMenu = self._makeMenu(label = menuLabel)
+			if (isinstance(menuLabel, handle_Menu)):
+				self.myMenu = menuLabel
+			else:
+				self.myMenu = self._makeMenu(label = menuLabel)
 			self.nest(self.myMenu)
 
 			#Determine if additional features are enabled
@@ -10377,7 +10439,9 @@ class handle_Menu(handle_Container_Base):
 	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the widget is changed/clicked on."""
 		
-		if (self.type.lower() == "toolbar"):
+		if (self.type.lower() == "menu"):
+			self._betterBind(wx.EVT_MENU, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+		elif (self.type.lower() == "toolbar"):
 			self._betterBind(wx.EVT_TOOL_RCLICKED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -10621,7 +10685,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addText(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a text widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10641,7 +10705,7 @@ class handle_Menu(handle_Container_Base):
 		return self.addStretchableSpace(*args, **kwargs)
 
 	def addHyperlink(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a hyperlink widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10656,7 +10720,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addLine(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a line widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10671,7 +10735,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addListDrop(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a drop list widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10686,7 +10750,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addListFull(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a full list widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10701,7 +10765,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addListTree(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a full list widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10716,7 +10780,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addInputSlider(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds an input slider widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10731,7 +10795,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addInputBox(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds an input box widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10746,7 +10810,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addInputSearch(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a search box widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10761,7 +10825,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addInputSpinner(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds an input spinner widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10776,7 +10840,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addButton(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a button widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10791,7 +10855,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addButtonToggle(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a toggle button widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10806,7 +10870,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addButtonCheck(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a check button widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10821,7 +10885,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addButtonCheckList(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a check list widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10836,7 +10900,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addButtonRadio(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a radio button widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10851,7 +10915,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addButtonRadioBox(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a radio button box widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10866,7 +10930,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addButtonImage(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds an image button widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10881,7 +10945,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addImage(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds an image widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10896,7 +10960,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addProgressBar(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a progress bar widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10911,7 +10975,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addPickerColor(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a color picker widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10926,7 +10990,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addPickerFont(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a font picker widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10941,7 +11005,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addPickerFile(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a file picker widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10956,7 +11020,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addPickerFileWindow(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a file window picker widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10971,7 +11035,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addPickerTime(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a time picker widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -10986,7 +11050,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addPickerDate(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a date picker widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11001,7 +11065,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addPickerDateWindow(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
 		"""Adds a text date window picker to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11123,10 +11187,11 @@ class handle_MenuItem(handle_Widget_Base):
 			nonlocal self, argument_catalogue
 
 			if (self.subHandle != None):
+				widgetLabel = self._getArguments(argument_catalogue, ["widgetLabel"])
 				myFunction, myFunctionArgs, myFunctionKwargs = self.subHandle
-				self.subHandle = myFunction(*myFunctionArgs, **myFunctionKwargs)
+				self.subHandle = myFunction(*myFunctionArgs, label = widgetLabel, **myFunctionKwargs)
 				self.subType = self.subHandle.type
-				self.thing = self.parent.thing.AddControl(self.subHandle.thing)
+				self.nest(self.subHandle)
 			else:
 				text = self._getArguments(argument_catalogue, ["text"])
 				if (text == None):
@@ -11674,7 +11739,7 @@ class handle_MenuPopup(handle_Container_Base):
 			self.parent.runMyFunction(postFunction[0], postFunction[1], postFunction[2])
 
 		def addMenu(self, *args, **kwargs):
-			"""Adds a menu to a pre-existing menubar.
+			"""Adds a menu to a pre-existing menuBar.
 			This is a collapsable array of menu items.
 
 			text (str)        - What the menu is called
@@ -13390,6 +13455,18 @@ class handle_WidgetTable(handle_Widget_Base):
 			self.thing.ForceRefresh()
 			self._onTableAutoSize()
 
+	def setMaximumRowSize(self, row, size = -1):
+		self.rowSizeMaximum[row] = size
+
+	def setMinimumRowSize(self, row, size = -1):
+		self.rowSizeMinimum[row] = size
+
+	def setMaximumColumnSize(self, column, size = -1):
+		self.columnSizeMaximum[column] = size
+
+	def setMinimumColumnSize(self, column, size = -1):
+		self.columnSizeMinimum[column] = size
+
 	def setRowSize(self, size = -1, autoSize = -1):
 		"""Changes the size of a row.
 
@@ -14476,23 +14553,43 @@ class handle_WidgetTable(handle_Widget_Base):
 		"""Hides a row in a grid.
 		The top-left corner is cell (0, 0) not (1, 1).
 
-		row (int)         - The index of the row
+		row (int) - The index of the row
 
 		Example Input: hideTableRow(1)
 		"""
 
-		self.thing.SetRowLabelSize(0) # hide the rows
+		self.thing.SetRowSize(row, 0)
 
 	def hideTableColumn(self, column):
 		"""Hides a column in a grid.
 		The top-left corner is column (0, 0) not (1, 1).
 
-		column (int)         - The index of the column
+		column (int) - The index of the column
 
 		Example Input: hideTableColumn(1)
 		"""
 
-		self.thing.SetColLabelSize(0) # hide the columns
+		self.thing.SetColSize(column, 0)
+
+	def setTableRowLabelSize(self, value = 0):
+		"""Sets the size for all rows
+
+		value (int) - The new size
+
+		Example Input: setTableRowLabelSize(20)
+		"""
+
+		self.thing.SetRowLabelSize(value)
+
+	def setTableColumnLabelSize(self, value = 0):
+		"""Sets the size for all columns
+
+		value (int) - The new size
+
+		Example Input: setTableColumnLabelSize(20)
+		"""
+
+		self.thing.SetColLabelSize(value)
 
 	def getTableTextColor(self, row, column):
 		"""Returns the color of the text in a cell.
@@ -14887,6 +14984,9 @@ class handle_WidgetTable(handle_Widget_Base):
 			"""
 			nonlocal self
 
+			if (itemSize == None):
+				return
+
 			if (row):
 				myFunction = self.thing.SetRowSize
 			else:
@@ -14911,9 +15011,6 @@ class handle_WidgetTable(handle_Widget_Base):
 				totalSize = self.thing.GetGridWindow().GetSize()
 				rowSize = calculate(self.rowSizeMaximum, rowList, row = True)
 				columnSize = calculate(self.columnSizeMaximum, columnList, row = False)
-
-				if ((rowSize == None) or (columnSize == None)):
-					return
 
 				apply(rowList, rowSize, row = True)
 				apply(columnList, columnSize, row = False)
@@ -18707,7 +18804,7 @@ class handle_Window(handle_Container_Base):
 		self.thing.SetMenuBar(self.menuBar)
 
 	def addMenu(self, *args, **kwargs):
-		"""Adds a menu to a pre-existing menubar.
+		"""Adds a menu to a pre-existing menuBar.
 		This is a collapsable array of menu items.
 
 		text (str)        - What the menu is called
@@ -21804,7 +21901,7 @@ class Controller(Utilities, CommonEventFunctions):
 			
 			for item in catalogue.values():
 				#Skip Widgets
-				if (not isinstance(item, handle_Widget_Base)):
+				if (not isinstance(item, handle_Widget_Base)): # or True):
 					if (isinstance(item, dict)):
 						nestCheck(item)
 					else:
@@ -21814,7 +21911,7 @@ class Controller(Utilities, CommonEventFunctions):
 		self.finishing = True
 
 		#Make sure all things are nested
-		nestCheck(nestingCatalogue)
+		# nestCheck(nestingCatalogue)
 		
 		#Take care of last minute things
 		# windowsList = [item for item in self.labelCatalogue.values() if isinstance(item, handle_Window)]
