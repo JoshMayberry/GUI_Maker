@@ -3559,7 +3559,7 @@ class Utilities():
 		myInitial (int)   - The initial value of the input spinner's position
 		myFunction (str)  - The function that is ran when the user scrolls through the numbers
 		flags (list)      - A list of strings for which flag to add to the sizer
-		label (any)     - What this is catalogued as
+		label (any)       - What this is catalogued as
 
 		maxSize (tuple)   - If not None: The maximum size that the input spinner can be in pixels in the form (x, y) as integers
 		minSize (tuple)   - If not None: The minimum size that the input spinner can be in pixels in the form (x, y) as integers
@@ -3598,10 +3598,10 @@ class Utilities():
 		label = None, parent = None, handle = None, myId = None):
 		"""Adds a button to the next cell on the grid.
 
-		text (str)            - What will be written on the button
+		text (str)              - What will be written on the button
 		flags (list)            - A list of strings for which flag to add to the sizer
 		myFunction (str)        - What function will be ran when the button is pressed
-		label (any)           - What this is catalogued as
+		label (any)             - What this is catalogued as
 		valueLabel (str)        - If not None: Which label to get a value from. Ie: TextCtrl, FilePickerCtrl, etc.
 		myFunctionArgs (any)    - The arguments for 'myFunction'
 		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
@@ -3609,7 +3609,7 @@ class Utilities():
 		enabled (bool)          - If True: The user can interact with this
 		hidden (bool)           - If True: The widget is hidden from the user, but it is still created
 
-		Example Input: _makeButton("Go!", "computeFinArray", 0)
+		Example Input: _makeButton("Go!", computeFinArray)
 		"""
 
 		handle = handle_WidgetButton()
@@ -3627,20 +3627,51 @@ class Utilities():
 		label = None, parent = None, handle = None, myId = None):
 		"""Adds a toggle button to the next cell on the grid.
 
-		text (str)             - What will be written on the button
+		text (str)              - What will be written on the button
 		myFunction (str)        - What function will be ran when the button is pressed
 		flags (list)            - A list of strings for which flag to add to the sizer
-		label (any)           - What this is catalogued as
+		label (any)             - What this is catalogued as
 		myFunctionArgs (any)    - The arguments for 'myFunction'
 		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
 		default (bool)          - If True: This is the default thing selected
 		enabled (bool)          - If True: The user can interact with this
 
-		Example Input: _makeButtonToggle("Go!", "computeFinArray")
+		Example Input: _makeButtonToggle("Go!", computeFinArray)
 		"""
 
 		handle = handle_WidgetButton()
 		handle.type = "ButtonToggle"
+		handle._build(locals())
+
+		return handle
+	
+	def _makeButtonList(self, text = [], 
+		
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
+		
+		valueLabel = None,
+		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
+		label = None, parent = None, handle = None, myId = None):
+		"""Adds a button to the next cell on the grid.
+		Each time this button is pressed, it will change the text to display the next item in the list.
+		When it reaches the end of the list, it will start back at the beginning
+
+		text (list)             - [What will be written on the button (str)]
+		flags (list)            - A list of strings for which flag to add to the sizer
+		myFunction (str)        - What function will be ran when the button is pressed
+		label (any)             - What this is catalogued as
+		valueLabel (str)        - If not None: Which label to get a value from. Ie: TextCtrl, FilePickerCtrl, etc.
+		myFunctionArgs (any)    - The arguments for 'myFunction'
+		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
+		default (bool)          - If True: This is the default thing selected
+		enabled (bool)          - If True: The user can interact with this
+		hidden (bool)           - If True: The widget is hidden from the user, but it is still created
+
+		Example Input: _makeButton(["Showing All", "Showing One"], label = "lorem")
+		"""
+
+		handle = handle_WidgetButton()
+		handle.type = "ButtonList"
 		handle._build(locals())
 
 		return handle
@@ -7100,7 +7131,7 @@ class handle_WidgetList(handle_Widget_Base):
 		#Internal Variables
 		self.dragable = False
 		self.myDropTarget = None
-		self.groupOrder = None
+		self.expanded = {} #(group (str): state (bool))
 
 		self.checkColumn = None
 		self.columnCatalogue = {}
@@ -7325,8 +7356,10 @@ class handle_WidgetList(handle_Widget_Base):
 			#   self.thing.SetDropTarget(self.myDropTarget)
 
 			# #Bind the function(s)
-			self._betterBind(wx.EVT_LIST_ITEM_SELECTED, self.thing, self._onSelect, rebind = False)
+			self._betterBind(wx.EVT_LIST_ITEM_SELECTED, self.thing, self._onSelect)
 			self._betterBind(ObjectListView.EVT_GROUP_SORT, self.thing, self._onSortGroup, mode = 2)
+			self._betterBind(ObjectListView.EVT_EXPANDING, self.thing, self._onExpand, mode = 2)
+			self._betterBind(ObjectListView.EVT_COLLAPSING, self.thing, self._onExpand, mode = 2)
 
 			# myFunction, preEditFunction, postEditFunction = self._getArguments(argument_catalogue, ["myFunction", "preEditFunction", "postEditFunction"])
 			# if (myFunction != None):
@@ -7726,6 +7759,14 @@ class handle_WidgetList(handle_Widget_Base):
 			objectList = self._formatList(newValue, filterNone = filterNone)
 			self.thing.SetObjects(objectList)
 
+			#Preserve group expansion
+			for group in self.thing.groups:
+				if (group.key in self.expanded):
+					if (self.expanded[group.key]):
+						self.thing.Expand(group)
+					else:
+						self.thing.Collapse(group)
+
 		elif (self.type.lower() == "listtree"):
 			if (not isinstance(newValue, dict)):
 				errorMessage = f"'newValue' must be a dict, not a {type(newValue)} in setValue() for {self.__repr__()}"
@@ -7913,8 +7954,16 @@ class handle_WidgetList(handle_Widget_Base):
 	def expandAll(self):
 		self.thing.ExpandAll()
 
+		#Account for hidden/old groups
+		for key in self.expanded.keys():
+			self.expanded[key] = True
+
 	def collapseAll(self):
 		self.thing.CollapseAll()
+
+		#Account for hidden/old groups
+		for key in self.expanded.keys():
+			self.expanded[key] = False
 
 	def hideGroup(self, column = None, state = True, refresh = True):
 		"""Turns off row grouping.
@@ -8169,8 +8218,8 @@ class handle_WidgetList(handle_Widget_Base):
 		if (self.type.lower() == "listdrop"):
 			self._betterBind(wx.EVT_CHOICE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		elif (self.type.lower() == "listfull"):
-			self._betterBind(wx.EVT_LIST_ITEM_SELECTED, self.thing, self._onSelect, rebind = False)
 			self._betterBind(wx.EVT_LIST_ITEM_SELECTED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			self._betterBind(wx.EVT_LIST_ITEM_SELECTED, self.thing, self._onSelect, rebind = True)
 
 		elif (self.type.lower() == "listtree"):
 			self._betterBind(wx.EVT_TREE_SEL_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
@@ -8524,6 +8573,14 @@ class handle_WidgetList(handle_Widget_Base):
 				self.thing._SortObjects(x.modelObjects, event.sortColumn, self.thing.GetPrimaryColumn())
 
 		event.Handled()
+		event.Skip()
+
+	def _onExpand(self, event):
+		"""Records the groups that are expanded."""
+
+		for group in event.groups:
+			self.expanded[group.key] = event.isExpand
+
 		event.Skip()
 
 	class _ListFull(ObjectListView.GroupListView):
@@ -9310,12 +9367,31 @@ class handle_WidgetButton(handle_Widget_Base):
 			myId = self._getId(argument_catalogue)
 
 			#Create the thing to put in the grid
-			self.thing = wx.Button(self.parent.thing, id = myId, label = text, style = 0)
+			self.thing = wx.Button(self.parent.thing, id = myId, label = f"{text}", style = 0)
 
 			#Bind the function(s)
 			if (myFunction != None):
 				myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
 				self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
+
+		def _build_buttonList():
+			"""Builds a smart wx button object."""
+			nonlocal self, argument_catalogue
+
+			textList = self._getArguments(argument_catalogue, ["text"])
+			
+			if (not isinstance(textList, (list, tuple, range, set, types.GeneratorType))):
+				textList = [textList]
+			else:
+				textList = [str(item) for item in textList]
+			
+			if (len(textList) == 0):
+				textList = [""]
+			argument_catalogue["text"] = textList[0]
+			self.textList = textList
+			
+			_build_button()
+			self._betterBind(wx.EVT_BUTTON, self.thing, self._onToggleText)
 
 		def _build_buttonToggle():
 			"""Builds a wx toggle button object."""
@@ -9326,7 +9402,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			myId = self._getId(argument_catalogue)
 
 			#Create the thing to put in the grid
-			self.thing = wx.ToggleButton(self.parent.thing, id = myId, label = text, style = 0)
+			self.thing = wx.ToggleButton(self.parent.thing, id = myId, label = f"{text}", style = 0)
 			self.thing.SetValue(pressed) 
 
 			#Bind the function(s)
@@ -9343,7 +9419,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			myId = self._getId(argument_catalogue)
 
 			#Create the thing to put in the grid
-			self.thing = wx.CheckBox(self.parent.thing, id = myId, label = text, style = 0)
+			self.thing = wx.CheckBox(self.parent.thing, id = myId, label = f"{text}", style = 0)
 
 			#Determine if it is on by default
 			self.thing.SetValue(default)
@@ -9360,7 +9436,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			choices, multiple, sort, myFunction = self._getArguments(argument_catalogue, ["choices", "multiple", "sort", "myFunction"])
 
 			#Ensure that the choices given are a list or tuple
-			if (not isinstance(choices, (list, tuple, range))):
+			if (not isinstance(choices, (list, tuple, range, set, types.GeneratorType))):
 				choices = [choices]
 
 			#Ensure that the choices are all strings
@@ -9400,7 +9476,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			myId = self._getId(argument_catalogue)
 		
 			#Create the thing to put in the grid
-			self.thing = wx.RadioButton(self.parent.thing, id = myId, label = text, style = group)
+			self.thing = wx.RadioButton(self.parent.thing, id = myId, label = f"{text}", style = group)
 
 			#Determine if it is turned on by default
 			self.thing.SetValue(default)
@@ -9435,7 +9511,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			myId = self._getId(argument_catalogue)
 
 			#Create the thing to put in the grid
-			self.thing = wx.RadioBox(self.parent.thing, id = myId, label = title, choices = choices, majorDimension = maximum, style = direction)
+			self.thing = wx.RadioBox(self.parent.thing, id = myId, label = f"{title}", choices = choices, majorDimension = maximum, style = direction)
 
 			#Set default position
 			if (len(choices) != 0):
@@ -9548,6 +9624,8 @@ class handle_WidgetButton(handle_Widget_Base):
 			_build_checkList()
 		elif (self.type.lower() == "buttonimage"):
 			_build_buttonImage()
+		elif (self.type.lower() == "buttonlist"):
+			_build_buttonList()
 		elif (self.type.lower() == "buttonhelp"):
 			_build_buttonHelp()
 		else:
@@ -9561,6 +9639,9 @@ class handle_WidgetButton(handle_Widget_Base):
 
 		if (self.type.lower() == "buttoncheck"):
 			value = self.thing.GetValue() #(bool) - True: Checked; False: Un-Checked
+
+		elif (self.type.lower() == "buttonlist"):
+			value = self.thing.GetLabel() #(str) - What the button says
 
 		elif (self.type.lower() == "buttonradio"):
 			value = self.thing.GetValue() #(bool) - True: Selected; False: Un-Selected
@@ -9636,6 +9717,9 @@ class handle_WidgetButton(handle_Widget_Base):
 		if (self.type.lower() == "buttoncheck"):
 			self.thing.SetValue(bool(newValue)) #(bool) - True: checked; False: un-checked
 
+		elif (self.type.lower() == "buttonlist"):
+			self.thing.SetLabel(newValue) #(str) - What the button will say on it
+
 		elif (self.type.lower() == "buttonradio"):
 			self.thing.SetValue(bool(newValue)) #(bool) - True: selected; False: un-selected
 
@@ -9699,6 +9783,10 @@ class handle_WidgetButton(handle_Widget_Base):
 		elif (self.type.lower() == "button"):
 			self._betterBind(wx.EVT_BUTTON, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		
+		elif (self.type.lower() == "buttonlist"):
+			self._betterBind(wx.EVT_BUTTON, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			self._betterBind(wx.EVT_BUTTON, self.thing, self._onToggleText, rebind = True)
+		
 		elif (self.type.lower() == "buttonimage"):
 			self._betterBind(wx.EVT_BUTTON, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		
@@ -9719,6 +9807,27 @@ class handle_WidgetButton(handle_Widget_Base):
 
 		else:
 			warnings.warn(f"Add {self.type} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def _onToggleText(self, event):
+		"""Changes the value displayed on the button when the user presses it."""
+
+		if (self.type.lower() == "buttonlist"):
+			value = self.getValue()
+			if (value in self.textList):
+				index = self.textList.index(value)
+				if (index == len(self.textList) - 1):
+					newValue = self.textList[0]
+				else:
+					newValue = self.textList[index + 1]
+			else:
+				newValue = self.textList[0]
+			
+			self.setValue(newValue)				
+
+		else:
+			warnings.warn(f"Add {self.type} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 2)
+
+		event.Skip()
 
 class handle_WidgetPicker(handle_Widget_Base):
 	"""A handle for working with picker widgets."""
@@ -10915,6 +11024,21 @@ class handle_Menu(handle_Container_Base):
 			handle._build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addButton() for {self.__repr__()}", Warning, stacklevel = 2)
+			handle = None
+
+		return handle
+
+	def addButtonList(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		"""Adds a button widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			handle = handle_MenuItem()
+			handle.type = "ToolBarItem"
+			handle.subHandle = [handle._makeButtonList, args, kwargs]
+			handle._build(locals())
+		else:
+			warnings.warn(f"Add {self.type} to addButtonList() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -14488,7 +14612,7 @@ class handle_WidgetTable(handle_Widget_Base):
 		if (format == "float"):
 			self.thing.SetCellFormatFloat(row, column, width, percision)
 
-	def setTableCellColor(self, row = None, column = None, color = None):
+	def setTableCellColor(self, row = None, column = None, color = None, textColor = None):
 		"""Changes the color of the background of a cell.
 		The top-left corner is cell (0, 0) not (1, 1).
 		If both 'row' and 'column' are None, the entire table will be colored
@@ -14499,34 +14623,46 @@ class handle_WidgetTable(handle_Widget_Base):
 		column (int)  - The index of the column
 			- If None: Will color all cells of the column if 'column' is not None
 		color (tuple) - What color to use. (R, G, B). Can be a string for standard colors
-			- If None: Use thw wxPython background color
+			- If None: Use the default wxPython background color
 
 		Example Input: setTableCellColor()
 		Example Input: setTableCellColor(1, 2, (255, 0, 0))
 		Example Input: setTableCellColor(1, 2, "red")
 		"""
 
-		color = self._getColor(color)
+		if (color == None):
+			color = self.thing.GetDefaultCellBackgroundColour()
+		else:
+			color = self._getColor(color)
+
+		if (textColor == None):
+			textColor = self.thing.GetDefaultCellTextColour()
+		else:
+			textColor = self._getColor(textColor)
 
 		if ((row == None) and (column == None)):
 			for i in range(self.thing.GetNumberRows()):
 				for j in range(self.thing.GetNumberCols()):
 					#Color the cell
 					self.thing.SetCellBackgroundColour(i, j, color)
+					self.thing.SetCellTextColour (i, j, textColor)
 
 		elif ((row != None) and (column != None)):
 			#Color the cell
 			self.thing.SetCellBackgroundColour(row, column, color)
+			self.thing.SetCellTextColour(row, column, textColor)
 
 		elif (row == None):
 			for i in range(self.thing.GetNumberRows()):
 				#Color the cell
 				self.thing.SetCellBackgroundColour(i, column, color)
+				self.thing.SetCellTextColour(i, column, textColor)
 
 		else:
 			for i in range(self.thing.GetNumberCols()):
 				#Color the cell
 				self.thing.SetCellBackgroundColour(row, i, color)
+				self.thing.SetCellTextColour(row, i, textColor)
 
 		self.thing.ForceRefresh()
 
@@ -16537,6 +16673,25 @@ class handle_Sizer(handle_Container_Base):
 		"""
 
 		handle = self._makeButton(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
+
+		return handle
+	
+	def addButtonList(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
+		"""Adds a button to the next cell on the grid.
+		Each time this button is pressed, it will change the text to display the next item in the list.
+		When it reaches the end of the list, it will start back at the beginning
+
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
+
+		Example Input: addButton("Go!", "computeFinArray")
+		"""
+
+		handle = self._makeButtonList(*args, **kwargs)
 		self.nest(handle, flex = flex, flags = flags, selected = selected)
 
 		return handle
@@ -19630,6 +19785,14 @@ class handle_Window(handle_Container_Base):
 
 		return handle
 
+	def addButtonList(self, sizerLabel, *args, **kwargs):
+		"""Overload for addButtonList in handle_Sizer()."""
+
+		mySizer = self.getSizer(sizerLabel)
+		handle = mySizer.addButtonList(*args, **kwargs)
+
+		return handle
+
 	def addButtonToggle(self, sizerLabel, *args, **kwargs):
 		"""Overload for addButtonToggle in handle_Sizer()."""
 
@@ -22428,6 +22591,14 @@ class Controller(Utilities, CommonEventFunctions):
 
 		myFrame = self.getWindow(windowLabel, frameOnly = False)
 		handle = myFrame.addButton(*args, **kwargs)
+
+		return handle
+
+	def addButtonList(self, windowLabel, *args, **kwargs):
+		"""Overload for addButtonList in handle_Window()."""
+
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
+		handle = myFrame.addButtonList(*args, **kwargs)
 
 		return handle
 
