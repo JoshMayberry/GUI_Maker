@@ -175,6 +175,26 @@ class _Iterator(object):
 			key = self.order.pop()
 			return self.data[key]
 
+#Queues
+class PriorityQueue(queue.PriorityQueue):
+	"""A priority queue that keeps item order.
+	Modified code from jcollado on https://stackoverflow.com/questions/9289614/how-to-put-items-into-priority-queues
+	"""
+	
+	def __init__(self, defaultPriority = 100):
+		super().__init__()
+		self.counter = 0
+		self.defaultPriority = defaultPriority
+
+	def put(self, item, priority = None):
+		if (priority == None):
+			priority = self.defaultPriority
+		super().put((priority, self.counter, item))
+		self.counter += 1
+
+	def get(self, *args, **kwargs):
+		return super().get(*args, **kwargs)[2]
+
 #Event System
 class Event(object):
 	"""Used to create simple events.
@@ -7767,6 +7787,22 @@ class handle_WidgetList(handle_Widget_Base):
 		else:
 			warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
 
+	def reveal(self, row, event = None):
+		"""Ensures that the given item's group is expanded and visible."""
+
+		if (isinstance(row, (range, types.GeneratorType))):
+			row = list(row)
+		elif (not isinstance(row, (list, tuple, dict))):
+			row = [row]
+
+		if (any((not hasattr(item, '__dict__') for item in row))):
+			ikiklk
+		else:
+			objectList = row
+
+		for item in objectList:
+			self.thing.Reveal(item)
+			
 	def addColumn(self, *args, **kwargs):
 		self.setColumn(column = len(self.columnCatalogue), *args, **kwargs)
 
@@ -8123,7 +8159,7 @@ class handle_WidgetList(handle_Widget_Base):
 			self.thing.AddObjects(objectList)
 
 		else:
-			warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to appendValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Change Settings
 	def setFunction_preClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
