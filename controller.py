@@ -7131,7 +7131,7 @@ class handle_WidgetList(handle_Widget_Base):
 		#Internal Variables
 		self.dragable = False
 		self.myDropTarget = None
-		self.expanded = {} #(group (str): state (bool))
+		self.expanded = {None: False} #(group (str): state (bool), None: default state (bool))
 
 		self.checkColumn = None
 		self.columnCatalogue = {}
@@ -7762,10 +7762,14 @@ class handle_WidgetList(handle_Widget_Base):
 			#Preserve group expansion
 			for group in self.thing.groups:
 				if (group.key in self.expanded):
-					if (self.expanded[group.key]):
-						self.thing.Expand(group)
-					else:
-						self.thing.Collapse(group)
+					expand = self.expanded[group.key]
+				else:
+					expand = self.expanded[None]
+
+				if (expand):
+					self.thing.Expand(group)
+				else:
+					self.thing.Collapse(group)
 
 		elif (self.type.lower() == "listtree"):
 			if (not isinstance(newValue, dict)):
@@ -7951,19 +7955,20 @@ class handle_WidgetList(handle_Widget_Base):
 			self.refreshColumns()
 			self.refresh()
 
-	def expandAll(self):
-		self.thing.ExpandAll()
+	def expandAll(self, state = True):
+		print("@1", state)
+		if (state):
+			self.thing.ExpandAll()
+		else:
+			self.thing.CollapseAll()
 
-		#Account for hidden/old groups
+		#Account for hidden/old/new groups
 		for key in self.expanded.keys():
-			self.expanded[key] = True
+			self.expanded[key] = state
+		self.expanded[None] = state
 
-	def collapseAll(self):
-		self.thing.CollapseAll()
-
-		#Account for hidden/old groups
-		for key in self.expanded.keys():
-			self.expanded[key] = False
+	def collapseAll(self, state = True):
+		self.expandAll(state = not state)
 
 	def hideGroup(self, column = None, state = True, refresh = True):
 		"""Turns off row grouping.
