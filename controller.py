@@ -3121,7 +3121,7 @@ class Utilities():
 
 		return handle
 
-	def _makeListDrop(self, choices = [], default = None, alphabetic = False,
+	def _makeListDrop(self, choices = [], default = None, alphabetic = False, readOnly = False,
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
@@ -3545,7 +3545,7 @@ class Utilities():
 		return handle
 	
 	def _makeInputSpinner(self, myMin = 0, myMax = 100, myInitial = 0, size = wx.DefaultSize, 
-		increment = None, digits = None, useFloat = False, readOnly = False, exclude = [],
+		increment = None, digits = None, useFloat = False, useHex = False, readOnly = False, exclude = [],
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 		changeTextFunction = True, changeTextFunctionArgs = None, changeTextFunctionKwargs = None,
@@ -3567,6 +3567,7 @@ class Utilities():
 		digits (float)    - If not None: Will show this many digits past the decimal point. Only applies if 'useFloat' is True
 
 		useFloat (bool) - If True: Will increment decimal numbers instead of integers
+		useHex (bool)   - If True: Will use base 16 numbers instead of base 10 numbers 
 		readOnly (bool) - If True: The user will not be able to change the value
 		exclude (list)  - A list of integers/floats to exclude from the spinner
 		
@@ -4401,7 +4402,7 @@ class Utilities():
 
 	#Sizers
 	def _makeSizerGrid(self, rows = 1, columns = 1, text = None,
-		rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1,
+		rowGap = 0, colGap = 0,
 		size = wx.DefaultSize, scroll_x = False, scroll_y = False, scrollToTop = True, scrollToChild = True,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
@@ -4429,7 +4430,7 @@ class Utilities():
 		return handle
 
 	def _makeSizerGridFlex(self, rows = 1, columns = 1, text = None, vertical = None,
-		rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1, flexGrid = True,
+		rowGap = 0, colGap = 0, flexGrid = True,
 		size = wx.DefaultSize, scroll_x = False, scroll_y = False, scrollToTop = True, scrollToChild = True,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
@@ -4443,8 +4444,6 @@ class Utilities():
 		rowGap (int)      - Empty space between each row
 		colGap (int)      - Empty space between each column
 		hidden (bool)     - If True: All items in the sizer are hidden from the user, but they are still created
-		minWidth (int)    - The minimum width of a box. -1 means automatic
-		minHeight (int)   - The minimum height of a box. -1 means automatic
 		flexGrid (bool)   - True if the grid will be flexable. If False, this is like a normal grid sizer.
 		vertical (bool)   - Determines what direction cells are flexibally (unequally) sized
 			- If True: Rows are sized
@@ -4464,7 +4463,7 @@ class Utilities():
 		return handle
 
 	def _makeSizerGridBag(self, rows = 1, columns = 1, text = None,
-		rowGap = 0, colGap = 0, minWidth = -1, minHeight = -1, vertical = None, 
+		rowGap = 0, colGap = 0, vertical = None, 
 		emptySpace = None, flexGrid = True,
 		size = wx.DefaultSize, scroll_x = False, scroll_y = False, scrollToTop = True, scrollToChild = True,
 
@@ -4477,8 +4476,6 @@ class Utilities():
 		columns (int)      - The number of columns that the grid has
 		rowGap (int)       - Empty space between each row
 		colGap (int)       - Empty space between each column
-		minWidth (int)     - The minimum width of a box. -1 means automatic
-		minHeight (int)    - The minimum height of a box. -1 means automatic
 		hidden (bool)      - If True: All items in the sizer are hidden from the user, but they are still created
 		emptySpace (tuple) - The space taken up by cells that are empty or hidden; (row width, column width)
 		flexGrid (bool)    - True if the grid will be flexable. If False, this is like a normal grid sizer.
@@ -4499,7 +4496,7 @@ class Utilities():
 
 		return handle
 
-	def _makeSizerBox(self, text = None, minWidth = -1, minHeight = -1, vertical = True,
+	def _makeSizerBox(self, text = None, vertical = True,
 		size = wx.DefaultSize, scroll_x = False, scroll_y = False, scrollToTop = True, scrollToChild = True,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
@@ -4507,8 +4504,6 @@ class Utilities():
 		"""Creates a box sizer.
 
 		label (any)     - What this is catalogued as
-		minWidth (int)    - The minimum width of a box. -1 means automatic
-		minHeight (int)   - The minimum height of a box. -1 means automatic
 		horizontal (bool) - True to align items horizontally. False to align items vertically
 		hidden (bool)     - If True: All items in the sizer are hidden from the user, but they are still created
 
@@ -4524,7 +4519,7 @@ class Utilities():
 
 		return handle
 
-	def _makeSizerText(self, text = "", minWidth = -1, minHeight = -1, vertical = True, 
+	def _makeSizerText(self, text = "", vertical = True, 
 		size = wx.DefaultSize, scroll_x = False, scroll_y = False, scrollToTop = True, scrollToChild = True,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
@@ -4534,8 +4529,6 @@ class Utilities():
 
 		label (any)     - What this is catalogued as
 		text (str)      - The text that appears above the static box
-		minWidth (int)    - The minimum width of a box. -1 means automatic
-		minHeight (int)   - The minimum height of a box. -1 means automatic
 		horizontal (bool) - True to align items horizontally. False to align items vertically
 		hidden (bool)     - If True: All items in the sizer are hidden from the user, but they are still created
 
@@ -4551,7 +4544,7 @@ class Utilities():
 
 		return handle
 
-	def _makeSizerWrap(self, text = None, minWidth = -1, minHeight = -1, extendLast = False, vertical = True,
+	def _makeSizerWrap(self, text = None, extendLast = False, vertical = True,
 		size = wx.DefaultSize, scroll_x = False, scroll_y = False, scrollToTop = True, scrollToChild = True,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
@@ -4561,8 +4554,6 @@ class Utilities():
 
 		label (any)     - What this is catalogued as
 		text (str)      - The text that appears above the static box
-		minWidth (int)    - The minimum width of a box. -1 means automatic
-		minHeight (int)   - The minimum height of a box. -1 means automatic
 		horizontal (bool) - Determines the primary direction to fill widgets in
 			- If True: Align items horizontally first
 			- If False: Align items vertically first
@@ -7154,7 +7145,7 @@ class handle_WidgetList(handle_Widget_Base):
 			"""Builds a wx choice object."""
 			nonlocal self, argument_catalogue
 
-			choices, alphabetic, default = self._getArguments(argument_catalogue, ["choices", "alphabetic", "default"])
+			choices, alphabetic, default, readOnly = self._getArguments(argument_catalogue, ["choices", "alphabetic", "default", "readOnly"])
 
 			#Ensure that the choices given are a list or tuple
 			if (not isinstance(choices, (list, tuple))):
@@ -7165,18 +7156,24 @@ class handle_WidgetList(handle_Widget_Base):
 
 			#Apply Settings
 			if (alphabetic):
-				style = wx.CB_SORT
+				style = "wx.CB_SORT"
 			else:
-				style = 0
+				style = "0"
 
 			myId = self._getId(argument_catalogue)
 
 			#Create the thing to put in the grid
 			inputBox = False
 			if (inputBox):
-				self.thing = wx.ComboBox(self.parent.thing, id = myId, choices = choices, style = style) #wx.CB_DROPDOWN wx.CB_SIMPLE wx.CB_READONLY wx.CB_SORT
+				#wx.CB_DROPDOWN wx.CB_SIMPLE wx.CB_READONLY wx.CB_SORT
+				if (readOnly):
+					style += "|wx.CB_READONLY"
+				else:
+					style += "|wx.TE_PROCESS_ENTER"
+
+				self.thing = wx.ComboBox(self.parent.thing, id = myId, choices = choices, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 			else:
-				self.thing = wx.Choice(self.parent.thing, id = myId, choices = choices, style = style)
+				self.thing = wx.Choice(self.parent.thing, id = myId, choices = choices, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 			
 			#Set default position
 			if (type(default) == str):
@@ -8982,7 +8979,7 @@ class handle_WidgetInput(handle_Widget_Base):
 			nonlocal self, argument_catalogue
 
 			useFloat, readOnly, increment, digits, size = self._getArguments(argument_catalogue, ["useFloat", "readOnly", "increment", "digits", "size"])
-			myInitial, myMin, myMax, exclude = self._getArguments(argument_catalogue, ["myInitial", "myMin", "myMax", "exclude"])
+			myInitial, myMin, myMax, exclude, useHex = self._getArguments(argument_catalogue, ["myInitial", "myMin", "myMax", "exclude", "useHex"])
 
 			#Remember values
 			self.exclude = exclude
@@ -9019,6 +9016,13 @@ class handle_WidgetInput(handle_Widget_Base):
 
 				if (readOnly):
 					self.thing.SetReadOnly()
+
+			if (useHex):
+				self.subType += "_base16"
+				self.thing.SetBase(16)
+			else:
+				self.subType += "_base10"
+				self.thing.SetBase(10)
 
 			#Remember values
 			self.previousValue = self.thing.GetValue()
@@ -9090,6 +9094,12 @@ class handle_WidgetInput(handle_Widget_Base):
 			self.thing.SetValue(newValue) #(str) - What will be shown in the text box
 
 		elif (self.type.lower() == "inputspinner"):
+			if (isinstance(newValue, str)):
+				if ("_base16" in self.subType):
+					newValue = hex(int(newValue, 16))
+				else:
+					newValue = int(newValue)
+
 			self.thing.SetValue(newValue) #(int / float) - What will be shown in the input box
 
 		elif (self.type.lower() == "slider"):
