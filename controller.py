@@ -77,7 +77,6 @@ import PIL
 #Required Modules
 ##py -m pip install
 	# wxPython
-	# cx_Freeze
 	# pillow
 	# pypubsub
 	# objectlistview
@@ -100,6 +99,10 @@ dragDropDestination = None #Used to help a source know if a destination is itsel
 nestingCatalogue = {} #Used to keep track of what is nested in what
 topicManager = pubsub.pub.getDefaultTopicMgr()
 
+threads_max = 50 #Crashes around 600
+threadCatalogue = {} #Used to keep track of labeled threads
+threadCatalogue_lock = threading.RLock()
+
 #Get all event names
 #See: https://www.blog.pythonlibrary.org/2011/07/05/wxpython-get-the-event-name-instead-of-an-integer/
 eventCatalogue = {}
@@ -114,7 +117,7 @@ for module_name, module in sys.modules.items():
 					eventCatalogue[event.typeId] = (name, f"{module_name}.{name}", eval(f"{module_name}.{name}"))
 
 #Debugging Functions
-def printCurrentTrace():
+def printCurrentTrace(printout = True):
 	"""Prints out the stack trace for the current place in the program.
 	Modified Code from codeasone on https://stackoverflow.com/questions/1032813/dump-stacktraces-of-all-active-threads
 
@@ -130,8 +133,11 @@ def printCurrentTrace():
 			if line:
 				code.append("  %s" % (line.strip()))
 
-	for line in code:
-		print (line)
+	if (printout):
+		for line in code:
+			print (line)
+	else:
+		return code
 
 #Controllers
 def build(*args, **kwargs):
@@ -457,22 +463,28 @@ class _MyThread(threading.Thread):
 	The thread will then close itself automatically.
 	"""
 
-	def __init__(self, parent, threadID = None, name = None, counter = None, daemon = None):
+	def __init__(self, parent, threadID = None, name = None, counter = None, daemon = None, label = None, stopFunction = None):
 		"""Setup the thread.
 
 		threadID (int) -
 		name (str)     - The thread name. By default, a unique name is constructed of the form "Thread-N" where N is a small decimal number.
 		counter (int)  - 
 		daemon (bool)  - Sets whether the thread is daemonic. If None (the default), the daemonic property is inherited from the current thread.
+		label (str) - A name for the thread
+			- If name already exists: Will stop the existing thread and replace it with this one
+		stopFunction (function) - An extra function used to stop the thread
 		
 		Example Input: _MyThread()
 		Example Input: _MyThread(1, "Thread-1", 1)
 		Example Input: _MyThread(daemon = True)
 		"""
+		global threads_max, threadCatalogue, threadCatalogue_lock
 
 		#Initialize the thread
 		threading.Thread.__init__(self, name = name, daemon = daemon)
 		# self.setDaemon(daemon)
+
+		print("@1", threading.active_count(), label)
 
 		#Setup thread properties
 		if (threadID != None):
@@ -482,6 +494,7 @@ class _MyThread(threading.Thread):
 
 		#Initialize internal variables
 		self.parent = parent
+		self.label = label
 		self.shown = None
 		self.window = None
 		self.myFunction = None
@@ -490,6 +503,13 @@ class _MyThread(threading.Thread):
 		self.errorFunction = None
 		self.errorFunctionArgs = None
 		self.errorFunctionKwargs = None
+		self.stopFunction = stopFunction
+
+		#Wait for other threads to stop
+		if (threading.active_count() > threads_max):
+			warnings.warn(f"Too many threads at {self.printCurrentTrace(printout = False)}", Warning, stacklevel = 2)
+			while (threading.active_count() > threads_max):
+				time.sleep(10 / 1000)
 
 	def runFunction(self, myFunction, myFunctionArgs, myFunctionKwargs, window, shown = False, errorFunction = None, errorFunctionArgs = None, errorFunctionKwargs = None):
 		"""Sets the function to run in the thread object.
@@ -520,6 +540,24 @@ class _MyThread(threading.Thread):
 	def run(self):
 		"""Runs the thread and then closes it."""
 
+		if (self.label != None):
+			with threadCatalogue_lock:
+				if (self.label in threadCatalogue):
+					thread = threadCatalogue[self.label]
+				else:
+					thread = None
+
+			if (thread != None):
+				#Replace the running thread
+				thread.stop()
+				try:
+					thread.join()
+				except RuntimeError:
+					pass
+
+			with threadCatalogue_lock:
+				threadCatalogue[self.label] = self
+
 		if (self.shown):
 			#Wait until the window is shown to start
 			while True:
@@ -541,6 +579,9 @@ class _MyThread(threading.Thread):
 		"""Stops the running thread."""
 
 		self.stopEvent.set()
+
+		if (self.stopFunction != None):
+			self.stopFunction()
 
 #Global Inheritance Classes
 class Utilities():
@@ -703,6 +744,10 @@ class Utilities():
 			if ((not isinstance(self, Controller)) and (itemLabel.GetEventObject() == self.thing)):
 				answer = self
 			else:
+				if (itemLabel.GetEventObject() == None):
+					errorMessage = f"There is no object associated with the event {itemLabel}"
+					raise SyntaxError(errorMessage)
+
 				for item in self[:]:
 					if (itemLabel.GetEventObject() == item.thing):
 						answer = item
@@ -1433,16 +1478,16 @@ class Utilities():
 
 		self.controller.threadQueue.from_main_thread(blocking = blocking, printEmpty = printEmpty)
 
-	def onBackgroundRun(self, event, myFunctionList, myFunctionArgsList = None, myFunctionKwargsList = None, shown = False, makeThread = True):
+	def onBackgroundRun(self, event, myFunctionList, myFunctionArgsList = None, myFunctionKwargsList = None, **kwargs):
 		"""Here so the function backgroundRun can be triggered from a bound event."""
 
 		#Run the function correctly
-		self.backgroundRun(myFunctionList, myFunctionArgsList, myFunctionKwargsList, shown, makeThread)
+		self.backgroundRun(myFunctionList, myFunctionArgsList, myFunctionKwargsList, **kwargs)
 
 		event.Skip()
 
 	def backgroundRun(self, myFunction, myFunctionArgs = None, myFunctionKwargs = None, shown = False, makeThread = True,
-		errorFunction = None, errorFunctionArgs = None, errorFunctionKwargs = None):
+		errorFunction = None, errorFunctionArgs = None, errorFunctionKwargs = None, label = None, stopFunction = None):
 		"""Runs a function in the background in a way that it does not lock up the GUI.
 		Meant for functions that take a long time to run.
 		If makeThread is true, the new thread object will be returned to the user.
@@ -1456,6 +1501,9 @@ class Utilities():
 		makeThread (bool)      - Determines if this function runs on a different thread
 			- If True: A new thread will be created to run the function
 			- If False: The function will only run while the GUI is idle. Note: This can cause lag. Use this for operations that must be in the main thread.
+		label (str) - A name for the thread
+			- If name already exists: Will stop the existing thread and replace it with this one
+		stopFunction (function) - An extra function used to stop the thread
 
 		errorFunction (str)       - The function that will be ran when an error occurs
 			- The 'error' must be either the first arg or a kwarg
@@ -1480,7 +1528,7 @@ class Utilities():
 					#Determine how to run the function
 					if (makeThread):
 						#Create parallel thread
-						thread = _MyThread(self, daemon = True)
+						thread = _MyThread(self, daemon = True, label = label, stopFunction = stopFunction)
 						thread.runFunction(myFunctionEvaluated, myFunctionArgs, myFunctionKwargs, self, shown = shown, 
 							errorFunction = errorFunction, errorFunctionArgs = errorFunctionArgs, errorFunctionKwargs = errorFunctionKwargs)
 						return thread
@@ -1627,7 +1675,7 @@ class Utilities():
 
 			self.controller.backgroundFunction_pauseOnDialog["listeningCatalogue"][self][myFunction] = {"state": pauseOnDialog, "exclude": notPauseOnDialog}
 
-		self.backgroundRun(listenFunction, shown = shown, makeThread = makeThread)
+		self.backgroundRun(listenFunction, shown = shown, makeThread = makeThread, stopFunction = lambda: self.stop_listen(listenFunction))
 
 	def stop_listen(self, myFunction):
 		"""Stops the listen routine.
@@ -1681,7 +1729,7 @@ class Utilities():
 	#One-shot Functions
 	def oneShot(self, myFunction, myFunctionArgs = None, myFunctionKwargs = None,
 		alternativeFunction = None, alternativeFunctionArgs = None, alternativeFunctionKwargs = None, 
-		delay = 0, delayAfter = True, allowAgain = True, shown = False, makeThread = True):
+		delay = 0, delayAfter = True, allowAgain = True, **kwargs):
 		"""Runs this function in the background only once.
 		Returns if 'myFunction' ran or not.
 
@@ -1734,12 +1782,12 @@ class Utilities():
 		if (myFunction in self.oneShotCatalogue):
 			if ((self.oneShotCatalogue[myFunction]["running"]) or (not self.oneShotCatalogue[myFunction]["canRun"])):
 				if (runAlternativeFunction != None):
-					self.backgroundRun(runAlternativeFunction, shown = shown, makeThread = makeThread)
+					self.backgroundRun(runAlternativeFunction, **kwargs)
 				return False
 		else:
 			self.oneShotCatalogue[myFunction] = {"running": False, "canRun": True}
 	
-		self.backgroundRun(runOneShotFunction, shown = shown, makeThread = makeThread)
+		self.backgroundRun(runOneShotFunction, **kwargs)
 		return True
 
 	def reset_oneShot(self, myFunction):
@@ -6455,7 +6503,7 @@ class handle_Widget_Base(handle_Base):
 			value = self.thing.GetValue() #(int) - Where the progress bar currently is
 
 		else:
-			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 4)
 			value = None
 
 		return value
@@ -6466,7 +6514,7 @@ class handle_Widget_Base(handle_Base):
 		if (False):
 			pass
 		else:
-			warnings.warn(f"Add {self.type} to getIndex() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to getIndex() for {self.__repr__()}", Warning, stacklevel = 4)
 			value = None
 
 		return value
@@ -6478,7 +6526,7 @@ class handle_Widget_Base(handle_Base):
 			value = self.thing.GetRange()
 
 		else:
-			warnings.warn(f"Add {self.type} to getAll() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to getAll() for {self.__repr__()}", Warning, stacklevel = 4)
 			value = None
 
 		return value
@@ -6494,12 +6542,12 @@ class handle_Widget_Base(handle_Base):
 			self.thing.SetValue(newValue)
 
 		else:
-			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 4)
 
 	def setSelection(self, newValue, event = None):
 		"""Sets the contextual selection for the object associated with this handle to what the user supplies."""
 
-		warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
+		warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 4)
 
 	def setReadOnly(self, state = True, event = None):
 		"""Sets the contextual readOnly for the object associated with this handle to what the user supplies."""
@@ -6508,7 +6556,7 @@ class handle_Widget_Base(handle_Base):
 			pass
 			
 		else:
-			warnings.warn(f"Add {self.type} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 4)
 
 	def setFunction_rightClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		self._betterBind(wx.EVT_RIGHT_DOWN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
@@ -7789,7 +7837,7 @@ class handle_WidgetList(handle_Widget_Base):
 		else:
 			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
-	def setSelection(self, newValue, event = None, deselectOthers = True, ensureVisible = True, group = False):
+	def setSelection(self, newValue, event = None, deselectOthers = True, ensureVisible = True, group = False, triggerEvent = True):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
 		if (self.type.lower() == "listdrop"):
@@ -7815,6 +7863,12 @@ class handle_WidgetList(handle_Widget_Base):
 			else:
 				objectList = newValue
 
+			existingList = self.thing.GetObjects()
+			for item in objectList:
+				if (item not in existingList):
+					errorMessage = f"{item.__repr__()} is not in {self.__repr__()}"
+					raise KeyError(errorMessage)
+
 			if (group):
 				self.thing.SelectGroups(objectList, deselectOthers = deselectOthers)
 				if (ensureVisible):
@@ -7825,7 +7879,12 @@ class handle_WidgetList(handle_Widget_Base):
 				if (ensureVisible):
 					self.thing.SelectObject(objectList[0], deselectOthers = False, ensureVisible = ensureVisible)
 					self.thing.Reveal(objectList[0])
-			
+
+			if (triggerEvent):
+				newEvent = wx.PyCommandEvent(wx.EVT_LIST_ITEM_SELECTED.typeId, self.thing.GetId())
+				newEvent.SetEventObject(self.thing)
+				# wx.PostEvent(self.thing, newEvent)
+				self.thing.GetEventHandler().ProcessEvent(newEvent)
 		else:
 			warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -7940,6 +7999,7 @@ class handle_WidgetList(handle_Widget_Base):
 			warnings.warn(f"Add {self.type} to setColumns() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def refresh(self):
+		# print("@1", self.thing.GetObjects())
 		self.thing.RepopulateList()
 
 	def clearAll(self):
@@ -7956,7 +8016,6 @@ class handle_WidgetList(handle_Widget_Base):
 			self.refresh()
 
 	def expandAll(self, state = True):
-		print("@1", state)
 		if (state):
 			self.thing.ExpandAll()
 		else:
@@ -14257,7 +14316,7 @@ class handle_WidgetTable(handle_Widget_Base):
 		
 		self.thing.ClearGrid()
 
-	def setTableCursor(self, row, column):
+	def setTableCursor(self, row, column, ensureVisible = True):
 		"""Moves the table highlight cursor to the given cell coordinates
 		The top-left corner is cell (0, 0) not (1, 1).
 
@@ -14270,6 +14329,25 @@ class handle_WidgetTable(handle_Widget_Base):
 		#Set the cell value
 		self.thing.GoToCell(row, column)
 		self.thing.SetGridCursor(row, column)
+
+		if (ensureVisible):
+			self.thing.MakeCellVisible(row, column)
+
+	def getTableCursor(self, event = None):
+		"""Returns the loaction of the table highlight cursor.
+		The top-left corner is cell (0, 0) not (1, 1).
+
+		Example Input: getTableCursor()
+		"""
+
+		if (isinstance(event, wx.grid.GridEvent)):
+			row = event.GetRow()
+			column = event.GetCol()
+		else:
+			row = self.thing.GetGridCursorRow()
+			column = self.thing.GetGridCursorCol()
+
+		return (row, column)
 
 	def setTableCell(self, row, column, value, noneReplace = True):
 		"""Writes something to a cell.
@@ -15398,18 +15476,20 @@ class handle_WidgetTable(handle_Widget_Base):
 						if (not self.parent.getTableReadOnly(topleft[0][0] + r, topleft[0][1] + c)):
 							self.setValue(topleft[0][0] + r, topleft[0][1] + c, '')
 
-		def setValue(self, row, column, value, triggerEvents = True):
+		def setValue(self, row, column, value, triggerEvent = True):
 			"""Triggers an event when the data is changed."""
 
-			if (triggerEvents):
+			if (triggerEvent):
 				event = wx.grid.GridEvent(self.GetId(), wx.grid.EVT_GRID_CELL_CHANGING.typeId, self, row = row, col = column, sel = True, kbd = wx.KeyboardState(controlDown = True))
+				event.SetEventObject(self)
 				# wx.PostEvent(self.GetEventHandler(), event)
 				self.GetEventHandler().ProcessEvent(event)
 
 			self.SetCellValue(row, column, value)
 
-			if (triggerEvents):
+			if (triggerEvent):
 				event = wx.grid.GridEvent(self.GetId(), wx.grid.EVT_GRID_CELL_CHANGED.typeId, self, row = row, col = column, sel = True, kbd = wx.KeyboardState(controlDown = True))
+				event.SetEventObject(self)
 				# wx.PostEvent(self.GetEventHandler(), event)
 				self.GetEventHandler().ProcessEvent(event)
 
@@ -15522,6 +15602,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 			# print(event.GetRow())
 
+			# event.SetEventObject(self.parent.thing)
 			# wx.PostEvent(self.parent.thing.GetEventHandler(), event)
 
 		def Create(self, parent, myId, event):
@@ -15700,11 +15781,13 @@ class handle_WidgetTable(handle_Widget_Base):
 				self.patching_event = True
 
 				event = wx.grid.GridEvent(grid.GetId(), wx.grid.EVT_GRID_CELL_CHANGING.typeId, grid, row = row, col = column)
+				event.SetEventObject(grid)
 				self.parent.thing.GetEventHandler().ProcessEvent(event)
 
 				self.ApplyEdit(row, column, grid)
 
 				event = wx.grid.GridEvent(grid.GetId(), wx.grid.EVT_GRID_CELL_CHANGED.typeId, grid, row = row, col = column)
+				event.SetEventObject(grid)
 				self.parent.thing.GetEventHandler().ProcessEvent(event)
 
 				self.patching_event = False
@@ -19218,7 +19301,7 @@ class handle_Window(handle_Container_Base):
 
 		self.statusBar.SetStatusWidths(widthList)
 
-	def setStatusText(self, message = None, number = 0, startDelay = 0, autoAdd = False):
+	def setStatusText(self, message = None, number = 0, startDelay = 0, delayChunk = 100, autoAdd = False):
 		"""Sets the text shown in the status bar.
 		If a message is on a timer and a new message gets sent, the timer message will stop and not overwrite the new message.
 		In a multi-field status bar, the fields are numbered starting with 0.
@@ -19229,6 +19312,7 @@ class handle_Window(handle_Container_Base):
 			- If function: Will run the function and use the returned value as the message
 		number (int)   - Which field to place this status in on the status bar
 		startDelay (int)    - How long to wait in ms before showing the first message
+		delayChunk (int) - How many seconds to wait while waiting before checking the stop condition
 		autoAdd (bool) - If there is no status bar, add one
 
 		Example Input: setStatusText()
@@ -19253,7 +19337,12 @@ class handle_Window(handle_Container_Base):
 			self.statusTextTimer["listening"] += 1
 
 			if (startDelay not in [None, 0]):
-				time.sleep(startDelay / 1000)
+				for i in range(1, (startDelay // delayChunk) + 1):
+					if (self.statusTextTimer["stop"]):
+						self.statusTextTimer["stop"] = False
+						break
+					time.sleep((i * delayChunk) / 1000)
+				time.sleep((startDelay % delayChunk) / 1000)
 
 			if (not isinstance(message, dict)):
 				applyMessage(message)
@@ -19275,7 +19364,13 @@ class handle_Window(handle_Container_Base):
 
 					if (delay == None):
 						break
-					time.sleep(delay / 1000)
+
+					for i in range(1, (delay // delayChunk) + 1):
+						if (self.statusTextTimer["stop"]):
+							self.statusTextTimer["stop"] = False
+							break
+						time.sleep((i * delayChunk) / 1000)
+					time.sleep((delay % delayChunk) / 1000)
 
 			self.statusTextTimer["listening"] -= 1
 
@@ -19308,7 +19403,13 @@ class handle_Window(handle_Container_Base):
 			warnings.warn(f"There are only {self.statusBar.GetFieldsCount()} fields in the status bar, so it cannot set the text for field {number} in setStatusText() for {self.__repr__()}", Warning, stacklevel = 2)
 			return
 
-		self.backgroundRun(timerMessage)
+		print("@2")
+		self.backgroundRun(timerMessage, label = "statusBar_timerMessage", stopFunction = self.setStatusText_stop)
+
+	def setStatusText_stop(self):
+		"""Stops the setStatusText wherever it is in execusion."""
+
+		self.statusTextTimer["stop"] = True
 
 	def setStatusTextDefault(self, message = " ", number = 0):
 		"""Sets the default status message for the status bar.
@@ -22850,11 +22951,8 @@ def _mp_SortObjects(self, modelObjects=None, sortColumn=None, secondarySortColum
 		return
 
 	# Let the world have a chance to sort the model objects
-	evt = ObjectListView.OLVEvent.SortEvent(
-		self,
-		self.sortColumnIndex,
-		self.sortAscending,
-		True)
+	evt = ObjectListView.OLVEvent.SortEvent(self, self.sortColumnIndex, self.sortAscending, True)
+	# evt.SetEventObject(self)
 	self.GetEventHandler().ProcessEvent(evt)
 	if evt.IsVetoed() or evt.wasHandled:
 		return
@@ -22909,6 +23007,7 @@ def _mp_SortGroups(self, groups=None, ascending=None):
 
 	# Let the world have a change to sort the items
 	evt = ObjectListView.OLVEvent.SortGroupsEvent(self, groups, sortCol, ascending)
+	# evt.SetEventObject(self)
 	self.GetEventHandler().ProcessEvent(evt)
 	if evt.wasHandled:
 		return
@@ -22947,10 +23046,10 @@ def _mp_HandleColumnClick(self, event):
 	"""Overridden to allow for user customization."""
 
 	if (not hasattr(self, "rebuildGroup_onColumnClick")):
-		self.defaultGroupSortFunction = True
+		self.rebuildGroup_onColumnClick = True
 
 	# If they click on a new column, we have to rebuild our groups
-	if (self.rebuildGroup_onColumnClick and (evt.GetColumn() != self.sortColumnIndex)):
+	if (self.rebuildGroup_onColumnClick and (event.GetColumn() != self.sortColumnIndex)):
 		self.groups = None
 
 	ObjectListView.FastObjectListView._HandleColumnClick(self, event)
