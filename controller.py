@@ -52,7 +52,7 @@ import wx.lib.mixins.listctrl
 import wx.lib.agw.multidirdialog
 import wx.lib.agw.fourwaysplitter
 import wx.lib.agw.ultimatelistctrl
-import ObjectListView
+import objectlistview.ObjectListView as ObjectListView #Use my own fork
 
 #Import matplotlib elements to add plots to the GUI
 # import matplotlib
@@ -507,7 +507,7 @@ class _MyThread(threading.Thread):
 
 		#Wait for other threads to stop
 		if (threading.active_count() > threads_max):
-			warnings.warn(f"Too many threads at {self.printCurrentTrace(printout = False)}", Warning, stacklevel = 2)
+			# warnings.warn(f"Too many threads at {printCurrentTrace(printout = False)}", Warning, stacklevel = 2)
 			while (threading.active_count() > threads_max):
 				time.sleep(10 / 1000)
 
@@ -7185,6 +7185,7 @@ class handle_WidgetList(handle_Widget_Base):
 		self.columnCatalogue = {}
 		self.selectionColor = None
 		self.lastSelection = None
+		self.groups_ensured = []
 
 		self.preDragFunction = None
 		self.preDragFunctionArgs = None
@@ -7405,9 +7406,10 @@ class handle_WidgetList(handle_Widget_Base):
 
 			# #Bind the function(s)
 			self._betterBind(wx.EVT_LIST_ITEM_SELECTED, self.thing, self._onSelect)
-			self._betterBind(ObjectListView.EVT_GROUP_SORT, self.thing, self._onSortGroup, mode = 2)
 			self._betterBind(ObjectListView.EVT_EXPANDING, self.thing, self._onExpand, mode = 2)
 			self._betterBind(ObjectListView.EVT_COLLAPSING, self.thing, self._onExpand, mode = 2)
+			self._betterBind(ObjectListView.EVT_GROUP_SORT, self.thing, self._onSortGroup, mode = 2)
+			# self._betterBind(ObjectListView.EVT_GROUP_CREATING, self.thing, self._onCreateGroup, mode = 2)
 
 			# myFunction, preEditFunction, postEditFunction = self._getArguments(argument_catalogue, ["myFunction", "preEditFunction", "postEditFunction"])
 			# if (myFunction != None):
@@ -7838,7 +7840,9 @@ class handle_WidgetList(handle_Widget_Base):
 			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setSelection(self, newValue, event = None, deselectOthers = True, ensureVisible = True, group = False, triggerEvent = True):
-		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
+		"""Sets the contextual value for the object associated with this handle to what the user supplies.
+		None will deselect all items.
+		"""
 
 		if (self.type.lower() == "listdrop"):
 			if (newValue != None):
@@ -7853,21 +7857,32 @@ class handle_WidgetList(handle_Widget_Base):
 			self.thing.SetSelection(newValue) #(int) - What the choice options will now be
 
 		elif (self.type.lower() == "listfull"):
+			if (newValue == None):
+				self.thing.DeselectAll()
+				return
+
 			if (isinstance(newValue, (range, types.GeneratorType))):
 				newValue = list(newValue)
 			elif (not isinstance(newValue, (list, tuple, dict))):
 				newValue = [newValue]
 
 			if (any((not hasattr(item, '__dict__') for item in newValue))):
-				ikiklk
+				### TO DO ### Make this check each item indiviually instead of assuming all are the same type
+				print(newValue)
+				if (group and True): #Check to see if there is a group labled that
+					objectList = newValue
+				else:
+					ikiklk
 			else:
 				objectList = newValue
 
 			existingList = self.thing.GetObjects()
 			for item in objectList:
-				if (item not in existingList):
+				if ((item not in existingList) and (item not in self.groups_ensured)):
 					errorMessage = f"{item.__repr__()} is not in {self.__repr__()}"
-					raise KeyError(errorMessage)
+					# raise KeyError(errorMessage)
+					print(errorMessage)
+					return
 
 			if (group):
 				self.thing.SelectGroups(objectList, deselectOthers = deselectOthers)
@@ -8227,6 +8242,13 @@ class handle_WidgetList(handle_Widget_Base):
 		self.thing.SetDefaultGroupSortFunction(myFunction) 
 		# self.thing.SetDefaultGroupSortFunction(lambda *args, **kwargs: myFunction(*args, 
 		# 	sortColumn = self.thing.GetSortColumn().title if self.thing.GetAlwaysGroupByColumn() else self.thing.GetGroupByColumn().title, **kwargs))
+
+	def ensureGroups(self, groupList = None):
+		"""Makes sure these groups are shown, even if they are empty."""
+
+		self.groups_ensured = groupList or []
+
+		self.thing.SetEmptyGroups(self.groups_ensured)
 
 	def addImage(self, label, imagePath, internal = False):
 		"""Adds an image to the image catalogue.
@@ -8638,6 +8660,28 @@ class handle_WidgetList(handle_Widget_Base):
 
 		event.Handled()
 		event.Skip()
+
+	def _onCreateGroup(self, event, *args, **kwargs):
+		"""Allows for empty groups."""
+		pass
+		event.Skip()
+
+		# print("@1", event.groups)
+		# print("@2", self.groups_ensured)
+
+		# missing = {*self.groups_ensured}
+		# for group in event.groups:
+		# 	try:
+		# 		missing.remove(group.key)
+		# 	except:
+		# 		pass
+
+		# print("@3", missing)
+
+		# self.thing.SetEmptyGroups(missing)
+
+
+		# event.Skip()
 
 	def _onExpand(self, event):
 		"""Records the groups that are expanded."""
@@ -19373,6 +19417,7 @@ class handle_Window(handle_Container_Base):
 					time.sleep((delay % delayChunk) / 1000)
 
 			self.statusTextTimer["listening"] -= 1
+			return True
 
 		def applyMessage(text):
 			"""Places the given text into the status bar."""
@@ -19403,8 +19448,7 @@ class handle_Window(handle_Container_Base):
 			warnings.warn(f"There are only {self.statusBar.GetFieldsCount()} fields in the status bar, so it cannot set the text for field {number} in setStatusText() for {self.__repr__()}", Warning, stacklevel = 2)
 			return
 
-		print("@2")
-		self.backgroundRun(timerMessage, label = "statusBar_timerMessage", stopFunction = self.setStatusText_stop)
+		self.controller.queue_statusText.put((timerMessage, [], {}))
 
 	def setStatusText_stop(self):
 		"""Stops the setStatusText wherever it is in execusion."""
@@ -21935,6 +21979,7 @@ class Controller(Utilities, CommonEventFunctions):
 		self.printMakeVariables = printMakeVariables
 		self.windowDisabler = None
 		self.controller = self
+		self.queue_statusText = PriorityQueue(defaultPriority = 100)
 
 		self.exiting = False
 		self.finishing = False
@@ -22085,7 +22130,7 @@ class Controller(Utilities, CommonEventFunctions):
 		handle = self.get(label, *args, **kwargs)
 		event = self._getArgument_event(label, args, kwargs)
 		handle.setSelection(newValue, event = event)
-	
+
 	#Main Objects
 	def addWindow(self, label = None, title = "", size = wx.DefaultSize, position = wx.DefaultPosition, panel = True, autoSize = True,
 		tabTraversal = True, stayOnTop = False, floatOnParent = False, endProgram = True, smallerThanScreen = True,
@@ -22223,6 +22268,33 @@ class Controller(Utilities, CommonEventFunctions):
 
 		return handle
 
+	#Background Threads
+	def start_listenStatusText(self):
+		"""Starts listening to listenStatusText()."""
+
+		self.stop_listenStatusText()
+		self.listen(self.listenStatusText, delay = 100 / 1000, errorFunction = self.listenStatusText_handleError)
+
+	def stop_listenStatusText(self):
+		"""Stops listening to listenStatusText()."""
+
+		self.stop_listen(self.listenStatusText)
+
+	def listenStatusText_handleError(self, error = None):
+		traceback.print_exception(type(error), error, error.__traceback__)
+
+	def listenStatusText(self):
+		"""Checks if a status bar needs to be changed."""
+
+		try:
+			myFunction, args, kwargs = self.queue_statusText.get(False) #doesn't block
+			success = myFunction(*args, **kwargs)
+			if (not success):
+				self.queue_statusText.put((myFunction, args, kwargs), priority = 50)
+		
+		except queue.Empty: #raised when queue is empty
+			pass
+
 	#Logistic Functions
 	def finish(self):
 		"""Run this when the GUI is finished."""
@@ -22291,6 +22363,7 @@ class Controller(Utilities, CommonEventFunctions):
 			#Make sure that the window is up to date
 			myFrame.updateWindow()
 
+		self.start_listenStatusText()
 		self.finishing = False
 
 		#Start the GUI
@@ -22899,162 +22972,162 @@ class _mp_CallArgsInfo:
 
 pubsub.core.callables.CallArgsInfo = _mp_CallArgsInfo
 
-def _mp_SelectGroup(self, modelObject, deselectOthers=True, ensureVisible=False):
-	"""Overridden to allow group selections."""
+# def _mp_SelectGroup(self, modelObject, deselectOthers=True, ensureVisible=False):
+# 	"""Overridden to allow group selections."""
 
-	if (deselectOthers):
-		self.DeselectAll()
+# 	if (deselectOthers):
+# 		self.DeselectAll()
 
-	item = self.GetNextItem(-1, wx.LIST_NEXT_ALL, wx.LIST_STATE_DONTCARE)
-	while (item != -1):
-		model = self.innerList[item]
-		if ((isinstance(model, ObjectListView.ListGroup)) and (modelObject in model.modelObjects)):
-			realIndex = self._MapModelIndexToListIndex(item)
-			self.SetItemState(realIndex, wx.LIST_STATE_SELECTED, wx.LIST_STATE_SELECTED)
+# 	item = self.GetNextItem(-1, wx.LIST_NEXT_ALL, wx.LIST_STATE_DONTCARE)
+# 	while (item != -1):
+# 		model = self.innerList[item]
+# 		if ((isinstance(model, ObjectListView.ListGroup)) and (modelObject in model.modelObjects)):
+# 			realIndex = self._MapModelIndexToListIndex(item)
+# 			self.SetItemState(realIndex, wx.LIST_STATE_SELECTED, wx.LIST_STATE_SELECTED)
 
-			if (ensureVisible):
-				self.EnsureVisible(realIndex)
-			break
+# 			if (ensureVisible):
+# 				self.EnsureVisible(realIndex)
+# 			break
 
-		item = self.GetNextItem(item, wx.LIST_NEXT_ALL, wx.LIST_STATE_DONTCARE)
+# 		item = self.GetNextItem(item, wx.LIST_NEXT_ALL, wx.LIST_STATE_DONTCARE)
 
-def _mp_SelectGroups(self, modelObjects, deselectOthers=True):
-	"""Overridden to allow group selections."""
+# def _mp_SelectGroups(self, modelObjects, deselectOthers=True):
+# 	"""Overridden to allow group selections."""
 
-	if deselectOthers:
-		self.DeselectAll()
+# 	if deselectOthers:
+# 		self.DeselectAll()
 
-	for x in modelObjects:
-		self.SelectGroup(x, False)
+# 	for x in modelObjects:
+# 		self.SelectGroup(x, False)
 
-ObjectListView.GroupListView.SelectGroup = _mp_SelectGroup
-ObjectListView.GroupListView.SelectGroups = _mp_SelectGroups
+# ObjectListView.GroupListView.SelectGroup = _mp_SelectGroup
+# ObjectListView.GroupListView.SelectGroups = _mp_SelectGroups
 
-def _mp_DisableSorting(self):
-	"""Created to allow undoing EnableSorting()."""
+# def _mp_DisableSorting(self):
+# 	"""Created to allow undoing EnableSorting()."""
 
-	self.Unbind(wx.EVT_LIST_COL_CLICK, handler = self._HandleColumnClick)
+# 	self.Unbind(wx.EVT_LIST_COL_CLICK, handler = self._HandleColumnClick)
 
-ObjectListView.ObjectListView.DisableSorting = _mp_DisableSorting
+# ObjectListView.ObjectListView.DisableSorting = _mp_DisableSorting
 
-def _mp_SortObjects(self, modelObjects=None, sortColumn=None, secondarySortColumn=None):
-	"""Overriden to enable sorting None and using a different sorting key"""
-	if modelObjects is None:
-		modelObjects = self.modelObjects
-	if sortColumn is None:
-		sortColumn = self.GetSortColumn()
-	if secondarySortColumn == sortColumn:
-		secondarySortColumn = None
+# def _mp_SortObjects(self, modelObjects=None, sortColumn=None, secondarySortColumn=None):
+# 	"""Overriden to enable sorting None and using a different sorting key"""
+# 	if modelObjects is None:
+# 		modelObjects = self.modelObjects
+# 	if sortColumn is None:
+# 		sortColumn = self.GetSortColumn()
+# 	if secondarySortColumn == sortColumn:
+# 		secondarySortColumn = None
 
-	# If we don't have a sort column, we can't sort -- duhh
-	if sortColumn is None:
-		return
+# 	# If we don't have a sort column, we can't sort -- duhh
+# 	if sortColumn is None:
+# 		return
 
-	# Let the world have a chance to sort the model objects
-	evt = ObjectListView.OLVEvent.SortEvent(self, self.sortColumnIndex, self.sortAscending, True)
-	# evt.SetEventObject(self)
-	self.GetEventHandler().ProcessEvent(evt)
-	if evt.IsVetoed() or evt.wasHandled:
-		return
+# 	# Let the world have a chance to sort the model objects
+# 	evt = ObjectListView.OLVEvent.SortEvent(self, self.sortColumnIndex, self.sortAscending, True)
+# 	# evt.SetEventObject(self)
+# 	self.GetEventHandler().ProcessEvent(evt)
+# 	if evt.IsVetoed() or evt.wasHandled:
+# 		return
 
-	# When sorting large groups, this is called a lot. Make it efficent.
-	# It is more efficient (by about 30%) to try to call lower() and catch the
-	# exception than it is to test for the class
-	def _getSortValue(x):
-		primary = sortColumn.GetValue(x)
-		try:
-			primary = primary.lower()
-		except AttributeError:
-			pass
-		if secondarySortColumn:
-			secondary = secondarySortColumn.GetValue(x)
-			try:
-				secondary = secondary.lower()
-			except AttributeError:
-				pass
-			return (primary is None, primary, secondary)
-		else:
-			return (primary is None, primary)
+# 	# When sorting large groups, this is called a lot. Make it efficent.
+# 	# It is more efficient (by about 30%) to try to call lower() and catch the
+# 	# exception than it is to test for the class
+# 	def _getSortValue(x):
+# 		primary = sortColumn.GetValue(x)
+# 		try:
+# 			primary = primary.lower()
+# 		except AttributeError:
+# 			pass
+# 		if secondarySortColumn:
+# 			secondary = secondarySortColumn.GetValue(x)
+# 			try:
+# 				secondary = secondary.lower()
+# 			except AttributeError:
+# 				pass
+# 			return (primary is None, primary, secondary)
+# 		else:
+# 			return (primary is None, primary)
 
-	if (not hasattr(self, "defaultSortFunction")):
-		self.defaultSortFunction = None
+# 	if (not hasattr(self, "defaultSortFunction")):
+# 		self.defaultSortFunction = None
 
-	if (self.defaultSortFunction != None):
-		modelObjects.sort(key=self.defaultSortFunction, reverse=(not self.sortAscending))
-	else:
-		modelObjects.sort(key=_getSortValue, reverse=(not self.sortAscending))
+# 	if (self.defaultSortFunction != None):
+# 		modelObjects.sort(key=self.defaultSortFunction, reverse=(not self.sortAscending))
+# 	else:
+# 		modelObjects.sort(key=_getSortValue, reverse=(not self.sortAscending))
 
-	# Sorting invalidates our object map
-	self.objectToIndexMap = None
+# 	# Sorting invalidates our object map
+# 	self.objectToIndexMap = None
 
-def _mp_SetDefaultSortFunction(self, function):
-	self.defaultSortFunction = function
+# def _mp_SetDefaultSortFunction(self, function):
+# 	self.defaultSortFunction = function
 
-def _mp_SortGroups(self, groups=None, ascending=None):
-	"""Overriden to allow using a different sorting key"""
+# def _mp_SortGroups(self, groups=None, ascending=None):
+# 	"""Overriden to allow using a different sorting key"""
 
-	if groups is None:
-		groups = self.groups
-	if ascending is None:
-		ascending = self.sortAscending
+# 	if groups is None:
+# 		groups = self.groups
+# 	if ascending is None:
+# 		ascending = self.sortAscending
 
-	# If the groups are locked, we sort by the sort column, otherwise by the grouping column.
-	# The primary column is always used as a secondary sort key.
-	if self.GetAlwaysGroupByColumn():
-		sortCol = self.GetSortColumn()
-	else:
-		sortCol = self.GetGroupByColumn()
+# 	# If the groups are locked, we sort by the sort column, otherwise by the grouping column.
+# 	# The primary column is always used as a secondary sort key.
+# 	if self.GetAlwaysGroupByColumn():
+# 		sortCol = self.GetSortColumn()
+# 	else:
+# 		sortCol = self.GetGroupByColumn()
 
-	# Let the world have a change to sort the items
-	evt = ObjectListView.OLVEvent.SortGroupsEvent(self, groups, sortCol, ascending)
-	# evt.SetEventObject(self)
-	self.GetEventHandler().ProcessEvent(evt)
-	if evt.wasHandled:
-		return
+# 	# Let the world have a change to sort the items
+# 	evt = ObjectListView.OLVEvent.SortGroupsEvent(self, groups, sortCol, ascending)
+# 	# evt.SetEventObject(self)
+# 	self.GetEventHandler().ProcessEvent(evt)
+# 	if evt.wasHandled:
+# 		return
 
-	# Sorting event wasn't handled, so we do the default sorting
-	def _getLowerCaseKey(group):
-		try:
-			return group.key.lower()
-		except:
-			return group.key
+# 	# Sorting event wasn't handled, so we do the default sorting
+# 	def _getLowerCaseKey(group):
+# 		try:
+# 			return group.key.lower()
+# 		except:
+# 			return group.key
 
-	if (not hasattr(self, "defaultGroupSortFunction")):
-		self.defaultGroupSortFunction = None
+# 	if (not hasattr(self, "defaultGroupSortFunction")):
+# 		self.defaultGroupSortFunction = None
 
-	if (self.defaultGroupSortFunction == None):
-		sortFunction = _getLowerCaseKey
-	else:
-		sortFunction = self.defaultGroupSortFunction
+# 	if (self.defaultGroupSortFunction == None):
+# 		sortFunction = _getLowerCaseKey
+# 	else:
+# 		sortFunction = self.defaultGroupSortFunction
 
-	groups = sorted(groups, key = sortFunction, reverse = not ascending)
-	self.groups = groups
+# 	groups = sorted(groups, key = sortFunction, reverse = not ascending)
+# 	self.groups = groups
 
-	# Sort the model objects within each group.
-	for x in groups:
-		self._SortObjects(x.modelObjects, sortCol, self.GetPrimaryColumn())
+# 	# Sort the model objects within each group.
+# 	for x in groups:
+# 		self._SortObjects(x.modelObjects, sortCol, self.GetPrimaryColumn())
 
-def _mp_SetDefaultGroupSortFunction(self, function):
-	self.defaultGroupSortFunction = function
+# def _mp_SetDefaultGroupSortFunction(self, function):
+# 	self.defaultGroupSortFunction = function
 
-ObjectListView.GroupListView.SortGroups = _mp_SortGroups
-ObjectListView.ObjectListView._SortObjects = _mp_SortObjects
-ObjectListView.ObjectListView.SetDefaultSortFunction = _mp_SetDefaultSortFunction
-ObjectListView.ObjectListView.SetDefaultGroupSortFunction = _mp_SetDefaultGroupSortFunction
+# ObjectListView.GroupListView.SortGroups = _mp_SortGroups
+# ObjectListView.ObjectListView._SortObjects = _mp_SortObjects
+# ObjectListView.ObjectListView.SetDefaultSortFunction = _mp_SetDefaultSortFunction
+# ObjectListView.ObjectListView.SetDefaultGroupSortFunction = _mp_SetDefaultGroupSortFunction
 
-def _mp_HandleColumnClick(self, event):
-	"""Overridden to allow for user customization."""
+# def _mp_HandleColumnClick(self, event):
+# 	"""Overridden to allow for user customization."""
 
-	if (not hasattr(self, "rebuildGroup_onColumnClick")):
-		self.rebuildGroup_onColumnClick = True
+# 	if (not hasattr(self, "rebuildGroup_onColumnClick")):
+# 		self.rebuildGroup_onColumnClick = True
 
-	# If they click on a new column, we have to rebuild our groups
-	if (self.rebuildGroup_onColumnClick and (event.GetColumn() != self.sortColumnIndex)):
-		self.groups = None
+# 	# If they click on a new column, we have to rebuild our groups
+# 	if (self.rebuildGroup_onColumnClick and (event.GetColumn() != self.sortColumnIndex)):
+# 		self.groups = None
 
-	ObjectListView.FastObjectListView._HandleColumnClick(self, event)
+# 	ObjectListView.FastObjectListView._HandleColumnClick(self, event)
 
-ObjectListView.GroupListView._HandleColumnClick = _mp_HandleColumnClick
+# ObjectListView.GroupListView._HandleColumnClick = _mp_HandleColumnClick
 
 
 #User Things
