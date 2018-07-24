@@ -52,7 +52,7 @@ import wx.lib.mixins.listctrl
 import wx.lib.agw.multidirdialog
 import wx.lib.agw.fourwaysplitter
 import wx.lib.agw.ultimatelistctrl
-import objectlistview.ObjectListView as ObjectListView #Use my own fork
+import forks.objectlistview.ObjectListView as ObjectListView #Use my own fork
 
 #Import matplotlib elements to add plots to the GUI
 # import matplotlib
@@ -484,7 +484,7 @@ class _MyThread(threading.Thread):
 		threading.Thread.__init__(self, name = name, daemon = daemon)
 		# self.setDaemon(daemon)
 
-		print("@1", threading.active_count(), label)
+		# print("@1", threading.active_count(), label)
 
 		#Setup thread properties
 		if (threadID != None):
@@ -7723,8 +7723,15 @@ class handle_WidgetList(handle_Widget_Base):
 		return column
 
 	def getLastSelected(self, event = None):
-
 		return self.lastSelection
+
+	def setLastSelected(self, newValue, group = False, event = None):
+		self.lastSelection = {"group": [], "row": []}
+		if (newValue != None):
+			if (group):
+				self.lastSelection["group"] = newValue
+			else:
+				self.lastSelection["row"] = newValue
 
 	#Setters
 	def _formatList(self, newValue, filterNone = False):
@@ -18253,9 +18260,16 @@ class handle_Dialog(handle_Base):
 		Modified code from: https://wiki.wxpython.org/Printing
 		"""
 
+		def makePrintout():
+			return self._MyPrintout(self, title = self.title)
+
+
 		if (self.type.lower() == "print"):
+			print("@1", self.data, self.dialogData, self.content)
+			hjhgjjhjgj
+
 			printer = wx.Printer(self.dialogData)
-			myPrintout = self._MyPrintout(self)
+			myPrintout = makePrintout()
 
 			if (not printer.Print(self, myPrintout, True)):
 				wx.MessageBox(("There was a problem printing.\nPerhaps your current printer is \nnot set correctly ?"), ("Printing"), wx.OK)
@@ -18269,7 +18283,7 @@ class handle_Dialog(handle_Base):
 			handle.type = "Preview"
 
 			argument_catalogue = self._arrangeArguments(self.controller, Controller.addWindow)
-			argument_catalogue["canvas"] = self._MyPrintout(self, self.title)
+			argument_catalogue["printout"] = makePrintout()
 			argument_catalogue["enablePrint"] = True
 			handle._build(argument_catalogue)
 
@@ -18281,29 +18295,73 @@ class handle_Dialog(handle_Base):
 			warnings.warn(f"Add {self.type} to send() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	class _MyPrintout(wx.Printout):
-		def __init__(self, parent, title = "GUI_Maker Page"):
+		def __init__(self, parent, title = "GUI_Maker Page", pageTo = None, pageFrom = None):
 			wx.Printout.__init__(self, title)
 
 			self.title = title
 			self.parent = parent
+			self.pageTo = pageTo
+			self.pageFrom = pageFrom
+			self.document = None
 
-		def OnPrintPage(self, page):
+		def GetPageInfo(self):
+			"""Handles how many pages are in the printout."""
+
+			# minPage, maxPage, pageFrom, pageTo = super().GetPageInfo()
+
+			minPage = 1
+			maxPage = len(self.document)
+			pageFrom = self.pageFrom or minPage
+			pageTo = self.pageTo or maxPage
+
+			return (minPage, maxPage, pageFrom, pageTo)
+
+		def HasPage(self, pageNumber):
+			"""Determines if the given page is in the print out."""
+
+			try:
+				self.document[pageNumber]
+				return True
+			except Exception as error:
+				return False
+
+		# def OnBeginDocument(self, startPage, endPage):
+		# 	"""Ensures there is a page available for each page requested."""
+
+		# 	if (endPage > len(self.document)):
+		# 		return False
+		# 	return True
+
+		def OnPreparePrinting(self):
+			"""Ensures correct format of content."""
+
+			self.document = self.parent.content
+			if (not isinstance(self.document, (list, tuple, set, types.GeneratorType))):
+				self.document = [self.document]
+			if (not isinstance(self.document, dict)):
+				self.document = {pageNumber + 1: page for pageNumber, page in enumerate(self.document)}
+
+		def OnPrintPage(self, pageNumber):
 			"""Arranges the stuff on the page."""
 
 			dc = self.GetDC()
 			dc.SetMapMode(wx.MM_POINTS) #Each logical unit is a “printer point” i.e. 1/72 of an inch
 			# dc.SetMapMode(wx.MM_TWIPS) #Each logical unit is 1/20 of a “printer point”, or 1/1440 of an inch
 
-			if (isinstance(self.parent.content, str)):
+			page = self.document[pageNumber]
 
+			## TO DO ## Add isinstance(page, something with a defined font and text)
+			if (isinstance(page, str)):
 				dc.SetTextForeground("black")
 				dc.SetFont(wx.Font(11, wx.SWISS, wx.NORMAL, wx.BOLD))
-				dc.DrawText(self.parent.content, 0, 0)
-			if (isinstance(self.parent.content, handle_WidgetCanvas)):
-				with self.parent.content as myCanvas:
+				dc.DrawText(page, 0, 0)
+
+			elif (isinstance(page, handle_WidgetCanvas)):
+				with page as myCanvas:
 					myCanvas._draw(dc, modifyUnits = False)
+
 			else:
-				image = self.parent._getImage(self.parent.content)
+				image = self.parent._getImage(page)
 				dc.DrawBitmap(image, 0, 0)
 
 			return True
@@ -18311,7 +18369,7 @@ class handle_Dialog(handle_Base):
 		def clone(self):
 			"""Returns a copy of itself as a separate instance."""
 
-			return self.parent._MyPrintout(self.parent, title = self.title)
+			return self.parent._MyPrintout(self.parent, title = self.title, pageTo = self.pageTo, pageFrom = self.pageFrom)
 
 class handle_Window(handle_Container_Base):
 	"""A handle for working with a wxWindow."""
@@ -18610,12 +18668,12 @@ class handle_Window(handle_Container_Base):
 			"""Builds a wx preview frame object."""
 			nonlocal self, argument_catalogue
 
-			canvas, enablePrint = self._getArguments(argument_catalogue, ["canvas", "enablePrint"])
+			printout, enablePrint = self._getArguments(argument_catalogue, ["printout", "enablePrint"])
 
 			if (enablePrint):
-				preview = wx.PrintPreview(canvas, canvas.clone())
+				preview = wx.PrintPreview(printout, printout.clone())
 			else:
-				preview = wx.PrintPreview(canvas)
+				preview = wx.PrintPreview(printout)
 
 			#Pre Settings
 			if ("__WXMAC__" in wx.PlatformInfo):
@@ -18624,7 +18682,7 @@ class handle_Window(handle_Container_Base):
 				preview.SetZoom(35)
 
 			if (not preview.IsOk()):
-				warnings.warn(f"'canvas' {canvas.__repr__()} was not created correctly for {self.__repr__()}", Warning, stacklevel = 2)
+				warnings.warn(f"'printout' {printout.__repr__()} was not created correctly for {self.__repr__()}", Warning, stacklevel = 2)
 				self.thing = None
 				return
 
@@ -23304,6 +23362,7 @@ class User_Utilities():
 					answer = answer[0]
 			return answer
 
+		# printCurrentTrace()
 		errorMessage = f"There is no item labled {itemLabel} in the data catalogue for {self.__repr__()}"
 		raise KeyError(errorMessage)
 
@@ -23379,18 +23438,25 @@ class User_Utilities():
 		if (variable == None):
 			handleList = self.getHandle(where = where, exclude = excludeFunction, getFunction = getFunction, compareFunction = compareFunction)
 		else:
-			handleList = sorted(filter(lambda item: hasattr(item, variable) and (not excludeFunction(item)) and ((sortNone != None) or (getFunction(item, variable) != None)), 
-				self.getHandle(where = where, exclude = excludeFunction, getFunction = getFunction, compareFunction = compareFunction)), 
-				key = lambda item: (((getFunction(item, variable) is None)     if (reverse) else (getFunction(item, variable) is not None)) if (sortNone) else
-									((getFunction(item, variable) is not None) if (reverse) else (getFunction(item, variable) is None)), getFunction(item, variable)), 
-				reverse = reverse)
+			try:
+				handleList = sorted(filter(lambda item: hasattr(item, variable) and (not excludeFunction(item)) and ((sortNone != None) or (getFunction(item, variable) != None)), 
+					self.getHandle(where = where, exclude = excludeFunction, getFunction = getFunction, compareFunction = compareFunction)), 
+					key = lambda item: (((getFunction(item, variable) is None)     if (reverse) else (getFunction(item, variable) is not None)) if (sortNone) else
+										((getFunction(item, variable) is not None) if (reverse) else (getFunction(item, variable) is None)), getFunction(item, variable)), 
+					reverse = reverse)
+			except TypeError as error:
+				for item in filter(lambda item: hasattr(item, variable) and (not excludeFunction(item)) and ((sortNone != None) or (getFunction(item, variable) != None)), 
+					self.getHandle(where = where, exclude = excludeFunction, getFunction = getFunction, compareFunction = compareFunction)):
+
+					print(getFunction(item, variable), item)
+				raise error
 
 			if (includeMissing):
 				handleList.extend([item for item in self if (not hasattr(item, variable) and (not excludeFunction(item)))])
 
 		return handleList
 
-	def getHandle(self, where = None, exclude = [], getFunction = None, compareFunction = None):
+	def getHandle(self, where = None, exclude = [], getFunction = None, compareFunction = None, compareAsStrings = False):
 		"""Returns a list of children whose variables are equal to what is given.
 
 		where (dict) - {variable (str): value (any)}
@@ -23417,7 +23483,10 @@ class User_Utilities():
 		if (getFunction == None):
 			getFunction = getattr
 		if (compareFunction == None):
-			compareFunction = lambda handle, where: all(hasattr(handle, variable) and (getFunction(handle, variable) == value) for variable, value in where.items())
+			if (compareAsStrings):
+				compareFunction = lambda handle, where: all(hasattr(handle, variable) and (f"{getFunction(handle, variable)}" == f"{value}") for variable, value in where.items())
+			else:
+				compareFunction = lambda handle, where: all(hasattr(handle, variable) and (getFunction(handle, variable) == value) for variable, value in where.items())
 
 		handleList = []
 		for handle in self:
@@ -23476,3 +23545,148 @@ class User_Utilities():
 			return sum(self.getNumber(item, depthMax = depthMax, _currentDepth = _currentDepth + 1) for item in itemList)
 		else:
 			return 1
+
+	class CustomIterator():
+		"""Iterates over items in an external list."""
+		def __init__(self, parent, variableName, loop = False, printError = False):
+			"""
+			parent (object) - The object that will be using this iterator; typically self
+			variableName (str) - The name of a variable in *parent* that will be used as the list to iterate through
+			loop (bool) - If the iterator should never stop, and link the two ends of the list
+			printError (bool) - If errors should be printed
+
+			Example Input: CustomIterator(self, "printBarcode_containerList")
+			"""
+
+			self.index = -1
+			self.loop = loop
+			self.parent = parent
+			self.printError = printError
+
+			if (not isinstance(variableName, str)):
+				errorMessage = f"'variableName' must be a str, not a {type(variableName)}"
+				raise ValueError(errorMessage)
+			if (not hasattr(self.parent, variableName)):
+				errorMessage = f"{self.parent.__repr__()} must have a variable named {variableName}"
+				raise ValueError(errorMessage)
+			if (not isinstance(getattr(self.parent, variableName), (list, tuple))):
+				errorMessage = f"{variableName} in {self.parent.__repr__()} must be a list or tuple, not a {type(getattr(self.parent, variableName))}"
+				raise ValueError(errorMessage)
+			self._variableName = variableName
+
+		def __iter__(self):
+			return self
+
+		def __next__(self):
+			"""Returns the next item in the list.
+
+			Example Use: next(self.printBarcode_containerIterator)
+			"""
+
+			try:
+				self.index += 1
+				return self._getItem()
+			except IndexError:
+				if (self.loop):
+					return self.start()
+				else:
+					raise StopIteration
+
+		def previous(self):
+			"""Returns the previous item in the list.
+
+			Example input: previous()
+			"""
+
+			try:
+				if (self.index == -1):
+					self.index = len(self) - 1
+			
+				self.index -= 1
+				return self._getItem()
+			except IndexError:
+				if (self.loop):
+					return self.end()
+				else:
+					raise StopIteration
+
+		def start(self):
+			"""Returns the first item in the list.
+
+			Example Input: start()
+			"""
+
+			try:
+				self.index = 0
+				return self._getItem()
+			except IndexError:
+				raise StopIteration
+
+		def end(self):
+			"""Returns the last item in the list.
+
+			Example Input: end()
+			"""
+
+			try:
+				self.index = len(self.parent.printBarcode_containerList) - 1
+				return self._getItem()
+			except IndexError:
+				raise StopIteration
+
+		def next(self, n = None, terminator = None):
+			"""Returns the next item(s) in the list.
+
+			n (int) - How many pairs the results should be grouped in
+				- If None: Will run as an alias for next(self)
+
+			Example input: next()
+			Example input: next(2)
+			"""
+
+			if (n == None):
+				try:
+					return next(self)
+				except StopIteration:
+					return terminator
+
+			answer = []
+			for i in range(n):
+				try:
+					answer.append(next(self))
+				except StopIteration:
+					answer.append(terminator)
+
+			return answer
+
+		def asGenerator(self, n = 1, terminator = None):
+			"""Returns a generator for iterating through this iterator.
+
+			n (int) - How many pairs the results should be grouped in.
+
+			Example Input: asGenerator()
+			Example Input: asGenerator(2)
+
+			Example Use: for topHandle, bottomHandle in self.printBarcode_containerIterator.asGenerator(2): pass
+			"""
+
+			while True:
+				answer = self.next(n = n, terminator = terminator)
+
+				if (all(item == terminator for item in answer)):
+					break
+				yield answer
+
+		def _getItem(self):
+			"""Returns the item for the current index.
+
+			Example Input: _getItem()
+			Example Input: _getItem(0)
+			"""
+
+			try:
+				return getattr(self.parent, self._variableName)[self.index]
+			except IndexError as error:
+				if (self.printError):
+					traceback.print_exception(type(error), error, error.__traceback__)
+				raise error
