@@ -5753,6 +5753,8 @@ class handle_Base(Utilities, CommonEventFunctions):
 		Example Input: copy(handle, includeNested = False, linkCopy = True)
 		"""
 
+		print("@1", self.__repr__(), handle.__repr__(), includeNested, linkCopy)
+
 		if (not hasattr(self, handle.makeFunction)):
 			errorMessage = f"The function {handle.makeFunction} is not in {self.__repr__()}"
 			raise SyntaxError(errorMessage)
@@ -6561,7 +6563,7 @@ class handle_Widget_Base(handle_Base):
 	def setFunction_rightClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		self._betterBind(wx.EVT_RIGHT_DOWN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
-	def addPopupMenu(self, label = None, rightClick = True, 
+	def addPopupMenu(self, label = None, rightClick = True, text = None,
 
 		preFunction = None, preFunctionArgs = None, preFunctionKwargs = None, 
 		postFunction = None, postFunctionArgs = None, postFunctionKwargs = None,
@@ -7589,7 +7591,7 @@ class handle_WidgetList(handle_Widget_Base):
 		self._postBuild(argument_catalogue)
 
 	#Getters
-	def getValue(self, event = None):
+	def getValue(self, event = None, fallback_lastSelection = False):
 		"""Returns what the contextual value is for the object associated with this handle."""
 
 		if (self.type.lower() == "listdrop"):
@@ -7603,6 +7605,9 @@ class handle_WidgetList(handle_Widget_Base):
 				value = [item.value for item in value]
 			elif (self.thing.GetShowGroups()):
 				value = {"group": [item.key for item in self.thing.GetSelectedGroups()], "row": value}
+
+			if (fallback_lastSelection and ((not value) or (isinstance(value, dict) and (not value["group"]) and (not value["row"])))):
+				value = self.getLastSelected()
 
 		elif (self.type.lower() == "listtree"):
 			if (self.subType.lower() == "single"):
@@ -7726,12 +7731,19 @@ class handle_WidgetList(handle_Widget_Base):
 		return self.lastSelection
 
 	def setLastSelected(self, newValue, group = False, event = None):
-		self.lastSelection = {"group": [], "row": []}
-		if (newValue != None):
-			if (group):
-				self.lastSelection["group"] = newValue
+		if ((not self.thing.InReportView() or (not self.thing.GetShowGroups()))):
+			if (newValue != None):
+				self.lastSelection = newValue
 			else:
-				self.lastSelection["row"] = newValue
+				self.lastSelection = []
+
+		else:
+			self.lastSelection = {"group": [], "row": []}
+			if (newValue != None):
+				if (group):
+					self.lastSelection["group"] = newValue
+				else:
+					self.lastSelection["row"] = newValue
 
 	#Setters
 	def _formatList(self, newValue, filterNone = False):
@@ -18325,13 +18337,6 @@ class handle_Dialog(handle_Base):
 			except Exception as error:
 				return False
 
-		# def OnBeginDocument(self, startPage, endPage):
-		# 	"""Ensures there is a page available for each page requested."""
-
-		# 	if (endPage > len(self.document)):
-		# 		return False
-		# 	return True
-
 		def OnPreparePrinting(self):
 			"""Ensures correct format of content."""
 
@@ -19231,7 +19236,7 @@ class handle_Window(handle_Container_Base):
 
 		return handle
 
-	def addPopupMenu(self, label = None, rightClick = True, 
+	def addPopupMenu(self, label = None, rightClick = True, text = None,
 
 		preFunction = None, preFunctionArgs = None, preFunctionKwargs = None, 
 		postFunction = None, postFunctionArgs = None, postFunctionKwargs = None,
@@ -21417,10 +21422,27 @@ class handle_Notebook(handle_Container_Base):
 		else:
 			return handleList[0]
 
+	def clonePage(self, pageLabel = None, *args, **kwargs):
+		"""Adds another page that uses the panel of a previously made page.
+
+		pageLabel (str) - The catalogue label for the panel to clone from
+			- If None: Will use the current page
+
+		Example Input: clonePage()
+		Example Input: clonePage(1)
+		"""
+
+		if (pageLabel == None):
+			pageLabel = self.getCurrentPage(index = False)
+
+		sourcePage = self[pageLabel]
+		self.addPage(*args, panel = sourcePage.myPanel, sizer = sourcePage.mySizer, **kwargs)
+
+
 	def changePage(self, pageLabel, triggerEvent = True):
 		"""Changes the page selection on the notebook from the current page to the given page.
 
-		pageLabel (str)     - The catalogue label for the panel to add to the notebook
+		pageLabel (str)     - The catalogue label for the panel to change to
 		triggerEvent (bool) - Determiens if a page change and page changing event is triggered
 			- If True: The page change events are triggered
 			- If False: the page change events are not triggered
@@ -21709,14 +21731,18 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		self.index = len(self.parent) - 1
 
 		#Setup Panel
-		panel["parent"] = self.parent
-		self.myPanel = self._readBuildInstructions_panel(self, 0, panel)
+		if (isinstance(panel, dict)):
+			panel["parent"] = self.parent
+			self.myPanel = self._readBuildInstructions_panel(self, 0, panel)
 
-		#Setup Sizer
-		sizer["parent"] = self.myPanel
-		self.mySizer = self._readBuildInstructions_sizer(self, 0, sizer)
+			#Setup Sizer
+			sizer["parent"] = self.myPanel
+			self.mySizer = self._readBuildInstructions_sizer(self, 0, sizer)
 
-		self.myPanel.nest(self.mySizer)
+			self.myPanel.nest(self.mySizer)
+		else:
+			self.myPanel = panel
+			self.mySizer = sizer
 
 		self._finalNest(self.myPanel)
 
@@ -23304,7 +23330,7 @@ class User_Utilities():
 
 		return dataCatalogue
 
-	def _get(self, itemCatalogue, itemLabel = None, returnExists = False):
+	def _get(self, itemCatalogue, itemLabel = None, returnExists = False, exclude = None):
 		"""Searches the label catalogue for the requested object.
 
 		itemLabel (any) - What the object is labled as in the catalogue
@@ -23316,6 +23342,11 @@ class User_Utilities():
 		Example Input: _get(self.rowCatalogue, slice(None, None, None))
 		Example Input: _get(self.rowCatalogue, slice(2, 7, None))
 		"""
+
+		if (exclude == None):
+			exclude = []
+		elif (not isinstance(exclude, (list, tuple, set, range, types.GeneratorType))):
+			exclude = [exclude]
 
 		#Account for retrieving all nested
 		if (itemLabel == None):
@@ -23344,7 +23375,7 @@ class User_Utilities():
 					break
 
 				#Slice catalogue via creation date
-				if (begin):
+				if (begin and (item not in exclude)):
 					handleList.append(itemCatalogue[item])
 			return handleList
 
