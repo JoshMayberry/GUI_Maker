@@ -1067,7 +1067,10 @@ class Utilities():
 			if (rebind == None):
 				bindObject.Unbind(eventType, source = thing)
 			elif (rebind):
-				unbound = bindObject.Unbind(eventType, handler = myFunctionEvaluated, source = thing)
+				if (mode == 1):
+					unbound = bindObject.Unbind(eventType, handler = myFunctionEvaluated, source = thing)
+				else:
+					unbound = bindObject.Unbind(eventType, handler = myFunctionEvaluated)
 				if ((not unbound) and printError):
 					#If the lambda style function was used, this will not work
 					warnings.warn(f"Unbinding function {myFunctionEvaluated} for {self.__repr__()} failed", Warning, stacklevel = 3)
@@ -5438,13 +5441,13 @@ class handle_Base(Utilities, CommonEventFunctions):
 				flags = [flags]
 			flags.extend(handle.flags_modification)
 			flags, position, border = self._getItemMod(flags)
-			
+
 			if (isinstance(handle, handle_NotebookPage)):
 				handle.mySizerItem = self.thing.Add(handle.mySizer.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
 
 			elif (isinstance(handle, (handle_Widget_Base, handle_Sizer, handle_Splitter, handle_Notebook, handle_Panel))):
 				handle.mySizerItem = self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
-			
+
 			elif (isinstance(handle, handle_Menu)):
 				if (handle.type.lower() == "toolbar"):
 					handle.mySizerItem = self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
@@ -7306,23 +7309,6 @@ class handle_WidgetList(handle_Widget_Base):
 			group, groupFormatter, groupSeparator = self._getArguments(argument_catalogue, ["group", "groupFormatter", "groupSeparator"])
 			sortable, sortFunction, rowFormatter = self._getArguments(argument_catalogue, ["sortable", "sortFunction", "rowFormatter"])
 
-			#Determine style
-			if (report):
-				style = "wx.LC_REPORT"
-			else:
-				style = "wx.LC_LIST" #Auto calculate columns and rows
-				columns = 1
-
-			if (border):
-				style += "|wx.BORDER_SUNKEN"
-			if (rowLines):
-				style += "|wx.LC_HRULES"
-			if (columnLines):
-				style += "|wx.LC_VRULES"
-
-			if (single):
-				style += "|wx.LC_SINGLE_SEL" #Default: Can select multiple with shift
-
 			if (columns == None):
 				if ((choices == None) or (not isinstance(choices, (list, tuple, range, dict))) or (len(choices) == 0)):
 					columns = 0
@@ -7352,8 +7338,9 @@ class handle_WidgetList(handle_Widget_Base):
 			myId = self._getId(argument_catalogue)
 
 			#Create the thing to put in the grid
-			self.thing = self._ListFull(self, self.parent.thing, myId = myId, style = style, sortable = sortable, rowFormatter = rowFormatter)
-			self.thing.SetShowGroups(any((value != None) for value in group.values()))
+			self.thing = self._ListFull(self, self.parent.thing, myId = myId, sortable = sortable, rowFormatter = rowFormatter,
+				singleSelect = single, verticalLines = columnLines, horizontalLines = rowLines)
+			# self.thing.SetShowGroups(any((value != None) for value in group.values()))
 			self.thing.putBlankLineBetweenGroups = groupSeparator
 			self.setSortFunction(sortFunction)
 
@@ -7407,10 +7394,11 @@ class handle_WidgetList(handle_Widget_Base):
 			#   self.thing.SetDropTarget(self.myDropTarget)
 
 			# #Bind the function(s)
-			self._betterBind(wx.EVT_LIST_ITEM_SELECTED, self.thing, self._onSelect)
-			self._betterBind(ObjectListView.EVT_EXPANDING, self.thing, self._onExpand, mode = 2)
-			self._betterBind(ObjectListView.EVT_COLLAPSING, self.thing, self._onExpand, mode = 2)
-			self._betterBind(ObjectListView.EVT_GROUP_SORT, self.thing, self._onSortGroup, mode = 2)
+			self._betterBind(ObjectListView.EVT_DATA_SELECTION_CHANGED, self.thing, self._onSelect, mode = 2)
+			# # self._betterBind(wx.dataview.EVT_DATAVIEW_SELECTION_CHANGED, self.thing, self._onSelect)
+			# self._betterBind(ObjectListView.EVT_EXPANDING, self.thing, self._onExpand, mode = 2)
+			# self._betterBind(ObjectListView.EVT_COLLAPSING, self.thing, self._onExpand, mode = 2)
+			# self._betterBind(ObjectListView.EVT_GROUP_SORT, self.thing, self._onSortGroup, mode = 2)
 			# self._betterBind(ObjectListView.EVT_GROUP_CREATING, self.thing, self._onCreateGroup, mode = 2)
 
 			# myFunction, preEditFunction, postEditFunction = self._getArguments(argument_catalogue, ["myFunction", "preEditFunction", "postEditFunction"])
@@ -7728,14 +7716,24 @@ class handle_WidgetList(handle_Widget_Base):
 		return column
 
 	def getLastSelected(self, event = None):
+		if ((not self.thing.InReportView()) or (not self.thing.GetShowGroups())):
+			if (self.lastSelection == []):
+				return None
+		else:
+			if (self.lastSelection == {"group": [], "row": []}):
+				return None
+		
 		return self.lastSelection
 
 	def setLastSelected(self, newValue, group = False, event = None):
-		if ((not self.thing.InReportView() or (not self.thing.GetShowGroups()))):
-			if (newValue != None):
+		if ((not self.thing.InReportView()) or (not self.thing.GetShowGroups())):
+			if (newValue not in [None, {"group": [], "row": []}]):
 				self.lastSelection = newValue
 			else:
 				self.lastSelection = []
+
+		elif (isinstance(newValue, dict)):
+			self.lastSelection = newValue
 
 		else:
 			self.lastSelection = {"group": [], "row": []}
@@ -7828,18 +7826,6 @@ class handle_WidgetList(handle_Widget_Base):
 			objectList = self._formatList(newValue, filterNone = filterNone)
 			self.thing.SetObjects(objectList)
 
-			#Preserve group expansion
-			for group in self.thing.groups:
-				if (group.key in self.expanded):
-					expand = self.expanded[group.key]
-				else:
-					expand = self.expanded[None]
-
-				if (expand):
-					self.thing.Expand(group)
-				else:
-					self.thing.Collapse(group)
-
 		elif (self.type.lower() == "listtree"):
 			if (not isinstance(newValue, dict)):
 				errorMessage = f"'newValue' must be a dict, not a {type(newValue)} in setValue() for {self.__repr__()}"
@@ -7895,7 +7881,9 @@ class handle_WidgetList(handle_Widget_Base):
 			else:
 				objectList = newValue
 
+
 			existingList = self.thing.GetObjects()
+			# print("@7.2", existingList)
 			for item in objectList:
 				if ((item not in existingList) and (item not in self.groups_ensured)):
 					errorMessage = f"{item.__repr__()} is not in {self.__repr__()}"
@@ -7906,19 +7894,16 @@ class handle_WidgetList(handle_Widget_Base):
 			if (group):
 				self.thing.SelectGroups(objectList, deselectOthers = deselectOthers)
 				if (ensureVisible):
-					self.thing.SelectGroup(objectList[0], deselectOthers = False, ensureVisible = ensureVisible)
 					self.thing.Reveal(objectList[0])
+					self.thing.SelectGroup(objectList[0], deselectOthers = False, ensureVisible = ensureVisible)
 			else:
 				self.thing.SelectObjects(objectList, deselectOthers = deselectOthers)
 				if (ensureVisible):
-					self.thing.SelectObject(objectList[0], deselectOthers = False, ensureVisible = ensureVisible)
 					self.thing.Reveal(objectList[0])
+					self.thing.SelectObject(objectList[0], deselectOthers = False, ensureVisible = ensureVisible)
 
 			if (triggerEvent):
-				newEvent = wx.PyCommandEvent(wx.EVT_LIST_ITEM_SELECTED.typeId, self.thing.GetId())
-				newEvent.SetEventObject(self.thing)
-				# wx.PostEvent(self.thing, newEvent)
-				self.thing.GetEventHandler().ProcessEvent(newEvent)
+				self.thing.TriggerEvent(ObjectListView.SelectionChangedEvent, row = objectList[0])
 		else:
 			warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -7941,8 +7926,14 @@ class handle_WidgetList(handle_Widget_Base):
 	def addColumn(self, *args, **kwargs):
 		self.setColumn(column = len(self.columnCatalogue), *args, **kwargs)
 
-	def setColumn(self, column = None, title = None, label = None, width = None, editable = None, align = None, 
-		image = None, formatter = None, group = None, groupFormatter = None, minWidth = None, refresh = True):
+	def addColumnButton(self, *args, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, **kwargs):
+		def test(*args, **kwargs):
+			print("@1")
+
+		self.addColumn(*args, **kwargs)
+
+	def setColumn(self, column = None, title = None, label = None, width = None, editable = None, align = None, sortLabel = None, groupSortLabel = None,
+		image = None, formatter = None, group = None, groupFormatter = None, minWidth = None, refresh = True, renderer = None, rendererArgs = None, rendererKwargs = None):
 		"""Sets the contextual column for this handle."""
 
 		#Create columns
@@ -7957,11 +7948,17 @@ class handle_WidgetList(handle_Widget_Base):
 			self.columnCatalogue[column].setdefault("align", "left")
 			self.columnCatalogue[column].setdefault("width", -1)
 			self.columnCatalogue[column].setdefault("valueGetter", None)
+			self.columnCatalogue[column].setdefault("sortGetter", None)
+			self.columnCatalogue[column].setdefault("groupSortGetter", None)
 			self.columnCatalogue[column].setdefault("isEditable", True)
 			self.columnCatalogue[column].setdefault("minimumWidth", 5)
 			self.columnCatalogue[column].setdefault("isSpaceFilling", False)
 			self.columnCatalogue[column].setdefault("imageGetter", None)
 			self.columnCatalogue[column].setdefault("stringConverter", None)
+
+			self.columnCatalogue[column].setdefault("renderer", None)
+			self.columnCatalogue[column].setdefault("rendererArgs", [])
+			self.columnCatalogue[column].setdefault("rendererKwargs", {})
 			
 			self.columnCatalogue[column].setdefault("groupKeyGetter", None)
 			self.columnCatalogue[column].setdefault("groupKeyConverter", None)
@@ -7975,6 +7972,10 @@ class handle_WidgetList(handle_Widget_Base):
 				self.columnCatalogue[column]["align"] = align
 			if (label != None):
 				self.columnCatalogue[column]["valueGetter"] = label
+			if (sortLabel != None):
+				self.columnCatalogue[column]["sortGetter"] = sortLabel
+			if (groupSortLabel != None):
+				self.columnCatalogue[column]["groupSortGetter"] = groupSortLabel
 			if (image != None):
 				self.columnCatalogue[column]["imageGetter"] = image
 			if (editable != None):
@@ -7983,6 +7984,12 @@ class handle_WidgetList(handle_Widget_Base):
 				self.columnCatalogue[column]["minimumWidth"] = minWidth
 			if (formatter != None):
 				self.columnCatalogue[column]["stringConverter"] = formatter
+			if (renderer != None):
+				self.columnCatalogue[column]["renderer"] = renderer
+			if (rendererArgs != None):
+				self.columnCatalogue[column]["rendererArgs"] = rendererArgs
+			if (rendererKwargs != None):
+				self.columnCatalogue[column]["rendererKwargs"] = rendererKwargs
 			if (group != None):
 				if (isinstance(group, bool)):
 					if (group):
@@ -8022,7 +8029,7 @@ class handle_WidgetList(handle_Widget_Base):
 
 	def refreshColumns(self):
 		if (self.type.lower() == "listfull"):
-			self.thing.SetColumns([ObjectListView.ColumnDefn(**kwargs) for column, kwargs in sorted(self.columnCatalogue.items())])
+			self.thing.SetColumns([ObjectListView.DataColumnDefn(**kwargs) for column, kwargs in sorted(self.columnCatalogue.items())])
 
 			if (self.checkColumn != None):
 				if (self.thing.GetShowGroups()):
@@ -8083,7 +8090,7 @@ class handle_WidgetList(handle_Widget_Base):
 		if (column != None):
 			if (not isinstance(column, int)):
 				for _column, catalogue in self.columnCatalogue.items():
-					if (catalogue["label"] == column):
+					if (catalogue["valueGetter"] == column):
 						column = _column
 						break
 				else:
@@ -8092,7 +8099,6 @@ class handle_WidgetList(handle_Widget_Base):
 						
 			if (self.thing.GetAlwaysGroupByColumn() == column):
 				self.thing.SetAlwaysGroupByColumn(None)
-			return
 
 		self.thing.SetShowGroups(False)
 
@@ -8120,14 +8126,14 @@ class handle_WidgetList(handle_Widget_Base):
 		else:
 			if (not isinstance(column, int)):
 				for _column, catalogue in self.columnCatalogue.items():
-					if (catalogue["label"] == column):
+					if (catalogue["valueGetter"] == column):
 						column = _column
 						break
 				else:
 					errorMessage = f"There is no column with the label {column} in showGroup() for {self.__repr__()}"
 					raise KeyError(errorMessage)
 
-			self.thing.SetAlwaysGroupByColumn(self.thing.columns[column + 1])
+			self.thing.SetAlwaysGroupByColumn(self.thing.columns[column])
 
 	def showGroupCount(self, state = True):
 		self.thing.SetShowItemCounts(state)
@@ -8194,21 +8200,19 @@ class handle_WidgetList(handle_Widget_Base):
 
 	def getSortColumn(self):
 		column = self.thing.GetSortColumn()
-		
 		if (column != None):
-			return self.thing.columns.index(column)
-
+			return column.title
+		
 	def getGroupColumn(self):
 		column = self.thing.GetGroupByColumn()
-
 		if (column != None):
-			return self.thing.columns.index(column)
+			return column.title
 
 	def sortBy(self, label = None, ascending = True):
 		if (label == None):
 			self.thing.SetSortColumn(None, resortNow = True)
-			self.refreshColumns()
-			self.refresh()
+			# self.refreshColumns()
+			# self.refresh()
 			return
 
 		if (not hasattr(label, '__dict__')):
@@ -8255,10 +8259,10 @@ class handle_WidgetList(handle_Widget_Base):
 			self.thing.DisableSorting()
 
 	def setSortFunction(self, myFunction = None):
-		self.thing.SetDefaultSortFunction(myFunction)
+		self.thing.SetCompareFunction(myFunction)
 
 	def setGroupSortFunction(self, myFunction = None):
-		self.thing.SetDefaultGroupSortFunction(myFunction) 
+		self.thing.SetGroupCompareFunction(myFunction) 
 		# self.thing.SetDefaultGroupSortFunction(lambda *args, **kwargs: myFunction(*args, 
 		# 	sortColumn = self.thing.GetSortColumn().title if self.thing.GetAlwaysGroupByColumn() else self.thing.GetGroupByColumn().title, **kwargs))
 
@@ -8269,6 +8273,12 @@ class handle_WidgetList(handle_Widget_Base):
 
 		self.thing.SetEmptyGroups(self.groups_ensured)
 
+	def setEmptyListMessage(self, message):
+		self.thing.SetEmptyListMsg(message)
+
+	# def refreshEmptyListMessage():
+	# 	self.thing.RefreshEmptyListMsg(message)
+
 	def addImage(self, label, imagePath, internal = False):
 		"""Adds an image to the image catalogue.
 
@@ -8278,7 +8288,7 @@ class handle_WidgetList(handle_Widget_Base):
 		image_16 = self._getImage(imagePath, internal = internal, scale = (16, 16))
 		image_32 = self._getImage(imagePath, internal = internal, scale = (32, 32))
 
-		self.thing.AddNamedImages(label, image_16, image_32)
+		# self.thing.AddNamedImages(label, image_16, image_32)
 
 	def appendValue(self, newValue, where = -1, filterNone = None):
 		"""Appends the given value to the current contextual value for this handle."""
@@ -8323,8 +8333,10 @@ class handle_WidgetList(handle_Widget_Base):
 		if (self.type.lower() == "listdrop"):
 			self._betterBind(wx.EVT_CHOICE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		elif (self.type.lower() == "listfull"):
-			self._betterBind(wx.EVT_LIST_ITEM_SELECTED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-			self._betterBind(wx.EVT_LIST_ITEM_SELECTED, self.thing, self._onSelect, rebind = True)
+			self._betterBind(ObjectListView.EVT_DATA_SELECTION_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+			self._betterBind(ObjectListView.EVT_DATA_SELECTION_CHANGED, self.thing, self._onSelect, rebind = True, mode = 2)
+			# self._betterBind(wx.dataview.EVT_DATAVIEW_SELECTION_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			# self._betterBind(wx.dataview.EVT_DATAVIEW_SELECTION_CHANGED, self.thing, self._onSelect, rebind = True)
 
 		elif (self.type.lower() == "listtree"):
 			self._betterBind(wx.EVT_TREE_SEL_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
@@ -8336,10 +8348,9 @@ class handle_WidgetList(handle_Widget_Base):
 
 	def setFunction_preEdit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
-			if (self.subType.lower() == "normal"):
-				self._betterBind(ObjectListView.ObjectListView.EVT_CELL_EDIT_STARTING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-			else:
-				self._betterBind(wx.EVT_LIST_BEGIN_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			self._betterBind(ObjectListView.EVT_DATA_CELL_EDIT_STARTED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+			# self._betterBind(wx.dataview.EVT_DATAVIEW_ITEM_START_EDITING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			# self._betterBind(wx.dataview.EVT_DATAVIEW_ITEM_EDITING_STARTED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		elif (self.type.lower() == "listtree"):
 			self._betterBind(wx.EVT_TREE_BEGIN_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
@@ -8347,14 +8358,16 @@ class handle_WidgetList(handle_Widget_Base):
 			
 	def setFunction_postEdit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
-			if (self.subType.lower() == "normal"):
-				self._betterBind(ObjectListView.ObjectListView.EVT_CELL_EDIT_FINISHING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-			else:
-				self._betterBind(wx.EVT_LIST_END_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			self._betterBind(ObjectListView.EVT_DATA_CELL_EDIT_FINISHING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+			# self._betterBind(wx.dataview.EVT_DATAVIEW_ITEM_EDITING_DONE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			# self._betterBind(wx.dataview.EVT_DATAVIEW_ITEM_VALUE_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		elif (self.type.lower() == "listtree"):
 			self._betterBind(wx.EVT_TREE_END_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_postEdit() for {self.__repr__()}", Warning, stacklevel = 2)
+			
+	def setFunction_edit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self.setFunction_postEdit(myFunction = myFunction, myFunctionArgs = myFunctionArgs, myFunctionKwargs = myFunctionKwargs)
 
 	def setFunction_preDrag(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
@@ -8372,6 +8385,7 @@ class handle_WidgetList(handle_Widget_Base):
 			if (not self.dragable):
 				warnings.warn(f"'drag' was not enabled for {self.__repr__()} upon creation", Warning, stacklevel = 2)
 			else:
+				#wx.dataview.EVT_DATAVIEW_ITEM_BEGIN_DRAG
 				self.postDragFunction = myFunction
 				self.postDragFunctionArgs = myFunctionArgs
 				self.postDragFunctionKwargs = myFunctionKwargs
@@ -8394,6 +8408,7 @@ class handle_WidgetList(handle_Widget_Base):
 			if (self.myDropTarget == None):
 				warnings.warn(f"'drop' was not enabled for {self.__repr__()} upon creation", Warning, stacklevel = 2)
 			else:
+				#wx.dataview.EVT_DATAVIEW_ITEM_DROP
 				self.myDropTarget.postDropFunction = myFunction
 				self.myDropTarget.postDropFunctionArgs = myFunctionArgs
 				self.myDropTarget.postDropFunctionKwargs = myFunctionKwargs
@@ -8405,6 +8420,7 @@ class handle_WidgetList(handle_Widget_Base):
 			if (self.myDropTarget == None):
 				warnings.warn(f"'drop' was not enabled for {self.__repr__()} upon creation", Warning, stacklevel = 2)
 			else:
+				#wx.dataview.EVT_DATAVIEW_ITEM_DROP_POSSIBLE
 				self.myDropTarget.dragOverFunction = myFunction
 				self.myDropTarget.dragOverFunctionArgs = myFunctionArgs
 				self.myDropTarget.dragOverFunctionKwargs = myFunctionKwargs
@@ -8412,25 +8428,37 @@ class handle_WidgetList(handle_Widget_Base):
 			warnings.warn(f"Add {self.type} to setFunction_dragOver() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_preCollapse(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listtree"):
+		if (self.type.lower() == "listfull"):
+			self._betterBind(ObjectListView.EVT_DATA_COLLAPSING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+			# self._betterBind(wx.dataview.EVT_DATAVIEW_ITEM_COLLAPSING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		elif (self.type.lower() == "listtree"):
 			self._betterBind(wx.EVT_TREE_ITEM_COLLAPSING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_preCollapse() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_postCollapse(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listtree"):
+		if (self.type.lower() == "listfull"):
+			self._betterBind(ObjectListView.EVT_DATA_COLLAPSED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+			# self._betterBind(wx.dataview.EVT_DATAVIEW_ITEM_COLLAPSED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		elif (self.type.lower() == "listtree"):
 			self._betterBind(wx.EVT_TREE_ITEM_COLLAPSED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_postCollapse() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_preExpand(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listtree"):
+		if (self.type.lower() == "listfull"):
+			self._betterBind(ObjectListView.EVT_DATA_EXPANDING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+			# self._betterBind(wx.dataview.EVT_DATAVIEW_ITEM_EXPANDING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		elif (self.type.lower() == "listtree"):
 			self._betterBind(wx.EVT_TREE_ITEM_EXPANDING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_preExpand() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_postExpand(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listtree"):
+		if (self.type.lower() == "listfull"):
+			self._betterBind(ObjectListView.EVT_DATA_EXPANDED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+			# self._betterBind(wx.dataview.EVT_DATAVIEW_ITEM_EXPANDED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		elif (self.type.lower() == "listtree"):
 			self._betterBind(wx.EVT_TREE_ITEM_EXPANDED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_postExpand() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -8439,7 +8467,9 @@ class handle_WidgetList(handle_Widget_Base):
 		if (self.type.lower() == "listtree"):
 			self._betterBind(wx.EVT_TREE_ITEM_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		elif (self.type.lower() == "listfull"):
-			self._betterBind(wx.EVT_RIGHT_DOWN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			self._betterBind(ObjectListView.EVT_DATA_CELL_CONTEXT_MENU, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+			# self._betterBind(wx.dataview.EVT_DATAVIEW_ITEM_CONTEXT_MENU, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			# self._betterBind(wx.EVT_RIGHT_DOWN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_rightClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -8453,20 +8483,23 @@ class handle_WidgetList(handle_Widget_Base):
 		if (self.type.lower() == "listtree"):
 			self._betterBind(wx.EVT_TREE_ITEM_ACTIVATED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		elif (self.type.lower() == "listfull"):
-			self._betterBind(wx.EVT_LEFT_DCLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-			# self._betterBind(wx.EVT_LIST_ITEM_ACTIVATED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			self._betterBind(ObjectListView.EVT_DATA_CELL_ACTIVATED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+			# self._betterBind(wx.dataview.EVT_DATAVIEW_ITEM_ACTIVATED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			# self._betterBind(wx.EVT_LEFT_DCLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_middleClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_clickLabel(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
-			self._betterBind(wx.EVT_LIST_COL_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			self._betterBind(ObjectListView.EVT_DATA_COLUMN_HEADER_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+			# self._betterBind(wx.dataview.EVT_DATAVIEW_COLUMN_HEADER_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_labelClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_rightClickLabel(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
-			self._betterBind(wx.EVT_LIST_COL_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			self._betterBind(ObjectListView.EVT_DATA_COLUMN_HEADER_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+			# self._betterBind(wx.dataview.EVT_DATAVIEW_COLUMN_HEADER_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_rightClickLabel() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -8486,7 +8519,21 @@ class handle_WidgetList(handle_Widget_Base):
 		if (self.type.lower() == "listtree"):
 			self._betterBind(wx.EVT_TREE_ITEM_MENU, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_toolTip() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_itemMenu() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_sort(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listfull"):
+			self._betterBind(ObjectListView.EVT_DATAVIEW_COLUMN_SORTED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+			# self._betterBind(wx.dataview.EVT_DATAVIEW_COLUMN_SORTED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_sort() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_reorder(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listfull"):
+			self._betterBind(ObjectListView.EVT_DATAVIEW_COLUMN_REORDER, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+			# self._betterBind(wx.dataview.EVT_DATAVIEW_COLUMN_REORDERED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_sort() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setReadOnly(self, state = True):
 		"""Sets the contextual readOnly for the object associated with this handle to what the user supplies."""
@@ -8552,24 +8599,8 @@ class handle_WidgetList(handle_Widget_Base):
 			else:
 				rowList = [row]
 
-			for i in rowList:
-				if (colorHandle == None):
-					if (isinstance(i, wx.ListItemAttr)):
-						continue
-					elif (isinstance(i, wx.ListItem)):
-						continue #Get row number
-
-					if (i % 2):
-						_colorHandle = self.thing.oddRowsBackColor
-					else:
-						_colorHandle = self.thing.evenRowsBackColor
-				else:
-					_colorHandle = colorHandle
-
-				if (isinstance(i, (wx.ListItemAttr, wx.ListItem))):
-					i.SetBackgroundColour(_colorHandle)
-				else:
-					self.thing.SetItemBackgroundColour(i, _colorHandle)
+			for row in rowList:
+				self.thing.SetBackgroundColour(row, colorHandle)
 			
 		else:
 			warnings.warn(f"Add {self.type} to setRowColor() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -8710,12 +8741,12 @@ class handle_WidgetList(handle_Widget_Base):
 
 		event.Skip()
 
-	class _ListFull(ObjectListView.GroupListView):
-		def __init__(self, parent, widget, myId = wx.ID_ANY, position = wx.DefaultPosition, size = wx.DefaultSize, style = "0", **kwargs):
+	class _ListFull(ObjectListView.DataObjectListView):
+		def __init__(self, parent, widget, myId = wx.ID_ANY, position = wx.DefaultPosition, size = wx.DefaultSize, **kwargs):
 			"""Creates the list control object."""
 			
 			#Load in modules
-			ObjectListView.GroupListView.__init__(self, widget, id = myId, pos = position, size = size, style = eval(style, {'__builtins__': None, "wx": wx}, {}), **kwargs)
+			ObjectListView.DataObjectListView.__init__(self, widget, id = myId, pos = position, size = size, **kwargs)
 
 			#Fix class type
 			self.__name__ = "wxListCtrl"
@@ -9485,7 +9516,7 @@ class handle_WidgetButton(handle_Widget_Base):
 	def _build(self, argument_catalogue):
 		"""Determiens which build system to use for this handle."""
 
-		def _build_button():
+		def _build_button(toggleText = False):
 			"""Builds a wx button object."""
 			nonlocal self, argument_catalogue
 
@@ -9497,6 +9528,9 @@ class handle_WidgetButton(handle_Widget_Base):
 			self.thing = wx.Button(self.parent.thing, id = myId, label = f"{text}", style = 0)
 
 			#Bind the function(s)
+			if (toggleText):
+				self._betterBind(wx.EVT_BUTTON, self.thing, self._onToggleText)
+
 			if (myFunction != None):
 				myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
 				self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
@@ -9517,8 +9551,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			argument_catalogue["text"] = textList[0]
 			self.textList = textList
 			
-			_build_button()
-			self._betterBind(wx.EVT_BUTTON, self.thing, self._onToggleText)
+			_build_button(toggleText = True)
 
 		def _build_buttonToggle():
 			"""Builds a wx toggle button object."""
@@ -21422,7 +21455,7 @@ class handle_Notebook(handle_Container_Base):
 		else:
 			return handleList[0]
 
-	def clonePage(self, pageLabel = None, *args, **kwargs):
+	def clonePage(self, pageLabel = None, *args, switchTo = False, triggerEvent = False, **kwargs):
 		"""Adds another page that uses the panel of a previously made page.
 
 		pageLabel (str) - The catalogue label for the panel to clone from
@@ -21436,8 +21469,14 @@ class handle_Notebook(handle_Container_Base):
 			pageLabel = self.getCurrentPage(index = False)
 
 		sourcePage = self[pageLabel]
-		self.addPage(*args, panel = sourcePage.myPanel, sizer = sourcePage.mySizer, **kwargs)
+		newPage = self.addPage(*args, panel = sourcePage.myPanel, sizer = sourcePage.mySizer, **kwargs)
 
+		#The panel does not show up on the old one unless the tabs are toggled
+		if (switchTo):
+			newPage.changePage(triggerEvent = triggerEvent)
+		else:
+			newPage.changePage(triggerEvent = False)
+			sourcePage.changePage(triggerEvent = triggerEvent)
 
 	def changePage(self, pageLabel, triggerEvent = True):
 		"""Changes the page selection on the notebook from the current page to the given page.
@@ -21863,6 +21902,9 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 			warnings.warn(f"Add {self.type} to setFunction_rightClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Etc
+	def changePage(self, *args, **kwargs):
+		self.parent.changePage(self.label, *args, **kwargs)
+
 	def dockCenter(self, *args, **kwargs):
 		"""Overload for dockCenter() in handle_AuiManager."""
 
