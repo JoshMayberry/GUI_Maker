@@ -5373,7 +5373,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 				self.showWindow()
 		elif (hidden):
 			if (isinstance(self, handle_Sizer)):
-				self._addFinalFunction(self.thing.ShowItems, False)
+				self._addFinalFunction(self.setShow, [None, False])
 			else:
 				self.setShow(False)
 
@@ -5383,7 +5383,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 				pass
 		elif (not enabled):
 			if (isinstance(self, handle_Sizer)):
-				self._addFinalFunction(self.setEnable, False)
+				self._addFinalFunction(self.setEnable, [None, False])
 			else:
 				self.setEnable(False)
 
@@ -6139,6 +6139,22 @@ class handle_Container_Base(handle_Base):
 		Example Input: _overloadHelp("toggleEnable")
 		"""
 
+		def runFunction(handle):
+			if (handle is self):
+				return []
+
+			function = getattr(handle, myFunction)
+			if (isinstance(handle, handle_Sizer)):
+				answer = function(None, *args, **kwargs)
+			else:
+				answer = function(*args, **kwargs)
+
+			if (not isinstance(answer, list)):
+				answer = [answer]
+			return answer
+
+		#############################################################
+
 		#Account for all nested
 		if (label == None):
 			if (window):
@@ -6148,18 +6164,11 @@ class handle_Container_Base(handle_Base):
 			else:
 				answerList = []
 				for handle in self:
-					function = getattr(handle, myFunction)
-					answer = function(*args, **kwargs)
-
-					if (not isinstance(answer, list)):
-						answer = [answer]
-
-					answerList.extend(answer)
-
+					answerList.extend(runFunction(handle))
 				return answerList
 		else:
 			#Account for multiple objects
-			if (not isinstance(label, (list, tuple, range))):
+			if (not isinstance(label, (list, tuple, range, set, types.GeneratorType))):
 				labelList = [label]
 			else:
 				labelList = label
@@ -6167,14 +6176,7 @@ class handle_Container_Base(handle_Base):
 			answerList = []
 			for label in labelList:
 				handle = self.get(label, checkNested = True)
-
-				function = getattr(handle, myFunction)
-				answer = function(*args, **kwargs)
-
-				if (not isinstance(answer, list)):
-					answer = [answer]
-
-				answerList.extend(answer)
+				answerList.extend(runFunction(handle))
 
 			if ((not isinstance(label, (list, tuple, range))) and (len(answerList) == 1)):
 				return answerList[0]
@@ -6705,6 +6707,7 @@ class handle_Widget_Base(handle_Base):
 		Example Input: setShow()
 		Example Input: setShow(False)
 		"""
+		# print("@2")
 
 		self.thing.Show(state)
 
@@ -6719,7 +6722,7 @@ class handle_Widget_Base(handle_Base):
 					rightBound = (row + 1) * mySizer.columns
 					updateNeeded = True
 
-					if (any([mySizer.thing.GetItem(i).IsShown() for i in range(leftBound, rightBound)])):
+					if (any(mySizer.thing.GetItem(i).IsShown() for i in range(leftBound, rightBound))):
 						mySizer.growFlexRow(row, proportion = mySizer.growFlexRow_notEmpty[row])
 					else:
 						mySizer.thing.RemoveGrowableRow(row)
@@ -6730,10 +6733,23 @@ class handle_Widget_Base(handle_Base):
 					step = mySizer.columns
 					updateNeeded = True
 					
-					if (any([mySizer.thing.GetItem(i).IsShown() for i in range(leftBound, rightBound, step)])):
+					if (any(mySizer.thing.GetItem(i).IsShown() for i in range(leftBound, rightBound, step))):
 						mySizer.growFlexColumn(column, proportion = mySizer.growFlexColumn_notEmpty[column])
 					else:
 						mySizer.thing.RemoveGrowableCol(column)
+
+				#Account for textbox sizers
+				if ((mySizer.substitute != None) and (mySizer.substitute.type.lower() == "text")):
+					text = mySizer.substitute.thing.GetStaticBox()
+					if (not any(item.IsShown() for item in mySizer.thing.GetChildren())):
+						if (text.IsShown()):
+							text.Hide()
+							updateNeeded = True
+					else:
+						if (not text.IsShown()):
+							text.Show()
+							updateNeeded = True
+						text.SendSizeEventToParent()
 
 				if (updateNeeded):
 					self.myWindow.updateWindow()#updateNested = True)
@@ -7402,10 +7418,6 @@ class handle_WidgetList(handle_Widget_Base):
 			# #Bind the function(s)
 			self._betterBind(ObjectListView.EVT_DATA_SELECTION_CHANGED, self.thing, self._onSelectRow, mode = 2)
 			self._betterBind(ObjectListView.EVT_DATA_GROUP_SELECTED, self.thing, self._onSelectGroup, mode = 2)
-			# self._betterBind(ObjectListView.EVT_EXPANDING, self.thing, self._onExpand, mode = 2)
-			# self._betterBind(ObjectListView.EVT_COLLAPSING, self.thing, self._onExpand, mode = 2)
-			# self._betterBind(ObjectListView.EVT_GROUP_SORT, self.thing, self._onSortGroup, mode = 2)
-			# self._betterBind(ObjectListView.EVT_GROUP_CREATING, self.thing, self._onCreateGroup, mode = 2)
 
 			# myFunction, preEditFunction, postEditFunction = self._getArguments(argument_catalogue, ["myFunction", "preEditFunction", "postEditFunction"])
 			# if (myFunction != None):
@@ -8261,13 +8273,26 @@ class handle_WidgetList(handle_Widget_Base):
 		else:
 			self.thing.DisableSorting()
 
-	def setSortFunction(self, myFunction = None):
-		self.thing.SetCompareFunction(myFunction)
+	def updateUnsorted(self):
+		self.thing.UpdateUnsorted()
 
-	def setGroupSortFunction(self, myFunction = None):
-		self.thing.SetGroupCompareFunction(myFunction) 
-		# self.thing.SetDefaultGroupSortFunction(lambda *args, **kwargs: myFunction(*args, 
-		# 	sortColumn = self.thing.GetSortColumn().title if self.thing.GetAlwaysGroupByColumn() else self.thing.GetGroupByColumn().title, **kwargs))
+	def setUnsortedFunction(self, myFunction = None, widgetArg = True):
+		if (myFunction and widgetArg):
+			self.thing.SetUnsortedFunction(lambda *args: myFunction(*args, self))
+		else:
+			self.thing.SetUnsortedFunction(myFunction)
+
+	def setSortFunction(self, myFunction = None, widgetArg = True):
+		if (myFunction and widgetArg):
+			self.thing.SetCompareFunction(lambda *args: myFunction(*args, self))
+		else:
+			self.thing.SetCompareFunction(myFunction)
+
+	def setGroupSortFunction(self, myFunction = None, widgetArg = True):
+		if (myFunction and widgetArg):
+			self.thing.SetGroupCompareFunction(lambda *args: myFunction(*args, self))
+		else:
+			self.thing.SetGroupCompareFunction(myFunction)
 
 	def ensureGroups(self, groupList = None):
 		"""Makes sure these groups are shown, even if they are empty."""
@@ -8276,8 +8301,11 @@ class handle_WidgetList(handle_Widget_Base):
 
 		self.thing.SetEmptyGroups(self.groups_ensured)
 
-	def setFilter(self, myFilter = None):
-		self.thing.SetFilter(myFilter)
+	def setFilter(self, myFilter = None, widgetArg = True):
+		if (myFilter and widgetArg):
+			self.thing.SetFilter(lambda *args: myFilter(*args, self))
+		else:
+			self.thing.SetFilter(myFilter)
 
 	def setEmptyListMessage(self, message):
 		self.thing.SetEmptyListMsg(message)
@@ -8702,61 +8730,6 @@ class handle_WidgetList(handle_Widget_Base):
 		"""Tracks the last group selection made."""
 
 		self.lastSelection["group"] = self.getValue(group = True) or []
-		event.Skip()
-
-	def _onSortGroup(self, event):
-		"""Uses the left most column to sort groups, and the rest to sort items."""
-
-		def _getLowerCaseKey(group):
-			try:
-				return group.key.lower()
-			except:
-				return group.key
-
-		self.thing.rebuildGroup_onColumnClick = False
-
-		if ((event.sortColumn != None) and (self.thing.columns.index(event.sortColumn) == 0)):
-			if (self.thing.defaultGroupSortFunction == None):
-				sortFunction = _getLowerCaseKey
-			else:
-				sortFunction = self.thing.defaultGroupSortFunction
-			groups = sorted(event.groups, key = sortFunction, reverse = not event.sortAscending)
-			self.thing.groups = groups
-		else:
-			for x in event.groups:
-				self.thing._SortObjects(x.modelObjects, event.sortColumn, self.thing.GetPrimaryColumn())
-
-		event.Handled()
-		event.Skip()
-
-	def _onCreateGroup(self, event, *args, **kwargs):
-		"""Allows for empty groups."""
-		pass
-		event.Skip()
-
-		# print("@1", event.groups)
-		# print("@2", self.groups_ensured)
-
-		# missing = {*self.groups_ensured}
-		# for group in event.groups:
-		# 	try:
-		# 		missing.remove(group.key)
-		# 	except:
-		# 		pass
-
-		# print("@3", missing)
-
-		# self.thing.SetEmptyGroups(missing)
-
-
-		# event.Skip()
-
-	def _onExpand(self, event):
-		"""Records the groups that are expanded."""
-
-		for group in event.groups:
-			self.expanded[group.key] = event.isExpand
-
 		event.Skip()
 
 	class _ListFull(ObjectListView.DataObjectListView):
@@ -16519,24 +16492,14 @@ class handle_Sizer(handle_Container_Base):
 		for key, value in locals().items():
 			if (key != "self"):
 				argument_catalogue[key] = value
-		
-		#Post Build
-		self._postBuild(argument_catalogue)
-
-		#Unpack arguments
-		hidden = self._getArguments(argument_catalogue, "hidden")
-
-		#Determine visibility
-		if (hidden):
-			if (isinstance(self, handle_Sizer)):
-				self._addFinalFunction(self.thing.ShowItems, False)
-			else:
-				self.thing.Hide()
 
 		#Account for nesting in a text sizer
 		if (sizerType != "text"):
 			if (text != None):
 				self.substitute = self._makeSizerText(text = text)
+		# print("@2.1")
+		#Post Build
+		self._postBuild(argument_catalogue)
 
 		if (self.substitute != None):
 			self.substitute.nest(self)
