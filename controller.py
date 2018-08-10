@@ -62,6 +62,10 @@ import forks.objectlistview.ObjectListView as ObjectListView #Use my own fork
 # from matplotlib.backends.backend_wxagg import FigureCanvas
 
 
+#Import modules needed to print RAW
+import win32print
+
+
 #Import multi-threading to run functions as background processes
 import queue
 import threading
@@ -483,8 +487,6 @@ class _MyThread(threading.Thread):
 		#Initialize the thread
 		threading.Thread.__init__(self, name = name, daemon = daemon)
 		# self.setDaemon(daemon)
-
-		# print("@1", threading.active_count(), label)
 
 		#Setup thread properties
 		if (threadID != None):
@@ -2402,37 +2404,45 @@ class Utilities():
 		Example Input: _getColor((255, 0.5, 0))
 		"""
 
-		if (color == None):
-			thing = wx.NullColour
-		else:
-			if (isinstance(color, str)):
-				if (color[0].lower() == "w"):
-					color = (255, 255, 255)
-				elif (color[:3].lower() == "bla"):
-					color = (0, 0, 0)
-				if (color[0].lower() == "r"):
-					color = (255, 0, 0)
-				if (color[0].lower() == "g"):
-					color = (0, 255, 0)
-				if (color[:3].lower() == "blu"):
-					color = (0, 0, 255)
-				else:
-					warnings.warn(f"Unknown color {color} given to _getColor in {self.__repr__()}", Warning, stacklevel = 2)
-					return
-			elif (not isinstance(color, (list, tuple, range))):
-					warnings.warn(f"'color' must be a tuple or string, not a {type(color)}, for _getColor in {self.__repr__()}", Warning, stacklevel = 2)
-					return
-			elif (len(color) != 3):
-					warnings.warn(f"'color' must have a length of three, not {len(color)}, for _getColor in {self.__repr__()}", Warning, stacklevel = 2)
-					return
+		if (not isinstance(color, (list, types.GeneratorType))):
+			color = [color]
+		
+		answer = []
+		for _color in color:
+			if (_color == None):
+				answer.append(wx.NullColour)
+			else:
+				if (isinstance(_color, str)):
+					if (_color[0].lower() == "w"):
+						_color = (255, 255, 255)
+					elif (_color[:3].lower() == "bla"):
+						_color = (0, 0, 0)
+					if (_color[0].lower() == "r"):
+						_color = (255, 0, 0)
+					if (_color[0].lower() == "g"):
+						_color = (0, 255, 0)
+					if (_color[:3].lower() == "blu"):
+						_color = (0, 0, 255)
+					else:
+						warnings.warn(f"Unknown color {_color} given to _getColor in {self.__repr__()}", Warning, stacklevel = 2)
+						return
+				elif (not isinstance(_color, (list, tuple, range))):
+						warnings.warn(f"'color' must be a tuple or string, not a {type(_color)}, for _getColor in {self.__repr__()}", Warning, stacklevel = 2)
+						return
+				elif (len(_color) != 3):
+						warnings.warn(f"'color' must have a length of three, not {len(_color)}, for _getColor in {self.__repr__()}", Warning, stacklevel = 2)
+						return
 
-			color = list(color)
-			for i, item in enumerate(color):
-				if (isinstance(item, float)):
-					color[i] = math.ceil(item * 255)
+				_color = list(_color)
+				for i, item in enumerate(_color):
+					if (isinstance(item, float)):
+						_color[i] = math.ceil(item * 255)
 
-			thing = wx.Colour(color[0], color[1], color[2])
-		return thing
+				answer.append(wx.Colour(_color[0], _color[1], _color[2]))
+		
+		if (len(answer) == 1):
+			return answer[0]
+		return answer
 
 	def _getFont(self, size = None, bold = False, italic = False, color = None, family = None):
 		"""Returns a wxFont object.
@@ -3212,6 +3222,7 @@ class Utilities():
 		columnImage = {}, columnAlign = {}, columnFormatter = {}, check = None,
 		border = True, rowLines = True, columnLines = True, report = True, 
 		group = {}, groupFormatter = {}, groupSeparator = True,
+		showContextMenu = True,
 		
 		drag = False, dragDelete = False, dragCopyOverride = False, 
 		allowExternalAppDelete = True, dragLabel = None, drop = False, dropIndex = 0,
@@ -4914,7 +4925,7 @@ class Utilities():
 		return handle
 
 	def makeDialogPrint(self, pageNumbers = True, helpButton = False, printToFile = None, selection = None, 
-		pageFrom = None, pageTo = None, pageMin = None, pageMax = None, collate = None, copies = None,
+		pageFrom = None, pageTo = None, pageMin = None, pageMax = None, collate = None, copies = None, printData = None,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
 		label = None, parent = None, handle = None, myId = None):
@@ -4957,7 +4968,7 @@ class Utilities():
 		handle._build(locals())
 		return handle
 
-	def makeDialogPrintPreview(self,
+	def makeDialogPrintPreview(self, printData = None, printerSetup = True,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
 		label = None, parent = None, handle = None, myId = None):
@@ -5756,8 +5767,6 @@ class handle_Base(Utilities, CommonEventFunctions):
 		Example Input: copy(handle, includeNested = False, linkCopy = True)
 		"""
 
-		print("@1", self.__repr__(), handle.__repr__(), includeNested, linkCopy)
-
 		if (not hasattr(self, handle.makeFunction)):
 			errorMessage = f"The function {handle.makeFunction} is not in {self.__repr__()}"
 			raise SyntaxError(errorMessage)
@@ -5885,11 +5894,35 @@ class handle_Base(Utilities, CommonEventFunctions):
 	def setFunction_position(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		self._betterBind(wx.EVT_MOVE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
-	def setSize(self, size, event = None):
-		"""Sets the size of the wxObject."""
+	def setSize(self, size, event = None, atleast = None):
+		"""Sets the size of the wxObject.
 
-		if (self.thing != None):
+		atleast (bool) - Determines if the size should be atleast or atmost the given size
+			- If True: Only changes the size if it is less than the given size
+			- If False: Only changes the size if it is greater than the given size
+			- If None: Changes the size, regardless of the current size
+		"""
+
+		if (self.thing == None):
+			return
+
+		if (atleast == None):
 			self.thing.SetSize(size)
+			return
+
+		oldSize = self.thing.GetSize()
+		newSize = [item for item in oldSize]
+		if (atleast):
+			if (oldSize[0] < size[0]):
+				newSize[0] = size[0]
+			if (oldSize[1] < size[1]):
+				newSize[1] = size[1]
+		else:
+			if (oldSize[0] > size[0]):
+				newSize[0] = size[0]
+			if (oldSize[1] > size[1]):
+				newSize[1] = size[1]
+		self.thing.SetSize(newSize)
 
 	#Etc
 	def onRefresh(self, event, *args, **kwargs):
@@ -6116,6 +6149,109 @@ class handle_Base(Utilities, CommonEventFunctions):
 
 		errorMessage = f"Could not find sizer item index in remove() for {self.__repr__()}"
 		raise SyntaxError(errorMessage)
+
+	def _decodePrintSettings(self, dialogData):
+		"""Turns a wxPrintDialogData object into a dictionary."""
+
+		printData = dialogData.GetPrintData()
+		data = {None: wx.PrintDialogData(dialogData),
+			"printAll": dialogData.GetAllPages(),
+			"collate": dialogData.GetCollate(),
+			"from": dialogData.GetFromPage(),
+			"to": dialogData.GetToPage(),
+			"min": dialogData.GetMinPage(),
+			"max": dialogData.GetMaxPage(),
+			"copies": dialogData.GetNoCopies(),
+			"printToFile": dialogData.GetPrintToFile(),
+			"selected": dialogData.GetSelection(),
+			"bin": _MyPrinter.catalogue_printBin[printData.GetBin()],
+			"color": printData.GetColour(),
+			"duplex": _MyPrinter.catalogue_duplex[printData.GetDuplex()],
+			"file": printData.GetFilename(),
+			"vertical": _MyPrinter.catalogue_orientation[printData.GetOrientation()],
+			"paperId": _MyPrinter.catalogue_paperId[printData.GetPaperId()],
+			"paperSize": tuple(printData.GetPaperSize()),
+			"printMode": _MyPrinter.catalogue_printMode[printData.GetPrintMode()],
+			"printerName": printData.GetPrinterName(),
+			"quality": _MyPrinter.catalogue_quality.get(printData.GetQuality(), printData.GetQuality())}
+		return data
+
+	def _encodePrintSettings(self, data):
+		"""Turns a dictionary into a wxPrintDialogData object."""
+
+		def apply(variable, function, catalogue = None):
+			value = data.get(variable, None)
+			if (value != None):
+				if (not catalogue):
+					return function(value)
+				elif (value in catalogue.values()):
+					return function(next(_key for _key, _value in catalogue.items() if (_value == value)))
+				return function(value)
+
+		##################################################
+			
+		printData = wx.PrintData()
+		apply("color", printData.SetColour)
+		apply("file", printData.SetFilename)
+		apply("paperSize", printData.SetPaperSize)
+		apply("printerName", printData.SetPrinterName)
+		apply("bin", printData.SetBin, _MyPrinter.catalogue_printBin)
+		apply("duplex", printData.SetDuplex, _MyPrinter.catalogue_duplex)
+		apply("quality", printData.SetQuality, _MyPrinter.catalogue_quality)
+		apply("paperId", printData.SetPaperId, _MyPrinter.catalogue_paperId)
+		apply("printMode", printData.SetPrintMode, _MyPrinter.catalogue_printMode)
+		apply("vertical", printData.SetOrientation, _MyPrinter.catalogue_orientation)
+
+		dialogData = wx.PrintDialogData(printData)
+		apply("collate", dialogData.SetCollate)
+		apply("min", dialogData.SetMinPage)
+		apply("max", dialogData.SetMaxPage)
+		apply("copies", dialogData.SetNoCopies)
+		apply("printToFile", dialogData.SetPrintToFile)
+		apply("selected", dialogData.SetSelection)
+
+		if (data.get("printAll", None)):
+			dialogData.SetFromPage(dialogData.GetMinPage())
+			dialogData.SetToPage(dialogData.GetMaxPage())
+		else:
+			apply("from", dialogData.SetFromPage)
+			apply("to", dialogData.SetToPage)
+
+		return dialogData
+
+	def print(self, document = None, printData = None, title = "Document", raw = False, popup = False):
+		"""Does all the heavy lifting for printing a document.
+
+		raw (bool) - Determines how the data is sent to the printer
+				- If True: Sends the data as RAW
+				- If False: Sends the data normally
+
+		Example Input: print("Lorem Ipsum", popup = True)
+		Example Input: print(self.content, printData = self.data[None], title = self.title, raw = raw, popup = False)
+		Example Input: print(self.GetPrintoutForPrinting(), popup = prompt)
+		"""
+
+		print("@1.1")
+		if (isinstance(document, _MyPrintout)):
+			myPrintout = document
+			destroyPrintout = False
+		else:
+			myPrintout = _MyPrintout(self, document = document, title = title, raw = raw)
+			destroyPrintout = True
+
+		if (isinstance(printData, _MyPrinter)):
+			myPrinter = printData
+		else:
+			myPrinter = _MyPrinter(self, data = printData)
+
+		try:
+			if (not myPrinter.Print(None, myPrintout, popup)):
+				return
+			else:
+				return True# wx.PrintDialogData(myPrinter.GetPrintDialogData())
+		finally:
+			if (destroyPrintout):
+				myPrintout.Destroy()
 
 class handle_Container_Base(handle_Base):
 	"""The base handler for all GUI handlers.
@@ -7208,7 +7344,6 @@ class handle_WidgetList(handle_Widget_Base):
 		self.myDropTarget = None
 		self.expanded = {None: False} #(group (str): state (bool), None: default state (bool))
 
-		self.checkColumn = None
 		self.columnCatalogue = {}
 		self.selectionColor = None
 		self.lastSelection = {"group": [], "row": []}
@@ -7323,10 +7458,10 @@ class handle_WidgetList(handle_Widget_Base):
 
 			####################################################################
 
-			columnTitles, columnWidth, check = self._getArguments(argument_catalogue, ["columnTitles", "columnWidth", "check"])
+			columnTitles, columnWidth = self._getArguments(argument_catalogue, ["columnTitles", "columnWidth"])
 			report, single, editable, editOnClick, columnLabels = self._getArguments(argument_catalogue, ["report", "single", "editable", "editOnClick", "columnLabels"])
 			columnImage, columnAlign, columnFormatter = self._getArguments(argument_catalogue, ["columnImage", "columnAlign", "columnFormatter"])
-			border, rowLines, columnLines = self._getArguments(argument_catalogue, ["border", "rowLines", "columnLines"])
+			border, rowLines, columnLines, showContextMenu = self._getArguments(argument_catalogue, ["border", "rowLines", "columnLines", "showContextMenu"])
 			columns, drag, drop, choices, engine = self._getArguments(argument_catalogue, ["columns", "drag", "drop", "choices", "engine"])
 			group, groupFormatter, groupSeparator = self._getArguments(argument_catalogue, ["group", "groupFormatter", "groupSeparator"])
 			sortable, sortFunction, rowFormatter = self._getArguments(argument_catalogue, ["sortable", "sortFunction", "rowFormatter"])
@@ -7361,7 +7496,7 @@ class handle_WidgetList(handle_Widget_Base):
 
 			#Create the thing to put in the grid
 			self.thing = self._ListFull(self, self.parent.thing, myId = myId, sortable = sortable, rowFormatter = rowFormatter,
-				singleSelect = single, verticalLines = columnLines, horizontalLines = rowLines)
+				singleSelect = single, verticalLines = columnLines, horizontalLines = rowLines, showContextMenu = showContextMenu)
 			# self.thing.SetShowGroups(any((value != None) for value in group.values()))
 			self.thing.putBlankLineBetweenGroups = groupSeparator
 			self.setSortFunction(sortFunction)
@@ -7375,7 +7510,6 @@ class handle_WidgetList(handle_Widget_Base):
 				self.thing.cellEditMode = ObjectListView.ObjectListView.CELLEDIT_F2ONLY
 
 			#Create columns
-			self.checkColumn = check
 			for i in range(columns):
 				self.setColumn(i, title = columnTitles[i], label = columnLabels[i], width = columnWidth[i], editable = editable[i], 
 					align = columnAlign[i], image = columnImage[i], formatter = columnFormatter[i], group = group[i], groupFormatter = groupFormatter[i], minWidth = None, refresh = False)
@@ -7923,16 +8057,10 @@ class handle_WidgetList(handle_Widget_Base):
 	def addColumn(self, *args, **kwargs):
 		self.setColumn(column = len(self.columnCatalogue), *args, **kwargs)
 
-	def addColumnButton(self, *args, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, **kwargs):
-		def test(*args, **kwargs):
-			print("@1")
-
-		self.addColumn(*args, **kwargs)
-
 	def setColumn(self, column = None, title = None, label = None, width = None, align = None, sortLabel = None, groupSortLabel = None,
 		hidden = None, editable = None, sortable = None, resizeable = None, searchable = None, reorderable = None,
 		image = None, formatter = None, group = None, groupFormatter = None, minWidth = None, refresh = True, 
-		renderer = None, rendererArgs = None, rendererKwargs = None):
+		renderer = None, rendererArgs = None, rendererKwargs = None, setter = None):
 		"""Sets the contextual column for this handle."""
 
 		#Create columns
@@ -7949,6 +8077,7 @@ class handle_WidgetList(handle_Widget_Base):
 			self.columnCatalogue[column].setdefault("minimumWidth", 5)
 			self.columnCatalogue[column].setdefault("sortGetter", None)
 			self.columnCatalogue[column].setdefault("valueGetter", None)
+			self.columnCatalogue[column].setdefault("valueSetter", None)
 			self.columnCatalogue[column].setdefault("imageGetter", None)
 			self.columnCatalogue[column].setdefault("groupSortGetter", None)
 			self.columnCatalogue[column].setdefault("stringConverter", None)
@@ -7977,6 +8106,8 @@ class handle_WidgetList(handle_Widget_Base):
 				self.columnCatalogue[column]["align"] = align
 			if (label != None):
 				self.columnCatalogue[column]["valueGetter"] = label
+			if (setter != None):
+				self.columnCatalogue[column]["valueSetter"] = setter
 			if (sortLabel != None):
 				self.columnCatalogue[column]["sortGetter"] = sortLabel
 			if (groupSortLabel != None):
@@ -8045,31 +8176,15 @@ class handle_WidgetList(handle_Widget_Base):
 	def refreshColumns(self):
 		if (self.type.lower() == "listfull"):
 			self.thing.SetColumns([ObjectListView.DataColumnDefn(**kwargs) for column, kwargs in sorted(self.columnCatalogue.items())])
-
-			if (self.checkColumn != None):
-				if (self.thing.GetShowGroups()):
-					self.thing.CreateCheckStateColumn(self.checkColumn + 1)
-				else:
-					self.thing.CreateCheckStateColumn(self.checkColumn)
 		else:
 			warnings.warn(f"Add {self.type} to setColumns() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def refresh(self):
-		# print("@1", self.thing.GetObjects())
 		self.thing.RepopulateList()
 
 	def clearAll(self):
 		self.columnCatalogue = {}
 		self.thing.ClearAll()
-
-	def addColumnCheck(self, *args, **kwargs):
-		self.setColumnCheck(column = len(self.columnCatalogue), *args, **kwargs)
-	
-	def setColumnCheck(self, column, refresh = True):
-		self.checkColumn = column
-		if (refresh):
-			self.refreshColumns()
-			self.refresh()
 
 	def expandAll(self, state = True):
 		if (state):
@@ -8155,53 +8270,6 @@ class handle_WidgetList(handle_Widget_Base):
 
 	def hideGroupCount(self, state = True):
 		self.showGroupCount(not state)
-
-	def uncheck(self, row = None, state = True):
-		self.check(row = row, state = not state)
-
-	def check(self, row = None, state = True):
-		if (row == None):
-			row = self.thing.GetObjects()
-		elif (isinstance(row, (range, types.GeneratorType))):
-			row = list(row)
-		elif (not isinstance(row, (list, tuple))):
-			row = [row]
-
-		for _row in row:
-			if (not hasattr(_row, '__dict__')):
-				#The user passed in a non-object
-				item = self.thing.GetObjectAt(_row)
-			else:
-				#The user passed in an object
-				item = _row
-
-			if (state != None):
-				if (state):
-					self.thing.Check(item)
-				else:
-					self.thing.Uncheck(item)
-			else:
-				self.thing.ToggleCheck(item)
-		self.thing.RefreshObjects(row)
-
-	def checkChecked(self, row = None):
-		if (isinstance(row, (range, types.GeneratorType))):
-			row = list(row)
-		elif (not isinstance(row, (list, tuple))):
-			row = [row]
-
-		valueList = []
-		for _row in row:
-			if (hasattr(_row, '__dict__')):
-				#The user passed in a non-object
-				item = self.thing.GetObjectAt(_row)
-			else:
-				#The user passed in an object
-				item = _row
-
-			valueList.append(item.IsChecked(item))
-
-		return valueList
 
 	def setColor(self, even = None, odd = None, selected = None, group = None):
 		if (even != None):
@@ -8310,19 +8378,16 @@ class handle_WidgetList(handle_Widget_Base):
 	def setEmptyListMessage(self, message):
 		self.thing.SetEmptyListMsg(message)
 
-	# def refreshEmptyListMessage():
-	# 	self.thing.RefreshEmptyListMsg(message)
+	# def addImage(self, label, imagePath, internal = False):
+	# 	"""Adds an image to the image catalogue.
 
-	def addImage(self, label, imagePath, internal = False):
-		"""Adds an image to the image catalogue.
+	# 	Example Input: addImage("correct", "markCheck", internal = True)
+	# 	"""
 
-		Example Input: addImage("correct", "markCheck", internal = True)
-		"""
+	# 	image_16 = self._getImage(imagePath, internal = internal, scale = (16, 16))
+	# 	image_32 = self._getImage(imagePath, internal = internal, scale = (32, 32))
 
-		image_16 = self._getImage(imagePath, internal = internal, scale = (16, 16))
-		image_32 = self._getImage(imagePath, internal = internal, scale = (32, 32))
-
-		# self.thing.AddNamedImages(label, image_16, image_32)
+	# 	# self.thing.AddNamedImages(label, image_16, image_32)
 
 	def appendValue(self, newValue, where = -1, filterNone = None):
 		"""Appends the given value to the current contextual value for this handle."""
@@ -8356,9 +8421,12 @@ class handle_WidgetList(handle_Widget_Base):
 		else:
 			warnings.warn(f"Add {self.type} to appendValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
-	def removeValue(self, newValue, filterNone = None):
-		objectList = self._formatList(newValue, filterNone = filterNone)
+	def removeValue(self, value):
+		objectList = self._formatList(value)
 		self.thing.RemoveObjects(objectList)
+
+	def addContextMenuItem(self, row = None, **kwargs):
+		self.thing.contextMenu.AddItem(row = row and self._formatList(row), **kwargs)
 
 	#Change Settings
 	def setFunction_preClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
@@ -8399,8 +8467,8 @@ class handle_WidgetList(handle_Widget_Base):
 			
 	def setFunction_postEdit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
-			# self._betterBind(ObjectListView.EVT_DATA_CELL_EDIT_FINISHING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-			self._betterBind(ObjectListView.EVT_DATA_CELL_EDIT_FINISHED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+			self._betterBind(ObjectListView.EVT_DATA_CELL_EDIT_FINISHING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+			# self._betterBind(ObjectListView.EVT_DATA_CELL_EDIT_FINISHED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		elif (self.type.lower() == "listtree"):
 			self._betterBind(wx.EVT_TREE_END_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
@@ -8507,9 +8575,7 @@ class handle_WidgetList(handle_Widget_Base):
 		if (self.type.lower() == "listtree"):
 			self._betterBind(wx.EVT_TREE_ITEM_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		elif (self.type.lower() == "listfull"):
-			self._betterBind(ObjectListView.EVT_DATA_CELL_CONTEXT_MENU, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-			# self._betterBind(wx.dataview.EVT_DATAVIEW_ITEM_CONTEXT_MENU, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-			# self._betterBind(wx.EVT_RIGHT_DOWN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			self._betterBind(ObjectListView.EVT_DATA_CELL_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_rightClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -8524,22 +8590,18 @@ class handle_WidgetList(handle_Widget_Base):
 			self._betterBind(wx.EVT_TREE_ITEM_ACTIVATED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		elif (self.type.lower() == "listfull"):
 			self._betterBind(ObjectListView.EVT_DATA_CELL_ACTIVATED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-			# self._betterBind(wx.dataview.EVT_DATAVIEW_ITEM_ACTIVATED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-			# self._betterBind(wx.EVT_LEFT_DCLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_middleClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_clickLabel(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
-			self._betterBind(ObjectListView.EVT_DATA_COLUMN_HEADER_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-			# self._betterBind(wx.dataview.EVT_DATAVIEW_COLUMN_HEADER_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			self._betterBind(ObjectListView.EVT_DATA_COLUMN_HEADER_LEFT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_labelClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_rightClickLabel(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
 			self._betterBind(ObjectListView.EVT_DATA_COLUMN_HEADER_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-			# self._betterBind(wx.dataview.EVT_DATAVIEW_COLUMN_HEADER_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_rightClickLabel() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -8564,14 +8626,12 @@ class handle_WidgetList(handle_Widget_Base):
 	def setFunction_sort(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
 			self._betterBind(ObjectListView.EVT_DATAVIEW_COLUMN_SORTED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-			# self._betterBind(wx.dataview.EVT_DATAVIEW_COLUMN_SORTED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_sort() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_reorder(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
 			self._betterBind(ObjectListView.EVT_DATAVIEW_COLUMN_REORDER, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-			# self._betterBind(wx.dataview.EVT_DATAVIEW_COLUMN_REORDERED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_sort() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -8636,6 +8696,8 @@ class handle_WidgetList(handle_Widget_Base):
 
 				rowList = range(start, stop, step)
 
+			elif (isinstance(row, (list, tuple, range, set, types.GeneratorType))):
+				rowList = row
 			else:
 				rowList = [row]
 
@@ -17742,7 +17804,7 @@ class handle_Dialog(handle_Base):
 
 			if (default != None):
 				if (single):
-					if (isinstance(default, (list, tuple, range))):
+					if (isinstance(default, (list, tuple, range, set))):
 						if (len(default) == 0):
 							default = 0
 						else:
@@ -17757,11 +17819,11 @@ class handle_Dialog(handle_Base):
 
 					self.thing.SetSelection(default)
 				else:
-					if (not isinstance(default, (list, tuple, range))):
+					if (not isinstance(default, (list, tuple, range, set))):
 						default = [default]
 
 					defaultList = []
-					for i in range(default):
+					for i in range(len(default)):
 						if (isinstance(default[i], str)):
 							if (default[i] not in choices):
 								warnings.warn(f"{self.default[i]} not in 'choices' {choices} for {self.__repr__()}", Warning, stacklevel = 2)
@@ -17873,58 +17935,53 @@ class handle_Dialog(handle_Base):
 			"""Builds a wx print dialog object."""
 			nonlocal self, argument_catalogue
 
-			pageNumbers, helpButton, printToFile, selection = self._getArguments(argument_catalogue, ["pageNumbers", "helpButton", "printToFile", "selection"])
-			pageFrom, pageTo, pageMin, pageMax, collate, copies = self._getArguments(argument_catalogue, ["pageFrom", "pageTo", "pageMin", "pageMax", "collate", "copies"])
-
 			#Configure settings
-			# pd = wx.PrintData()
-			# pd.SetPrinterName("")
-			# pd.SetOrientation(wx.PORTRAIT)
-			# pd.SetPaperId(wx.PAPER_A4)
-			# pd.SetQuality(wx.PRINT_QUALITY_DRAFT)
-			# pd.SetColour(True) # Black and white printing if False.
-			# pd.SetNoCopies(1)
-			# pd.SetCollate(True)
-			# self.data = wx.PrintDialogData(pd)
-			self.data = wx.PrintDialogData()
-
-			self.data.EnablePageNumbers(pageNumbers)
-			self.data.EnableHelp(helpButton)
-
-			if (printToFile != None):
-				self.data.EnablePrintToFile(True)
-				self.data.SetPrintToFile(printToFile)
+			printData = self._getArguments(argument_catalogue, ["printData"])
+			if (printData != None):
+				if (not isinstance(printData, dict)):
+					dialogData = printData
+				else:
+					dialogData = self._encodePrintSettings(printData)
+					printData = wx.PrintData()
 			else:
-				self.data.EnablePrintToFile(False)
+				pageNumbers, helpButton, printToFile, selection = self._getArguments(argument_catalogue, ["pageNumbers", "helpButton", "printToFile", "selection"])
+				pageFrom, pageTo, pageMin, pageMax, collate, copies = self._getArguments(argument_catalogue, ["pageFrom", "pageTo", "pageMin", "pageMax", "collate", "copies"])
 
-			if (selection != None):
-				self.data.EnableSelection(True)
-				self.data.SetSelection(selection)
-			else:
-				self.data.EnableSelection(True)
+				dialogData = wx.PrintDialogData()
+				dialogData.EnablePageNumbers(pageNumbers)
+				dialogData.EnableHelp(helpButton)
 
-			if (pageFrom != None):
-				self.data.SetFromPage(pageFrom)
-	
-			if (pageTo != None):
-				self.data.SetToPage(pageTo)
-			
-			if (pageMin != None):
-				self.data.SetMinPage(pageMin)
-	
-			if (pageMax != None):
-				self.data.SetMaxPage(pageMax)
-			
-			if (collate != None):
-				self.data.SetCollate(collate)
-			
-			if (copies != None):
-				self.data.SetNoCopies(copies)
-			
-			# self.thing.SetAllPages(True)
-			# self.thing.SetSetupDialog(True)
+				if (printToFile != None):
+					dialogData.EnablePrintToFile(True)
+					dialogData.SetPrintToFile(printToFile)
+				else:
+					dialogData.EnablePrintToFile(False)
 
-			self.thing = wx.PrintDialog(None, self.data)
+				if (selection != None):
+					dialogData.EnableSelection(True)
+					dialogData.SetSelection(selection)
+				else:
+					dialogData.EnableSelection(True)
+
+				if (pageFrom != None):
+					dialogData.SetFromPage(pageFrom)
+		
+				if (pageTo != None):
+					dialogData.SetToPage(pageTo)
+				
+				if (pageMin != None):
+					dialogData.SetMinPage(pageMin)
+		
+				if (pageMax != None):
+					dialogData.SetMaxPage(pageMax)
+				
+				if (collate != None):
+					dialogData.SetCollate(collate)
+				
+				if (copies != None):
+					dialogData.SetNoCopies(copies)
+				
+			self.thing = wx.PrintDialog(None, dialogData)
 
 			#Set Defaults
 			self.title = "GUI_Maker Page"
@@ -17934,24 +17991,16 @@ class handle_Dialog(handle_Base):
 			"""Builds a wx print dialog object."""
 			nonlocal self, argument_catalogue
 
-			#Configure settings
-			# pd = wx.PrintData()
-			# pd.SetPrinterName("")
-			# pd.SetOrientation(wx.PORTRAIT)
-			# pd.SetPaperId(wx.PAPER_A4)
-			# pd.SetQuality(wx.PRINT_QUALITY_DRAFT)
-			# pd.SetColour(True) # Black and white printing if False.
-			# pd.SetNoCopies(1)
-			# pd.SetCollate(True)
-			# self.data = wx.PrintPreview(data = pd)
-			# self.data = wx.PrintPreview(None)
 			self.thing = -1
+			printData, printerSetup = self._getArguments(argument_catalogue, ["printData", "printerSetup"])
 
 			#Set Defaults
-			self.title = "GUI_Maker Page"
-			self.position = None
-			self.content = None
 			self.size = None
+			self.content = None
+			self.position = None
+			self.printData = printData
+			self.title = "GUI_Maker Page"
+			self.printerSetup = printerSetup
 
 		def _build_custom():
 			"""Uses a frame to mimic a wx dialog object."""
@@ -18081,10 +18130,9 @@ class handle_Dialog(handle_Base):
 			del self.thing
 			self.thing = None
 		elif (self.type.lower() == "printpreview"):
-			self.thing.hide()
 			self.thing = None
 
-		if (self.type.lower() == "message"):
+		elif (self.type.lower() == "message"):
 			self.thing.Destroy()
 			self.thing = None
 
@@ -18133,8 +18181,7 @@ class handle_Dialog(handle_Base):
 			self.thing = None
 
 		elif (self.type.lower() == "print"):
-			self.dialogData = self.thing.GetPrintDialogData()
-
+			self.data = self._decodePrintSettings(self.thing.GetPrintDialogData())
 			self.thing.Destroy()
 			self.thing = None
 
@@ -18184,7 +18231,7 @@ class handle_Dialog(handle_Base):
 			value = (color.Red(), color.Green(), color.Blue(), color.Alpha())
 
 		elif (self.type.lower() == "print"):
-			value = [self.data, self.dialogData, self.content]
+			value = {"content": self.content, **self.data} 
 
 		elif (self.type.lower() == "printPreview"):
 			value = self.content
@@ -18281,37 +18328,32 @@ class handle_Dialog(handle_Base):
 			warnings.warn(f"Add {self.type} to setTitle() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Etc
-	def send(self, event = None):
+	def send(self, raw = False, event = None):
 		"""Returns what the contextual valueDoes the contextual send command for the object associated with this handle.
 		Modified code from: https://wiki.wxpython.org/Printing
+
+		raw (bool) - Determines how the data is sent to the printer
+			- If True: Sends the data as RAW
+			- If False: Sends the data normally
+
+		Example Input: send()
+		Example Input: send(raw = True)
 		"""
 
-		def makePrintout():
-			return self._MyPrintout(self, title = self.title)
-
-
 		if (self.type.lower() == "print"):
-			print("@1", self.data, self.dialogData, self.content)
-			hjhgjjhjgj
-
-			printer = wx.Printer(self.dialogData)
-			myPrintout = makePrintout()
-
-			if (not printer.Print(self, myPrintout, True)):
-				wx.MessageBox(("There was a problem printing.\nPerhaps your current printer is \nnot set correctly ?"), ("Printing"), wx.OK)
-				return
-			else:
-				self.printData = wx.PrintData(printer.GetPrintDialogData().GetPrintData())
-			myPrintout.Destroy()
+			self.print(self.content, printData = self.data[None], title = self.title, raw = raw, popup = False)
 
 		elif (self.type.lower() == "printpreview"):
 			handle = handle_Window(self.myWindow.controller)
 			handle.type = "Preview"
 
 			argument_catalogue = self._arrangeArguments(self.controller, Controller.addWindow)
-			argument_catalogue["printout"] = makePrintout()
+			argument_catalogue["printout"] = _MyPrintout(self, document = self.content, title = self.title, raw = raw)
 			argument_catalogue["enablePrint"] = True
 			handle._build(argument_catalogue)
+			handle.thing.dialog = self
+			handle.thing.preview.printData = self.printData
+			handle.thing.preview.printerSetup = self.printerSetup
 
 			handle.setWindowSize(self.size)
 			handle.setWindowPosition(self.position)
@@ -18320,75 +18362,304 @@ class handle_Dialog(handle_Base):
 		else:
 			warnings.warn(f"Add {self.type} to send() for {self.__repr__()}", Warning, stacklevel = 2)
 
-	class _MyPrintout(wx.Printout):
-		def __init__(self, parent, title = "GUI_Maker Page", pageTo = None, pageFrom = None):
-			wx.Printout.__init__(self, title)
+class _MyPrinter(wx.Printer):
+	catalogue_printBin = {wx.PRINTBIN_DEFAULT: "default", wx.PRINTBIN_ONLYONE: "one", wx.PRINTBIN_LOWER: "lower",
+		wx.PRINTBIN_MIDDLE: "middle", wx.PRINTBIN_MANUAL: "manual", wx.PRINTBIN_ENVELOPE: "envelope",
+		wx.PRINTBIN_ENVMANUAL: "env_manual", wx.PRINTBIN_AUTO: "auto", wx.PRINTBIN_TRACTOR: "tractor",
+		wx.PRINTBIN_SMALLFMT: "small", wx.PRINTBIN_LARGEFMT: "large", wx.PRINTBIN_LARGECAPACITY: "capacity",
+		wx.PRINTBIN_CASSETTE: "cassette", wx.PRINTBIN_FORMSOURCE: "source", wx.PRINTBIN_USER: "user"}
 
-			self.title = title
-			self.parent = parent
-			self.pageTo = pageTo
-			self.pageFrom = pageFrom
-			self.document = None
+	catalogue_duplex = {wx.DUPLEX_SIMPLEX: None, wx.DUPLEX_HORIZONTAL: True, wx.DUPLEX_VERTICAL: False}
 
-		def GetPageInfo(self):
-			"""Handles how many pages are in the printout."""
+	catalogue_printMode = {wx.PRINT_MODE_NONE: None, wx.PRINT_MODE_PREVIEW: "Preview in external application", 
+		wx.PRINT_MODE_FILE: "Print to file", wx.PRINT_MODE_PRINTER: "Send to printer", 
+		wx.PRINT_MODE_STREAM: "Send postscript data into a stream"}
 
-			# minPage, maxPage, pageFrom, pageTo = super().GetPageInfo()
+	catalogue_quality = {wx.PRINT_QUALITY_HIGH: "High", wx.PRINT_QUALITY_MEDIUM: "Medium",
+		wx.PRINT_QUALITY_LOW: "Low", wx.PRINT_QUALITY_DRAFT: "Draft"}
 
-			minPage = 1
-			maxPage = len(self.document)
-			pageFrom = self.pageFrom or minPage
-			pageTo = self.pageTo or maxPage
+	catalogue_orientation = {wx.LANDSCAPE: False, wx.PORTRAIT: True}
 
-			return (minPage, maxPage, pageFrom, pageTo)
+	catalogue_paperId = {
+		wx.PAPER_10X11: "10 x 11 in", 
+		wx.PAPER_10X14: "10 x 14 in", 
+		wx.PAPER_11X17: "11 x 17 in", 
+		wx.PAPER_12X11: "12 x 11 in", 
+		wx.PAPER_15X11: "15 x 11 in", 
+		wx.PAPER_9X11: "9 x 11 in", 
+		wx.PAPER_A2: "A2; 420 x 594 mm", 
+		wx.PAPER_A3: "A3; 297 x 420 mm", 
+		wx.PAPER_A3_EXTRA: "A3 Extra; 322 x 445 mm", 
+		wx.PAPER_A3_EXTRA_TRANSVERSE: "A3 Extra Transverse; 322 x 445 mm", 
+		wx.PAPER_A3_ROTATED: "A3 Rotated; 420 x 297 mm", 
+		wx.PAPER_A3_TRANSVERSE: "A3 Transverse; 297 x 420 mm", 
+		wx.PAPER_A4: "A4; 210 x 297 mm", 
+		wx.PAPER_A4SMALL: "A4 Small; 210 x 297 mm", 
+		wx.PAPER_A4_EXTRA: "A4 Extra; 9.27 x 12.69 in", 
+		wx.PAPER_A4_PLUS: "A4 Plus; 210 x 330 mm", 
+		wx.PAPER_A4_ROTATED: "A4 Rotated; 297 x 210 mm", 
+		wx.PAPER_A4_TRANSVERSE: "A4 Transverse; 210 x 297 mm", 
+		wx.PAPER_A5: "A5; 148 x 210 mm", 
+		wx.PAPER_A5_EXTRA: "A5 Extra; 174 x 235 mm", 
+		wx.PAPER_A5_ROTATED: "A5 Rotated; 210 x 148 mm", 
+		wx.PAPER_A5_TRANSVERSE: "A5 Transverse; 148 x 210 mm", 
+		wx.PAPER_A6: "A6; 105 x 148 mm", 
+		wx.PAPER_A6_ROTATED: "A6 Rotated; 148 x 105 mm", 
+		wx.PAPER_A_PLUS: "SuperA; 227 x 356 mm", 
+		wx.PAPER_B4: "B4; 250 by 354 mm", 
+		wx.PAPER_B4_JIS_ROTATED: "B4 (JIS) Rotated; 364 x 257 mm", 
+		wx.PAPER_B5: "B5; 182 by 257 mm", 
+		wx.PAPER_B5_EXTRA: "B5 (ISO) Extra; 201 x 276 mm", 
+		wx.PAPER_B5_JIS_ROTATED: "B5 (JIS) Rotated; 257 x 182 mm", 
+		wx.PAPER_B5_TRANSVERSE: "B5 (JIS) Transverse; 182 x 257 mm", 
+		wx.PAPER_B6_JIS: "B6 (JIS); 128 x 182 mm", 
+		wx.PAPER_B6_JIS_ROTATED: "B6 (JIS) Rotated; 182 x 128 mm", 
+		wx.PAPER_B_PLUS: "SuperB; 305 x 487 mm", 
+		wx.PAPER_CSHEET: "C; 17 by 22 in", 
+		wx.PAPER_DBL_JAPANESE_POSTCARD: "Japanese Double Postcard; 200 x 148 mm", 
+		wx.PAPER_DBL_JAPANESE_POSTCARD_ROTATED: "Double Japanese Postcard Rotated; 148 x 200 mm", 
+		wx.PAPER_DSHEET: "D; 22 by 34 in", 
+		wx.PAPER_ENV_10: "#10 Envelope; 4 1/8 by 9 1/2 in", 
+		wx.PAPER_ENV_11: "#11 Envelope; 4 1/2 by 10 3/8 in", 
+		wx.PAPER_ENV_12: "#12 Envelope; 4 3/4 by 11 in", 
+		wx.PAPER_ENV_14: "#14 Envelope; 5 by 11 1/2 in", 
+		wx.PAPER_ENV_9: "#9 Envelope; 3 7/8 by 8 7/8 in", 
+		wx.PAPER_ENV_B4: "B4 Envelope; 250 by 353 mm", 
+		wx.PAPER_ENV_B5: "B5 Envelope; 176 by 250 mm", 
+		wx.PAPER_ENV_B6: "B6 Envelope; 176 by 125 mm", 
+		wx.PAPER_ENV_C3: "C3 Envelope; 324 by 458 mm", 
+		wx.PAPER_ENV_C4: "C4 Envelope; 229 by 324 mm", 
+		wx.PAPER_ENV_C5: "C5 Envelope; 162 by 229 mm", 
+		wx.PAPER_ENV_C6: "C6 Envelope; 114 by 162 mm", 
+		wx.PAPER_ENV_C65: "C65 Envelope; 114 by 229 mm", 
+		wx.PAPER_ENV_DL: "DL Envelope; 110 by 220 mm", 
+		wx.PAPER_ENV_INVITE: "Envelope Invite; 220 x 220 mm", 
+		wx.PAPER_ENV_ITALY: "Italy Envelope; 110 by 230 mm", 
+		wx.PAPER_ENV_MONARCH: "Monarch Envelope; 3 7/8 by 7 1/2 mm", 
+		wx.PAPER_ENV_PERSONAL: "6 3/4 Envelope; 3 5/8 by 6 1/2 in", 
+		wx.PAPER_ESHEET: "E; 34 by 44 in", 
+		wx.PAPER_EXECUTIVE: "Executive; 7 1/4 by 10 1/2 in", 
+		wx.PAPER_FANFOLD_LGL_GERMAN: "German Legal Fanfold; 8 1/2 by 13 in", 
+		wx.PAPER_FANFOLD_STD_GERMAN: "German Std Fanfold; 8 1/2 by 12 in", 
+		wx.PAPER_FANFOLD_US: "US Std Fanfold; 14 7/8 by 11 in", 
+		wx.PAPER_FOLIO: "Folio; 8 1/2 by 13 in.", 
+		wx.PAPER_ISO_B4: "B4 (ISO); 250 x 353 mm", 
+		wx.PAPER_JAPANESE_POSTCARD: "Japanese Postcard; 100 x 148 mm", 
+		wx.PAPER_JAPANESE_POSTCARD_ROTATED: "Japanese Postcard Rotated; 148 x 100 mm", 
+		wx.PAPER_JENV_CHOU3: "Japanese Envelope Chou #3", 
+		wx.PAPER_JENV_CHOU3_ROTATED: "Japanese Envelope Chou #3 Rotated", 
+		wx.PAPER_JENV_CHOU4: "Japanese Envelope Chou #4", 
+		wx.PAPER_JENV_CHOU4_ROTATED: "Japanese Envelope Chou #4 Rotated", 
+		wx.PAPER_JENV_KAKU2: "Japanese Envelope Kaku #2", 
+		wx.PAPER_JENV_KAKU2_ROTATED: "Japanese Envelope Kaku #2 Rotated", 
+		wx.PAPER_JENV_KAKU3: "Japanese Envelope Kaku #3", 
+		wx.PAPER_JENV_KAKU3_ROTATED: "Japanese Envelope Kaku #3 Rotated", 
+		wx.PAPER_JENV_YOU4: "Japanese Envelope You #4", 
+		wx.PAPER_JENV_YOU4_ROTATED: "Japanese Envelope You #4 Rotated", 
+		wx.PAPER_LEDGER: "Ledger; 17 by 11 in", 
+		wx.PAPER_LEGAL: "Legal; 8 1/2 by 14 in", 
+		wx.PAPER_LEGAL_EXTRA: "Legal Extra; 9.5 x 15 in", 
+		wx.PAPER_LETTER: "Letter; 8 1/2 by 11 in", 
+		wx.PAPER_LETTERSMALL: "Letter Small; 8 1/2 by 11 in", 
+		wx.PAPER_LETTER_EXTRA: "Letter Extra; 9.5 x 12 in", 
+		wx.PAPER_LETTER_EXTRA_TRANSVERSE: "Letter Extra Transverse; 9.5 x 12 in", 
+		wx.PAPER_LETTER_PLUS: "Letter Plus; 8.5 x 12.69 in", 
+		wx.PAPER_LETTER_ROTATED: "Letter Rotated; 11 x 8 1/2 in", 
+		wx.PAPER_LETTER_TRANSVERSE: "Letter Transverse; 8.5 x 11 in", 
+		wx.PAPER_NONE: "Use specific dimensions", 
+		wx.PAPER_NOTE: "Note; 8 1/2 by 11 in", 
+		wx.PAPER_P16K: "PRC 16K; 146 x 215 mm", 
+		wx.PAPER_P16K_ROTATED: "PRC 16K Rotated; 215 x 146 mm", 
+		wx.PAPER_P32K: "PRC 32K; 97 x 151 mm", 
+		wx.PAPER_P32KBIG: "PRC 32K(Big); 97 x 151 mm", 
+		wx.PAPER_P32KBIG_ROTATED: "PRC 32K(Big) Rotated; 151 x 97 mm", 
+		wx.PAPER_P32K_ROTATED: "PRC 32K Rotated; 157 x 97 mm", 
+		wx.PAPER_PENV_1: "PRC Envelope #1; 102 x 165 mm", 
+		wx.PAPER_PENV_10: "PRC Envelope #10; 324 x 458 mm", 
+		wx.PAPER_PENV_10_ROTATED: "PRC Envelope #10 Rotated; 458 x 324 mm", 
+		wx.PAPER_PENV_1_ROTATED: "PRC Envelope #1 Rotated; 165 x 102 mm", 
+		wx.PAPER_PENV_2: "PRC Envelope #2; 102 x 176 mm", 
+		wx.PAPER_PENV_2_ROTATED: "PRC Envelope #2 Rotated; 176 x 102 mm", 
+		wx.PAPER_PENV_3: "PRC Envelope #3; 125 x 176 mm", 
+		wx.PAPER_PENV_3_ROTATED: "PRC Envelope #3 Rotated; 176 x 125 mm", 
+		wx.PAPER_PENV_4: "PRC Envelope #4; 110 x 208 mm", 
+		wx.PAPER_PENV_4_ROTATED: "PRC Envelope #4 Rotated; 208 x 110 mm", 
+		wx.PAPER_PENV_5: "PRC Envelope #5; 110 x 220 mm", 
+		wx.PAPER_PENV_5_ROTATED: "PRC Envelope #5 Rotated; 220 x 110 mm", 
+		wx.PAPER_PENV_6: "PRC Envelope #6; 120 x 230 mm", 
+		wx.PAPER_PENV_6_ROTATED: "PRC Envelope #6 Rotated; 230 x 120 mm", 
+		wx.PAPER_PENV_7: "PRC Envelope #7; 160 x 230 mm", 
+		wx.PAPER_PENV_7_ROTATED: "PRC Envelope #7 Rotated; 230 x 160 mm", 
+		wx.PAPER_PENV_8: "PRC Envelope #8; 120 x 309 mm", 
+		wx.PAPER_PENV_8_ROTATED: "PRC Envelope #8 Rotated; 309 x 120 mm", 
+		wx.PAPER_PENV_9: "PRC Envelope #9; 229 x 324 mm", 
+		wx.PAPER_PENV_9_ROTATED: "PRC Envelope #9 Rotated; 324 x 229 mm", 
+		wx.PAPER_QUARTO: "Quarto; 215 by 275 mm", 
+		wx.PAPER_STATEMENT: "Statement; 5 1/2 by 8 1/2 in", 
+		wx.PAPER_TABLOID: "Tabloid; 11 by 17 in", 
+		wx.PAPER_TABLOID_EXTRA: "Tabloid Extra; 11.69 x 18 in", 
+		} 
 
-		def HasPage(self, pageNumber):
-			"""Determines if the given page is in the print out."""
+	def __init__(self, parent, data = None):
+		self.parent = parent
+		if (not isinstance(data, dict)):
+			wx.Printout.__init__(self, data)
+		else:
+			print("@1.5")
+			dialogData = self.parent._encodePrintSettings(data)
+			wx.Printout.__init__(self, dialogData)
 
-			try:
-				self.document[pageNumber]
-				return True
-			except Exception as error:
+	def Print(self, window, printout, prompt = True):
+		"""Prints the printout given to it.
+		Special thanks to Ben Croston for how to print RAW on https://pypi.org/project/zebra/
+		"""
+
+		if ((not hasattr(printout, "raw")) or (not printout.raw)):
+			answer = super().Print(window, printout, prompt = prompt)
+			if (not answer):
+				wx.MessageBox(("There was a problem printing.\nPerhaps your current printer is \nnot set correctly ?"), ("Printing"), wx.OK)
+			return answer
+		if (prompt):
+			if (not self.PrintDialog(window)):
 				return False
 
-		def OnPreparePrinting(self):
-			"""Ensures correct format of content."""
+		printerName = self.GetPrintDialogData().GetPrintData().GetPrinterName()
+		printout.hPrinter = win32print.OpenPrinter(printerName)
+		super().Print(window, printout, prompt = False)
+		win32print.ClosePrinter(printout.hPrinter)
 
-			self.document = self.parent.content
-			if (not isinstance(self.document, (list, tuple, set, types.GeneratorType))):
-				self.document = [self.document]
-			if (not isinstance(self.document, dict)):
-				self.document = {pageNumber + 1: page for pageNumber, page in enumerate(self.document)}
+		return True
 
-		def OnPrintPage(self, pageNumber):
-			"""Arranges the stuff on the page."""
+class _MyPrintPreview(wx.PrintPreview):
+	def __init__(self, parent, *args, printData = None, printerSetup = True, **kwargs):
+		super().__init__(*args, **kwargs)
 
-			dc = self.GetDC()
-			dc.SetMapMode(wx.MM_POINTS) #Each logical unit is a “printer point” i.e. 1/72 of an inch
-			# dc.SetMapMode(wx.MM_TWIPS) #Each logical unit is 1/20 of a “printer point”, or 1/1440 of an inch
+		self.parent = parent
+		self.printerSetup = printerSetup
+		self.printData = printData
 
-			page = self.document[pageNumber]
+	def Print(self, printerSetup):
+		print("@1.3")
+		self.parent.print(self.GetPrintoutForPrinting(), printData = self.printData, popup = self.printerSetup)
+		print("@1.4")
+		return True
 
-			## TO DO ## Add isinstance(page, something with a defined font and text)
-			if (isinstance(page, str)):
-				dc.SetTextForeground("black")
-				dc.SetFont(wx.Font(11, wx.SWISS, wx.NORMAL, wx.BOLD))
-				dc.DrawText(page, 0, 0)
+class _MyPreviewFrame(wx.PreviewFrame):
+	def __init__(self, parent, preview, *args, **kwargs):
+		super().__init__(preview, *args, **kwargs)
 
-			elif (isinstance(page, handle_WidgetCanvas)):
-				with page as myCanvas:
-					myCanvas._draw(dc, modifyUnits = False)
+		self.dailog = None
+		self.parent = parent
+		self.preview = preview
 
-			else:
-				image = self.parent._getImage(page)
-				dc.DrawBitmap(image, 0, 0)
+		self.Bind(wx.EVT_CLOSE, self.OnClose)
 
+	def OnClose(self, event):
+		if (self.dialog != None):
+			self.dialog.hide()
+		print("@1.7")
+		event.Skip()
+
+class _MyPrintout(wx.Printout):
+	def __init__(self, parent, document = None, title = "GUI_Maker Page", pageTo = None, pageFrom = None, raw = None):
+		wx.Printout.__init__(self, title)
+
+		self.raw = raw
+		self.title = title
+		self.parent = parent
+		self.pageTo = pageTo
+		self.pageFrom = pageFrom
+		self.document = document
+		self.hPrinter = None
+
+		#Ensure this runs first
+		self.OnPreparePrinting()
+
+	def SetRaw(self, state):
+		self.raw = state
+
+	def GetPageInfo(self):
+		"""Handles how many pages are in the printout."""
+
+		minPage = 1
+		maxPage = len(self.document)
+		pageFrom = self.pageFrom or minPage
+		pageTo = self.pageTo or maxPage
+
+		return (minPage, maxPage, pageFrom, pageTo)
+
+	def HasPage(self, pageNumber):
+		"""Determines if the given page is in the print out."""
+
+		try:
+			self.document[pageNumber]
+			return True
+		except Exception as error:
+			return False
+
+	def OnPreparePrinting(self):
+		"""Ensures correct format of content."""
+
+		if (not isinstance(self.document, (list, tuple, dict, set, types.GeneratorType))):
+			self.document = {1: self.document}
+		elif (not isinstance(self.document, dict)):
+			self.document = {pageNumber + 1: page for pageNumber, page in enumerate(self.document)}
+
+	def OnPrintPage(self, pageNumber):
+		"""Arranges the stuff on the page.
+		Special thanks to Ben Croston for how to print RAW on https://pypi.org/project/zebra/
+		"""
+
+		if (not self.HasPage(pageNumber)):
+			return
+
+		print("@1.2")
+		page = self.document[pageNumber]
+
+		# if ((not self.GetPreview()) and (self.raw)):
+		if (self.hPrinter):
+			try:
+				win32print.StartPagePrinter(self.hPrinter)
+				try:
+					win32print.WritePrinter(self.hPrinter, page)
+				except TypeError:
+					win32print.WritePrinter(self.hPrinter, str(page).encode())
+			finally:
+				win32print.EndPagePrinter(self.hPrinter)
 			return True
 
-		def clone(self):
-			"""Returns a copy of itself as a separate instance."""
+		dc = self.GetDC()
+		dc.SetMapMode(wx.MM_POINTS) #Each logical unit is a “printer point” i.e. 1/72 of an inch
+		# dc.SetMapMode(wx.MM_TWIPS) #Each logical unit is 1/20 of a “printer point”, or 1/1440 of an inch
 
-			return self.parent._MyPrintout(self.parent, title = self.title, pageTo = self.pageTo, pageFrom = self.pageFrom)
+		## TO DO ## Add isinstance(page, something with a defined font and text)
+		if (isinstance(page, str)):
+			dc.SetTextForeground("black")
+			dc.SetFont(wx.Font(11, wx.SWISS, wx.NORMAL, wx.BOLD))
+			dc.DrawText(page, 0, 0)
+
+		elif (isinstance(page, handle_WidgetCanvas)):
+			with page as myCanvas:
+				myCanvas._draw(dc, modifyUnits = False)
+
+		else:
+			image = self.parent._getImage(page)
+			dc.DrawBitmap(image, 0, 0)
+
+		return True
+
+	def OnBeginPrinting(self):
+		if (self.hPrinter):
+			win32print.StartDocPrinter(self.hPrinter, 1, (self.title, None, 'RAW'))
+
+	def OnEndPrinting(self):
+		if (self.hPrinter):
+			win32print.EndDocPrinter(self.hPrinter)
+
+	def clone(self):
+		"""Returns a copy of itself as a separate instance."""
+
+		return _MyPrintout(self.parent, document = self.document, title = self.title, pageTo = self.pageTo, pageFrom = self.pageFrom, raw = self.raw)
 
 class handle_Window(handle_Container_Base):
 	"""A handle for working with a wxWindow."""
@@ -18690,9 +18961,9 @@ class handle_Window(handle_Container_Base):
 			printout, enablePrint = self._getArguments(argument_catalogue, ["printout", "enablePrint"])
 
 			if (enablePrint):
-				preview = wx.PrintPreview(printout, printout.clone())
+				preview = _MyPrintPreview(self, printout, printout.clone())
 			else:
-				preview = wx.PrintPreview(printout)
+				preview = _MyPrintPreview(self, printout)
 
 			#Pre Settings
 			if ("__WXMAC__" in wx.PlatformInfo):
@@ -18705,7 +18976,7 @@ class handle_Window(handle_Container_Base):
 				self.thing = None
 				return
 
-			self.thing = wx.PreviewFrame(preview, None, "Print Preview")
+			self.thing = _MyPreviewFrame(self, preview, None, "Print Preview")
 
 			#Post Settings
 			image = self._getImage("print", internal = True)
@@ -18810,7 +19081,7 @@ class handle_Window(handle_Container_Base):
 		self._betterBind(wx.EVT_KILL_FOCUS, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
 	#Change Settings
-	def setWindowSize(self, x = None, y = None):
+	def setWindowSize(self, x = None, y = None, atleast = None):
 		"""Re-defines the size of the window.
 
 		x (int)     - The width of the window
@@ -18822,12 +19093,12 @@ class handle_Window(handle_Container_Base):
 		"""
 
 		if (x == None):
-			self.thing.SetSize(wx.DefaultSize)
+			self.setSize(wx.DefaultSize, atleast = atleast)
 			return
 
 		if (isinstance(x, str)):
 			if (x.lower() == "default"):
-				self.thing.SetSize(wx.DefaultSize)
+				self.setSize(wx.DefaultSize, atleast = atleast)
 				return
 			else:
 				x = ast.literal_eval(re.sub("^['\"]|['\"]$", "", x))
@@ -18838,7 +19109,7 @@ class handle_Window(handle_Container_Base):
 
 		#Change the frame size
 		self.autoSize = False
-		self.thing.SetSize((x, y))
+		self.setSize((x, y), atleast = atleast)
 
 	def getWindowSize(self):
 		"""Returns the size of the window
@@ -23713,7 +23984,7 @@ class User_Utilities():
 
 			return answer
 
-		def asGenerator(self, n = 1, terminator = None):
+		def asGenerator(self, n = None, terminator = None, resetIndex = True):
 			"""Returns a generator for iterating through this iterator.
 
 			n (int) - How many pairs the results should be grouped in.
@@ -23724,10 +23995,12 @@ class User_Utilities():
 			Example Use: for topHandle, bottomHandle in self.printBarcode_containerIterator.asGenerator(2): pass
 			"""
 
+			if (resetIndex):
+				self.index = -1
 			while True:
 				answer = self.next(n = n, terminator = terminator)
 
-				if (all(item == terminator for item in answer)):
+				if (((n != None) and all(item == terminator for item in answer)) or (answer == None)):
 					break
 				yield answer
 
