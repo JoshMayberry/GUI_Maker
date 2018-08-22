@@ -121,11 +121,12 @@ for module_name, module in sys.modules.items():
 					eventCatalogue[event.typeId] = (name, f"{module_name}.{name}", eval(f"{module_name}.{name}"))
 
 #Debugging Functions
-def printCurrentTrace(printout = True):
+def printCurrentTrace(printout = True, quitAfter = False):
 	"""Prints out the stack trace for the current place in the program.
 	Modified Code from codeasone on https://stackoverflow.com/questions/1032813/dump-stacktraces-of-all-active-threads
 
 	Example Input: printCurrentTrace()
+	Example Input: printCurrentTrace(quitAfter = True)
 	"""
 
 	code = []
@@ -137,11 +138,15 @@ def printCurrentTrace(printout = True):
 			if line:
 				code.append("  %s" % (line.strip()))
 
-	if (printout):
-		for line in code:
-			print (line)
-	else:
-		return code
+	try:
+		if (printout):
+			for line in code:
+				print (line)
+		else:
+			return code
+	finally:
+		if (quitAfter):
+			sys.exit()
 
 #Controllers
 def build(*args, **kwargs):
@@ -846,6 +851,7 @@ class Utilities():
 		"""Runs a function."""
 
 		answer = None
+
 
 		try:
 			#Skip empty functions
@@ -1578,6 +1584,11 @@ class Utilities():
 		else:
 			warnings.warn(f"myFunctionList == None for autoRun() in {self.__repr__()}", Warning, stacklevel = 2)
 
+	def threadSafe(self, function, *args, **kwargs):
+		if (threading.current_thread() == threading.main_thread()):
+			return function(*args, **kwargs)
+		wx.CallAfter(function, *args, **kwargs)
+
 	#Listen Functions
 	def listen(self, myFunction, myFunctionArgs = None, myFunctionKwargs = None,
 		resultFunction = None, resultFunctionArgs = None, resultFunctionKwargs = None, 
@@ -2139,7 +2150,7 @@ class Utilities():
 
 		return fixedFlags, position, border
 
-	def _getImage(self, imagePath, internal = False, alpha = False, scale = None):
+	def _getImage(self, imagePath, internal = False, alpha = False, scale = None, returnIcon = False):
 		"""Returns the image as specified by the user.
 
 		imagePath (str) - Where the image is on the computer. Can be a PIL image. If None, it will be a blank image
@@ -2207,7 +2218,11 @@ class Utilities():
 		if ((imagePath != None) and (imagePath != "")):
 			if (type(imagePath) != str):
 				if (PIL.Image.isImageType(imagePath)):
-					image = self._convertPilToBitmap(imagePath, alpha)
+					if (self == None):
+						util = Utilities()
+						image = util._convertPilToBitmap(imagePath, alpha)
+					else:
+						image = self._convertPilToBitmap(imagePath, alpha)
 				else:
 					errorMessage = f"Unknown file type {type(imagePath)} for _getImage() in {self.__repr__()}"
 					raise KeyError(errorMessage)
@@ -2390,6 +2405,8 @@ class Utilities():
 			image = image.Scale(*scale)
 			image = wx.Bitmap(image)
 
+		if (returnIcon):
+			return wx.Icon(image)
 		return image
 
 	def _getColor(self, color):
@@ -3215,14 +3232,18 @@ class Utilities():
 		return handle
 
 	def _makeListFull(self, choices = [], default = False, single = False, editable = False,
-		editOnClick = True, cellType = None, cellTypeDefault = "text", engine = 1, 
+		editOnClick = True, cellType = None, cellTypeDefault = "text",  
 
 		sortable = True, sortFunction = None, rowFormatter = None,
 		columns = None, columnTitles = {}, columnWidth = {}, columnLabels = {},
 		columnImage = {}, columnAlign = {}, columnFormatter = {}, check = None,
 		border = True, rowLines = True, columnLines = True, report = True, 
 		group = {}, groupFormatter = {}, groupSeparator = True,
-		showContextMenu = True,
+		showContextMenu = False, showColumnContextMenu = False, showEmptyGroups = None,
+		groupIndent = None, hideFirstIndent = True, copyEntireRow = None, pasteEntireRow = None,
+
+		can_scroll = True, can_expand = True, can_copy = True, can_paste = True, 
+		can_selectAll = True, can_edit = True, can_undo = True,
 		
 		drag = False, dragDelete = False, dragCopyOverride = False, 
 		allowExternalAppDelete = True, dragLabel = None, drop = False, dropIndex = 0,
@@ -3267,11 +3288,6 @@ class Utilities():
 				~ engine 1: two clicks to edit
 				~ engine 1: Pressing F2 edits the primary cell. Tab/Shift-Tab can be used to edit other cells
 				~ engine 2: two clicks to edit
-		engine (int) - Determines what library base to use for creating the list
-			- If 0: Will use wx.ListCtrl
-			- If 1: Will use ObjectListView
-			- If 2: Will use UltimateListCtrl
-			- If None: Will use wx.ListCtrl
 
 		cellType (dict)       - Determines the widget type used for a specific cell in the list
 				~ {column number (int): cell type for the cell (str)}
@@ -4749,25 +4765,27 @@ class Utilities():
 		handle._build(locals())
 		return handle
 
-	def makeDialogBusy(self, text = "",
+	def makeDialogBusy(self, text = "", simple = True, title = "Busy", initial = 0, stayOnTop = True,
+		maximum = 100, blockAll = True, autoHide = True, can_abort = False, can_skip = False, 
+		smooth = False, elapsedTime = True, estimatedTime = True, remainingTime = True,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
 		label = None, parent = None, handle = None, myId = None):
 		"""Does not pause the running code, but instead ignores user inputs by 
 		locking the GUI until the code tells the dialog box to go away. 
-		This is done by eitehr exiting a while loop or using the hide() function. 
+		This is done by either exiting a while loop or using the hide() function. 
 
 		To protect the GUI better, implement: https://wxpython.org/Phoenix/docs/html/wx.WindowDisabler.html
 		_________________________________________________________________________
 
 		Example Use:
-			with myFrame.makeDialog(text = "Hold on...") as myDialog:
+			with myFrame.makeDialogBusy(text = "Hold on...") as myDialog:
 				for i in range(100):
 					time.sleep(1)
 		_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 		Example Use:
-			myDialog = myFrame.makeDialog(text = "Hold on...")
+			myDialog = myFrame.makeDialogBusy(text = "Hold on...")
 			myDialog.show()
 			for i in range(100):
 				time.sleep(1)
@@ -6231,7 +6249,6 @@ class handle_Base(Utilities, CommonEventFunctions):
 		Example Input: print(self.GetPrintoutForPrinting(), popup = prompt)
 		"""
 
-		print("@1.1")
 		if (isinstance(document, _MyPrintout)):
 			myPrintout = document
 			destroyPrintout = False
@@ -7346,7 +7363,7 @@ class handle_WidgetList(handle_Widget_Base):
 
 		self.columnCatalogue = {}
 		self.selectionColor = None
-		self.lastSelection = {"group": [], "row": []}
+		self.lastSelection = {"group": [], "row": [], "latest": None}
 		self.groups_ensured = []
 
 		self.preDragFunction = None
@@ -7458,13 +7475,14 @@ class handle_WidgetList(handle_Widget_Base):
 
 			####################################################################
 
-			columnTitles, columnWidth = self._getArguments(argument_catalogue, ["columnTitles", "columnWidth"])
+			columnTitles, columnWidth, groupIndent, hideFirstIndent = self._getArguments(argument_catalogue, ["columnTitles", "columnWidth", "groupIndent", "hideFirstIndent"])
 			report, single, editable, editOnClick, columnLabels = self._getArguments(argument_catalogue, ["report", "single", "editable", "editOnClick", "columnLabels"])
-			columnImage, columnAlign, columnFormatter = self._getArguments(argument_catalogue, ["columnImage", "columnAlign", "columnFormatter"])
+			columnImage, columnAlign, columnFormatter, showColumnContextMenu = self._getArguments(argument_catalogue, ["columnImage", "columnAlign", "columnFormatter", "showColumnContextMenu"])
 			border, rowLines, columnLines, showContextMenu = self._getArguments(argument_catalogue, ["border", "rowLines", "columnLines", "showContextMenu"])
-			columns, drag, drop, choices, engine = self._getArguments(argument_catalogue, ["columns", "drag", "drop", "choices", "engine"])
-			group, groupFormatter, groupSeparator = self._getArguments(argument_catalogue, ["group", "groupFormatter", "groupSeparator"])
-			sortable, sortFunction, rowFormatter = self._getArguments(argument_catalogue, ["sortable", "sortFunction", "rowFormatter"])
+			columns, drag, drop, choices, showEmptyGroups = self._getArguments(argument_catalogue, ["columns", "drag", "drop", "choices", "showEmptyGroups"])
+			group, groupFormatter, groupSeparator, copyEntireRow = self._getArguments(argument_catalogue, ["group", "groupFormatter", "groupSeparator", "copyEntireRow"])
+			sortable, sortFunction, rowFormatter, pasteEntireRow, can_undo = self._getArguments(argument_catalogue, ["sortable", "sortFunction", "rowFormatter", "pasteEntireRow", "can_undo"])
+			can_scroll, can_expand, can_copy, can_paste, can_selectAll, can_edit = self._getArguments(argument_catalogue, ["can_scroll", "can_expand", "can_copy", "can_paste", "can_selectAll", "can_edit"])
 
 			if (columns == None):
 				if ((choices == None) or (not isinstance(choices, (list, tuple, range, dict))) or (len(choices) == 0)):
@@ -7496,8 +7514,10 @@ class handle_WidgetList(handle_Widget_Base):
 
 			#Create the thing to put in the grid
 			self.thing = self._ListFull(self, self.parent.thing, myId = myId, sortable = sortable, rowFormatter = rowFormatter,
-				singleSelect = single, verticalLines = columnLines, horizontalLines = rowLines, showContextMenu = showContextMenu)
-			# self.thing.SetShowGroups(any((value != None) for value in group.values()))
+				singleSelect = single, verticalLines = columnLines, horizontalLines = rowLines, showContextMenu = showContextMenu,
+				showEmptyGroups = showEmptyGroups, groupIndent = groupIndent, hideFirstIndent = hideFirstIndent, showColumnContextMenu = showColumnContextMenu,
+				key_copyEntireRow = copyEntireRow, key_pasteEntireRow = pasteEntireRow, key_scroll = can_scroll, key_expand = can_expand, 
+				key_copy = can_copy, key_paste = can_paste, key_selectAll = can_selectAll, key_edit = can_edit, key_undo = can_undo)
 			self.thing.putBlankLineBetweenGroups = groupSeparator
 			self.setSortFunction(sortFunction)
 
@@ -7746,7 +7766,7 @@ class handle_WidgetList(handle_Widget_Base):
 
 		elif (self.type.lower() == "listfull"):
 			if (group == None):
-				value = {"group": [item.key for item in self.thing.GetSelectedGroups()], "row": self.thing.GetSelectedObjects()}
+				value = {"group": [item.key for item in self.thing.GetSelectedGroups()], "row": self.thing.GetSelectedObjects(), "latest": None}
 			elif (group):
 				value = [item.key for item in self.thing.GetSelectedGroups()]
 			else:
@@ -7874,31 +7894,52 @@ class handle_WidgetList(handle_Widget_Base):
 
 	# 	return column
 
+	def getLatestSelected(self, event = None):
+		#Return copy, not origonal
+		if (self.lastSelection["latest"] == None):
+			return []
+		return [*self.lastSelection[self.lastSelection["latest"]]]
+
 	def getLastSelected(self, event = None, group = None):
+		#Return copy, not origonal
 		if (group == None):
-			return self.lastSelection
+			return {**self.lastSelection}
 		elif (group):
-			return self.lastSelection["group"]
+			return [*self.lastSelection["group"]]
 		else:
-			return self.lastSelection["row"]
+			return [*self.lastSelection["row"]]
 
 	def setLastSelected(self, newValue, group = None, event = None):
 		if (group == None):
-			if ((not newValue) or (not isinstance(newValue, dict))):
-				self.lastSelection = {"group": [], "row": []}
+			if ((newValue == None) or (not isinstance(newValue, dict))):
+				self.lastSelection = {"group": [], "row": [], "latest": None}
 			else:
+				latest = newValue.get("latest", None)
 				self.setLastSelected(newValue.get("group", None), group = True)
 				self.setLastSelected(newValue.get("row", None), group = False)
+				self.lastSelection["latest"] = latest
 		elif (group):
-			if (not newValue):
+			if (newValue == None):
 				self.lastSelection["group"] = []
 			else:
-				self.lastSelection["group"] = newValue
+				if (isinstance(newValue, (list, tuple))):
+					self.lastSelection["group"] = newValue
+				elif (isinstance(newValue, (range, set, types.GeneratorType))):
+					self.lastSelection["group"] = list(newValue)
+				else:
+					self.lastSelection["group"] = [newValue]
+				self.lastSelection["latest"] = "group"
 		else:
-			if (not newValue):
+			if (newValue == None):
 				self.lastSelection["row"] = []
 			else:
-				self.lastSelection["row"] = newValue
+				if (isinstance(newValue, (list, tuple))):
+					self.lastSelection["row"] = newValue
+				elif (isinstance(newValue, (range, set, types.GeneratorType))):
+					self.lastSelection["row"] = list(newValue)
+				else:
+					self.lastSelection["row"] = [newValue]
+				self.lastSelection["latest"] = "row"
 
 	#Setters
 	def _formatList(self, newValue, filterNone = False):
@@ -7998,7 +8039,7 @@ class handle_WidgetList(handle_Widget_Base):
 
 		elif (self.type.lower() == "listfull"):
 			if (newValue == None):
-				self.thing.DeselectAll()
+				self.thing.UnselectAll()
 				return
 
 			if (isinstance(newValue, (range, types.GeneratorType))):
@@ -8020,21 +8061,31 @@ class handle_WidgetList(handle_Widget_Base):
 			for item in objectList:
 				if ((item not in existingList) and (item not in self.groups_ensured)):
 					errorMessage = f"{item.__repr__()} is not in {self.__repr__()}"
-					# raise KeyError(errorMessage)
+					print("--", existingList)
+					raise KeyError(errorMessage)
 					print(errorMessage)
 					return
 
 			if (group):
 				self.thing.SelectGroups(objectList, deselectOthers = deselectOthers)
-				if (ensureVisible):
+				if (ensureVisible and objectList):
 					self.thing.SelectGroup(objectList[0], deselectOthers = False, ensureVisible = ensureVisible)
 			else:
 				self.thing.SelectObjects(objectList, deselectOthers = deselectOthers)
-				if (ensureVisible):
+				if (ensureVisible and objectList):
 					self.thing.SelectObject(objectList[0], deselectOthers = False, ensureVisible = ensureVisible)
 
-			if (triggerEvent):
-				self.thing.TriggerEvent(ObjectListView.SelectionChangedEvent, row = objectList[0])
+			if (objectList):
+				if (triggerEvent):
+					if (group):
+						self.thing.TriggerEvent(ObjectListView.GroupSelectedEvent, row = objectList[0])
+					else:
+						self.thing.TriggerEvent(ObjectListView.SelectionChangedEvent, row = objectList[0])
+				else:
+					if (group):
+						self._onSelectGroup()
+					else:
+						self._onSelectRow()
 		else:
 			warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -8362,6 +8413,12 @@ class handle_WidgetList(handle_Widget_Base):
 		else:
 			self.thing.SetGroupCompareFunction(myFunction)
 
+	def setShowEmptyGroups(self, myFunction = None, widgetArg = True):
+		if (myFunction and widgetArg):
+			self.thing.SetShowEmptyGroups(lambda *args: myFunction(*args, self))
+		else:
+			self.thing.SetShowEmptyGroups(myFunction)
+
 	def ensureGroups(self, groupList = None):
 		"""Makes sure these groups are shown, even if they are empty."""
 
@@ -8378,16 +8435,8 @@ class handle_WidgetList(handle_Widget_Base):
 	def setEmptyListMessage(self, message):
 		self.thing.SetEmptyListMsg(message)
 
-	# def addImage(self, label, imagePath, internal = False):
-	# 	"""Adds an image to the image catalogue.
-
-	# 	Example Input: addImage("correct", "markCheck", internal = True)
-	# 	"""
-
-	# 	image_16 = self._getImage(imagePath, internal = internal, scale = (16, 16))
-	# 	image_32 = self._getImage(imagePath, internal = internal, scale = (32, 32))
-
-	# 	# self.thing.AddNamedImages(label, image_16, image_32)
+	def setEmptyListFilterMsg(self, message):
+		self.thing.SetEmptyListFilterMsg(message)
 
 	def appendValue(self, newValue, where = -1, filterNone = None):
 		"""Appends the given value to the current contextual value for this handle."""
@@ -8425,8 +8474,41 @@ class handle_WidgetList(handle_Widget_Base):
 		objectList = self._formatList(value)
 		self.thing.RemoveObjects(objectList)
 
-	def addContextMenuItem(self, row = None, **kwargs):
-		self.thing.contextMenu.AddItem(row = row and self._formatList(row), **kwargs)
+	def addContextMenuItem(self, row = None, function = None, widgetArg = True,**kwargs):
+		if (function and widgetArg):
+			self.thing.contextMenu.AddItem(row = row and self._formatList(row), function = lambda *args: function(*args, self), **kwargs)
+		else:
+			self.thing.contextMenu.AddItem(row = row and self._formatList(row), function = function, **kwargs)
+
+	def addColumnContextMenuItem(self, function = None, widgetArg = True, **kwargs):
+		if (function and widgetArg):
+			self.thing.columnContextMenu.AddItem(function = lambda *args: function(*args, self), **kwargs)
+		else:
+			self.thing.columnContextMenu.AddItem(function = function, **kwargs)
+
+	def setPasteEntireRow(self, state = None):
+		self.thing.key_pasteEntireRow = state
+
+	def setCopyEntireRow(self, state = None):
+		self.thing.key_copyEntireRow = state
+
+	def undo(self):
+		self.thing.Undo()
+
+	def redo(self):
+		self.thing.Redo()
+
+	def getUndoHistory(self):
+		return self.thing.undoHistory
+
+	def getRedoHistory(self):
+		return self.thing.redoHistory
+
+	def setUndoHistory(self, undoHistory = []):
+		self.thing.SetUndoHistory(undoHistory)
+
+	def setRedoHistory(self, redoHistory = []):
+		self.thing.SetRedoHistory(redoHistory)
 
 	#Change Settings
 	def setFunction_preClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
@@ -8538,7 +8620,6 @@ class handle_WidgetList(handle_Widget_Base):
 	def setFunction_preCollapse(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
 			self._betterBind(ObjectListView.EVT_DATA_COLLAPSING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-			# self._betterBind(wx.dataview.EVT_DATAVIEW_ITEM_COLLAPSING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		elif (self.type.lower() == "listtree"):
 			self._betterBind(wx.EVT_TREE_ITEM_COLLAPSING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
@@ -8547,7 +8628,6 @@ class handle_WidgetList(handle_Widget_Base):
 	def setFunction_postCollapse(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
 			self._betterBind(ObjectListView.EVT_DATA_COLLAPSED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-			# self._betterBind(wx.dataview.EVT_DATAVIEW_ITEM_COLLAPSED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		elif (self.type.lower() == "listtree"):
 			self._betterBind(wx.EVT_TREE_ITEM_COLLAPSED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
@@ -8556,7 +8636,6 @@ class handle_WidgetList(handle_Widget_Base):
 	def setFunction_preExpand(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
 			self._betterBind(ObjectListView.EVT_DATA_EXPANDING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-			# self._betterBind(wx.dataview.EVT_DATAVIEW_ITEM_EXPANDING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		elif (self.type.lower() == "listtree"):
 			self._betterBind(wx.EVT_TREE_ITEM_EXPANDING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
@@ -8565,7 +8644,6 @@ class handle_WidgetList(handle_Widget_Base):
 	def setFunction_postExpand(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
 			self._betterBind(ObjectListView.EVT_DATA_EXPANDED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-			# self._betterBind(wx.dataview.EVT_DATAVIEW_ITEM_EXPANDED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		elif (self.type.lower() == "listtree"):
 			self._betterBind(wx.EVT_TREE_ITEM_EXPANDED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
@@ -8611,6 +8689,36 @@ class handle_WidgetList(handle_Widget_Base):
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_keyDown() for {self.__repr__()}", Warning, stacklevel = 2)
 
+	def setFunction_copy(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listfull"):
+			self._betterBind(ObjectListView.EVT_DATA_COPY, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_postEdit() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_preCopy(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listfull"):
+			self._betterBind(ObjectListView.EVT_DATA_COPYING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_preCopy() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_postCopy(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listfull"):
+			self._betterBind(ObjectListView.EVT_DATA_COPIED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_postCopy() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_paste(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listfull"):
+			self._betterBind(ObjectListView.EVT_DATA_PASTE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_paste() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_prePaste(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listfull"):
+			self._betterBind(ObjectListView.EVT_DATA_PASTING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_prePaste() for {self.__repr__()}", Warning, stacklevel = 2)
+
 	def setFunction_toolTip(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listtree"):
 			self._betterBind(wx.EVT_TREE_ITEM_GETTOOLTIP, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
@@ -8625,15 +8733,63 @@ class handle_WidgetList(handle_Widget_Base):
 
 	def setFunction_sort(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
-			self._betterBind(ObjectListView.EVT_DATAVIEW_COLUMN_SORTED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+			self._betterBind(ObjectListView.EVT_DATA_COLUMN_SORTED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_sort() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_reorder(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
-			self._betterBind(ObjectListView.EVT_DATAVIEW_COLUMN_REORDER, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+			self._betterBind(ObjectListView.EVT_DATA_COLUMN_REORDER, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_sort() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setFunction_reorder() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_groupCreate(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listfull"):
+			self._betterBind(ObjectListView.EVT_DATA_GROUP_CREATING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_groupCreate() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_undo(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listfull"):
+			self._betterBind(ObjectListView.EVT_DATA_UNDO, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_undo() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_undoTrack(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listfull"):
+			self._betterBind(ObjectListView.EVT_DATA_UNDO_TRACK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_undoTrack() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_canUndo(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listfull"):
+			self._betterBind(ObjectListView.EVT_DATA_UNDO_FIRST, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_canUndo() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_cantUndo(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listfull"):
+			self._betterBind(ObjectListView.EVT_DATA_UNDO_EMPTY, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_cantUndo() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_redo(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listfull"):
+			self._betterBind(ObjectListView.EVT_DATA_REDO, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_redo() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_canRedo(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listfull"):
+			self._betterBind(ObjectListView.EVT_DATA_REDO_FIRST, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_canRedo() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_cantRedo(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type.lower() == "listfull"):
+			self._betterBind(ObjectListView.EVT_DATA_REDO_EMPTY, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+		else:
+			warnings.warn(f"Add {self.type} to setFunction_cantRedo() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setReadOnly(self, state = True):
 		"""Sets the contextual readOnly for the object associated with this handle to what the user supplies."""
@@ -8643,23 +8799,22 @@ class handle_WidgetList(handle_Widget_Base):
 		else:
 			warnings.warn(f"Add {self.type} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 2)
 
-	def setRowColor(self, row = None, color = "white"):
+	def setItemColor(self, row = None, column = None, color = "white"):
 		"""Sets the contextual row color for the object associated with this handle to what the user supplies.
+		If both row and column are given, only the cell will 
 
-		row (int)   - Which row to change the color of
-			- If list: Will change the color of all rows in the list
-			- If None: Will change the color of all rows
-			- If slice: Will change the color of all rows in the slice
-		color (str) - What color to make the rows
+		row (object) - Which row to change the color of
+		column (int) - Which column to change the color of
+		color (str)  - What color to make the rows/columns
 			- If tuple: Will interperet as (Red, Green, Blue). Values can be integers from 0 to 255 or floats from 0.0 to 1.0
 			- If None: Will use the origonal color for the row
 
-		Example Input: setRowColor(0, color = "grey")
-		Example Input: setRowColor(0, color = (255, 0, 0))
-		Example Input: setRowColor(0, color = (0.5, 0.5, 0.5))
-		Example Input: setRowColor(slice(None, None, None))
-		Example Input: setRowColor(slice(1, 3, None))
-		Example Input: setRowColor(slice(None, None, 2))
+		Example Input: setItemColor(0, color = "grey")
+		Example Input: setItemColor(0, color = (255, 0, 0))
+		Example Input: setItemColor(0, color = (0.5, 0.5, 0.5))
+		Example Input: setItemColor(slice(None, None, None))
+		Example Input: setItemColor(slice(1, 3, None))
+		Example Input: setItemColor(slice(None, None, 2))
 		"""
 
 		if (self.type.lower() == "listfull"):
@@ -8667,45 +8822,19 @@ class handle_WidgetList(handle_Widget_Base):
 				colorHandle = None
 			else:
 				colorHandle = self._getColor(color)
-			rowCount = self.thing.GetItemCount()
 
-			if (row == None):
-				rowList = range(rowCount)
-
-			elif (isinstance(row, slice)):              
-				if (row.start != None):
-					if (row.start > rowCount):
-						errorMessage = f"{row.start} is less than {rowCount}; not enough rows for start in setRowColor for {self.__repr__()}"
-						raise KeyError(errorMessage)
-					start = row.start
+			if (row != None):
+				if (column != None):
+					self.thing.SetCellColour(row, column, colorHandle)
 				else:
-					start = 0
-				
-				if (row.stop != None):
-					if (row.stop > rowCount):
-						errorMessage = f"{row.stop} is less than {rowCount}; not enough rows for stop in setRowColor for {self.__repr__()}"
-						raise KeyError(errorMessage)
-					stop = row.stop
-				else:
-					stop = rowCount
-
-				if (row.step != None):
-					step = row.step
-				else:
-					step = 1
-
-				rowList = range(start, stop, step)
-
-			elif (isinstance(row, (list, tuple, range, set, types.GeneratorType))):
-				rowList = row
+					self.thing.SetRowColour(row, colorHandle)
 			else:
-				rowList = [row]
-
-			for row in rowList:
-				self.thing.SetBackgroundColour(row, colorHandle)
-			
+				if (column != None):
+					self.thing.SetColumnColour(column, colorHandle)
+				else:
+					self.thing.SetBackgroundColour(colorHandle)
 		else:
-			warnings.warn(f"Add {self.type} to setRowColor() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setItemColor() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Event functions
 	def _onDragList_beginDragAway(self, event, label = None,
@@ -8782,17 +8911,21 @@ class handle_WidgetList(handle_Widget_Base):
 
 	#   event.Skip()
 
-	def _onSelectRow(self, event):
+	def _onSelectRow(self, event = None):
 		"""Tracks the last row selection made."""
 
-		self.lastSelection["row"] = self.getValue(group = False) or []
-		event.Skip()
+		self.setLastSelected(self.getValue(group = False), group = False)
+		
+		if (event != None):
+			event.Skip()
 
-	def _onSelectGroup(self, event):
+	def _onSelectGroup(self, event = None):
 		"""Tracks the last group selection made."""
 
-		self.lastSelection["group"] = self.getValue(group = True) or []
-		event.Skip()
+		self.setLastSelected(self.getValue(group = True), group = True)
+		
+		if (event != None):
+			event.Skip()
 
 	class _ListFull(ObjectListView.DataObjectListView):
 		def __init__(self, parent, widget, myId = wx.ID_ANY, position = wx.DefaultPosition, size = wx.DefaultSize, **kwargs):
@@ -8806,70 +8939,6 @@ class handle_WidgetList(handle_Widget_Base):
 			
 			#Internal variables
 			self.parent = parent
-
-	class _ListFull_Editable(wx.ListCtrl, wx.lib.mixins.listctrl.TextEditMixin):
-		"""Allows a list control to have editable text."""
-
-		def __init__(self, parent, widget, myId = wx.ID_ANY, position = wx.DefaultPosition, size = wx.DefaultSize, style = "0", editable = {}, editOnClick = True):
-			"""Creates the editable list object."""
-
-			#Load in modules
-			wx.ListCtrl.__init__(self, widget, id = myId, pos = position, size = size, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
-			wx.lib.mixins.listctrl.TextEditMixin.__init__(self)
-
-			#Fix class type
-			self.__name__ = "wxListCtrl"
-
-			#Internal variables
-			self.editable = editable
-			self.parent = parent
-			self.event = None
-
-			#Open editor on double click only
-			if (editOnClick == None):
-				self.parent._betterBind(wx.EVT_LEFT_DOWN, self, self.parent.onDoNothing, rebind = None)
-			elif (not editOnClick):
-				self.Unbind(wx.EVT_LEFT_DOWN)
-
-		def make_editor(self, *args, **kwargs):
-			"""Overridden to make the colors standard again."""
-			
-			super(handle_WidgetList._ListFull_Editable, self).make_editor(*args, **kwargs)
-
-			self.editor.SetBackgroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_LISTBOX))
-			self.editor.SetForegroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_CAPTIONTEXT))
-
-		def OpenEditor(self, column, row):
-			"""Overridden to make only some cells editable and fix the item size."""
-
-			leave = False
-			#Check for non-editable column
-			if (self.parent.cellTypeCatalogue[column][None].lower() != "inputbox"):
-				leave = True
-			elif ((column in self.editable) and (not self.editable[column])):
-				leave = True
-			
-			if (leave):
-				if (self.event != None):
-					if (self.event.GetSkipped()):
-						self.event.Skip()
-				return
-
-			#Run Function Normally
-			super(handle_WidgetList._ListFull_Editable, self).OpenEditor(column, row)
-
-			#Make the editor fit the cell
-			y = self.GetItemRect(row)[3]
-			x = self.editor.GetSize()[0]
-			self.editor.SetSize(x, y)
-
-		def OnLeftDown(self, event):
-			"""Overridden to continue the event if the item is not editable."""
-
-			self.event = event
-
-			#Run Function Normally
-			super(handle_WidgetList._ListFull_Editable, self).OnLeftDown(event)
 
 	class _DragTextDropTarget(wx.TextDropTarget):
 		"""Used to set an object as a drop destination for text being dragged by the mouse.
@@ -9970,12 +10039,29 @@ class handle_WidgetButton(handle_Widget_Base):
 		else:
 			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
-	def setSelection(self, newValue, event = None):
+	def setSelection(self, newValue = None, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
 		if (self.type.lower() == "buttonradiobox"):
 			if (newValue == None):
 				newValue = 0
+			self.setValue(newValue, event)
+
+		elif (self.type.lower() == "buttonlist"):
+			try:
+				if (isinstance(newValue, bool)):
+					newValue = int(newValue)
+				elif (newValue == None):
+					newValue = 0
+
+				if (isinstance(newValue, int)):
+					newValue = self.textList[newValue]
+				else:
+					newValue = self.textList.index(newValue)
+			except KeyError as error:
+				print(error)
+				newValue = self.textList[0]
+
 			self.setValue(newValue, event)
 		else:
 			warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -15571,6 +15657,7 @@ class handle_WidgetTable(handle_Widget_Base):
 					wx.TheClipboard.Close()
 				else:
 					wx.MessageBox("Can't open the clipboard", "Error")
+					return
 				data = clipboard.GetText()
 
 				if topleft == []:
@@ -17630,6 +17717,7 @@ class handle_Dialog(handle_Base):
 		self.answer = None
 		self.data = None
 		self.subType = None
+		self.inMainThread = True
 
 	def __enter__(self):
 		"""Allows the user to use a with statement to build the GUI."""
@@ -17736,11 +17824,65 @@ class handle_Dialog(handle_Base):
 			text, title = self._getArguments(argument_catalogue, ["text", "title"])
 			self.thing = wx.lib.dialogs.ScrolledMessageDialog(None, text, title)
 
-		def _build_busyInfo():
+		def _build_busy():
 			"""Builds a wx busy info dialog object."""
 			nonlocal self, argument_catalogue
 
-			self.thing = self._getArguments(argument_catalogue, ["text"])
+			text, simple, blockAll = self._getArguments(argument_catalogue, ["text", "simple", "blockAll"])
+
+			self.thing = -1
+			self.blockAll = blockAll
+
+			if (self.parent == None):
+				parent = None
+			else:
+				parent = self.parent.thing
+
+			if (simple):
+				self.subType = "simple"
+				self.buildArgs = [text]
+				self.buildKwargs = {"parent": parent}
+
+				self.progress = None
+			else:
+				maximum, title, autoHide, can_abort, can_skip, stayOnTop = self._getArguments(argument_catalogue, ["maximum", "title", "autoHide", "can_abort", "can_skip", "stayOnTop"])
+				smooth, elapsedTime, estimatedTime, remainingTime, initial = self._getArguments(argument_catalogue, ["smooth", "elapsedTime", "estimatedTime", "remainingTime", "initial"])
+				
+				self.text = text
+				self.oneShot = None
+				self.progress = initial
+
+				if (maximum == None):
+					self.startPulse = True
+					maximum = 100
+				else:
+					self.startPulse = False
+
+				self.subType = "progress"
+				self.buildArgs = [title, text]
+				self.buildKwargs = {"maximum": maximum, "parent": parent}
+
+				self.buildStyle = []
+				if (blockAll):
+					self.buildStyle.append("wx.PD_APP_MODAL")
+				if (autoHide):
+					self.buildStyle.append("wx.PD_AUTO_HIDE")
+				if (smooth):
+					self.buildStyle.append("wx.PD_SMOOTH")
+				if (can_abort):
+					self.buildStyle.append("wx.PD_CAN_ABORT")
+				if (can_skip):
+					self.buildStyle.append("wx.PD_CAN_SKIP")
+				if (elapsedTime):
+					self.buildStyle.append("wx.PD_ELAPSED_TIME")
+				if (estimatedTime):
+					self.buildStyle.append("wx.PD_ESTIMATED_TIME")
+				if (remainingTime):
+					self.buildStyle.append("wx.PD_REMAINING_TIME")
+				# if (stayOnTop):
+				# 	self.buildStyle.append("wx.STAY_ON_TOP")
+				if (not self.buildStyle):
+					self.buildStyle.append("0")
 
 		def _build_inputBox():
 			"""Builds a wx text entry dialog object."""
@@ -17826,7 +17968,7 @@ class handle_Dialog(handle_Base):
 					for i in range(len(default)):
 						if (isinstance(default[i], str)):
 							if (default[i] not in choices):
-								warnings.warn(f"{self.default[i]} not in 'choices' {choices} for {self.__repr__()}", Warning, stacklevel = 2)
+								warnings.warn(f"{default[i]} not in 'choices' {choices} for {self.__repr__()}", Warning, stacklevel = 2)
 								default[i] = 0
 							else:
 								default[i] = choices.index(default[i])
@@ -18031,7 +18173,7 @@ class handle_Dialog(handle_Base):
 		elif (self.type.lower() == "custom"):
 			_build_custom()
 		elif (self.type.lower() == "busy"):
-			_build_busyInfo()
+			_build_busy()
 		elif (self.type.lower() == "color"):
 			_build_color()
 		elif (self.type.lower() == "file"):
@@ -18055,6 +18197,11 @@ class handle_Dialog(handle_Base):
 
 		self._postBuild(argument_catalogue)
 
+	def threadSafe(self, function, *args, **kwargs):
+		if (self.inMainThread):
+			return function(*args, **kwargs)
+		wx.CallAfter(function, *args, **kwargs)
+
 	def show(self):
 		"""Shows the dialog box for this handle."""
 
@@ -18065,8 +18212,13 @@ class handle_Dialog(handle_Base):
 
 		myThread = threading.current_thread()
 		if (myThread != threading.main_thread()):
-			warnings.warn(f"The {self.type} dialogue box {self.__repr__()} must be shown in the main thread, not a background thread", Warning, stacklevel = 2)
-			return
+			if (self.type.lower() == "busy"):
+				self.inMainThread = False
+			else:
+				errorMessage = f"The {self.type} dialogue box {self.__repr__()} must be shown in the main thread, not a background thread"
+				raise SyntaxError(errorMessage)
+				# warnings.warn(errorMessage, Warning, stacklevel = 2)
+				return
 
 		#Pause background functions
 		for variable, handleDict in self.controller.backgroundFunction_pauseOnDialog.items():
@@ -18102,8 +18254,17 @@ class handle_Dialog(handle_Base):
 			self.answer = self.myFrame.thing.ShowModal()
 			self.hide()
 
-		elif (self.type.lower() == "busyinfo"):
-			self.thing = wx.BusyInfo(self.thing)
+		elif (self.type.lower() == "busy"):
+			# if (self.blockAll):
+			# 	self.windowDisabler = wx.WindowDisabler()
+
+			if (self.subType.lower() == "simple"):
+				self.thing = wx.BusyInfo(*self.buildArgs, **self.buildKwargs)
+			else:
+				self.thing = wx.ProgressDialog(*self.buildArgs, **self.buildKwargs, style = eval("|".join(self.buildStyle), {'__builtins__': None, "wx": wx}, {}))
+
+				if (self.startPulse):
+					self.setValue()
 
 		elif (self.type.lower() == "file"):
 			self.answer = self.thing.ShowModal()
@@ -18126,9 +18287,20 @@ class handle_Dialog(handle_Base):
 	def hide(self):
 		"""Hides the dialog box for this handle."""
 
-		if (self.type.lower() == "busyinfo"):
-			del self.thing
+		if (self.type.lower() == "busy"):
+			if (self.subType.lower() == "simple"):
+				del self.thing
+			else:
+				#The dialog will not close until this condition is met
+				maximum = self.thing.GetRange()
+				if (self.thing.GetValue() < maximum):
+					self.setValue(maximum)
+
+				self.threadSafe(self.thing.Destroy)
 			self.thing = None
+			# if (self.blockAll):
+			# 	self.windowDisabler = None
+
 		elif (self.type.lower() == "printpreview"):
 			self.thing = None
 
@@ -18226,6 +18398,14 @@ class handle_Dialog(handle_Base):
 		elif (self.type.lower() == "file"):
 			value = self.data
 
+		elif (self.type.lower() == "busy"):
+			if (self.subType.lower() == "progress"):
+				value = self.thing.GetValue()
+				if (value == wx.NOT_FOUND):
+					value = None
+			else:
+				value = None
+
 		elif (self.type.lower() == "color"):
 			color = self.data.GetColour().Get()
 			value = (color.Red(), color.Green(), color.Blue(), color.Alpha())
@@ -18249,7 +18429,52 @@ class handle_Dialog(handle_Base):
 			value = self.data
 
 		else:
-			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to getIndex() for {self.__repr__()}", Warning, stacklevel = 2)
+			value = None
+
+		return value
+
+	def getText(self, event = None):
+		"""Returns what the contextual text is for the object associated with this handle."""
+
+		if (self.type.lower() == "busy"):
+			if (self.subType.lower() == "progress"):
+				value = self.thing.GetMessage()
+			else:
+				value = None
+		else:
+			warnings.warn(f"Add {self.type} to getText() for {self.__repr__()}", Warning, stacklevel = 2)
+			value = None
+
+		return value
+
+	def getDefaultText(self, event = None):
+		"""Returns what the contextual default text is for the object associated with this handle."""
+
+		if (self.type.lower() == "busy"):
+			if (self.subType.lower() == "progress"):
+				value = self.text
+			else:
+				value = None
+		else:
+			warnings.warn(f"Add {self.type} to getText() for {self.__repr__()}", Warning, stacklevel = 2)
+			value = None
+
+		return value
+
+	def getMax(self, event = None):
+		"""Returns what the contextual maximum is for the object associated with this handle."""
+
+		if (self.type.lower() == "busy"):
+			if (self.subType.lower() == "progress"):
+				value = self.thing.GetRange()
+				if (value == wx.NOT_FOUND):
+					value = None
+			else:
+				value = None
+
+		else:
+			warnings.warn(f"Add {self.type} to getMax() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -18263,6 +18488,9 @@ class handle_Dialog(handle_Base):
 
 	def isCancel(self):
 		"""Returns if the closed dialog box answer was 'cancel'."""
+
+		if ((self.type.lower() == "busy") and (self.subType.lower() == "progress")):
+			return self.thing.WasCancelled()
 
 		if (self.answer == wx.ID_CANCEL):
 			return True
@@ -18296,8 +18524,38 @@ class handle_Dialog(handle_Base):
 			return True
 		return False
 
+	def isSkip(self):
+		"""Returns if the closed dialog box answer was 'skip'."""
+
+		if ((self.type.lower() == "busy") and (self.subType.lower() == "progress")):
+			return self.thing.WasSkipped()
+		return False
+
+	def isAbort(self):
+		"""Returns if the closed dialog box answer was 'abort'."""
+
+		if ((self.type.lower() == "busy") and (self.subType.lower() == "progress")):
+			return self.thing.WasCancelled()
+		return False
+
 	#Setters
-	def setValue(self, value, event = None):
+	def _formatText(self, text):
+		if (text == None):
+			return self.text
+
+		current = self.thing.GetMessage()
+		if (self.oneShot != None):
+			if (current == self.oneShot):
+				self.oneShot = None
+				return self.text
+			else:
+				return self.oneShot
+
+		if (str(text) == current):
+			return ""
+		return str(text)
+
+	def setValue(self, value = None, text = "", event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
 		if (self.type.lower() == "print"):
@@ -18306,8 +18564,43 @@ class handle_Dialog(handle_Base):
 		elif (self.type.lower() == "printpreview"):
 			self.content = value
 		
+		elif (self.type.lower() == "busy"):
+			if (self.subType.lower() == "progress"):
+				text = self._formatText(text)
+				self.progress = value
+
+				if (value == None):
+					self.answer = self.threadSafe(self.thing.Pulse, text)
+				else:
+					self.answer = self.threadSafe(self.thing.Update, value, text)
 		else:
 			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+	
+	def setText(self, text = "", oneShot = False, event = None):
+		"""Sets the contextual text for the object associated with this handle to what the user supplies."""
+
+		if (self.type.lower() == "busy"):
+			if (self.subType.lower() == "progress"):
+				text = self._formatText(text)
+
+				if (self.progress == None):
+					self.answer = self.threadSafe(self.thing.Pulse, text)
+				else:
+					self.answer = self.threadSafe(self.thing.Update, self.thing.GetValue(), text)
+
+				if (oneShot):
+					self.oneShot = text
+		else:
+			warnings.warn(f"Add {self.type} to setText() for {self.__repr__()}", Warning, stacklevel = 2)
+	
+	def setMax(self, value, event = None):
+		"""Sets the contextual max for the object associated with this handle to what the user supplies."""
+
+		if (self.type.lower() == "busy"):
+			if (self.subType.lower() == "progress"):
+				self.threadSafe(self.thing.SetRange, value)
+		else:
+			warnings.warn(f"Add {self.type} to setMax() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setTitle(self, text = None, event = None):
 		"""Sets the title."""
@@ -18325,9 +18618,17 @@ class handle_Dialog(handle_Base):
 		if (self.type.lower() == "print"):
 			self.size = size
 		else:
-			warnings.warn(f"Add {self.type} to setTitle() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type} to setSize() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Etc
+	def resume(self, size = None, event = None):
+		"""Undoes the abort."""
+
+		if (self.type.lower() == "busy"):
+			self.threadSafe(self.thing.Resume)
+		else:
+			warnings.warn(f"Add {self.type} to resume() for {self.__repr__()}", Warning, stacklevel = 2)
+
 	def send(self, raw = False, event = None):
 		"""Returns what the contextual valueDoes the contextual send command for the object associated with this handle.
 		Modified code from: https://wiki.wxpython.org/Printing
@@ -18505,7 +18806,6 @@ class _MyPrinter(wx.Printer):
 		if (not isinstance(data, dict)):
 			wx.Printout.__init__(self, data)
 		else:
-			print("@1.5")
 			dialogData = self.parent._encodePrintSettings(data)
 			wx.Printout.__init__(self, dialogData)
 
@@ -18539,9 +18839,7 @@ class _MyPrintPreview(wx.PrintPreview):
 		self.printData = printData
 
 	def Print(self, printerSetup):
-		print("@1.3")
 		self.parent.print(self.GetPrintoutForPrinting(), printData = self.printData, popup = self.printerSetup)
-		print("@1.4")
 		return True
 
 class _MyPreviewFrame(wx.PreviewFrame):
@@ -18557,7 +18855,6 @@ class _MyPreviewFrame(wx.PreviewFrame):
 	def OnClose(self, event):
 		if (self.dialog != None):
 			self.dialog.hide()
-		print("@1.7")
 		event.Skip()
 
 class _MyPrintout(wx.Printout):
@@ -18613,7 +18910,6 @@ class _MyPrintout(wx.Printout):
 		if (not self.HasPage(pageNumber)):
 			return
 
-		print("@1.2")
 		page = self.document[pageNumber]
 
 		# if ((not self.GetPreview()) and (self.raw)):
@@ -19693,7 +19989,8 @@ class handle_Window(handle_Container_Base):
 
 		self.statusBar.SetStatusWidths(widthList)
 
-	def setStatusText(self, message = None, number = 0, startDelay = 0, delayChunk = 100, autoAdd = False):
+	def setStatusText(self, message = None, number = 0, startDelay = 0, delayChunk = 100, autoAdd = False, 
+		clearBuffer = False, stop = False, forceQueue = False):
 		"""Sets the text shown in the status bar.
 		If a message is on a timer and a new message gets sent, the timer message will stop and not overwrite the new message.
 		In a multi-field status bar, the fields are numbered starting with 0.
@@ -19718,7 +20015,7 @@ class handle_Window(handle_Container_Base):
 
 		def timerMessage():
 			"""The thread function that runs for the timer status message."""
-			nonlocal self, message, number, startDelay
+			nonlocal self, message, number, startDelay, delayChunk
 
 			#Account for other messages with timers before this one
 			while (self.statusTextTimer["listening"] > 0):
@@ -19761,7 +20058,7 @@ class handle_Window(handle_Container_Base):
 						if (self.statusTextTimer["stop"]):
 							self.statusTextTimer["stop"] = False
 							break
-						time.sleep((i * delayChunk) / 1000)
+						time.sleep(delayChunk / 1000)
 					time.sleep((delay % delayChunk) / 1000)
 
 			self.statusTextTimer["listening"] -= 1
@@ -19796,7 +20093,19 @@ class handle_Window(handle_Container_Base):
 			warnings.warn(f"There are only {self.statusBar.GetFieldsCount()} fields in the status bar, so it cannot set the text for field {number} in setStatusText() for {self.__repr__()}", Warning, stacklevel = 2)
 			return
 
-		self.controller.queue_statusText.put((timerMessage, [], {}))
+		if (clearBuffer):
+			while True:
+				try:
+					self.controller.queue_statusText.get(False)
+				except queue.Empty:
+					break
+		if (stop):
+			self.statusTextTimer["stop"] = True
+
+		if ((not forceQueue) and (not isinstance(message, dict)) and (startDelay in [None, 0])):
+			applyMessage(message)
+		else:
+			self.controller.queue_statusText.put((timerMessage, [], {}))
 
 	def setStatusText_stop(self):
 		"""Stops the setStatusText wherever it is in execusion."""
@@ -21709,95 +22018,6 @@ class handle_Notebook(handle_Container_Base):
 		else:
 			return handleList[0]
 
-	def clonePage(self, pageLabel = None, *args, switchTo = False, triggerEvent = False, **kwargs):
-		"""Adds another page that uses the panel of a previously made page.
-
-		pageLabel (str) - The catalogue label for the panel to clone from
-			- If None: Will use the current page
-
-		Example Input: clonePage()
-		Example Input: clonePage(1)
-		"""
-
-		if (pageLabel == None):
-			pageLabel = self.getCurrentPage(index = False)
-
-		sourcePage = self[pageLabel]
-		newPage = self.addPage(*args, panel = sourcePage.myPanel, sizer = sourcePage.mySizer, **kwargs)
-
-		if (switchTo):
-			newPage.changePage(triggerEvent = triggerEvent)
-
-		return newPage
-
-	def changePage(self, pageLabel, triggerEvent = True):
-		"""Changes the page selection on the notebook from the current page to the given page.
-
-		pageLabel (str)     - The catalogue label for the panel to change to
-		triggerEvent (bool) - Determiens if a page change and page changing event is triggered
-			- If True: The page change events are triggered
-			- If False: the page change events are not triggered
-
-		Example Input: notebookChangePage(1)
-		Example Input: notebookChangePage(1, False)
-		"""
-
-		#Determine page number
-		pageNumber = self.getPageIndex(pageLabel)
-
-		#Change the page
-		if (triggerEvent):
-			self.thing.SetSelection(pageNumber)
-		else:
-			self.thing.ChangeSelection(pageNumber)
-
-	def removePage(self, pageLabel):
-		"""Removes the given page from the notebook.
-
-		pageLabel (str) - The catalogue label for the panel to add to the notebook
-
-		Example Input: notebookRemovePage(1)
-		"""
-
-		#Determine page number
-		pageNumber = self.getPageIndex(pageLabel)
-
-		#Remove the page from the notebook
-		self.thing.RemovePage(pageNumber)
-
-		#Remove the page from the catalogue
-		del self[pageLabel]
-
-	def removeAll(self):
-		"""Removes all pages from the notebook.
-
-		Example Input: notebookRemovePage()
-		"""
-
-		#Remove all pages from the notebook
-		self.thing.DeleteAllPages()
-
-		for item in self:
-			del item
-
-	def nextPage(self):
-		"""Selects the next page in the notebook.
-
-		Example Input: notebookNextPage()
-		"""
-
-		#Change the page
-		self.thing.AdvanceSelection()
-
-	def backPage(self):
-		"""Selects the previous page in the notebook.
-
-		Example Input: notebookBackPage()
-		"""
-
-		#Change the page
-		self.thing.AdvanceSelection(False)
-
 	##Getters
 	def getCurrentPage(self, index = None):
 		"""Returns the currently selected page from the given notebook
@@ -21807,22 +22027,18 @@ class handle_Notebook(handle_Container_Base):
 			- If False: Returns the page's catalogue label
 			- If None: Returns the handle object for the page
 
-		Example Input: notebookGetCurrentPage()
-		Example Input: notebookGetCurrentPage(True)
+		Example Input: getCurrentPage()
+		Example Input: getCurrentPage(True)
 		"""
 
-		#Determine current page
 		currentPage = self.thing.GetSelection()
-
 		if (currentPage == wx.NOT_FOUND):
 			return
 
-		#Return the correct type
 		if (index):
 			return currentPage
-
 		for item in self:
-			if (item.index == currentPage):
+			if (self.getPageIndex(item) == currentPage):
 				if (index == None):
 					return item
 				else:
@@ -21831,7 +22047,28 @@ class handle_Notebook(handle_Container_Base):
 		errorMessage = f"Unknown Error in getCurrentPage() for {self.__repr__()}"
 		raise ValueError(errorMessage)
 
-	def getPageIndex(self, pageLabel):
+	def getPage(self, pageLabel = None):
+		"""Returns the requested page handle."""
+
+		if (pageLabel == None):
+			return self.getCurrentPage()
+
+		if (isinstance(pageLabel, handle_NotebookPage)):
+			return pageLabel
+		
+		if (pageLabel in self):
+			return self[pageLabel]
+
+		if (isinstance(pageLabel, int)):
+			for page in self:
+				if (self.thing.FindPage(page.myPanel.thing) == pageLabel):
+					return page
+		
+		print("--", pageLabel)
+		print("--", [item.label for item in self])
+		jhkhjjk
+
+	def getPageIndex(self, pageLabel = None):
 		"""Returns the page index for a page with the given label in the given notebook.
 
 		pageLabel (str) - The catalogue label for the panel to add to the notebook
@@ -21839,13 +22076,26 @@ class handle_Notebook(handle_Container_Base):
 		Example Input: getPageIndex(0)
 		"""
 
-		#Determine page number
-		for item in self:
-			if (item.label == pageLabel):
-				return item.index
+		if (pageLabel == None):
+			return self.getCurrentPage(index = True)
+		
+		if (isinstance(pageLabel, int)):
+			if ((pageLabel >= 0) and (self.thing.GetPageCount() >= pageLabel)):
+				return pageLabel
+			return None
 
-		errorMessage = f"There is no page labled {pageLabel} in {self.__repr__()}"
-		raise KeyError(errorMessage)
+		page = self.getPage(pageLabel)
+		if (not page.hasClone):
+			index = self.thing.FindPage(page.myPanel.thing)
+			if (index == wx.NOT_FOUND):
+				return None
+			return index
+
+		for index in range(self.thing.GetPageCount()):
+			if (self.thing.GetPage(index) is not page.myPanel.thing):
+				continue
+			if (page.text == self.thing.GetPageText(index)):
+				return index
 
 	def getPageText(self, pageIndex = None):
 		"""Returns the first page index for a page with the given label in the given notebook.
@@ -21857,13 +22107,11 @@ class handle_Notebook(handle_Container_Base):
 		Example Input: getPageText(1)
 		"""
 
-		#Determine page number
 		if (pageIndex == None):
 			pageIndex = self.getCurrentPage(index = True)
 		elif (not isinstance(pageIndex, int)):
 			pageIndex = self.getPageIndex(pageIndex)
 
-		#Get the tab's text
 		text = self.thing.GetPageText(pageIndex)
 
 		return text
@@ -21877,7 +22125,6 @@ class handle_Notebook(handle_Container_Base):
 		content = []
 		for page in self:
 			content.append(page.text)
-
 		content.reverse()
 
 		return content
@@ -21888,7 +22135,6 @@ class handle_Notebook(handle_Container_Base):
 		Example Input: notebookGetTabCount()
 		"""
 
-		#Determine the number of tabs
 		tabCount = self.thing.GetPageCount()
 
 		return tabCount
@@ -21899,13 +22145,12 @@ class handle_Notebook(handle_Container_Base):
 		Example Input: notebookGetTabRowCount()
 		"""
 
-		#Determine the number of tabs
 		count = self.thing.GetRowCount()
 
 		return count
 
 	##Setters
-	def setPageText(self, pageLabel, text = ""):
+	def setPageText(self, pageLabel = None, text = ""):
 		"""Changes the given notebook page's tab text.
 
 		pageLabel (str) - The catalogue label for the panel to add to the notebook
@@ -21914,11 +22159,153 @@ class handle_Notebook(handle_Container_Base):
 		Example Input: notebookSetPageText(0, "Ipsum")
 		"""
 
-		#Determine page number
-		pageNumber = self.getPageIndex(pageLabel)
+		page = self.getPage(pageLabel)
+		page.text = text
 
-		#Change page text
-		notebook.SetPageText(pageNumber, text)
+		pageNumber = self.getPageIndex(page)
+		self.thing.SetPageText(pageNumber, text)
+
+	##Etc
+	def clonePage(self, pageLabel = None, *args, switchTo = False, triggerEvent = False, **kwargs):
+		"""Adds another page that uses the panel of a previously made page.
+
+		pageLabel (str) - The catalogue label for the panel to clone from
+			- If None: Will use the current page
+
+		Example Input: clonePage()
+		Example Input: clonePage(1)
+		"""
+
+		sourcePage = self.getPage(pageLabel)
+		newPage = self.addPage(*args, panel = sourcePage.myPanel, sizer = sourcePage.mySizer, **kwargs)
+
+		sourcePage.hasClone = True
+		newPage.hasClone = True
+
+		if (switchTo):
+			newPage.changePage(triggerEvent = triggerEvent)
+		elif (self.thing.GetSelection() == sourcePage.getPageIndex()):
+			#Toggle the panel back to the source page
+			newPage.changePage(triggerEvent = False)
+			sourcePage.changePage(triggerEvent = triggerEvent)
+		return newPage
+
+	def changePage(self, pageLabel = None, triggerEvent = True):
+		"""Changes the page selection on the notebook from the current page to the given page.
+
+		pageLabel (str)     - The catalogue label for the panel to change to
+		triggerEvent (bool) - Determiens if a page change and page changing event is triggered
+			- If True: The page change events are triggered
+			- If False: the page change events are not triggered
+
+		Example Input: notebookChangePage(1)
+		Example Input: notebookChangePage(1, triggerEvent = False)
+		"""
+
+		pageNumber = self.getPageIndex(pageLabel)
+		if (pageNumber == self.thing.GetSelection()):
+			return
+
+		if (triggerEvent):
+			self.thing.SetSelection(pageNumber)
+		else:
+			self.thing.ChangeSelection(pageNumber)
+
+	def removePage(self, pageLabel = None):
+		"""Removes the given page from the notebook.
+
+		pageLabel (str) - The catalogue label for the panel to add to the notebook
+
+		Example Input: notebookRemovePage(1)
+		"""
+
+		self.hidePage(pageLabel)
+		del self[pageLabel]
+
+	def hidePage(self, pageLabel = None, state = True):
+		"""Hides the given page."""
+
+		if (not state):
+			return self.showPage(pageLabel = pageLabel)
+
+		page = self.getPage(pageLabel)
+		if (not self.checkPageShown(page)):
+			return
+
+		changed = False
+		if (page.hasClone):
+			currentPage = self.getCurrentPage()
+			if ((currentPage is not page) and (currentPage.myPanel.thing is page.myPanel.thing)):
+				#Toggle the panel back to the source page
+				page.changePage(triggerEvent = False)
+				changed = True
+
+		pageNumber = self.getPageIndex(page)
+		self.thing.RemovePage(pageNumber)
+
+		if (changed):
+			currentPage.changePage(triggerEvent = False)
+
+	def showPage(self, pageLabel = None, state = True, switchTo = False, triggerEvent = False):
+		"""Shows the given page."""
+
+		if (not state):
+			return self.hidePage(pageLabel = pageLabel)
+
+		page = self.getPage(pageLabel)
+		if (not self.checkPageShown(page)):
+			self.thing.AddPage(page.myPanel.thing, page.text)
+
+			if ((not switchTo) and (page.hasClone)):
+				currentPage = self.getCurrentPage()
+				if ((currentPage is not page) and (currentPage.myPanel.thing is page.myPanel.thing)):
+					#Toggle the panel back to the source page
+					page.changePage(triggerEvent = False)
+					currentPage.changePage(triggerEvent = triggerEvent)
+		
+		if (switchTo):
+			page.changePage(triggerEvent = triggerEvent)
+
+	def checkPageShown(self, pageLabel = None):
+		"""Returns if the given page is shown or not."""
+
+		page = self.getPage(pageLabel)
+		if (not page.hasClone):
+			return self.thing.FindPage(page.myPanel.thing) != wx.NOT_FOUND
+
+		for index in range(self.thing.GetPageCount()):
+			if (self.thing.GetPage(index) is not page.myPanel.thing):
+				continue
+			if (page.text == self.thing.GetPageText(index)):
+				return True
+
+		return False
+
+	def removeAll(self):
+		"""Removes all pages from the notebook.
+
+		Example Input: notebookRemovePage()
+		"""
+
+		self.thing.DeleteAllPages()
+		for item in self:
+			del item
+
+	def nextPage(self):
+		"""Selects the next page in the notebook.
+
+		Example Input: notebookNextPage()
+		"""
+
+		self.thing.AdvanceSelection()
+
+	def backPage(self):
+		"""Selects the previous page in the notebook.
+
+		Example Input: notebookBackPage()
+		"""
+
+		self.thing.AdvanceSelection(False)
 
 class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 	"""A handle for working with a wxNotebook."""
@@ -21937,16 +22324,14 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		self.text = None
 		self.icon = None
 		self.iconIndex = None
-		self.index = None
 		self.type = None
+		self.hasClone = False
 
 	def __str__(self):
 		"""Gives diagnostic information on the Notebook when it is printed out."""
 
 		output = handle_Container_Base.__str__(self)
 
-		if (self.index != None):
-			output += f"-- index: {self.index}\n"
 		if (self.text != None):
 			output += f"-- text: {self.text}\n"
 		if (self.icon != None):
@@ -21989,7 +22374,7 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		self.mySizer.__delitem__(key)
 
 	def _build(self, argument_catalogue):
-		"""Adds a gage to the notebook.
+		"""Adds a page to the notebook.
 		Lists can be given to add multiple pages. They are added in order from left to right.
 		If only a 'pageLabel' is a list, they will all have the same 'text'.
 		If 'pageLabel' and 'text' are a list of different lengths, it will not add any of them.
@@ -22019,7 +22404,6 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 			self.myWindow = self.parent
 		else:
 			self.myWindow = self.parent.myWindow
-		self.index = len(self.parent) - 1
 
 		#Setup Panel
 		if (isinstance(panel, dict)):
@@ -22060,33 +22444,49 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 	def getSizer(self):
 		return self.mySizer
 
-	def remove(self):
+	def remove(self, *args, **kwargs):
 		"""Removes the given page from the notebook.
 
 		Example Input: notebookRemovePage()
 		"""
 
 		if (self.type.lower() == "notebookpage"):
-			#Determine page number
-			pageNumber = self.getPageIndex(pageLabel)
-
-			#Remove the page from the notebook
-			notebook.RemovePage(self.pageNumber)
-
-			#Remove the page from the catalogue
-			del notebook.notebookPageDict[pageLabel]
+			self.parent.remove(self, *args, **kwargs)
 		else:
 			warnings.warn(f"Add {self.type} to remove() for {self.__repr__()}", Warning, stacklevel = 2)
 
-	def getIndex(self, event = None):
+	def hidePage(self, *args, **kwargs):
+		if (self.type.lower() == "notebookpage"):
+			self.parent.hidePage(self, *args, **kwargs)
+		else:
+			warnings.warn(f"Add {self.type} to hidePage() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def showPage(self, *args, **kwargs):
+		if (self.type.lower() == "notebookpage"):
+			self.parent.showPage(self, *args, **kwargs)
+		else:
+			warnings.warn(f"Add {self.type} to showPage() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def checkPageShown(self, *args, **kwargs):
+		if (self.type.lower() == "notebookpage"):
+			self.parent.checkPageShown(self, *args, **kwargs)
+		else:
+			warnings.warn(f"Add {self.type} to checkPageShown() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def changePage(self, *args, **kwargs):
+		if (self.type.lower() == "notebookpage"):
+			self.parent.changePage(self, *args, **kwargs)
+		else:
+			warnings.warn(f"Add {self.type} to changePage() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def getIndex(self, *args, **kwargs):
 		"""Returns the page index for a page with the given label in the given notebook.
 
 		Example Input: getIndex()
 		"""
 
 		if (self.type.lower() == "notebookpage"):
-			#Determine page number
-			pageNumber = notebook.notebookPageDict[pageLabel]["index"]
+			pageNumber = self.parent.getIndex(self, *args, **kwargs)
 		else:
 			warnings.warn(f"Add {self.type} to getIndex() for {self.__repr__()}", Warning, stacklevel = 2)
 			pageNumber = None
@@ -22121,7 +22521,7 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		Example Input: getPageIndex()
 		"""
 
-		return self.index
+		return self.parent.getPageIndex(self)
 
 	##Setters
 	def setValue(self, newValue = "", event = None):
@@ -22133,11 +22533,7 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		"""
 
 		if (self.type.lower() == "notebookpage"):
-			#Determine page number
-			pageNumber = self.getPageIndex(pageLabel)
-
-			#Change page text
-			notebook.SetPageText(pageNumber, newValue)
+			self.parent.setPageText(self, text = newValue)
 
 		elif (self.type.lower() == "auipage"):
 			if (self.label == None):
@@ -22154,9 +22550,6 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 			warnings.warn(f"Add {self.type} to setFunction_rightClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Etc
-	def changePage(self, *args, **kwargs):
-		self.parent.changePage(self.label, *args, **kwargs)
-
 	def dockCenter(self, *args, **kwargs):
 		"""Overload for dockCenter() in handle_AuiManager."""
 
@@ -22649,9 +23042,10 @@ class Controller(Utilities, CommonEventFunctions):
 	#Background Threads
 	def start_listenStatusText(self):
 		"""Starts listening to listenStatusText()."""
+		print("@start_listenStatusText")
 
 		self.stop_listenStatusText()
-		self.listen(self.listenStatusText, delay = 100 / 1000, errorFunction = self.listenStatusText_handleError)
+		# self.listen(self.listenStatusText, delay = 100 / 1000, errorFunction = self.listenStatusText_handleError)
 
 	def stop_listenStatusText(self):
 		"""Stops listening to listenStatusText()."""
@@ -23350,164 +23744,6 @@ class _mp_CallArgsInfo:
 
 pubsub.core.callables.CallArgsInfo = _mp_CallArgsInfo
 
-# def _mp_SelectGroup(self, modelObject, deselectOthers=True, ensureVisible=False):
-# 	"""Overridden to allow group selections."""
-
-# 	if (deselectOthers):
-# 		self.DeselectAll()
-
-# 	item = self.GetNextItem(-1, wx.LIST_NEXT_ALL, wx.LIST_STATE_DONTCARE)
-# 	while (item != -1):
-# 		model = self.innerList[item]
-# 		if ((isinstance(model, ObjectListView.ListGroup)) and (modelObject in model.modelObjects)):
-# 			realIndex = self._MapModelIndexToListIndex(item)
-# 			self.SetItemState(realIndex, wx.LIST_STATE_SELECTED, wx.LIST_STATE_SELECTED)
-
-# 			if (ensureVisible):
-# 				self.EnsureVisible(realIndex)
-# 			break
-
-# 		item = self.GetNextItem(item, wx.LIST_NEXT_ALL, wx.LIST_STATE_DONTCARE)
-
-# def _mp_SelectGroups(self, modelObjects, deselectOthers=True):
-# 	"""Overridden to allow group selections."""
-
-# 	if deselectOthers:
-# 		self.DeselectAll()
-
-# 	for x in modelObjects:
-# 		self.SelectGroup(x, False)
-
-# ObjectListView.GroupListView.SelectGroup = _mp_SelectGroup
-# ObjectListView.GroupListView.SelectGroups = _mp_SelectGroups
-
-# def _mp_DisableSorting(self):
-# 	"""Created to allow undoing EnableSorting()."""
-
-# 	self.Unbind(wx.EVT_LIST_COL_CLICK, handler = self._HandleColumnClick)
-
-# ObjectListView.ObjectListView.DisableSorting = _mp_DisableSorting
-
-# def _mp_SortObjects(self, modelObjects=None, sortColumn=None, secondarySortColumn=None):
-# 	"""Overriden to enable sorting None and using a different sorting key"""
-# 	if modelObjects is None:
-# 		modelObjects = self.modelObjects
-# 	if sortColumn is None:
-# 		sortColumn = self.GetSortColumn()
-# 	if secondarySortColumn == sortColumn:
-# 		secondarySortColumn = None
-
-# 	# If we don't have a sort column, we can't sort -- duhh
-# 	if sortColumn is None:
-# 		return
-
-# 	# Let the world have a chance to sort the model objects
-# 	evt = ObjectListView.OLVEvent.SortEvent(self, self.sortColumnIndex, self.sortAscending, True)
-# 	# evt.SetEventObject(self)
-# 	self.GetEventHandler().ProcessEvent(evt)
-# 	if evt.IsVetoed() or evt.wasHandled:
-# 		return
-
-# 	# When sorting large groups, this is called a lot. Make it efficent.
-# 	# It is more efficient (by about 30%) to try to call lower() and catch the
-# 	# exception than it is to test for the class
-# 	def _getSortValue(x):
-# 		primary = sortColumn.GetValue(x)
-# 		try:
-# 			primary = primary.lower()
-# 		except AttributeError:
-# 			pass
-# 		if secondarySortColumn:
-# 			secondary = secondarySortColumn.GetValue(x)
-# 			try:
-# 				secondary = secondary.lower()
-# 			except AttributeError:
-# 				pass
-# 			return (primary is None, primary, secondary)
-# 		else:
-# 			return (primary is None, primary)
-
-# 	if (not hasattr(self, "defaultSortFunction")):
-# 		self.defaultSortFunction = None
-
-# 	if (self.defaultSortFunction != None):
-# 		modelObjects.sort(key=self.defaultSortFunction, reverse=(not self.sortAscending))
-# 	else:
-# 		modelObjects.sort(key=_getSortValue, reverse=(not self.sortAscending))
-
-# 	# Sorting invalidates our object map
-# 	self.objectToIndexMap = None
-
-# def _mp_SetDefaultSortFunction(self, function):
-# 	self.defaultSortFunction = function
-
-# def _mp_SortGroups(self, groups=None, ascending=None):
-# 	"""Overriden to allow using a different sorting key"""
-
-# 	if groups is None:
-# 		groups = self.groups
-# 	if ascending is None:
-# 		ascending = self.sortAscending
-
-# 	# If the groups are locked, we sort by the sort column, otherwise by the grouping column.
-# 	# The primary column is always used as a secondary sort key.
-# 	if self.GetAlwaysGroupByColumn():
-# 		sortCol = self.GetSortColumn()
-# 	else:
-# 		sortCol = self.GetGroupByColumn()
-
-# 	# Let the world have a change to sort the items
-# 	evt = ObjectListView.OLVEvent.SortGroupsEvent(self, groups, sortCol, ascending)
-# 	# evt.SetEventObject(self)
-# 	self.GetEventHandler().ProcessEvent(evt)
-# 	if evt.wasHandled:
-# 		return
-
-# 	# Sorting event wasn't handled, so we do the default sorting
-# 	def _getLowerCaseKey(group):
-# 		try:
-# 			return group.key.lower()
-# 		except:
-# 			return group.key
-
-# 	if (not hasattr(self, "defaultGroupSortFunction")):
-# 		self.defaultGroupSortFunction = None
-
-# 	if (self.defaultGroupSortFunction == None):
-# 		sortFunction = _getLowerCaseKey
-# 	else:
-# 		sortFunction = self.defaultGroupSortFunction
-
-# 	groups = sorted(groups, key = sortFunction, reverse = not ascending)
-# 	self.groups = groups
-
-# 	# Sort the model objects within each group.
-# 	for x in groups:
-# 		self._SortObjects(x.modelObjects, sortCol, self.GetPrimaryColumn())
-
-# def _mp_SetDefaultGroupSortFunction(self, function):
-# 	self.defaultGroupSortFunction = function
-
-# ObjectListView.GroupListView.SortGroups = _mp_SortGroups
-# ObjectListView.ObjectListView._SortObjects = _mp_SortObjects
-# ObjectListView.ObjectListView.SetDefaultSortFunction = _mp_SetDefaultSortFunction
-# ObjectListView.ObjectListView.SetDefaultGroupSortFunction = _mp_SetDefaultGroupSortFunction
-
-# def _mp_HandleColumnClick(self, event):
-# 	"""Overridden to allow for user customization."""
-
-# 	if (not hasattr(self, "rebuildGroup_onColumnClick")):
-# 		self.rebuildGroup_onColumnClick = True
-
-# 	# If they click on a new column, we have to rebuild our groups
-# 	if (self.rebuildGroup_onColumnClick and (event.GetColumn() != self.sortColumnIndex)):
-# 		self.groups = None
-
-# 	ObjectListView.FastObjectListView._HandleColumnClick(self, event)
-
-# ObjectListView.GroupListView._HandleColumnClick = _mp_HandleColumnClick
-
-
 #User Things
 class User_Utilities():
 	def __init__(self, catalogue_variable = None, label_variable = None, **kwargs):
@@ -23870,6 +24106,56 @@ class User_Utilities():
 			return sum(self.getNumber(item, depthMax = depthMax, _currentDepth = _currentDepth + 1) for item in itemList)
 		else:
 			return 1
+
+	def _getItemMod(self, *args, **kwargs):
+		"""Grants user access to Utilities._getItemMod().
+
+		Example Input: getItemMod("ac")
+		Example Input: getItemMod("ac", border = 10)
+		Example Input: getItemMod("c1")
+		"""
+
+		return Utilities._getItemMod(None, *args, **kwargs)
+
+	def getImage(self, *args, **kwargs):
+		"""Grants user access to Utilities._getImage().
+
+		Example Input: getImage("example.bmp", 0)
+		Example Input: getImage(image, 0)
+		Example Input: getImage("error", 0, internal = True)
+		Example Input: getImage("example.bmp", 0, alpha = True)
+		"""
+
+		return Utilities._getImage(None, *args, **kwargs)
+
+	def getColor(self, *args, **kwargs):
+		"""Grants user access to Utilities._getColor().
+
+		Example Input: getColor("white")
+		Example Input: getColor((255, 255, 0))
+		Example Input: getColor((0.5, 0.5, 0.5))
+		Example Input: getColor((255, 0.5, 0))
+		"""
+
+		return Utilities._getColor(None, *args, **kwargs)
+
+	def getFont(self, *args, **kwargs):
+		"""Grants user access to Utilities._getFont().
+
+		Example Input: getFont()
+		Example Input: getFont(size = 72, bold = True, color = "red")
+		"""
+
+		return Utilities._getFont(None, *args, **kwargs)
+
+	def getWildcard(self, *args, **kwargs):
+		"""Grants user access to Utilities._getWildcard().
+
+		Example Input: getWildcard()
+		Example Input: getWildcard(wildcard)
+		"""
+
+		return Utilities._getWildcard(None, *args, **kwargs)
 
 	class CustomIterator():
 		"""Iterates over items in an external list."""
