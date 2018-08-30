@@ -34,6 +34,7 @@ def onAdvanced(event):
 				break
 
 			with myDialog.makeDialogBusy(text = "Sub Test...", simple = False, maximum = 10, can_abort = True, can_skip = True) as subTest:
+				continue
 				for j in range(1, 11):
 					print(j)
 					time.sleep(0.25)

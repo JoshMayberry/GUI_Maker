@@ -1585,7 +1585,7 @@ class Utilities():
 			warnings.warn(f"myFunctionList == None for autoRun() in {self.__repr__()}", Warning, stacklevel = 2)
 
 	def threadSafe(self, function, *args, **kwargs):
-		if (threading.current_thread() == threading.main_thread()):
+		if (wx.IsMainThread()):
 			return function(*args, **kwargs)
 		wx.CallAfter(function, *args, **kwargs)
 
@@ -1630,37 +1630,38 @@ class Utilities():
 		def listenFunction():
 			"""Listens for the myFunction to be true, then runs the resultFunction."""
 			nonlocal self, myFunction, myFunctionArgs, myFunctionKwargs
-			nonlocal resultFunction, resultFunctionArgs, resultFunctionKwargs, delay
+			nonlocal resultFunction, resultFunctionArgs, resultFunctionKwargs
 			nonlocal errorFunction, errorFunctionArgs, errorFunctionKwargs, includeError
 
+			catalogue = self.listeningCatalogue[myFunction]
 			#Account for other thread running this
-			while (self.listeningCatalogue[myFunction]["listening"] > 0):
-				self.listeningCatalogue[myFunction]["stop"] = True
+			while (catalogue["listening"] > 0):
+				catalogue["stop"] = True
 				time.sleep(100 / 1000)
-			self.listeningCatalogue[myFunction]["stop"] = False
+			catalogue["stop"] = False
 
-			self.listeningCatalogue[myFunction]["listening"] += 1
+			catalogue["listening"] += 1
 			while True:
-				while (self.listeningCatalogue[myFunction]["pause"]):
-					if (self.listeningCatalogue[myFunction]["stop"]):
+				while (catalogue["pause"]):
+					if (catalogue["stop"]):
 						break
-					if ((delay != 0) and (delay != None)):
-						time.sleep(delay / 1000)
+					if ((catalogue["delay"] != 0) and (catalogue["delay"] != None)):
+						time.sleep(catalogue["delay"] / 1000)
 
-				if (self.listeningCatalogue[myFunction]["stop"]):
-					self.listeningCatalogue[myFunction]["stop"] = False
+				if (catalogue["stop"]):
+					catalogue["stop"] = False
 					break
 
-				if ((delay != 0) and (delay != None)):
-					time.sleep(delay / 1000)
+				if ((catalogue["delay"] != 0) and (catalogue["delay"] != None)):
+					time.sleep(catalogue["delay"] / 1000)
 
-				if (self.listeningCatalogue[myFunction]["trigger"] != None):
-					while (not self.listeningCatalogue[myFunction]["trigger"]):
-						if (self.listeningCatalogue[myFunction]["stop"]):
+				if (catalogue["trigger"] != None):
+					while (not catalogue["trigger"]):
+						if (catalogue["stop"]):
 							break
-						if ((delay != 0) and (delay != None)):
-							time.sleep(delay / 1000)
-					self.listeningCatalogue[myFunction]["trigger"] = False
+						if ((catalogue["delay"] != 0) and (catalogue["delay"] != None)):
+							time.sleep(catalogue["delay"] / 1000)
+					catalogue["trigger"] = False
 
 				answer = self.runMyFunction(myFunction, myFunctionArgs, myFunctionKwargs, includeError = includeError,
 					errorFunction = errorFunction, errorFunctionArgs = errorFunctionArgs, errorFunctionKwargs = errorFunctionKwargs)
@@ -1673,7 +1674,8 @@ class Utilities():
 		#########################################################
 
 		if (myFunction not in self.listeningCatalogue):
-			self.listeningCatalogue[myFunction] = {"listening": 0, "stop": False, "pause": False, "trigger": None}
+			self.listeningCatalogue[myFunction] = {"listening": 0, "stop": False, "pause": False, "trigger": None, "delay": None}
+		self.listeningCatalogue[myFunction]["delay"] = delay
 
 		if (trigger):
 			self.listeningCatalogue[myFunction]["trigger"] = False
@@ -1692,6 +1694,20 @@ class Utilities():
 			self.controller.backgroundFunction_pauseOnDialog["listeningCatalogue"][self][myFunction] = {"state": pauseOnDialog, "exclude": notPauseOnDialog}
 
 		self.backgroundRun(listenFunction, shown = shown, makeThread = makeThread, stopFunction = lambda: self.stop_listen(listenFunction))
+
+	def delay_listen(self, myFunction, delay = None):
+		"""Stops the listen routine.
+
+		myFunction (function) - A function that checks certain conditions
+		delay (int) - How long to wait in milliseconds before running 'myFunction'
+
+		Example Input: delay_listen(self.checkAutoLogout)
+		"""
+
+		print("@delay_listen", delay)
+
+		if (myFunction in self.listeningCatalogue):
+			self.listeningCatalogue[myFunction]["delay"] = delay
 
 	def stop_listen(self, myFunction):
 		"""Stops the listen routine.
@@ -2331,10 +2347,10 @@ class Utilities():
 						image = wx.ArtProvider.GetBitmap(wx.ART_CROSS_MARK)
 						
 					elif (imagePath == "plus"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_PLUS )
+						image = wx.ArtProvider.GetBitmap(wx.ART_PLUS)
 						
 					elif (imagePath == "minus"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_MINUS )
+						image = wx.ArtProvider.GetBitmap(wx.ART_MINUS)
 						
 					elif (imagePath == "close"):
 						image = wx.ArtProvider.GetBitmap(wx.ART_CLOSE)
@@ -2352,7 +2368,7 @@ class Utilities():
 						image = wx.ArtProvider.GetBitmap(wx.ART_GOTO_FIRST)
 						
 					elif (imagePath == "last"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_GOTO_LAST )
+						image = wx.ArtProvider.GetBitmap(wx.ART_GOTO_LAST)
 						
 					elif (imagePath == "diskHard"):
 						image = wx.ArtProvider.GetBitmap(wx.ART_HARDDISK)
@@ -4768,12 +4784,16 @@ class Utilities():
 	def makeDialogBusy(self, text = "", simple = True, title = "Busy", initial = 0, stayOnTop = True,
 		maximum = 100, blockAll = True, autoHide = True, can_abort = False, can_skip = False, 
 		smooth = False, elapsedTime = True, estimatedTime = True, remainingTime = True,
+		cursor = True, freeze = True,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
 		label = None, parent = None, handle = None, myId = None):
 		"""Does not pause the running code, but instead ignores user inputs by 
 		locking the GUI until the code tells the dialog box to go away. 
-		This is done by either exiting a while loop or using the hide() function. 
+		This is done by either exiting a while loop or using the hide() function.
+
+		cursor (bool) - If True: Will have a busy cursor while the dialog is showing
+		freeze (bool) - If True: Will freeze and thaw it's parent
 
 		To protect the GUI better, implement: https://wxpython.org/Phoenix/docs/html/wx.WindowDisabler.html
 		_________________________________________________________________________
@@ -4801,7 +4821,8 @@ class Utilities():
 		handle._build(locals())
 		return handle
 
-	def makeDialogChoice(self, choices = [], text = "", title = "", single = True, default = None,
+	def makeDialogChoice(self, choices = [], text = "", title = "", single = True, 
+		default = None, formatter = None,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
 		label = None, parent = None, handle = None, myId = None):
@@ -4939,6 +4960,49 @@ class Utilities():
 
 		handle = handle_Dialog()
 		handle.type = "color"
+		handle._build(locals())
+		return handle
+
+	def makeDialogPrintSetup(self, pageNumbers = True, helpButton = False, printToFile = None, selection = None, 
+		pageFrom = None, pageTo = None, pageMin = None, pageMax = None, collate = None, copies = None, printData = None,
+
+		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
+		label = None, parent = None, handle = None, myId = None):
+		"""Pauses the running code and shows a dialog box to get input from the user about which printer with what settings to use.
+
+		pageNumbers (bool) - Determines the state of the 'page numbers' control box
+			- If True: Enables the control box
+			- If False: Disables the control box
+		helpButton (bool) - Determines the state of the 'help' button
+			- If True: Enables the help button
+			- If False: Disables the help button
+
+		printToFile (str) - What file to print this to
+			- If None: Disables the 'print to file' check box
+
+		selection (bool) - ?
+			- If None: Disables the 'selection' radio button?
+
+		pageFrom (int) - Sets the 'Pages' from field
+		pageTo (int)   - Sets the 'Pages' to field
+		pageMin (int)  - Sets the minimum number of copies
+		pageMax (int)  - Sets the maximum number of copies
+		copies (int)   - Sets the 'Number of copies' input spinner
+
+		collate (bool) - Sets the 'Collate' check box
+
+		_________________________________________________________________________
+
+		Example Use:
+			with myFrame.makeDialogPrint() as myDialog:
+				printData = myDialog.getValue()
+		_________________________________________________________________________
+
+		Example Input: makeDialogPrintSetup()
+		"""
+
+		handle = handle_Dialog()
+		handle.type = "printSetup"
 		handle._build(locals())
 		return handle
 
@@ -5178,6 +5242,15 @@ class handle_Dummy():
 	def dummyFunction(*args, **kwargs):
 		pass
 
+	def keys(self, *args, **kwargs):
+		return {}.keys(*args, **kwargs)
+
+	def values(self, *args, includeUnnamed = False, **kwargs):
+		return {}.values(*args, **kwargs)
+
+	def items(self, *args, includeUnnamed = False, **kwargs):
+		return {}.items(*args, **kwargs)
+
 class handle_Base(Utilities, CommonEventFunctions):
 	"""The base handler for all GUI handlers.
 	Meant to be inherited.
@@ -5312,6 +5385,19 @@ class handle_Base(Utilities, CommonEventFunctions):
 			elif (not self.allowBuildErrors):
 				return True
 
+	def keys(self, *args, **kwargs):
+		return labelCatalogue.keys(*args, **kwargs)
+
+	def values(self, *args, includeUnnamed = False, **kwargs):
+		if (not includeUnnamed):
+			return labelCatalogue.values(*args, **kwargs)
+		return list(labelCatalogue.values(*args, **kwargs)) + [*self.unnamedList]
+
+	def items(self, *args, includeUnnamed = False, **kwargs):
+		if (not includeUnnamed):
+			return labelCatalogue.items(*args, **kwargs)
+		return list(labelCatalogue.items(*args, **kwargs)) + [(None, item) for item in self.unnamedList]
+
 	def _preBuild(self, argument_catalogue):
 		"""Runs before this object is built."""
 
@@ -5369,7 +5455,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 			self.parent = parent
 		else:
 			if (not isinstance(buildSelf, Controller)):
-				if (isinstance(buildSelf, handle_Menu)):
+				if (isinstance(buildSelf, (handle_Menu, handle_Dialog))):
 					self.parent = buildSelf
 				else:
 					if (buildSelf.parent != None):
@@ -6168,20 +6254,12 @@ class handle_Base(Utilities, CommonEventFunctions):
 		errorMessage = f"Could not find sizer item index in remove() for {self.__repr__()}"
 		raise SyntaxError(errorMessage)
 
-	def _decodePrintSettings(self, dialogData):
+	def _decodePrintSettings(self, dialogData, setupData = False):
 		"""Turns a wxPrintDialogData object into a dictionary."""
 
 		printData = dialogData.GetPrintData()
-		data = {None: wx.PrintDialogData(dialogData),
-			"printAll": dialogData.GetAllPages(),
-			"collate": dialogData.GetCollate(),
-			"from": dialogData.GetFromPage(),
-			"to": dialogData.GetToPage(),
-			"min": dialogData.GetMinPage(),
-			"max": dialogData.GetMaxPage(),
+		data = {"collate": dialogData.GetCollate(),
 			"copies": dialogData.GetNoCopies(),
-			"printToFile": dialogData.GetPrintToFile(),
-			"selected": dialogData.GetSelection(),
 			"bin": _MyPrinter.catalogue_printBin[printData.GetBin()],
 			"color": printData.GetColour(),
 			"duplex": _MyPrinter.catalogue_duplex[printData.GetDuplex()],
@@ -6192,13 +6270,44 @@ class handle_Base(Utilities, CommonEventFunctions):
 			"printMode": _MyPrinter.catalogue_printMode[printData.GetPrintMode()],
 			"printerName": printData.GetPrinterName(),
 			"quality": _MyPrinter.catalogue_quality.get(printData.GetQuality(), printData.GetQuality())}
+
+		if (setupData):
+			data[None] = wx.PageSetupDialogData(dialogData)
+			data["marginMinimum"] = dialogData.GetDefaultMinMargins()
+			data["marginLeft"], data["marginTop"] = dialogData.GetMarginTopLeft()
+			data["marginRight"], data["marginBottom"] = dialogData.GetMarginBottomRight()
+			data["marginLeftMinimum"], data["marginTopMinimum"] = dialogData.GetMinMarginTopLeft()
+			data["marginRightMinimum"], data["marginBottomMinimum"] = dialogData.GetMinMarginBottomRight()
+		else:
+			data[None] = wx.PrintDialogData(dialogData)
+			data["printAll"] = dialogData.GetAllPages()
+			data["from"] = dialogData.GetFromPage()
+			data["to"] = dialogData.GetToPage()
+			data["min"] = dialogData.GetMinPage()
+			data["max"] = dialogData.GetMaxPage()
+			data["printToFile"] = dialogData.GetPrintToFile()
+			data["selected"] = dialogData.GetSelection()
+
 		return data
 
-	def _encodePrintSettings(self, data):
+	def _encodePrintSettings(self, data, setupData = False, override = {}):
 		"""Turns a dictionary into a wxPrintDialogData object."""
 
-		def apply(variable, function, catalogue = None):
-			value = data.get(variable, None)
+		if (data == None):
+			return
+		elif (isinstance(data, wx.PrintData)):
+			return wx.PrintDialogData(data)
+		elif (isinstance(data, wx.PrintDialogData) and (not setupData)):
+			return data
+		elif (isinstance(data, wx.PageSetupDialogData) and (setupData)):
+			return data
+
+		def apply(variable, function, catalogue = None, default = None):
+			if (isinstance(variable, tuple)):
+				value = tuple(data.get(item, default) for item in variable)
+			else:
+				value = data.get(variable, default)
+
 			if (value != None):
 				if (not catalogue):
 					return function(value)
@@ -6207,33 +6316,47 @@ class handle_Base(Utilities, CommonEventFunctions):
 				return function(value)
 
 		##################################################
-			
-		printData = wx.PrintData()
-		apply("color", printData.SetColour)
-		apply("file", printData.SetFilename)
-		apply("paperSize", printData.SetPaperSize)
-		apply("printerName", printData.SetPrinterName)
-		apply("bin", printData.SetBin, _MyPrinter.catalogue_printBin)
-		apply("duplex", printData.SetDuplex, _MyPrinter.catalogue_duplex)
-		apply("quality", printData.SetQuality, _MyPrinter.catalogue_quality)
-		apply("paperId", printData.SetPaperId, _MyPrinter.catalogue_paperId)
-		apply("printMode", printData.SetPrintMode, _MyPrinter.catalogue_printMode)
-		apply("vertical", printData.SetOrientation, _MyPrinter.catalogue_orientation)
-
-		dialogData = wx.PrintDialogData(printData)
-		apply("collate", dialogData.SetCollate)
-		apply("min", dialogData.SetMinPage)
-		apply("max", dialogData.SetMaxPage)
-		apply("copies", dialogData.SetNoCopies)
-		apply("printToFile", dialogData.SetPrintToFile)
-		apply("selected", dialogData.SetSelection)
-
-		if (data.get("printAll", None)):
-			dialogData.SetFromPage(dialogData.GetMinPage())
-			dialogData.SetToPage(dialogData.GetMaxPage())
+		
+		if (isinstance(data, (wx.PrintDialogData, wx.PageSetupDialogData))):
+			printData = data.GetPrintData()
 		else:
-			apply("from", dialogData.SetFromPage)
-			apply("to", dialogData.SetToPage)
+			printData = wx.PrintData()
+			apply("color", printData.SetColour)
+			apply("file", printData.SetFilename)
+			apply("paperSize", printData.SetPaperSize)
+			apply("printerName", printData.SetPrinterName)
+			apply("bin", printData.SetBin, _MyPrinter.catalogue_printBin)
+			apply("duplex", printData.SetDuplex, _MyPrinter.catalogue_duplex)
+			apply("quality", printData.SetQuality, _MyPrinter.catalogue_quality)
+			apply("paperId", printData.SetPaperId, _MyPrinter.catalogue_paperId)
+			apply("printMode", printData.SetPrintMode, _MyPrinter.catalogue_printMode)
+			apply("vertical", printData.SetOrientation, _MyPrinter.catalogue_orientation)
+
+		if (setupData):
+			dialogData = wx.PageSetupDialogData(printData)
+			apply("collate", dialogData.SetCollate)
+			apply("copies", dialogData.SetNoCopies)
+			
+			apply("marginMinimum", dialogData.SetDefaultMinMargins)
+			apply(("marginLeft", "marginTop"), dialogData.SetMarginTopLeft, default = 0)
+			apply(("marginRight", "marginBottom"), dialogData.SetMarginBottomRight, default = 0)
+			apply(("marginLeftMinimum", "marginTopMinimum"), dialogData.SetMinMarginTopLeft, default = 0)
+			apply(("marginRightMinimum", "marginBottomMinimum"), dialogData.SetMinMarginBottomRight, default = 0)
+		else:
+			dialogData = wx.PrintDialogData(printData)
+			apply("collate", dialogData.SetCollate)
+			apply("min", dialogData.SetMinPage)
+			apply("max", dialogData.SetMaxPage)
+			apply("copies", dialogData.SetNoCopies)
+			apply("printToFile", dialogData.SetPrintToFile)
+			apply("selected", dialogData.SetSelection)
+
+			if (data.get("printAll", None)):
+				dialogData.SetFromPage(dialogData.GetMinPage())
+				dialogData.SetToPage(dialogData.GetMaxPage())
+			else:
+				apply("from", dialogData.SetFromPage)
+				apply("to", dialogData.SetToPage)
 
 		return dialogData
 
@@ -17714,9 +17837,10 @@ class handle_Dialog(handle_Base):
 		handle_Base.__init__(self)
 
 		#Defaults
-		self.answer = None
 		self.data = None
+		self.answer = None
 		self.subType = None
+		self.timeEntered = None
 		self.inMainThread = True
 
 	def __enter__(self):
@@ -17726,6 +17850,24 @@ class handle_Dialog(handle_Base):
 
 		handle_Dialog.show(self)
 
+		#Hiding a sub-busy window too quickly can cause the parent busy window to go behind everything
+		if (self.type.lower() in ["busy"]):
+			self.timeEntered = time.perf_counter()
+
+			if (self.freeze):
+				if (self.parent.thing.IsFrozen()):
+					#Do not thaw the parent if it is already frozen
+					self.freeze = None
+				else:
+					self.parent.thing.Freeze()
+
+			if (self.cursor):
+				if (wx.IsBusy()):
+					#Do not stop the busy cursor if it was already going
+					self.cursor = None
+				else:
+					wx.BeginBusyCursor()
+
 		return handle
 
 	def __exit__(self, exc_type, exc_value, traceback):
@@ -17734,7 +17876,19 @@ class handle_Dialog(handle_Base):
 		state = handle_Base.__exit__(self, exc_type, exc_value, traceback)
 
 		if (self.type.lower() in ["busy"]): #, "printpreview"]):
+			difference = time.perf_counter() - self.timeEntered
+			if (difference < 0.05):
+				#Wait for a maximum of 0.05 seconds
+				print("@__exit__", difference)
+				time.sleep(0.05 - difference)
+			
 			self.hide()
+
+			if (self.cursor):
+				wx.EndBusyCursor()
+
+			if (self.freeze):
+				self.parent.thing.Thaw()
 
 		return state
 
@@ -17828,9 +17982,11 @@ class handle_Dialog(handle_Base):
 			"""Builds a wx busy info dialog object."""
 			nonlocal self, argument_catalogue
 
-			text, simple, blockAll = self._getArguments(argument_catalogue, ["text", "simple", "blockAll"])
+			text, simple, blockAll, cursor, freeze = self._getArguments(argument_catalogue, ["text", "simple", "blockAll", "cursor", "freeze"])
 
 			self.thing = -1
+			self.cursor = cursor
+			self.freeze = freeze
 			self.blockAll = blockAll
 
 			if (self.parent == None):
@@ -17881,6 +18037,7 @@ class handle_Dialog(handle_Base):
 					self.buildStyle.append("wx.PD_REMAINING_TIME")
 				# if (stayOnTop):
 				# 	self.buildStyle.append("wx.STAY_ON_TOP")
+
 				if (not self.buildStyle):
 					self.buildStyle.append("0")
 
@@ -17927,22 +18084,27 @@ class handle_Dialog(handle_Base):
 			"""Builds a wx choice dialog object."""
 			nonlocal self, argument_catalogue
 
-			choices, title, text, default, single = self._getArguments(argument_catalogue, ["choices", "title", "text", "default", "single"])
+			choices, title, text, default = self._getArguments(argument_catalogue, ["choices", "title", "text", "default"])
+			single, formatter = self._getArguments(argument_catalogue, ["single", "formatter"])
 			
 			#Ensure that the choices given are a list or tuple
 			if (not isinstance(choices, (list, tuple, range))):
 				choices = [choices]
 
-			#Ensure that the choices are all strings
-			choices = [str(item) for item in choices]
-
 			self.choices = choices
+
+			#Format choices to display
+			if (formatter):
+				formattedChoices = [str(formatter(item)) for item in choices]
+			else:
+				formattedChoices = [str(item) for item in choices]
+
 			
 			if (single):
 				self.subType = "single"
-				self.thing = wx.SingleChoiceDialog(None, title, text, choices, wx.CHOICEDLG_STYLE)
+				self.thing = wx.SingleChoiceDialog(None, title, text, formattedChoices, wx.CHOICEDLG_STYLE)
 			else:
-				self.thing = wx.MultiChoiceDialog(None, text, title, choices, wx.CHOICEDLG_STYLE)
+				self.thing = wx.MultiChoiceDialog(None, text, title, formattedChoices, wx.CHOICEDLG_STYLE)
 
 			if (default != None):
 				if (single):
@@ -17953,11 +18115,15 @@ class handle_Dialog(handle_Base):
 							default = default[0]
 
 					if (isinstance(default, str)):
-						if (default not in choices):
+						if (default in choices):
+							default = choices.index(default)
+						
+						elif (default in formattedChoices):
+							default = formattedChoices.index(default)
+						
+						else:
 							warnings.warn(f"{self.default} not in 'choices' {choices} for {self.__repr__()}", Warning, stacklevel = 2)
 							default = 0
-						else:
-							default = choices.index(default)
 
 					self.thing.SetSelection(default)
 				else:
@@ -17966,12 +18132,16 @@ class handle_Dialog(handle_Base):
 
 					defaultList = []
 					for i in range(len(default)):
-						if (isinstance(default[i], str)):
-							if (default[i] not in choices):
+						if (not isinstance(default[i], int)):
+							if (default[i] in choices):
+								default[i] = choices.index(default[i])
+
+							if (default[i] in formattedChoices):
+								default[i] = formattedChoices.index(default[i])
+
+							else:
 								warnings.warn(f"{default[i]} not in 'choices' {choices} for {self.__repr__()}", Warning, stacklevel = 2)
 								default[i] = 0
-							else:
-								default[i] = choices.index(default[i])
 
 					self.thing.SetSelections(default)
 
@@ -18073,8 +18243,8 @@ class handle_Dialog(handle_Base):
 			else:
 				self.thing = wx.lib.agw.cubecolourdialog.CubeColourDialog(None)
 
-		def _build_print():
-			"""Builds a wx print dialog object."""
+		def _build_pageSetup():
+			"""Builds a wx page setup dialog object."""
 			nonlocal self, argument_catalogue
 
 			#Configure settings
@@ -18084,44 +18254,66 @@ class handle_Dialog(handle_Base):
 					dialogData = printData
 				else:
 					dialogData = self._encodePrintSettings(printData)
-					printData = wx.PrintData()
 			else:
 				pageNumbers, helpButton, printToFile, selection = self._getArguments(argument_catalogue, ["pageNumbers", "helpButton", "printToFile", "selection"])
 				pageFrom, pageTo, pageMin, pageMax, collate, copies = self._getArguments(argument_catalogue, ["pageFrom", "pageTo", "pageMin", "pageMax", "collate", "copies"])
 
-				dialogData = wx.PrintDialogData()
-				dialogData.EnablePageNumbers(pageNumbers)
+
+				printData = wx.PrintData()
+
+				_encodePrintSettings
+
+
+				dialogData = wx.PageSetupDialogData(printData)
 				dialogData.EnableHelp(helpButton)
 
-				if (printToFile != None):
-					dialogData.EnablePrintToFile(True)
-					dialogData.SetPrintToFile(printToFile)
-				else:
-					dialogData.EnablePrintToFile(False)
+				dialogData.EnableHelp(helpButton)
+				dialogData.EnableMargins(helpButton)
+				dialogData.EnableOrientation(helpButton)
+				dialogData.EnablePaper(helpButton)
+				dialogData.EnablePrinter(helpButton)
 
-				if (selection != None):
-					dialogData.EnableSelection(True)
-					dialogData.SetSelection(selection)
-				else:
-					dialogData.EnableSelection(True)
+				
 
-				if (pageFrom != None):
-					dialogData.SetFromPage(pageFrom)
-		
-				if (pageTo != None):
-					dialogData.SetToPage(pageTo)
+
+
+				data = {"collate": collate, "copies": copies, "marginMinimum": marginMinimum, "marginLeft": marginLeft, 
+					"marginTop": marginTop, "marginRight": marginRight, "marginBottom": marginBottom, "marginLeftMinimum": marginLeftMinimum, 
+					"marginTopMinimum": marginTopMinimum, "marginRightMinimum": marginRightMinimum, "marginBottomMinimum": marginBottomMinimum}
+
 				
-				if (pageMin != None):
-					dialogData.SetMinPage(pageMin)
-		
-				if (pageMax != None):
-					dialogData.SetMaxPage(pageMax)
+
+
+
+
+
 				
-				if (collate != None):
-					dialogData.SetCollate(collate)
-				
-				if (copies != None):
-					dialogData.SetNoCopies(copies)
+			self.thing = wx.PrintDialog(None, dialogData)
+
+			#Set Defaults
+			self.title = "GUI_Maker Page"
+			self.content = None
+
+		def _build_print():
+			"""Builds a wx print dialog object."""
+			nonlocal self, argument_catalogue
+
+			#Configure settings
+			printData, pageNumbers, helpButton = self._getArguments(argument_catalogue, ["printData", "pageNumbers", "helpButton"])
+
+			printToFile, selection, collate, copies = self._getArguments(argument_catalogue, ["printToFile", "selection", "collate", "copies"])
+			pageFrom, pageTo, pageMin, pageMax = self._getArguments(argument_catalogue, ["pageFrom", "pageTo", "pageMin", "pageMax"])
+			overrideData = {"collate": collate, "copies": copies, "from": pageFrom, "to": pageTo, 
+				"min": pageMin, "max": pageMax, "printToFile": printToFile, "selected": selection}
+			
+			if (printData == None):
+				printData = overrideData
+			dialogData = self._encodePrintSettings(printData, override = overrideData)
+			
+			dialogData.EnableHelp(helpButton)
+			dialogData.EnablePageNumbers(pageNumbers)
+			dialogData.EnableSelection(dialogData.GetSelection())
+			dialogData.EnablePrintToFile(dialogData.GetPrintToFile())
 				
 			self.thing = wx.PrintDialog(None, dialogData)
 
@@ -18130,7 +18322,7 @@ class handle_Dialog(handle_Base):
 			self.content = None
 
 		def _build_printPreview():
-			"""Builds a wx print dialog object."""
+			"""Builds a wx print preview dialog object."""
 			nonlocal self, argument_catalogue
 
 			self.thing = -1
@@ -18210,8 +18402,7 @@ class handle_Dialog(handle_Base):
 			warnings.warn(f"The {self.type} dialogue box {self.__repr__()} has already been shown", Warning, stacklevel = 2)
 			return
 
-		myThread = threading.current_thread()
-		if (myThread != threading.main_thread()):
+		if (not wx.IsMainThread()):
 			if (self.type.lower() == "busy"):
 				self.inMainThread = False
 			else:
@@ -18255,9 +18446,15 @@ class handle_Dialog(handle_Base):
 			self.hide()
 
 		elif (self.type.lower() == "busy"):
-			# if (self.blockAll):
-			# 	self.windowDisabler = wx.WindowDisabler()
+			#Hiding a sub-busy window in a thread can cause the parent busy window to go behind everything 
+			#if the top window is not the parent during creation
+			if ((not self.inMainThread) and (isinstance(self.parent, handle_Dialog))):
+				oldTopLevel = wx.GetApp().GetTopWindow()
+				wx.GetApp().SetTopWindow(self.parent.thing)
+			else:
+				oldTopLevel = None
 
+			#Create the dialog now
 			if (self.subType.lower() == "simple"):
 				self.thing = wx.BusyInfo(*self.buildArgs, **self.buildKwargs)
 			else:
@@ -18265,6 +18462,10 @@ class handle_Dialog(handle_Base):
 
 				if (self.startPulse):
 					self.setValue()
+
+			#Put the top window back after creation
+			if (oldTopLevel != None):
+				wx.GetApp().SetTopWindow(oldTopLevel)
 
 		elif (self.type.lower() == "file"):
 			self.answer = self.thing.ShowModal()
@@ -18288,6 +18489,7 @@ class handle_Dialog(handle_Base):
 		"""Hides the dialog box for this handle."""
 
 		if (self.type.lower() == "busy"):
+
 			if (self.subType.lower() == "simple"):
 				del self.thing
 			else:
@@ -18297,6 +18499,7 @@ class handle_Dialog(handle_Base):
 					self.setValue(maximum)
 
 				self.threadSafe(self.thing.Destroy)
+
 			self.thing = None
 			# if (self.blockAll):
 			# 	self.windowDisabler = None
@@ -18555,7 +18758,7 @@ class handle_Dialog(handle_Base):
 			return ""
 		return str(text)
 
-	def setValue(self, value = None, text = "", event = None):
+	def setValue(self, value = None, text = "", oneShot = False, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
 		if (self.type.lower() == "print"):
@@ -18573,6 +18776,9 @@ class handle_Dialog(handle_Base):
 					self.answer = self.threadSafe(self.thing.Pulse, text)
 				else:
 					self.answer = self.threadSafe(self.thing.Update, value, text)
+
+				if (oneShot):
+					self.oneShot = text
 		else:
 			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 	
@@ -18583,6 +18789,7 @@ class handle_Dialog(handle_Base):
 			if (self.subType.lower() == "progress"):
 				text = self._formatText(text)
 
+				#Setting the value to zero causes the window to disappear
 				if (self.progress == None):
 					self.answer = self.threadSafe(self.thing.Pulse, text)
 				else:
@@ -18645,20 +18852,36 @@ class handle_Dialog(handle_Base):
 			self.print(self.content, printData = self.data[None], title = self.title, raw = raw, popup = False)
 
 		elif (self.type.lower() == "printpreview"):
-			handle = handle_Window(self.myWindow.controller)
-			handle.type = "Preview"
+			printout = _MyPrintout(self, document = self.content, title = self.title, raw = raw)
 
-			argument_catalogue = self._arrangeArguments(self.controller, Controller.addWindow)
-			argument_catalogue["printout"] = _MyPrintout(self, document = self.content, title = self.title, raw = raw)
-			argument_catalogue["enablePrint"] = True
-			handle._build(argument_catalogue)
-			handle.thing.dialog = self
-			handle.thing.preview.printData = self.printData
-			handle.thing.preview.printerSetup = self.printerSetup
+			enablePrint = True
+			if (enablePrint):
+				preview = _MyPrintPreview(self, printout, printout.clone(), printData = self.printData, printerSetup = self.printerSetup)
+			else:
+				preview = _MyPrintPreview(self, printout, printData = self.printData, printerSetup = self.printerSetup)
 
-			handle.setWindowSize(self.size)
-			handle.setWindowPosition(self.position)
-			handle.showWindow()
+			if ("__WXMAC__" in wx.PlatformInfo):
+				preview.SetZoom(50)
+			else:
+				preview.SetZoom(35)
+
+			if (not preview.IsOk()):
+				warnings.warn(f"'printout' {printout.__repr__()} was not created correctly for {self.__repr__()}", Warning, stacklevel = 2)
+				self.thing = None
+				return
+
+			previewFrame = _MyPreviewFrame(self, preview, None, title = "Print Preview", 
+				pos = self.position or wx.DefaultPosition, size = self.size or wx.DefaultSize)
+
+			image = self._getImage("print", internal = True)
+			previewFrame.SetIcon(wx.Icon(image))
+			previewFrame.Initialize()
+
+
+			# self.runMyFunction(self.preShowFunction, self.preShowFunctionArgs, self.preShowFunctionKwargs, includeEvent = True)
+			previewFrame.Show()
+
+			# self.runMyFunction(self.postShowFunction, self.postShowFunctionArgs, self.postShowFunctionKwargs, includeEvent = True)
 
 		else:
 			warnings.warn(f"Add {self.type} to send() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -18803,11 +19026,9 @@ class _MyPrinter(wx.Printer):
 
 	def __init__(self, parent, data = None):
 		self.parent = parent
-		if (not isinstance(data, dict)):
-			wx.Printout.__init__(self, data)
-		else:
-			dialogData = self.parent._encodePrintSettings(data)
-			wx.Printout.__init__(self, dialogData)
+		
+		dialogData = self.parent._encodePrintSettings(data)
+		wx.Printout.__init__(self, dialogData)
 
 	def Print(self, window, printout, prompt = True):
 		"""Prints the printout given to it.
@@ -18832,29 +19053,31 @@ class _MyPrinter(wx.Printer):
 
 class _MyPrintPreview(wx.PrintPreview):
 	def __init__(self, parent, *args, printData = None, printerSetup = True, **kwargs):
-		super().__init__(*args, **kwargs)
 
 		self.parent = parent
 		self.printerSetup = printerSetup
 		self.printData = printData
+
+		printData = self.parent._encodePrintSettings(printData)
+		super().__init__(*args, data = printData, **kwargs)
 
 	def Print(self, printerSetup):
 		self.parent.print(self.GetPrintoutForPrinting(), printData = self.printData, popup = self.printerSetup)
 		return True
 
 class _MyPreviewFrame(wx.PreviewFrame):
-	def __init__(self, parent, preview, *args, **kwargs):
-		super().__init__(preview, *args, **kwargs)
+	def __init__(self, parent, preview, stepParent, *args, **kwargs):
+		super().__init__(preview, stepParent, *args, **kwargs)
 
-		self.dailog = None
 		self.parent = parent
 		self.preview = preview
+		self.stepParent = stepParent
 
 		self.Bind(wx.EVT_CLOSE, self.OnClose)
 
 	def OnClose(self, event):
-		if (self.dialog != None):
-			self.dialog.hide()
+		if (self.parent != None):
+			self.parent.hide()
 		event.Skip()
 
 class _MyPrintout(wx.Printout):
@@ -18871,6 +19094,7 @@ class _MyPrintout(wx.Printout):
 
 		#Ensure this runs first
 		self.OnPreparePrinting()
+		# print("@4", self.GetSize())
 
 	def SetRaw(self, state):
 		self.raw = state
@@ -19250,34 +19474,35 @@ class handle_Window(handle_Container_Base):
 					# self.thing.SetAutoLayout(True)
 					# rootSizer.thing.Fit(self.thing)
 
-		def _build_preview():
-			"""Builds a wx preview frame object."""
-			nonlocal self, argument_catalogue
+		# def _build_preview():
+		# 	"""Builds a wx preview frame object."""
+		# 	nonlocal self, argument_catalogue
 
-			printout, enablePrint = self._getArguments(argument_catalogue, ["printout", "enablePrint"])
+		# 	printout, enablePrint = self._getArguments(argument_catalogue, ["printout", "enablePrint"])
 
-			if (enablePrint):
-				preview = _MyPrintPreview(self, printout, printout.clone())
-			else:
-				preview = _MyPrintPreview(self, printout)
+		# 	if (enablePrint):
+		# 		preview = _MyPrintPreview(self, printout, printout.clone())
+		# 	else:
+		# 		preview = _MyPrintPreview(self, printout)
 
-			#Pre Settings
-			if ("__WXMAC__" in wx.PlatformInfo):
-				preview.SetZoom(50)
-			else:
-				preview.SetZoom(35)
+		# 	#Pre Settings
+		# 	if ("__WXMAC__" in wx.PlatformInfo):
+		# 		preview.SetZoom(50)
+		# 	else:
+		# 		preview.SetZoom(35)
 
-			if (not preview.IsOk()):
-				warnings.warn(f"'printout' {printout.__repr__()} was not created correctly for {self.__repr__()}", Warning, stacklevel = 2)
-				self.thing = None
-				return
+		# 	if (not preview.IsOk()):
+		# 		warnings.warn(f"'printout' {printout.__repr__()} was not created correctly for {self.__repr__()}", Warning, stacklevel = 2)
+		# 		self.thing = None
+		# 		return
 
-			self.thing = _MyPreviewFrame(self, preview, None, "Print Preview")
+		# 	self.thing = _MyPreviewFrame(self, preview, None, "Print Preview")
 
-			#Post Settings
-			image = self._getImage("print", internal = True)
-			self.thing.SetIcon(wx.Icon(image))
-			self.thing.Initialize()
+		# 	#Post Settings
+		# 	image = self._getImage("print", internal = True)
+		# 	self.thing.SetIcon(wx.Icon(image))
+
+		# 	self.thing.Initialize()
 
 		#########################################################
 
@@ -19287,8 +19512,8 @@ class handle_Window(handle_Container_Base):
 			_build_frame()
 		elif (self.type.lower() == "dialog"):
 			_build_dialog()
-		elif (self.type.lower() == "preview"):
-			_build_preview()
+		# elif (self.type.lower() == "preview"):
+		# 	_build_preview()
 		else:
 			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -23042,10 +23267,9 @@ class Controller(Utilities, CommonEventFunctions):
 	#Background Threads
 	def start_listenStatusText(self):
 		"""Starts listening to listenStatusText()."""
-		print("@start_listenStatusText")
 
 		self.stop_listenStatusText()
-		# self.listen(self.listenStatusText, delay = 100 / 1000, errorFunction = self.listenStatusText_handleError)
+		self.listen(self.listenStatusText, delay = 100 / 1000, errorFunction = self.listenStatusText_handleError)
 
 	def stop_listenStatusText(self):
 		"""Stops listening to listenStatusText()."""
@@ -23839,6 +24063,18 @@ class User_Utilities():
 			
 		if (traceback != None):
 			return False
+
+	def keys(self, *args, **kwargs):
+		dataCatalogue = self._getDataCatalogue()
+		return dataCatalogue.keys(*args, **kwargs)
+
+	def values(self, *args, **kwargs):
+		dataCatalogue = self._getDataCatalogue()
+		return dataCatalogue.values(*args, **kwargs)
+
+	def items(self, *args, **kwargs):
+		dataCatalogue = self._getDataCatalogue()
+		return dataCatalogue.items(*args, **kwargs)
 
 	def _getDataCatalogue(self):
 		"""Returns the data catalogue used to select items from this thing."""
