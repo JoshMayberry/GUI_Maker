@@ -45,6 +45,7 @@ import wx.lib.buttons
 import wx.lib.dialogs
 import wx.lib.agw.aui
 # import wx.lib.newevent
+import wx.lib.wordwrap
 import wx.lib.splitter
 import wx.lib.agw.floatspin
 import wx.lib.scrolledpanel
@@ -63,7 +64,7 @@ import forks.objectlistview.ObjectListView as ObjectListView #Use my own fork
 
 
 #Import modules needed to print RAW
-import win32print
+# import win32print
 
 
 #Import multi-threading to run functions as background processes
@@ -2166,7 +2167,7 @@ class Utilities():
 
 		return fixedFlags, position, border
 
-	def _getImage(self, imagePath, internal = False, alpha = False, scale = None, returnIcon = False):
+	def _getImage(self, imagePath, internal = False, alpha = False, scale = None, returnIcon = False, rotate = None):
 		"""Returns the image as specified by the user.
 
 		imagePath (str) - Where the image is on the computer. Can be a PIL image. If None, it will be a blank image
@@ -2225,10 +2226,13 @@ class Utilities():
 		internal (bool) - If True: 'imagePath' is the name of an icon as a string.
 		alpha (bool)    - If True: The image will preserve any alpha chanels
 
-		Example Input: _getImage("example.bmp", 0)
-		Example Input: _getImage(image, 0)
-		Example Input: _getImage("error", 0, internal = True)
-		Example Input: _getImage("example.bmp", 0, alpha = True)
+		Example Input: _getImage("example.bmp")
+		Example Input: _getImage(image)
+		Example Input: _getImage("error", internal = True)
+		Example Input: _getImage("example.bmp", alpha = True)
+		Example Input: _getImage(image, scale = 1.5)
+		Example Input: _getImage(image, scale = (32, 32))
+		Example Input: _getImage(image, rotate = 90)
 		"""
 
 		if ((imagePath != None) and (imagePath != "")):
@@ -2408,17 +2412,29 @@ class Utilities():
 		else:
 			image = wx.NullBitmap
 
-		if (scale != None):
-			if (not isinstance(scale, (list, tuple))):
-				scale = [scale, scale]
-
-			if (isinstance(scale[0], float)):
-				scale[0] = math.ceil(image.GetWidth() * scale[0])
-			if (isinstance(scale[1], float)):
-				scale[1] = math.ceil(image.GetHeight() * scale[1])
-
+		if ((scale != None) or (rotate != None)):
 			image = image.ConvertToImage()
-			image = image.Scale(*scale)
+
+			if (scale != None):
+				if (not isinstance(scale, (list, tuple))):
+					scale = [scale, scale]
+
+				if (isinstance(scale[0], float)):
+					scale[0] = math.ceil(image.GetWidth() * scale[0])
+				if (isinstance(scale[1], float)):
+					scale[1] = math.ceil(image.GetHeight() * scale[1])
+				image = image.Scale(*scale)
+
+			if (rotate != None):
+				image.SetMaskColour(255, 255, 255)
+				if (isinstance(rotate, (list, tuple))):
+					rotate = rotate[0]
+					center = rotate[1]
+				else:
+					center = (image.GetWidth() / 2, image.GetHeight() / 2)
+
+				image = image.Rotate(math.radians(rotate), center)
+
 			image = wx.Bitmap(image)
 
 		if (returnIcon):
@@ -4784,7 +4800,7 @@ class Utilities():
 	def makeDialogBusy(self, text = "", simple = True, title = "Busy", initial = 0, stayOnTop = True,
 		maximum = 100, blockAll = True, autoHide = True, can_abort = False, can_skip = False, 
 		smooth = False, elapsedTime = True, estimatedTime = True, remainingTime = True,
-		cursor = True, freeze = True,
+		cursor = False, freeze = False,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
 		label = None, parent = None, handle = None, myId = None):
@@ -4963,8 +4979,10 @@ class Utilities():
 		handle._build(locals())
 		return handle
 
-	def makeDialogPrintSetup(self, pageNumbers = True, helpButton = False, printToFile = None, selection = None, 
-		pageFrom = None, pageTo = None, pageMin = None, pageMax = None, collate = None, copies = None, printData = None,
+	def makeDialogPrintSetup(self, printData = None, printOverride = {}, helpButton = False, 
+		marginMinimum = None, marginLeft = None, marginTop = None, marginRight = None, marginBottom = None, 
+		editMargins = True, editOrientation = True, editPaper = True, editPrinter = True, 
+		marginLeftMinimum = None, marginTopMinimum = None, marginRightMinimum = None, marginBottomMinimum = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
 		label = None, parent = None, handle = None, myId = None):
@@ -5006,8 +5024,9 @@ class Utilities():
 		handle._build(locals())
 		return handle
 
-	def makeDialogPrint(self, pageNumbers = True, helpButton = False, printToFile = None, selection = None, 
-		pageFrom = None, pageTo = None, pageMin = None, pageMax = None, collate = None, copies = None, printData = None,
+	def makeDialogPrint(self, pageNumbers = True, helpButton = False, printToFile = None, 
+		selection = None, pageFrom = None, pageTo = None, pageMin = None, pageMax = None, 
+		collate = None, copies = None, printData = None, printOverride = {}, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
 		label = None, parent = None, handle = None, myId = None):
@@ -5050,7 +5069,8 @@ class Utilities():
 		handle._build(locals())
 		return handle
 
-	def makeDialogPrintPreview(self, printData = None, printerSetup = True,
+	def makeDialogPrintPreview(self, printData = None, printerSetup = True, printOverride = {},
+		size = None, position = None, content = None,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
 		label = None, parent = None, handle = None, myId = None):
@@ -6254,13 +6274,11 @@ class handle_Base(Utilities, CommonEventFunctions):
 		errorMessage = f"Could not find sizer item index in remove() for {self.__repr__()}"
 		raise SyntaxError(errorMessage)
 
-	def _decodePrintSettings(self, dialogData, setupData = False):
+	def _decodePrintSettings(self, dialogData):
 		"""Turns a wxPrintDialogData object into a dictionary."""
 
 		printData = dialogData.GetPrintData()
-		data = {"collate": dialogData.GetCollate(),
-			"copies": dialogData.GetNoCopies(),
-			"bin": _MyPrinter.catalogue_printBin[printData.GetBin()],
+		data = {"bin": _MyPrinter.catalogue_printBin[printData.GetBin()],
 			"color": printData.GetColour(),
 			"duplex": _MyPrinter.catalogue_duplex[printData.GetDuplex()],
 			"file": printData.GetFilename(),
@@ -6271,7 +6289,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 			"printerName": printData.GetPrinterName(),
 			"quality": _MyPrinter.catalogue_quality.get(printData.GetQuality(), printData.GetQuality())}
 
-		if (setupData):
+		if (isinstance(dialogData, wx.PageSetupDialogData)):
 			data[None] = wx.PageSetupDialogData(dialogData)
 			data["marginMinimum"] = dialogData.GetDefaultMinMargins()
 			data["marginLeft"], data["marginTop"] = dialogData.GetMarginTopLeft()
@@ -6280,6 +6298,8 @@ class handle_Base(Utilities, CommonEventFunctions):
 			data["marginRightMinimum"], data["marginBottomMinimum"] = dialogData.GetMinMarginBottomRight()
 		else:
 			data[None] = wx.PrintDialogData(dialogData)
+			data["collate"] = dialogData.GetCollate()
+			data["copies"] = dialogData.GetNoCopies()
 			data["printAll"] = dialogData.GetAllPages()
 			data["from"] = dialogData.GetFromPage()
 			data["to"] = dialogData.GetToPage()
@@ -6294,73 +6314,97 @@ class handle_Base(Utilities, CommonEventFunctions):
 		"""Turns a dictionary into a wxPrintDialogData object."""
 
 		if (data == None):
-			return
-		elif (isinstance(data, wx.PrintData)):
-			return wx.PrintDialogData(data)
-		elif (isinstance(data, wx.PrintDialogData) and (not setupData)):
-			return data
-		elif (isinstance(data, wx.PageSetupDialogData) and (setupData)):
-			return data
+			if (not override):
+				return
+			data = override
+		elif ((not override) or (all(value == None for value in override.values()))):
+			if (isinstance(data, wx.PrintData)):
+				return wx.PrintDialogData(data)
+			elif (isinstance(data, wx.PrintDialogData) and (not setupData)):
+				return data
+			elif (isinstance(data, wx.PageSetupDialogData) and (setupData)):
+				return data
 
-		def apply(variable, function, catalogue = None, default = None):
+		isDict = isinstance(data, dict)
+		def getValue(variable, getter, default = None):
+			nonlocal override, isDict
+
 			if (isinstance(variable, tuple)):
-				value = tuple(data.get(item, default) for item in variable)
-			else:
-				value = data.get(variable, default)
+				if (all((key not in override) or (override[key] == None) for key in variable)):
+					return tuple(data.get(key, default) for key in variable)
+				
+				value = []
+				for i, key in enumerate(variable.keys()):
+					if ((key in override) and (override[key] != None)):
+						value.append(override[key])
+					elif (isDict):
+						value.append(data.get(key, default))
+					else:
+						value.append(getter()[i])
+				return tuple(value)
+
+			elif ((variable in override) and (override[variable] != None)):
+				return override[variable]
+			elif (isDict):
+				return data.get(variable, default)
+			return getter()
+
+		def apply(variable, setter, getter, catalogue = None, default = None):
+			value = getValue(variable, getter, default)
 
 			if (value != None):
 				if (not catalogue):
-					return function(value)
+					return setter(value)
 				elif (value in catalogue.values()):
-					return function(next(_key for _key, _value in catalogue.items() if (_value == value)))
-				return function(value)
+					return setter(next(_key for _key, _value in catalogue.items() if (_value == value)))
+				return setter(value)
 
 		##################################################
 		
 		if (isinstance(data, (wx.PrintDialogData, wx.PageSetupDialogData))):
 			printData = data.GetPrintData()
+		elif (isinstance(data, wx.PrintData)):
+			printData = data
 		else:
 			printData = wx.PrintData()
-			apply("color", printData.SetColour)
-			apply("file", printData.SetFilename)
-			apply("paperSize", printData.SetPaperSize)
-			apply("printerName", printData.SetPrinterName)
-			apply("bin", printData.SetBin, _MyPrinter.catalogue_printBin)
-			apply("duplex", printData.SetDuplex, _MyPrinter.catalogue_duplex)
-			apply("quality", printData.SetQuality, _MyPrinter.catalogue_quality)
-			apply("paperId", printData.SetPaperId, _MyPrinter.catalogue_paperId)
-			apply("printMode", printData.SetPrintMode, _MyPrinter.catalogue_printMode)
-			apply("vertical", printData.SetOrientation, _MyPrinter.catalogue_orientation)
+
+		apply("color", printData.SetColour, printData.GetColour)
+		apply("file", printData.SetFilename, printData.GetFilename)
+		apply("paperSize", printData.SetPaperSize, printData.GetPaperSize)
+		apply("printerName", printData.SetPrinterName, printData.GetPrinterName)
+		apply("bin", printData.SetBin, printData.GetBin, _MyPrinter.catalogue_printBin)
+		apply("duplex", printData.SetDuplex, printData.GetDuplex, _MyPrinter.catalogue_duplex)
+		apply("quality", printData.SetQuality, printData.GetQuality, _MyPrinter.catalogue_quality)
+		apply("paperId", printData.SetPaperId, printData.GetPaperId, _MyPrinter.catalogue_paperId)
+		apply("printMode", printData.SetPrintMode, printData.GetPrintMode, _MyPrinter.catalogue_printMode)
+		apply("vertical", printData.SetOrientation, printData.GetOrientation, _MyPrinter.catalogue_orientation)
 
 		if (setupData):
 			dialogData = wx.PageSetupDialogData(printData)
-			apply("collate", dialogData.SetCollate)
-			apply("copies", dialogData.SetNoCopies)
-			
-			apply("marginMinimum", dialogData.SetDefaultMinMargins)
-			apply(("marginLeft", "marginTop"), dialogData.SetMarginTopLeft, default = 0)
-			apply(("marginRight", "marginBottom"), dialogData.SetMarginBottomRight, default = 0)
-			apply(("marginLeftMinimum", "marginTopMinimum"), dialogData.SetMinMarginTopLeft, default = 0)
-			apply(("marginRightMinimum", "marginBottomMinimum"), dialogData.SetMinMarginBottomRight, default = 0)
+			apply("marginMinimum", dialogData.SetDefaultMinMargins, dialogData.GetDefaultMinMargins)
+			apply(("marginLeft", "marginTop"), dialogData.SetMarginTopLeft, dialogData.GetMarginTopLeft, default = 0)
+			apply(("marginRight", "marginBottom"), dialogData.SetMarginBottomRight, dialogData.GetMarginBottomRight, default = 0)
+			apply(("marginLeftMinimum", "marginTopMinimum"), dialogData.SetMinMarginTopLeft, dialogData.GetMinMarginTopLeft, default = 0)
+			apply(("marginRightMinimum", "marginBottomMinimum"), dialogData.SetMinMarginBottomRight, dialogData.GetMinMarginBottomRight, default = 0)
 		else:
 			dialogData = wx.PrintDialogData(printData)
-			apply("collate", dialogData.SetCollate)
-			apply("min", dialogData.SetMinPage)
-			apply("max", dialogData.SetMaxPage)
-			apply("copies", dialogData.SetNoCopies)
-			apply("printToFile", dialogData.SetPrintToFile)
-			apply("selected", dialogData.SetSelection)
+			apply("collate", dialogData.SetCollate, dialogData.GetCollate)
+			apply("min", dialogData.SetMinPage, dialogData.GetMinPage)
+			apply("max", dialogData.SetMaxPage, dialogData.GetMaxPage)
+			apply("copies", dialogData.SetNoCopies, dialogData.GetNoCopies)
+			apply("printToFile", dialogData.SetPrintToFile, dialogData.GetPrintToFile)
+			apply("selected", dialogData.SetSelection, dialogData.GetSelection)
 
 			if (data.get("printAll", None)):
 				dialogData.SetFromPage(dialogData.GetMinPage())
 				dialogData.SetToPage(dialogData.GetMaxPage())
 			else:
-				apply("from", dialogData.SetFromPage)
-				apply("to", dialogData.SetToPage)
+				apply("from", dialogData.SetFromPage, dialogData.GetFromPage)
+				apply("to", dialogData.SetToPage, dialogData.GetToPage)
 
 		return dialogData
 
-	def print(self, document = None, printData = None, title = "Document", raw = False, popup = False):
+	def print(self, document = None, printData = None, title = "Document", raw = False, override = {}, popup = False):
 		"""Does all the heavy lifting for printing a document.
 
 		raw (bool) - Determines how the data is sent to the printer
@@ -6382,7 +6426,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 		if (isinstance(printData, _MyPrinter)):
 			myPrinter = printData
 		else:
-			myPrinter = _MyPrinter(self, data = printData)
+			myPrinter = _MyPrinter(self, data = printData, override = override)
 
 		try:
 			if (not myPrinter.Print(None, myPrintout, popup)):
@@ -12486,7 +12530,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 
 		#Defaults
 		self.paint_count = 0
-		self.drawQueue = [] #What will be drawn on the window. Items are drawn from left to right in their list order. [function, args, kwargs]
+		self.drawQueue = [] #What will be drawn on the window. Items are drawn from left to right in their list order. [function, args, kwargs, includeDC]
 		self.drawQueue_saved = {}
 		self.boundingBox = (0, 0, 0, 0)
 
@@ -12499,12 +12543,12 @@ class handle_WidgetCanvas(handle_Widget_Base):
 
 			panel, metric, initFunction, buildSelf = self._getArguments(argument_catalogue, ["panel", "metric", "initFunction", "self"])
 
+			self.metric = metric
 			#Create the thing
 			if (panel != None):
 				self.myPanel = self._makePanel(parent = buildSelf.parent, **panel)
 				self._finalNest(self.myPanel)
 				self.thing = self.myPanel.thing
-				self.metric = metric
 
 				#Bind Functions
 				if (initFunction != None):
@@ -12601,7 +12645,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		"""Returns an image with the canvas on it."""
 
 		width, height = self.getSize()
-		bitmap = wx.EmptyBitmap(width, height)
+		bitmap = wx.Bitmap(width, height)
 
 		dc = wx.MemoryDC()
 		dc.SelectObject(bitmap)
@@ -12628,7 +12672,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		height = rectangle[3] - rectangle[1] if (rectangle[3] - rectangle[1] > 0) else 1
 		return width, height
 
-	def _queue(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+	def _queue(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, includeDC = False):
 		"""Queues a drawing function for the canvas.
 
 		Example Input: _queue(drawRectangle, [5, 5, 25, 25])
@@ -12636,7 +12680,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 
 		#Do not queue empty functions
 		if (myFunction != None):
-			self.drawQueue.append([myFunction, myFunctionArgs, myFunctionKwargs])
+			self.drawQueue.append([myFunction, myFunctionArgs, myFunctionKwargs, includeDC])
 
 	def saveQueue(self, label = None):
 		"""Remembers what the queue looks like so far.
@@ -12725,12 +12769,16 @@ class handle_WidgetCanvas(handle_Widget_Base):
 				dc.SetMapMode(wx.MM_TEXT)
 
 		#Draw items in queue
-		for myFunction, myFunctionArgs, myFunctionKwargs in self.drawQueue:
+		for myFunction, myFunctionArgs, myFunctionKwargs, includeDC in self.drawQueue:
 			if (isinstance(myFunction, str)):
 				myFunctionEvaluated = eval(myFunction, {'__builtins__': None}, {"self": self, "dc": dc})
 			else:
 				myFunctionEvaluated = myFunction
-			self.runMyFunction(myFunctionEvaluated, myFunctionArgs, myFunctionKwargs)
+
+			if (includeDC):
+				self.runMyFunction(myFunctionEvaluated, [dc] + (myFunctionArgs or []), myFunctionKwargs)
+			else:
+				self.runMyFunction(myFunctionEvaluated, myFunctionArgs, myFunctionKwargs)
 
 	#Drawing Functions
 	def _getPen(self, color, width = 1):
@@ -13047,13 +13095,33 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		if (x != None):
 			#Move the origin
 			if (y != None):
-				self.thing.SetDeviceOrigin(x, y)
+				self._queue("self.thing.SetDeviceOrigin", [x, y])
 			else:
-				self.thing.SetDeviceOrigin(x, x)
+				self._queue("self.thing.SetDeviceOrigin", [x, x])
+
+	def drawRotate(self, angle = 0, center = (0, 0)):
+		"""Rotates what is drawn by the given angle about the given point.
+
+		angle (int) - How far to rotate in degrees
+
+		Example: drawRotate(90)
+		"""
+
+		def rotateFunction(dc):
+			nonlocal self, angle, center
+
+			image = self.getImage()
+			image.Rotate(angle, center)
+			tempDC = wx.MemoryDC(image.ConvertToBitmap())
+			boundingBox = tempDC.GetBoundingBox()
+
+			dc.Clear()
+			dc.Blit(0, 0, boundingBox[2], boundingBox[3], tempDC, boundingBox[0], boundingBox[1])
+
+		self._queue(rotateFunction, includeDC = True)
 			
-	def drawImage(self, imagePath, x = None, y = None, scale = None, internal = False, alpha = False):
+	def drawImage(self, imagePath, x = None, y = None, scale = None, internal = False, alpha = False, rotate = None):
 		"""Draws an image on the canvas.
-		
 
 		imagePath (str) - The pathway to the image
 		x (int)         - The x-coordinate of the image on the canvas
@@ -13074,7 +13142,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		#Skip blank images
 		if (imagePath != None):
 			#Get correct image
-			image = self._getImage(imagePath, internal, alpha = alpha, scale = scale)
+			image = self._getImage(imagePath, internal, alpha = alpha, scale = scale, rotate = rotate)
 
 			if (x == None):
 				x = 0
@@ -13093,9 +13161,11 @@ class handle_WidgetCanvas(handle_Widget_Base):
 			#Draw the image
 			self._queue("dc.DrawBitmap", [image, x, y, alpha])
 
-	def drawText(self, text, x = 0, y = 0, size = 12, angle = None, color = (0, 0, 0), bold = False, italic = False, family = None):
+	def drawText(self, text, x = 0, y = 0, size = 12, angle = None, x_offset = 0, y_offset = 0,
+		color = (0, 0, 0), bold = False, italic = False, family = None,
+		wrap = None, align = None, x_align = None, y_align = None):
 		"""Draws text on the canvas.
-		### To Do: Add font family, italix, and bold args ###
+		Special thanks to Milan Skala for how to center text on http://wxpython-users.1045709.n5.nabble.com/Draw-text-over-an-existing-bitmap-td5725527.html
 
 		text (str)    - The text that will be drawn on the canvas
 					  - If a list of lists is given: Is a list containing text to draw
@@ -13117,36 +13187,139 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		color (tuple) - (R, G, B) as integers
 					  - If a list of tuples is given and 'text' is a list: Each color will be used for each text in the list 'x' correcponding to that index
 
+		wrap (int)    - How far to draw the text until; it wraps back at 'x'
+			- If rect or tuple: Will use the width of the given rectangle
+			- If None or 0: Will not wrap the text
+
+		align (tuple) - How far from (0, 0) to consider the bottom right corner
+
+		x_align (str) - Where the text should be aligned in the cell
+			~ "left", "right", "center"
+			- If None: No alignment will be done
+			- Note: Must define 'align' to use
+
+		y_align (str) - Where the button should be aligned with respect to the x-axis in the cell
+			~ "top", "bottom", "center"
+			- If None: Will use "center"
+			- Note: Must define 'align' to use
+
 		Example Input: drawText("Lorem Ipsum")
 		Example Input: drawText("Lorem Ipsum", 5, 5)
 		Example Input: drawText("Lorem Ipsum", 5, 5, 10)
 		Example Input: drawText("Lorem Ipsum", 5, 5, 10, 45)
 		Example Input: drawText("Lorem Ipsum", 5, 5, color = (255, 0, 0))
-		Example Input: drawText(["Lorem Ipsum", "Dolor Sit"], 5, 5, color = (255, 0, 0)) #Will draw both on top of each other
-		Example Input: drawText(["Lorem Ipsum", "Dolor Sit"], 5, [5, 10]) #Will draw both in a straight line
-		Example Input: drawText(["Lorem Ipsum", "Dolor Sit"], 5, [5, 10], color = [(255, 0, 0), (0, 255, 0)]) #Will color both differently
-		Example Input: drawText(["Lorem Ipsum", "Dolor Sit"], 5, [5, 10], 18) #Will size both the same
-		Example Input: drawText(["Lorem Ipsum", "Dolor Sit"], 5, [5, 10], [12, 18]) #Will size both differently
-		Example Input: drawText(["Lorem Ipsum", "Dolor Sit"], 5, [5, 10], angle = 45) #Will rotate both to the same angle
-		Example Input: drawText(["Lorem Ipsum", "Dolor Sit"], 5, [5, 10], angle = [45, -45]) #Will rotate both to different angles
-		Example Input: drawText(["Lorem Ipsum", "Dolor Sit"], 5, [5, 10], angle = [45, 0]) #Will rotate only one
-		Example Input: drawText(["Lorem Ipsum", "Dolor Sit"], [5, 10], [5, 10], [12, 18], [45, 0], [(255, 0, 0), (0, 255, 0)])
+
+		Example Input: drawText("Lorem Ipsum", wrap = 10)
+		Example Input: drawText("Lorem Ipsum", wrap = (0, 10, 275, 455))
+		Example Input: drawText("Lorem Ipsum", align = (0, 10, 275, 455), x_align = "center")
+		Example Input: drawText("Lorem Ipsum", align = (0, 10, 275, 455), x_align = "center", angle = 90)
 		"""
 
-		if (not isinstance(text, (list, tuple, range))):
-			text = [text]
-
-		for item in text:
-			font = self._getFont(size = size, bold = bold, italic = italic, color = color, family = family)
-			self._queue("dc.SetFont", font)
-
-			pen = self._getPen(color)
-			self._queue("dc.SetPen", pen)
-
-			if ((angle != None) and (angle != 0)):
-				self._queue("dc.DrawRotatedText", [item, x, y, angle])
+		if ((wrap != None) and (not isinstance(wrap, int))):
+			wrap = wx.Rect(wrap)
+		if (wrap):
+			dc = self._getDC()
+			dc.SetFont(font)
+			if (isinstance(wrap, int)):
+				_text = wx.lib.wordwrap.wordwrap(text, dc.DeviceToLogicalX(wrap), dc)
 			else:
-				self._queue("dc.DrawText", [item, x, y])
+				_text = wx.lib.wordwrap.wordwrap(text, dc.DeviceToLogicalX(wrap[2] - wrap[0]), dc)
+		else:
+			_text = text
+
+		font = self._getFont(size = size, bold = bold, italic = italic, color = color, family = family)
+		self._queue("dc.SetFont", font)
+
+		pen = self._getPen(color)
+		self._queue("dc.SetPen", pen)
+
+		if (align != None):
+			align = wx.Rect(align)
+		if (angle in [None, 0]):
+			if (x_align == None):
+				x_align = 0
+			else:
+				x_align = {"l": wx.ALIGN_LEFT, "r": wx.ALIGN_RIGHT, "c": wx.ALIGN_CENTER_HORIZONTAL}[x_align[0].lower()]
+
+			if (y_align == None):
+				y_align = wx.ALIGN_TOP
+			else:
+				y_align = {"t": wx.ALIGN_TOP, "b": wx.ALIGN_BOTTOM, "c": wx.ALIGN_CENTER_VERTICAL}[y_align[0].lower()]
+		else:
+			dc = self._getDC()
+			dc.SetFont(font)
+			width, height = dc.GetTextExtent(_text)
+
+			if (x_align in [None, "l"]):
+				x_align = 0
+				if (angle >= 270):
+					x_offset += height
+				elif (angle >= 180):
+					x_offset += width
+				elif (angle >= 90):
+					x_offset += 0
+				else:
+					x_offset += 0
+
+			elif (x_align == "r"):
+				x_align = align.width - width
+				if (angle >= 270):
+					x_offset += width
+				elif (angle >= 180):
+					x_offset += width
+				elif (angle >= 90):
+					x_offset += width - height
+				else:
+					x_offset += 0
+			else:
+				x_align = (align.width - width) / 2
+				if (angle >= 270):
+					x_offset += width / 2 + height / 2
+				elif (angle >= 180):
+					x_offset += width
+				elif (angle >= 90):
+					x_offset += width / 2 - height / 2
+				else:
+					x_offset += 0
+
+			if (y_align in [None, "t"]):
+				y_align = 0
+				if (angle >= 270):
+					y_offset += 0
+				elif (angle >= 180):
+					y_offset += height
+				elif (angle >= 90):
+					y_offset += width
+				else:
+					y_offset += 0
+
+			elif (y_align == "b"):
+				y_align = align.height - height
+				if (angle >= 270):
+					y_offset += -width + height
+				elif (angle >= 180):
+					y_offset += height
+				elif (angle >= 90):
+					y_offset += height
+				else:
+					y_offset += 0
+			else:
+				y_align = (align.height - height) / 2
+				if (angle >= 270):
+					y_offset += -width / 2 + height / 2
+				elif (angle >= 180):
+					y_offset += height
+				elif (angle >= 90):
+					y_offset += width / 2 + height / 2
+				else:
+					y_offset += 0
+
+		if ((angle != None) and (angle != 0)):
+			self._queue("dc.DrawRotatedText", [_text, x + x_align + x_offset, y + y_align + y_offset, angle])
+		elif (align != None):
+			self._queue("dc.DrawLabel", [_text, (x, y, align[2], align[3]), x_align|y_align])
+		else:
+			self._queue("dc.DrawText", [_text, x + x_offset + y_offset, y])
 
 	def drawPoint(self, x, y, color = (0, 0, 0)):
 		"""Draws a single pixel on the canvas.
@@ -18247,68 +18420,44 @@ class handle_Dialog(handle_Base):
 			"""Builds a wx page setup dialog object."""
 			nonlocal self, argument_catalogue
 
-			#Configure settings
-			printData = self._getArguments(argument_catalogue, ["printData"])
-			if (printData != None):
-				if (not isinstance(printData, dict)):
-					dialogData = printData
-				else:
-					dialogData = self._encodePrintSettings(printData)
-			else:
-				pageNumbers, helpButton, printToFile, selection = self._getArguments(argument_catalogue, ["pageNumbers", "helpButton", "printToFile", "selection"])
-				pageFrom, pageTo, pageMin, pageMax, collate, copies = self._getArguments(argument_catalogue, ["pageFrom", "pageTo", "pageMin", "pageMax", "collate", "copies"])
+			marginMinimum = self._getArguments(argument_catalogue, ["marginMinimum"])
+			printData, helpButton, printOverride = self._getArguments(argument_catalogue, ["printData", "helpButton", "printOverride"])
+			marginLeft, marginTop, marginRight, marginBottom = self._getArguments(argument_catalogue, ["marginLeft", "marginTop", "marginRight", "marginBottom"])
+			editMargins, editOrientation, editPaper, editPrinter = self._getArguments(argument_catalogue, ["editMargins", "editOrientation", "editPaper", "editPrinter"])
+			marginLeftMinimum, marginTopMinimum, marginRightMinimum, marginBottomMinimum = self._getArguments(argument_catalogue, ["marginLeftMinimum", "marginTopMinimum", "marginRightMinimum", "marginBottomMinimum"])
 
+			overrideData = {"marginMinimum": marginMinimum, "marginLeft": marginLeft, 
+				"marginTop": marginTop, "marginRight": marginRight, "marginBottom": marginBottom, "marginLeftMinimum": marginLeftMinimum, 
+				"marginTopMinimum": marginTopMinimum, "marginRightMinimum": marginRightMinimum, "marginBottomMinimum": marginBottomMinimum} 
+			combinedOverride = {key: value for catalogue in (printOverride, overrideData) for key, value in catalogue.items() if (value != None)}
 
-				printData = wx.PrintData()
+			if (printData == None):
+				printData = combinedOverride
+			dialogData = self._encodePrintSettings(printData, setupData = True, override = combinedOverride)
 
-				_encodePrintSettings
+			dialogData.EnableHelp(helpButton)
+			dialogData.EnableMargins(editMargins)
+			dialogData.EnableOrientation(editOrientation)
+			dialogData.EnablePaper(editPaper)
+			dialogData.EnablePrinter(editPrinter)
 
-
-				dialogData = wx.PageSetupDialogData(printData)
-				dialogData.EnableHelp(helpButton)
-
-				dialogData.EnableHelp(helpButton)
-				dialogData.EnableMargins(helpButton)
-				dialogData.EnableOrientation(helpButton)
-				dialogData.EnablePaper(helpButton)
-				dialogData.EnablePrinter(helpButton)
-
-				
-
-
-
-				data = {"collate": collate, "copies": copies, "marginMinimum": marginMinimum, "marginLeft": marginLeft, 
-					"marginTop": marginTop, "marginRight": marginRight, "marginBottom": marginBottom, "marginLeftMinimum": marginLeftMinimum, 
-					"marginTopMinimum": marginTopMinimum, "marginRightMinimum": marginRightMinimum, "marginBottomMinimum": marginBottomMinimum}
-
-				
-
-
-
-
-
-				
-			self.thing = wx.PrintDialog(None, dialogData)
-
-			#Set Defaults
-			self.title = "GUI_Maker Page"
-			self.content = None
+			self.thing = wx.PageSetupDialog(None, dialogData)
 
 		def _build_print():
 			"""Builds a wx print dialog object."""
 			nonlocal self, argument_catalogue
 
-			#Configure settings
-			printData, pageNumbers, helpButton = self._getArguments(argument_catalogue, ["printData", "pageNumbers", "helpButton"])
-
-			printToFile, selection, collate, copies = self._getArguments(argument_catalogue, ["printToFile", "selection", "collate", "copies"])
 			pageFrom, pageTo, pageMin, pageMax = self._getArguments(argument_catalogue, ["pageFrom", "pageTo", "pageMin", "pageMax"])
+			printToFile, selection, collate, copies = self._getArguments(argument_catalogue, ["printToFile", "selection", "collate", "copies"])
+			printData, pageNumbers, helpButton, printOverride = self._getArguments(argument_catalogue, ["printData", "pageNumbers", "helpButton", "printOverride"])
+			
 			overrideData = {"collate": collate, "copies": copies, "from": pageFrom, "to": pageTo, 
 				"min": pageMin, "max": pageMax, "printToFile": printToFile, "selected": selection}
+			combinedOverride = {key: value for catalogue in (printOverride, overrideData) for key, value in catalogue.items() if (value != None)}
 			
 			if (printData == None):
-				printData = overrideData
-			dialogData = self._encodePrintSettings(printData, override = overrideData)
+				printData = combinedOverride
+			dialogData = self._encodePrintSettings(printData, override = combinedOverride)
 			
 			dialogData.EnableHelp(helpButton)
 			dialogData.EnablePageNumbers(pageNumbers)
@@ -18317,7 +18466,6 @@ class handle_Dialog(handle_Base):
 				
 			self.thing = wx.PrintDialog(None, dialogData)
 
-			#Set Defaults
 			self.title = "GUI_Maker Page"
 			self.content = None
 
@@ -18326,15 +18474,16 @@ class handle_Dialog(handle_Base):
 			nonlocal self, argument_catalogue
 
 			self.thing = -1
-			printData, printerSetup = self._getArguments(argument_catalogue, ["printData", "printerSetup"])
+			printData, printerSetup, printOverride, size, position, content = self._getArguments(argument_catalogue, ["printData", "printerSetup", "printOverride", "size", "position", "content"])
 
 			#Set Defaults
-			self.size = None
-			self.content = None
-			self.position = None
+			self.size = size
+			self.content = content
+			self.position = position
 			self.printData = printData
 			self.title = "GUI_Maker Page"
 			self.printerSetup = printerSetup
+			self.printOverride = printOverride
 
 		def _build_custom():
 			"""Uses a frame to mimic a wx dialog object."""
@@ -18479,6 +18628,10 @@ class handle_Dialog(handle_Base):
 			self.answer = self.thing.ShowModal()
 			self.hide()
 
+		elif (self.type.lower() == "printsetup"):
+			self.answer = self.thing.ShowModal()
+			self.hide()
+
 		elif (self.type.lower() == "printpreview"):
 			pass
 
@@ -18560,6 +18713,11 @@ class handle_Dialog(handle_Base):
 			self.thing.Destroy()
 			self.thing = None
 
+		elif (self.type.lower() == "printsetup"):
+			self.data = self._decodePrintSettings(self.thing.GetPageSetupData())
+			self.thing.Destroy()
+			self.thing = None
+
 		else:
 			warnings.warn(f"Add {self.type} to hide() for {self.__repr__()}", Warning, stacklevel = 2)
 
@@ -18615,6 +18773,9 @@ class handle_Dialog(handle_Base):
 
 		elif (self.type.lower() == "print"):
 			value = {"content": self.content, **self.data} 
+
+		elif (self.type.lower() == "printsetup"):
+			value = {**self.data} 
 
 		elif (self.type.lower() == "printPreview"):
 			value = self.content
@@ -18836,7 +18997,7 @@ class handle_Dialog(handle_Base):
 		else:
 			warnings.warn(f"Add {self.type} to resume() for {self.__repr__()}", Warning, stacklevel = 2)
 
-	def send(self, raw = False, event = None):
+	def send(self, raw = False, printOverride = {}, event = None):
 		"""Returns what the contextual valueDoes the contextual send command for the object associated with this handle.
 		Modified code from: https://wiki.wxpython.org/Printing
 
@@ -18849,16 +19010,16 @@ class handle_Dialog(handle_Base):
 		"""
 
 		if (self.type.lower() == "print"):
-			self.print(self.content, printData = self.data[None], title = self.title, raw = raw, popup = False)
+			self.print(self.content, printData = self.data[None], title = self.title, raw = raw, printOverride = printOverride, popup = False)
 
 		elif (self.type.lower() == "printpreview"):
 			printout = _MyPrintout(self, document = self.content, title = self.title, raw = raw)
 
 			enablePrint = True
 			if (enablePrint):
-				preview = _MyPrintPreview(self, printout, printout.clone(), printData = self.printData, printerSetup = self.printerSetup)
+				preview = _MyPrintPreview(self, printout, printout.clone(), printData = self.printData, printerSetup = self.printerSetup, printOverride = {**printOverride, **self.printOverride})
 			else:
-				preview = _MyPrintPreview(self, printout, printData = self.printData, printerSetup = self.printerSetup)
+				preview = _MyPrintPreview(self, printout, printData = self.printData, printerSetup = self.printerSetup, printOverride = {**printOverride, **self.printOverride})
 
 			if ("__WXMAC__" in wx.PlatformInfo):
 				preview.SetZoom(50)
@@ -19024,10 +19185,10 @@ class _MyPrinter(wx.Printer):
 		wx.PAPER_TABLOID_EXTRA: "Tabloid Extra; 11.69 x 18 in", 
 		} 
 
-	def __init__(self, parent, data = None):
+	def __init__(self, parent, data = None, override = {}):
 		self.parent = parent
 		
-		dialogData = self.parent._encodePrintSettings(data)
+		dialogData = self.parent._encodePrintSettings(data, override = override)
 		wx.Printout.__init__(self, dialogData)
 
 	def Print(self, window, printout, prompt = True):
@@ -19052,13 +19213,14 @@ class _MyPrinter(wx.Printer):
 		return True
 
 class _MyPrintPreview(wx.PrintPreview):
-	def __init__(self, parent, *args, printData = None, printerSetup = True, **kwargs):
+	def __init__(self, parent, *args, printData = None, printerSetup = True, printOverride = {}, **kwargs):
 
 		self.parent = parent
 		self.printerSetup = printerSetup
 		self.printData = printData
+		self.printOverride = printOverride
 
-		printData = self.parent._encodePrintSettings(printData)
+		printData = self.parent._encodePrintSettings(printData, override = printOverride)
 		super().__init__(*args, data = printData, **kwargs)
 
 	def Print(self, printerSetup):
@@ -19081,7 +19243,7 @@ class _MyPreviewFrame(wx.PreviewFrame):
 		event.Skip()
 
 class _MyPrintout(wx.Printout):
-	def __init__(self, parent, document = None, title = "GUI_Maker Page", pageTo = None, pageFrom = None, raw = None):
+	def __init__(self, parent, document = None, title = "GUI_Maker Page", pageTo = None, pageFrom = None, raw = None, wrapText = True):
 		wx.Printout.__init__(self, title)
 
 		self.raw = raw
@@ -19091,6 +19253,7 @@ class _MyPrintout(wx.Printout):
 		self.pageFrom = pageFrom
 		self.document = document
 		self.hPrinter = None
+		self.wrapText = wrapText
 
 		#Ensure this runs first
 		self.OnPreparePrinting()
@@ -19156,7 +19319,11 @@ class _MyPrintout(wx.Printout):
 		if (isinstance(page, str)):
 			dc.SetTextForeground("black")
 			dc.SetFont(wx.Font(11, wx.SWISS, wx.NORMAL, wx.BOLD))
-			dc.DrawText(page, 0, 0)
+			if (self.wrapText):
+				text = wx.lib.wordwrap.wordwrap(page, dc.DeviceToLogicalX(dc.GetSize().width), dc)
+			else:
+				text = page
+			dc.DrawText(text, 0, 0)
 
 		elif (isinstance(page, handle_WidgetCanvas)):
 			with page as myCanvas:
@@ -20292,6 +20459,10 @@ class handle_Window(handle_Container_Base):
 		def applyMessage(text):
 			"""Places the given text into the status bar."""
 			nonlocal self, number
+
+			if (not wx.IsMainThread()):
+				wx.CallAfter(applyMessage, text)
+				return
 
 			if (text == None):
 				text = self.statusTextDefault.get(number, " ")
