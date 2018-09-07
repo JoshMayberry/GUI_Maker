@@ -33,9 +33,9 @@ def onAdvanced(event):
 				# myDialog.resume()
 				break
 
-			with myDialog.makeDialogBusy(text = "Sub Test...", simple = False, maximum = 10, can_abort = True, can_skip = True) as subTest:
-				continue
-				for j in range(1, 11):
+			with myDialog.makeDialogBusy(text = "Sub Test...", simple = False, maximum = 1000, can_abort = True, can_skip = True) as subTest:
+				# continue
+				for j in range(1, 110):
 					print(j)
 					time.sleep(0.25)
 					subTest.setValue(j)

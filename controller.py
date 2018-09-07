@@ -169,9 +169,9 @@ class _Iterator(object):
 			self.order = list(self.data.keys())
 
 			if (filterNone):
-				self.order = [key for key in self.data.keys() if key != None]
+				self.order = [key for key in self.data.keys() if key is not None]
 			else:
-				self.order = [key if key != None else "" for key in self.data.keys()]
+				self.order = [key if key is not None else "" for key in self.data.keys()]
 			self.order = sorted(self.order, key = lambda item: f"{item}")
 			self.order = [key if key != "" else None for key in self.order]
 
@@ -203,7 +203,7 @@ class PriorityQueue(queue.PriorityQueue):
 		self.defaultPriority = defaultPriority
 
 	def put(self, item, priority = None):
-		if (priority == None):
+		if (priority is None):
 			priority = self.defaultPriority
 		super().put((priority, self.counter, item))
 		self.counter += 1
@@ -260,22 +260,22 @@ class Event(object):
 			nonlocal self, args, kwargs
 
 			#Skip empty functions
-			if (myFunctionList != None):
+			if (myFunctionList is not None):
 				myFunctionList, myFunctionArgsList, myFunctionKwargsList = Utilities._formatFunctionInputList(None, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
 				
 				#Run each function
 				for i, myFunction in enumerate(myFunctionList):
 					#Skip empty functions
-					if (myFunction != None):
+					if (myFunction is not None):
 						myFunctionEvaluated, myFunctionArgs, myFunctionKwargs = Utilities._formatFunctionInput(None, i, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
 
 						#Combine with args and kwargs provided by fire()
-						if (myFunctionArgs != None):
+						if (myFunctionArgs is not None):
 							myFunctionArgsCombined = myFunctionArgs + [item for item in args]
 						else:
 							myFunctionArgsCombined = args
 
-						if (myFunctionKwargs != None):
+						if (myFunctionKwargs is not None):
 							myFunctionKwargsCombined = {**myFunctionKwargs, **kwargs}
 						else:
 							myFunctionKwargsCombined = {**kwargs}
@@ -313,7 +313,7 @@ def wrap_showError(makeDialog = True, fileName = "error_log.log"):
 
 				#Log the error
 				try:
-					Utilities._logPrint(None, text = error, fileName = fileName)
+					Utilities._logPrint(None, error, fileName = fileName)
 				except:
 					traceback.print_exc()
 
@@ -396,14 +396,14 @@ class _ThreadQueue():
 			nonlocal self
 
 			#Skip empty functions
-			if (myFunctionList != None):
+			if (myFunctionList is not None):
 				myFunctionList, myFunctionArgsList, myFunctionKwargsList = Utilities._formatFunctionInputList(self, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
 				
 				#Run each function
 				answerList = []
 				for i, myFunction in enumerate(myFunctionList):
 					#Skip empty functions
-					if (myFunction != None):
+					if (myFunction is not None):
 						myFunctionEvaluated, myFunctionArgs, myFunctionKwargs = Utilities._formatFunctionInput(self, i, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
 						answer = myFunction(*myFunctionArgs, **myFunctionKwargs)
 						answerList.append(answer)
@@ -495,7 +495,7 @@ class _MyThread(threading.Thread):
 		# self.setDaemon(daemon)
 
 		#Setup thread properties
-		if (threadID != None):
+		if (threadID is not None):
 			self.threadID = threadID
 
 		self.stopEvent = threading.Event() #Used to stop the thread
@@ -548,14 +548,14 @@ class _MyThread(threading.Thread):
 	def run(self):
 		"""Runs the thread and then closes it."""
 
-		if (self.label != None):
+		if (self.label is not None):
 			with threadCatalogue_lock:
 				if (self.label in threadCatalogue):
 					thread = threadCatalogue[self.label]
 				else:
 					thread = None
 
-			if (thread != None):
+			if (thread is not None):
 				#Replace the running thread
 				thread.stop()
 				try:
@@ -588,7 +588,7 @@ class _MyThread(threading.Thread):
 
 		self.stopEvent.set()
 
-		if (self.stopFunction != None):
+		if (self.stopFunction is not None):
 			self.stopFunction()
 
 #Global Inheritance Classes
@@ -701,7 +701,7 @@ class Utilities():
 						return item
 				
 				answer = nestCheck(item[:], key)
-				if (answer != None):
+				if (answer is not None):
 					return answer
 			return answer
 
@@ -709,19 +709,19 @@ class Utilities():
 			"""Makes sure only the instance types the user wants are in the return list."""
 			nonlocal typeList, subTypeList
 
-			if ((handleList != None) and (typeList != None)):
+			if ((handleList is not None) and (typeList is not None)):
 				answer = []
 				if (not isinstance(handleList, (list, tuple, range))):
 					handleList = [handleList]
 				if (not isinstance(typeList, (list, tuple))):
 					typeList = [typeList]
-				if ((subTypeList != None) and (not isinstance(subTypeList, (list, tuple)))):
+				if ((subTypeList is not None) and (not isinstance(subTypeList, (list, tuple)))):
 					subTypeList = [subTypeList]
 
 				for item in handleList:
 					for itemType in typeList:
 						if (isinstance(item, itemType)):
-							if ((subTypeList != None) and (item.type.lower() not in subTypeList)):
+							if ((subTypeList is not None) and (item.type.lower() not in subTypeList)):
 								continue
 							answer.append(item)
 							break
@@ -734,7 +734,7 @@ class Utilities():
 			return answer
 
 		#Ensure correct format
-		if (typeList != None):
+		if (typeList is not None):
 			if (not isinstance(typeList, (list, tuple, range))):
 				typeList = (typeList)
 			if (len(typeList) == 0):
@@ -743,7 +743,7 @@ class Utilities():
 				typeList = typeList[0]
 
 		#Account for retrieving all nested
-		if (itemLabel == None):
+		if (itemLabel is None):
 			itemLabel = slice(None, None, None)
 
 		#Account for passing in a wxEvent
@@ -752,7 +752,7 @@ class Utilities():
 			if ((not isinstance(self, Controller)) and (itemLabel.GetEventObject() == self.thing)):
 				answer = self
 			else:
-				if (itemLabel.GetEventObject() == None):
+				if (itemLabel.GetEventObject() is None):
 					errorMessage = f"There is no object associated with the event {itemLabel}"
 					raise SyntaxError(errorMessage)
 
@@ -768,14 +768,14 @@ class Utilities():
 
 		#Account for indexing
 		elif (isinstance(itemLabel, slice)):
-			if (itemLabel.step != None):
+			if (itemLabel.step is not None):
 				raise FutureWarning(f"Add slice steps to get() for indexing {self.__repr__()}")
 			
-			elif ((itemLabel.start != None) and (itemLabel.start not in self.labelCatalogue)):
+			elif ((itemLabel.start is not None) and (itemLabel.start not in self.labelCatalogue)):
 				errorMessage = f"There is no item labled {itemLabel.start} in the label catalogue for {self.__repr__()}"
 				raise KeyError(errorMessage)
 			
-			elif ((itemLabel.stop != None) and (itemLabel.stop not in self.labelCatalogue)):
+			elif ((itemLabel.stop is not None) and (itemLabel.stop not in self.labelCatalogue)):
 				errorMessage = f"There is no item labled {itemLabel.stop} in the label catalogue for {self.__repr__()}"
 				raise KeyError(errorMessage)
 
@@ -788,9 +788,9 @@ class Utilities():
 			begin = False
 			for item in self.labelCatalogueOrder:
 				#Allow for slicing with non-integers
-				if ((not begin) and ((itemLabel.start == None) or (self.labelCatalogue[item].label == itemLabel.start))):
+				if ((not begin) and ((itemLabel.start is None) or (self.labelCatalogue[item].label == itemLabel.start))):
 					begin = True
-				elif ((itemLabel.stop != None) and (self.labelCatalogue[item].label == itemLabel.stop)):
+				elif ((itemLabel.stop is not None) and (self.labelCatalogue[item].label == itemLabel.stop)):
 					break
 
 				#Slice catalogue via creation date
@@ -803,7 +803,7 @@ class Utilities():
 
 			answer = checkType(handleList)
 			if (returnExists):
-				return answer != None
+				return answer is not None
 			return answer
 
 		elif (itemLabel in self.unnamedList):
@@ -815,7 +815,7 @@ class Utilities():
 			else:
 				key = itemLabel
 
-			if (key == None):
+			if (key is None):
 				answer = None
 			elif (key in self.labelCatalogue):
 				answer = checkType(self.labelCatalogue[key])
@@ -827,9 +827,9 @@ class Utilities():
 					answer = None
 
 		if (returnExists):
-			return answer != None
+			return answer is not None
 		
-		if (answer != None):
+		if (answer is not None):
 			if (isinstance(answer, (list, tuple, range))):
 				if (len(answer) == 1):
 					answer = answer[0]
@@ -838,7 +838,7 @@ class Utilities():
 
 		if (isinstance(itemLabel, wx.Event)):
 			errorMessage = f"There is no item associated with the event {itemLabel} in the label catalogue for {self.__repr__()}"
-		elif (typeList != None):
+		elif (typeList is not None):
 			if (isinstance(answer, (list, tuple, range))):
 				errorMessage = f"There is no item labled {itemLabel} in the label catalogue for {self.__repr__()} that is a {[item.__name__ for item in typeList]}"
 			else:
@@ -856,17 +856,17 @@ class Utilities():
 
 		try:
 			#Skip empty functions
-			if (myFunction != None):
+			if (myFunction is not None):
 				if (not isinstance(myFunction, (list, tuple))):
 					if (isinstance(myFunction, str)):
 						myFunction = eval(myFunction, {'__builtins__': None}, {})
 					
-					if (myFunctionArgs == None):
+					if (myFunctionArgs is None):
 						myFunctionArgs = []
 					elif (not isinstance(myFunctionArgs, (list, tuple))):
 						myFunctionArgs = [myFunctionArgs]
 
-					if (myFunctionKwargs == None):
+					if (myFunctionKwargs is None):
 						myFunctionKwargs = {}
 
 					answer = myFunction(*myFunctionArgs, **myFunctionKwargs)
@@ -877,11 +877,11 @@ class Utilities():
 					answer = []
 					for i, myFunction in enumerate(myFunctionList):
 						#Skip empty functions
-						if (myFunction != None):
+						if (myFunction is not None):
 							myFunctionEvaluated, myFunctionArgs, myFunctionKwargs = self._formatFunctionInput(i, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
 							
 							if (includeEvent):
-								if (myFunctionArgs == None):
+								if (myFunctionArgs is None):
 									myFunctionArgs = [event]
 								else:
 									myFunctionArgs = [event] + myFunctionArgs
@@ -889,11 +889,11 @@ class Utilities():
 							answer.append(myFunctionEvaluated(*myFunctionArgs, **myFunctionKwargs))
 
 		except Exception as error:
-			if (errorFunction == None):
+			if (errorFunction is None):
 				raise error
 			else:
 				if (includeError):
-					if (errorFunctionArgs == None):
+					if (errorFunctionArgs is None):
 						errorFunctionArgs = [error]
 					else:
 						errorFunctionArgs = [error] + errorFunctionArgs
@@ -929,7 +929,7 @@ class Utilities():
 
 		#Ensure that multiple function capability is given
 		##Functions
-		if (myFunctionList != None):
+		if (myFunctionList is not None):
 			#Compensate for the user not making it a list
 			if (not isinstance(myFunctionList, list)):
 				if (isinstance(myFunctionList, (tuple, types.GeneratorType))):
@@ -942,7 +942,7 @@ class Utilities():
 				myFunctionList.reverse()
 
 		##args
-		if (myFunctionArgsList != None):
+		if (myFunctionArgsList is not None):
 			#Compensate for the user not making it a list
 			if (not isinstance(myFunctionArgsList, list)):
 				if (isinstance(myFunctionArgsList, (tuple, types.GeneratorType))):
@@ -954,11 +954,11 @@ class Utilities():
 			if (len(myFunctionList) > 1):
 				myFunctionArgsList.reverse()
 
-			if ((len(myFunctionList) == 1) and (myFunctionArgsList[0] != None)):
+			if ((len(myFunctionList) == 1) and (myFunctionArgsList[0] is not None)):
 				myFunctionArgsList = [myFunctionArgsList]
 
 		##kwargs
-		if (myFunctionKwargsList != None):
+		if (myFunctionKwargsList is not None):
 			#Compensate for the user not making it a list
 			if (not isinstance(myFunctionKwargsList, list)):
 				if (isinstance(myFunctionKwargsList, (tuple, types.GeneratorType))):
@@ -978,14 +978,14 @@ class Utilities():
 		myFunction = myFunctionList[i]
 
 		#Skip empty functions
-		if (myFunction != None):
+		if (myFunction is not None):
 			#Use the correct args and kwargs
-			if (myFunctionArgsList != None):
+			if (myFunctionArgsList is not None):
 				myFunctionArgs = myFunctionArgsList[i]
 			else:
 				myFunctionArgs = myFunctionArgsList
 
-			if (myFunctionKwargsList != None):
+			if (myFunctionKwargsList is not None):
 				myFunctionKwargs = myFunctionKwargsList[i]
 				
 			else:
@@ -1000,7 +1000,7 @@ class Utilities():
 				myFunctionEvaluated = eval(myFunction, {'__builtins__': None}, {})
 
 			#Ensure the *args and **kwargs are formatted correctly 
-			if (myFunctionArgs != None):
+			if (myFunctionArgs is not None):
 				#Check for single argument cases
 				if ((type(myFunctionArgs) != list)):
 					#The user passed one argument that was not a list
@@ -1011,13 +1011,13 @@ class Utilities():
 				#       myFunctionArgs = [myFunctionArgs]
 
 			#Check for user error
-			if ((type(myFunctionKwargs) != dict) and (myFunctionKwargs != None)):
+			if ((type(myFunctionKwargs) != dict) and (myFunctionKwargs is not None)):
 				errorMessage = f"myFunctionKwargs must be a dictionary for function {myFunctionEvaluated.__repr__()}"
 				raise ValueError(errorMessage)
 
-		if (myFunctionArgs == None):
+		if (myFunctionArgs is None):
 			myFunctionArgs = []
-		if (myFunctionKwargs == None):
+		if (myFunctionKwargs is None):
 			myFunctionKwargs = {}
 
 		return myFunctionEvaluated, myFunctionArgs, myFunctionKwargs
@@ -1073,7 +1073,7 @@ class Utilities():
 				bindObject = thing
 
 			#Account for rebinding
-			if (rebind == None):
+			if (rebind is None):
 				bindObject.Unbind(eventType, source = thing)
 			elif (rebind):
 				if (mode == 1):
@@ -1111,12 +1111,12 @@ class Utilities():
 		##############################################################################################################################
 
 		#Skip empty functions
-		if (myFunctionList != None):
+		if (myFunctionList is not None):
 			myFunctionList, myFunctionArgsList, myFunctionKwargsList = self._formatFunctionInputList(myFunctionList, myFunctionArgsList, myFunctionKwargsList)
 			#Run each function
 			for i, myFunction in enumerate(myFunctionList):
 				#Skip empty functions
-				if (myFunction != None):
+				if (myFunction is not None):
 					myFunctionEvaluated, myFunctionArgs, myFunctionKwargs = self._formatFunctionInput(i, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
 					bind(myFunctionEvaluated, myFunctionArgs, myFunctionKwargs)
 
@@ -1150,7 +1150,7 @@ class Utilities():
 
 		#Check for key modifiers
 		keyCheck = re.split("\$@\$", key)
-		if (keyCheck != None):
+		if (keyCheck is not None):
 			if (len(keyCheck) != 1):
 				#Correctly format the key
 				for i, item in enumerate(keyCheck):
@@ -1208,13 +1208,13 @@ class Utilities():
 		value = self.keyOptions[key]
 
 		#Determine at what time to run the function
-		if (event == None):
+		if (event is None):
 			if (keyUp):
 				event = wx.EVT_KEY_UP
 			else:
 				event = wx.EVT_KEY_DOWN
 
-		if (thing == None):
+		if (thing is None):
 			thing = self.thing
 
 		#Bind the event
@@ -1240,28 +1240,28 @@ class Utilities():
 			"""
 
 			#Ensure the *args and **kwargs are formatted correctly 
-			if ((type(myFunctionArgs) != list) and (myFunctionArgs != None)):
+			if ((type(myFunctionArgs) != list) and (myFunctionArgs is not None)):
 				myFunctionArgs = [myFunctionArgs]
 
-			if ((type(myFunctionKwargs) != list) and (myFunctionKwargs != None)):
+			if ((type(myFunctionKwargs) != list) and (myFunctionKwargs is not None)):
 				myFunctionKwargs = [myFunctionKwargs]
 
 			#Has both args and kwargs
-			if ((myFunctionKwargs != None) and (myFunctionArgs != None)):
+			if ((myFunctionKwargs is not None) and (myFunctionArgs is not None)):
 				if (includeEvent):
 					myFunctionEvaluated(event, *myFunctionArgs, **myFunctionKwargs)
 				else:
 					myFunctionEvaluated(*myFunctionArgs, **myFunctionKwargs)
 
 			#Has args, but not kwargs
-			elif (myFunctionArgs != None):
+			elif (myFunctionArgs is not None):
 				if (includeEvent):
 					myFunctionEvaluated(event, *myFunctionArgs)
 				else:
 					myFunctionEvaluated(*myFunctionArgs)
 
 			#Has kwargs, but not args
-			elif (myFunctionKwargs != None):
+			elif (myFunctionKwargs is not None):
 				if (includeEvent):
 					myFunctionEvaluated(event, **myFunctionKwargs)
 				else:
@@ -1333,16 +1333,16 @@ class Utilities():
 					return
 
 			#Skip empty functions
-			if (myFunctionList != None):
+			if (myFunctionList is not None):
 				#Ensure that multiple function capability is given
-				if ((not isinstance(myFunctionList, list)) and (myFunctionList != None)):
+				if ((not isinstance(myFunctionList, list)) and (myFunctionList is not None)):
 					if (isinstance(myFunctionList, (tuple, types.GeneratorType))):
 						myFunctionList = list(myFunctionList)
 					else:
 						myFunctionList = [myFunctionList]
 
 				#args
-				if ((not isinstance(myFunctionArgsList, list)) and (myFunctionArgsList != None)):
+				if ((not isinstance(myFunctionArgsList, list)) and (myFunctionArgsList is not None)):
 					if (isinstance(myFunctionArgsList, (tuple, types.GeneratorType))):
 						myFunctionArgsList = list(myFunctionArgsList)
 					else:
@@ -1354,13 +1354,13 @@ class Utilities():
 						if (len(myFunctionArgsList) != 1):
 							myFunctionArgsList = [myFunctionArgsList]
 				
-				if ((len(myFunctionList) == 1) and (myFunctionArgsList != None)):
+				if ((len(myFunctionList) == 1) and (myFunctionArgsList is not None)):
 					#Compensate for the user not making lists in lists for single functions or multiple functions
 					if (len(myFunctionArgsList) != 1):
 						myFunctionArgsList = [myFunctionArgsList]
 
 				#kwargs
-				if ((not isinstance(myFunctionKwargsList, list)) and (myFunctionKwargsList != None)):
+				if ((not isinstance(myFunctionKwargsList, list)) and (myFunctionKwargsList is not None)):
 					if (isinstance(myFunctionKwargsList, (tuple, types.GeneratorType))):
 						myFunctionKwargsList = list(myFunctionKwargsList)
 					else:
@@ -1371,32 +1371,32 @@ class Utilities():
 						if (len(myFunctionKwargsList) != 1):
 							myFunctionKwargsList = [myFunctionKwargsList]
 				
-				if ((len(myFunctionList) == 1) and (myFunctionKwargsList != None)):
+				if ((len(myFunctionList) == 1) and (myFunctionKwargsList is not None)):
 					#Compensate for the user not making lists in lists for single functions or multiple functions
 					if (len(myFunctionKwargsList) != 1):
 						myFunctionKwargsList = [myFunctionKwargsList]
 
 				#Fix list order so it is more intuitive
-				if (myFunctionList != None):
+				if (myFunctionList is not None):
 					myFunctionList.reverse()
 
-				if (myFunctionArgsList != None):
+				if (myFunctionArgsList is not None):
 					myFunctionArgsList.reverse()
 
-				if (myFunctionKwargsList != None):
+				if (myFunctionKwargsList is not None):
 					myFunctionKwargsList.reverse()
 				
 				#Run each function
 				for i, myFunction in enumerate(myFunctionList):
 					#Skip empty functions
-					if (myFunction != None):
+					if (myFunction is not None):
 						#Use the correct args and kwargs
-						if (myFunctionArgsList != None):
+						if (myFunctionArgsList is not None):
 							myFunctionArgs = myFunctionArgsList[i]
 						else:
 							myFunctionArgs = myFunctionArgsList
 
-						if (myFunctionKwargsList != None):
+						if (myFunctionKwargsList is not None):
 							myFunctionKwargs = myFunctionKwargsList[i]
 						else:
 							myFunctionKwargs = myFunctionKwargsList
@@ -1435,7 +1435,7 @@ class Utilities():
 		#Determine key
 		state = None
 		if (key == "cl"):
-			if ((event != None) and (event.GetKeyCode() != self.keyOptions["cl"])):
+			if ((event is not None) and (event.GetKeyCode() != self.keyOptions["cl"])):
 				return
 
 			hllDll = ctypes.WinDLL ("User32.dll")
@@ -1473,7 +1473,7 @@ class Utilities():
 		mainThread = threading.main_thread()
 
 		#How this function will be passed
-		if (thread != None):
+		if (thread is not None):
 			pass
 
 		else:
@@ -1528,13 +1528,13 @@ class Utilities():
 		"""
 
 		#Skip empty functions
-		if (myFunction != None):
+		if (myFunction is not None):
 			myFunctionList, myFunctionArgsList, myFunctionKwargsList = self._formatFunctionInputList(myFunction, myFunctionArgs, myFunctionKwargs)
 
 			#Run each function
 			for i, myFunction in enumerate(myFunctionList):
 				#Skip empty functions
-				if (myFunction != None):
+				if (myFunction is not None):
 					myFunctionEvaluated, myFunctionArgs, myFunctionKwargs = self._formatFunctionInput(i, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
 
 					#Determine how to run the function
@@ -1546,14 +1546,14 @@ class Utilities():
 						return thread
 					else:
 						#Add to the idling queue
-						if (self.idleQueue != None):
+						if (self.idleQueue is not None):
 							self.idleQueue.append([myFunctionEvaluated, myFunctionArgs, myFunctionKwargs, shown])
 						else:
 							warnings.warn(f"The window {self} was given it's own idle function by the user for {self.__repr__()}", Warning, stacklevel = 2)
 				else:
-					warnings.warn(f"function {i} in myFunctionList == None for backgroundRun() for {self.__repr__()}", Warning, stacklevel = 2)
+					warnings.warn(f"function {i} in myFunctionList is None for backgroundRun() for {self.__repr__()}", Warning, stacklevel = 2)
 		else:
-			warnings.warn(f"myFunction == None for backgroundRun() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"myFunction is None for backgroundRun() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		return None
 
@@ -1569,13 +1569,13 @@ class Utilities():
 		"""
 
 		#Skip empty functions
-		if (myFunction != None):
+		if (myFunction is not None):
 			myFunctionList, myFunctionArgsList, myFunctionKwargsList = self._formatFunctionInputList(myFunction, myFunctionArgs, myFunctionKwargs)
 			
 			#Run each function
 			for i, myFunction in enumerate(myFunctionList):
 				#Skip empty functions
-				if (myFunction != None):
+				if (myFunction is not None):
 					myFunctionEvaluated, myFunctionArgs, myFunctionKwargs = self._formatFunctionInput(i, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
 				
 					if (after):
@@ -1583,7 +1583,7 @@ class Utilities():
 					else:
 						wx.CallLater(delay, myFunctionEvaluated, *myFunctionArgs, **myFunctionKwargs)
 		else:
-			warnings.warn(f"myFunctionList == None for autoRun() in {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"myFunctionList is None for autoRun() in {self.__repr__()}", Warning, stacklevel = 2)
 
 	def threadSafe(self, function, *args, **kwargs):
 		if (wx.IsMainThread()):
@@ -1646,21 +1646,21 @@ class Utilities():
 				while (catalogue["pause"]):
 					if (catalogue["stop"]):
 						break
-					if ((catalogue["delay"] != 0) and (catalogue["delay"] != None)):
+					if ((catalogue["delay"] != 0) and (catalogue["delay"] is not None)):
 						time.sleep(catalogue["delay"] / 1000)
 
 				if (catalogue["stop"]):
 					catalogue["stop"] = False
 					break
 
-				if ((catalogue["delay"] != 0) and (catalogue["delay"] != None)):
+				if ((catalogue["delay"] != 0) and (catalogue["delay"] is not None)):
 					time.sleep(catalogue["delay"] / 1000)
 
-				if (catalogue["trigger"] != None):
+				if (catalogue["trigger"] is not None):
 					while (not catalogue["trigger"]):
 						if (catalogue["stop"]):
 							break
-						if ((catalogue["delay"] != 0) and (catalogue["delay"] != None)):
+						if ((catalogue["delay"] != 0) and (catalogue["delay"] is not None)):
 							time.sleep(catalogue["delay"] / 1000)
 					catalogue["trigger"] = False
 
@@ -1687,7 +1687,7 @@ class Utilities():
 			if (self not in self.controller.backgroundFunction_pauseOnDialog["listeningCatalogue"]):
 				self.controller.backgroundFunction_pauseOnDialog["listeningCatalogue"][self] = {}
 
-			if (notPauseOnDialog == None):
+			if (notPauseOnDialog is None):
 				notPauseOnDialog = []
 			elif (not isinstance(notPauseOnDialog, (list, tuple, range))):
 				notPauseOnDialog = [notPauseOnDialog]
@@ -1704,8 +1704,6 @@ class Utilities():
 
 		Example Input: delay_listen(self.checkAutoLogout)
 		"""
-
-		print("@delay_listen", delay)
 
 		if (myFunction in self.listeningCatalogue):
 			self.listeningCatalogue[myFunction]["delay"] = delay
@@ -1792,12 +1790,12 @@ class Utilities():
 
 			self.oneShotCatalogue[myFunction]["running"] = True
 
-			if ((not delayAfter) and (delay != 0) and (delay != None)):
+			if ((not delayAfter) and (delay != 0) and (delay is not None)):
 				time.sleep(delay / 1000)
 
 			self.runMyFunction(myFunction, myFunctionArgs, myFunctionKwargs)
 
-			if ((delayAfter) and (delay != 0) and (delay != None)):
+			if ((delayAfter) and (delay != 0) and (delay is not None)):
 				time.sleep(delay / 1000)
 
 			if (not allowAgain):
@@ -1814,7 +1812,7 @@ class Utilities():
 
 		if (myFunction in self.oneShotCatalogue):
 			if ((self.oneShotCatalogue[myFunction]["running"]) or (not self.oneShotCatalogue[myFunction]["canRun"])):
-				if (runAlternativeFunction != None):
+				if (runAlternativeFunction is not None):
 					self.backgroundRun(runAlternativeFunction, **kwargs)
 				return False
 		else:
@@ -1913,14 +1911,14 @@ class Utilities():
 		"""
 
 		#Ensure correct format
-		if (include == None):
+		if (include is None):
 			include = ()
 		elif (isinstance(include, (list, range))):
 			include = tuple(include)
 		elif (not isinstance(include, tuple)):
 			include = tuple([include])
 
-		if (exclude == None):
+		if (exclude is None):
 			exclude = ()
 		elif (isinstance(exclude, (list, range))):
 			exclude = tuple(exclude)
@@ -1934,7 +1932,7 @@ class Utilities():
 		else:
 			catalogue = self._getAddressValue(self.nestingAddress + [id(self)])
 			nestedList = [value[None] for key, value in self.catalogue if (
-				(key != None) and (None in value) and 
+				(key is not None) and (None in value) and 
 				((len(include) == 0) or (isinstance(value[None], include))) and 
 				((len(exclude) == 0) or (not isinstance(value[None], exclude))))]
 
@@ -1995,7 +1993,7 @@ class Utilities():
 
 		#Determine the flag types
 		fixedFlags = ""
-		if (flags != None):
+		if (flags is not None):
 			#Ensure that 'flags' is a list
 			if (type(flags) != list):
 				flags = [flags]
@@ -2235,10 +2233,10 @@ class Utilities():
 		Example Input: _getImage(image, rotate = 90)
 		"""
 
-		if ((imagePath != None) and (imagePath != "")):
+		if ((imagePath is not None) and (imagePath != "")):
 			if (type(imagePath) != str):
 				if (PIL.Image.isImageType(imagePath)):
-					if (self == None):
+					if (self is None):
 						util = Utilities()
 						image = util._convertPilToBitmap(imagePath, alpha)
 					else:
@@ -2412,10 +2410,10 @@ class Utilities():
 		else:
 			image = wx.NullBitmap
 
-		if ((scale != None) or (rotate != None)):
+		if ((scale is not None) or (rotate is not None)):
 			image = image.ConvertToImage()
 
-			if (scale != None):
+			if (scale is not None):
 				if (not isinstance(scale, (list, tuple))):
 					scale = [scale, scale]
 
@@ -2425,7 +2423,7 @@ class Utilities():
 					scale[1] = math.ceil(image.GetHeight() * scale[1])
 				image = image.Scale(*scale)
 
-			if (rotate != None):
+			if (rotate is not None):
 				image.SetMaskColour(255, 255, 255)
 				if (isinstance(rotate, (list, tuple))):
 					rotate = rotate[0]
@@ -2458,7 +2456,7 @@ class Utilities():
 		
 		answer = []
 		for _color in color:
-			if (_color == None):
+			if (_color is None):
 				answer.append(wx.NullColour)
 			else:
 				if (isinstance(_color, str)):
@@ -2515,7 +2513,7 @@ class Utilities():
 		"""
 
 		#Configure the font object
-		if (italic != None):
+		if (italic is not None):
 			if (italic):
 				italic = wx.ITALIC
 			else:
@@ -2523,7 +2521,7 @@ class Utilities():
 		else:
 			italic = wx.SLANT
 
-		if (bold != None):
+		if (bold is not None):
 			if (bold):
 				bold = wx.BOLD
 			else:
@@ -2536,7 +2534,7 @@ class Utilities():
 		else:
 			family = wx.DEFAULT
 
-		if (size == None):
+		if (size is None):
 			size = wx.DEFAULT
 
 		font = wx.Font(size, family, italic, bold)
@@ -2550,14 +2548,14 @@ class Utilities():
 		Example Input: _getWildcard(wildcard)
 		"""
 
-		if (wildcard == None):
+		if (wildcard is None):
 			answer = "All files (*.*)|*.*"
 
 		elif (isinstance(wildcard, dict)):
 			myList = []
 			for key, valueList in {key: value if (isinstance(value, (list, tuple, types.GeneratorType))) else [value] for key, value in wildcard.items()}.items():
-				fileTypes = "; ".join(f"*.{value}" if (value != None) else "*.*" for value in valueList)
-				if (key != None):
+				fileTypes = "; ".join(f"*.{value}" if (value is not None) else "*.*" for value in valueList)
+				if (key is not None):
 					myList.append(f"{key} ({fileTypes})|{fileTypes}")
 				else:
 					if (fileTypes == "*.*"):
@@ -2567,7 +2565,7 @@ class Utilities():
 			answer = '|'.join(myList)
 
 		elif (isinstance(wildcard, (list, tuple, types.GeneratorType))):
-			answer = '|'.join(f"*.{item}|*.{item}" if (item != None) else "All files (*.*)|*.*" for item in wildcard)
+			answer = '|'.join(f"*.{item}|*.{item}" if (item is not None) else "All files (*.*)|*.*" for item in wildcard)
 
 		else:
 			answer = wildcard
@@ -2706,10 +2704,10 @@ class Utilities():
 		"""
 
 		myId = self._getArguments(argument_catalogue, ["myId"])
-		if (myId == None):
+		if (myId is None):
 			if (checkSpecial and ("special" in argument_catalogue)):
 				special = self._getArguments(argument_catalogue, ["special"])
-				if (special != None):
+				if (special is not None):
 					#Use: https://wxpython.org/Phoenix/docs/html/stock_items.html#stock-items
 					special = special.lower()
 					if (special[0] == "n"):
@@ -2749,21 +2747,21 @@ class Utilities():
 		if (not isinstance(desiredArgs, (list, tuple, range))):
 			desiredArgs = [desiredArgs]
 
-		if (self.label != None):
+		if (self.label is not None):
 			if (not checkOverride):
 				_checkOverride = {}
-			elif ((self.parent != None) and (self.label in self.parent.attributeOverride)):
+			elif ((self.parent is not None) and (self.label in self.parent.attributeOverride)):
 				_checkOverride = self.parent.attributeOverride[self.label]
-			elif ((self.myWindow != None) and (self.label in self.myWindow.attributeOverride)):
+			elif ((self.myWindow is not None) and (self.label in self.myWindow.attributeOverride)):
 				_checkOverride = self.myWindow.attributeOverride[self.label]
 			else:
 				_checkOverride = {}
 
 			if (not checkAppend):
 				_checkAppend = {}
-			elif ((self.parent != None) and (self.label in self.parent.attributeAppend)):
+			elif ((self.parent is not None) and (self.label in self.parent.attributeAppend)):
 				_checkAppend = self.parent.attributeAppend[self.label]
-			elif ((self.myWindow != None) and (self.label in self.myWindow.attributeAppend)):
+			elif ((self.myWindow is not None) and (self.label in self.myWindow.attributeAppend)):
 				_checkAppend = self.myWindow.attributeAppend[self.label]
 			else: 
 				_checkAppend = {}
@@ -2836,11 +2834,11 @@ class Utilities():
 		Example Input: _arrangeArguments(self, function, args, kwargs, exclude = ["self"])
 		"""
 
-		if (handle != None):
+		if (handle is not None):
 			argList = [handle, *argList]
 		arguments = inspect.getcallargs(function, *argList, **kwargDict)
 
-		if (copyFrom != None):
+		if (copyFrom is not None):
 			if (not isinstance(copyFrom, handle_Base)):
 				errorMessage = f"'copyFrom' must be a GUI_Maker handle, not {copyFrom.__repr__()} for _arrangeArguments() in {self.__repr__()}"
 				raise ValueError(errorMessage)
@@ -2928,10 +2926,10 @@ class Utilities():
 		#Check for notebook
 		thingClass = parent.GetClassName()
 		if (thingClass == "wxNotebook"):
-			if (parent.GetParent() != None):
+			if (parent.GetParent() is not None):
 				parent = parent.GetParent()
 
-				if (parent.GetParent() != None):
+				if (parent.GetParent() is not None):
 					parent = parent.GetParent()
 
 		return parent
@@ -2959,7 +2957,7 @@ class Utilities():
 		if (not combine):
 			size = [tuple(rectangle.GetSize()) for rectangle in geometry]
 			
-			if (number != None):
+			if (number is not None):
 				size = size[number]
 		else:
 			if (isinstance(number, int)):
@@ -3034,7 +3032,7 @@ class Utilities():
 		Example Input: getStringPixels("Lorem Ipsum\nDolor Sit", multiLine = False)
 		"""
 
-		if (multiLine == None):
+		if (multiLine is None):
 			multiLine = "\n" in line
 
 		if (useDC):
@@ -4797,7 +4795,7 @@ class Utilities():
 		handle._build(locals())
 		return handle
 
-	def makeDialogBusy(self, text = "", simple = True, title = "Busy", initial = 0, stayOnTop = True,
+	def makeDialogBusy(self, text = "", simple = True, title = None, initial = 0, stayOnTop = True,
 		maximum = 100, blockAll = True, autoHide = True, can_abort = False, can_skip = False, 
 		smooth = False, elapsedTime = True, estimatedTime = True, remainingTime = True,
 		cursor = False, freeze = False,
@@ -4807,6 +4805,9 @@ class Utilities():
 		"""Does not pause the running code, but instead ignores user inputs by 
 		locking the GUI until the code tells the dialog box to go away. 
 		This is done by either exiting a while loop or using the hide() function.
+
+		title (str) - What the window's title will be
+			- If None: Will use 'text', and if 'text' is empty will use "Busy"
 
 		cursor (bool) - If True: Will have a busy cursor while the dialog is showing
 		freeze (bool) - If True: Will freeze and thaw it's parent
@@ -5114,7 +5115,7 @@ class Utilities():
 		Example Input: makeDialogCustom(gui["customDialog"], "value")
 		"""
 
-		if (myFrame == None):
+		if (myFrame is None):
 			myFrame = self
 
 		handle = handle_Dialog()
@@ -5250,7 +5251,7 @@ class handle_Dummy():
 		return self
 
 	def __exit__(self, exc_type, exc_value, traceback):
-		if (traceback != None):
+		if (traceback is not None):
 			return False
 
 	def __getattr__(self, name):
@@ -5314,27 +5315,27 @@ class handle_Base(Utilities, CommonEventFunctions):
 		"""Gives diagnostic information on the Widget when it is printed out."""
 
 		output = f"{type(self).__name__}()\n-- id: {id(self)}\n"
-		if (self.parent != None):
+		if (self.parent is not None):
 			output += f"-- parent id: {id(self.parent)}\n"
-		if (self.nestingAddress != None):
+		if (self.nestingAddress is not None):
 			output += f"-- nesting address: {self.nestingAddress}\n"
 		if (not self.nested):
 			output += f"-- Not Nested\n"
-		if (self.label != None):
+		if (self.label is not None):
 			output += f"-- label: {self.label}\n"
-		if (self.type != None):
+		if (self.type is not None):
 			output += f"-- type: {self.type}\n"
-		if (self.thing != None):
+		if (self.thing is not None):
 			output += f"-- wxObject: {type(self.thing).__name__}\n"
-		if (hasattr(self, "myWindow") and (self.myWindow != None)):
+		if (hasattr(self, "myWindow") and (self.myWindow is not None)):
 			output += f"-- Window id: {id(self.myWindow)}\n"
-		if (hasattr(self, "parentSizer") and (self.parentSizer != None)):
+		if (hasattr(self, "parentSizer") and (self.parentSizer is not None)):
 			output += f"-- Sizer id: {id(self.parentSizer)}\n"
 		if (self.nested):
 			output += "-- nested: True\n"
-		if ((self.unnamedList != None) and (len(self.unnamedList) != 0)):
+		if ((self.unnamedList is not None) and (len(self.unnamedList) != 0)):
 			output += f"-- unnamed items: {len(self.unnamedList)}\n"
-		if ((self.labelCatalogue != None) and (len(self.labelCatalogue) != 0)):
+		if ((self.labelCatalogue is not None) and (len(self.labelCatalogue) != 0)):
 			output += f"-- labeled items: {len(self.labelCatalogue)}\n"
 
 		if (self.controller.printMakeVariables):
@@ -5399,8 +5400,8 @@ class handle_Base(Utilities, CommonEventFunctions):
 		"""Allows the user to use a with statement to build the GUI."""
 
 		#Error handling
-		if (traceback != None):
-			if (self.allowBuildErrors == None):
+		if (traceback is not None):
+			if (self.allowBuildErrors is None):
 				return False
 			elif (not self.allowBuildErrors):
 				return True
@@ -5424,7 +5425,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 		buildSelf, label, parent = self._getArguments(argument_catalogue, ["self", "label", "parent"])
 		
 		#Determine parentSizer
-		if (hasattr(self, "parentSizer") and (self.parentSizer != None)):
+		if (hasattr(self, "parentSizer") and (self.parentSizer is not None)):
 			warnings.warn(f"{self.__repr__()} already has the sizer {self.parentSizer.__repr__()} as 'parentSizer' in _finalNest() for {buildSelf.__repr__()}\nOverwriting 'parentSizer'", Warning, stacklevel = 2)
 		
 		#Store data
@@ -5461,7 +5462,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 
 		#Add object to internal catalogue
 		if (not isinstance(self, handle_Dialog)):
-			if (label != None):
+			if (label is not None):
 				if (label in buildSelf.labelCatalogue):
 					warnings.warn(f"Overwriting label association for {label} in {buildSelf.__repr__()}", Warning, stacklevel = 4)
 
@@ -5471,21 +5472,21 @@ class handle_Base(Utilities, CommonEventFunctions):
 				buildSelf.unnamedList.append(self)
 
 		#Determine parent
-		if (parent != None):
+		if (parent is not None):
 			self.parent = parent
 		else:
 			if (not isinstance(buildSelf, Controller)):
 				if (isinstance(buildSelf, (handle_Menu, handle_Dialog))):
 					self.parent = buildSelf
 				else:
-					if (buildSelf.parent != None):
+					if (buildSelf.parent is not None):
 						self.parent = buildSelf.parent
 					else:
-						if (buildSelf.mainPanel != None):
+						if (buildSelf.mainPanel is not None):
 							self.parent = buildSelf.mainPanel
 						else:
 							self.parent = buildSelf
-		if ((not isinstance(buildSelf, Controller)) and (self.parent == None)):
+		if ((not isinstance(buildSelf, Controller)) and (self.parent is None)):
 			warnings.warn(f"There is no parent for {self.__repr__()} in {buildSelf.__repr__()}", Warning, stacklevel = 2)
 
 		#Determine Nesting Address
@@ -5524,18 +5525,18 @@ class handle_Base(Utilities, CommonEventFunctions):
 
 		#Determine size constraints
 		if (isinstance(self, handle_Sizer)):
-			if (maxSize != None):
+			if (maxSize is not None):
 				self.parent.thing.SetMaxSize(maxSize)
-			if (minSize != None):
+			if (minSize is not None):
 				self.parent.thing.SetMinSize(minSize)
 		else:
-			if (maxSize != None):
+			if (maxSize is not None):
 				self.thing.SetMaxSize(maxSize)
-			if (minSize != None):
+			if (minSize is not None):
 				self.thing.SetMinSize(minSize)
 
 		#Determine tool tip
-		if (toolTip != None):
+		if (toolTip is not None):
 			self.addToolTip(toolTip)
 
 	def nest(self, handle = None, flex = 0, flags = "c1", selected = False, linkCopy = False):
@@ -5552,12 +5553,12 @@ class handle_Base(Utilities, CommonEventFunctions):
 
 		#Account for automatic text sizer nesting and scroll sizer nesting
 		if (isinstance(handle, handle_Sizer)):
-			if ((handle.substitute != None) and (handle.substitute != self)):
+			if ((handle.substitute is not None) and (handle.substitute != self)):
 				handle = handle.substitute
 
 		#Create a link for multi-nested objects
 		if ((handle.nested) and (not isinstance(handle, handle_Menu))):
-			if (linkCopy == None):
+			if (linkCopy is None):
 				errorMessage = f"Cannot nest {handle.__repr__()} twice"
 				raise SyntaxError(errorMessage)
 			else:
@@ -5607,7 +5608,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 			if (isinstance(handle, handle_Menu)):
 				if (handle.type.lower() == "menu"):
 					#Main Menu
-					if (self.menuBar == None):
+					if (self.menuBar is None):
 						self.addMenuBar()
 					self.menuBar.Append(handle.thing, handle.text)
 				else:
@@ -5676,7 +5677,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 				if (isinstance(handle, handle_Menu)):
 					if (handle.type.lower() == "menu"):
 						#Sub Menu
-						if (handle.label != None):
+						if (handle.label is not None):
 							self.thing.SetMenu(handle.thing)
 						else:
 							self.thing.SetMenu(None)
@@ -5756,14 +5757,14 @@ class handle_Base(Utilities, CommonEventFunctions):
 			
 			args_noDefaults = []
 			args_withDefaults = {}
-			if (argsDefaults != None):
+			if (argsDefaults is not None):
 				argsDefaults_startsAt = len(argList) - len(argsDefaults) - 1
 			for i, variable in enumerate(argList):
 				if ((i == 0) and (inspect.ismethod(function))):
 					args_noDefaults.append(variable)
 					continue #skip self
 
-				if ((argsDefaults == None) or (i < argsDefaults_startsAt)):
+				if ((argsDefaults is None) or (i < argsDefaults_startsAt)):
 					args_noDefaults.append(variable)
 				else:
 					args_withDefaults[variable] = argsDefaults[i - argsDefaults_startsAt - 1]
@@ -5771,19 +5772,19 @@ class handle_Base(Utilities, CommonEventFunctions):
 			kwargs_noDefaults = []
 			kwargs_withDefaults = {}#"linkedHandle_catalogue": None}
 			for variable in kwargList:
-				if ((kwargsDefaults == None) or (variable not in kwargsDefaults)):
+				if ((kwargsDefaults is None) or (variable not in kwargsDefaults)):
 					kwargs_noDefaults.append(variable)
 				else:
 					kwargs_withDefaults[variable] = kwargsDefaults[variable]
 
 			#The pypubsub module does not accept the names of the args and kwargs as valid values
 			#This patches that behavior
-			if (starArgs != None):
+			if (starArgs is not None):
 				kwargs_withDefaults[starArgs] = []
 			else:
 				kwargs_withDefaults["args"] = []
 
-			if (starStarKwargs != None):
+			if (starStarKwargs is not None):
 				kwargs_withDefaults[starStarKwargs] = {}
 			else:
 				kwargs_withDefaults["kwargs"] = {}
@@ -5791,10 +5792,10 @@ class handle_Base(Utilities, CommonEventFunctions):
 			#Create function that will be used to create the subscription topic
 			recipe_part1 = ", ".join(args_noDefaults)
 			recipe_part2 = ", ".join(f"{key} = {value}" for key, value in args_withDefaults.items())
-			recipe_part3 = f"*{starArgs}_patchFor_pypubsub" if (starArgs != None) else "*args_patchFor_pypubsub"
+			recipe_part3 = f"*{starArgs}_patchFor_pypubsub" if (starArgs is not None) else "*args_patchFor_pypubsub"
 			recipe_part4 = ", ".join(kwargs_noDefaults)
 			recipe_part5 = ", ".join(f"{key} = {value}" for key, value in kwargs_withDefaults.items())
-			recipe_part6 = f"**{starStarKwargs}_patchFor_pypubsub" if (starStarKwargs != None) else "**kwargs_patchFor_pypubsub"
+			recipe_part6 = f"**{starStarKwargs}_patchFor_pypubsub" if (starStarKwargs is not None) else "**kwargs_patchFor_pypubsub"
 			recipe = f"lambda {', '.join(filter(None, [recipe_part1, recipe_part2, recipe_part3, recipe_part4, recipe_part5, recipe_part6]))}: None"
 
 			if (inspect.ismethod(myFunction)):
@@ -5837,7 +5838,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 		if (not isinstance(handle, (list, tuple))):
 			handle = [handle]
 
-		if (functionName == None):
+		if (functionName is None):
 			# functionName = [item[0] for item in inspect.getmembers(self, predicate = inspect.ismethod) if (item[0].startswith("set"))]# + self.boundEvents
 			functionName = [self.setValue]
 		elif (not isinstance(functionName, (list, tuple, dict))):
@@ -5858,7 +5859,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 				_functionName = _functionName.__name__
 			if (isinstance(functionName, dict)):
 				label = functionName[_functionName]
-			if (label == None):
+			if (label is None):
 				_label = f"{id(self)}:{_functionName}"
 			else:
 				_label = label
@@ -5958,7 +5959,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 	def getSize(self, event = None):
 		"""Returns the size of the wxObject."""
 
-		if (self.thing == None):
+		if (self.thing is None):
 			size = None
 		else:
 			size = self.thing.GetSize()
@@ -5989,7 +5990,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 					return item
 				
 				answer = nestCheck(item[:], wxObject)
-				if (answer != None):
+				if (answer is not None):
 					return answer
 			return answer
 
@@ -5997,17 +5998,17 @@ class handle_Base(Utilities, CommonEventFunctions):
 
 		if (isinstance(self.thing, wx.Window)):
 			wxObject = self.thing.FindFocus()
-		elif (self.myWindow != None):
+		elif (self.myWindow is not None):
 			wxObject = self.myWindow.thing.FindFocus()
 		else:
 			return
-		if (wxObject == None):
+		if (wxObject is None):
 			jkhkhjjk
 
 		handle = nestCheck(self[:], wxObject)
-		if ((handle == None) and (self.myWindow != None)):
+		if ((handle is None) and (self.myWindow is not None)):
 			handle = nestCheck(self.myWindow[:], wxObject)
-		if ((handle == None) and (self.controller != None)):
+		if ((handle is None) and (self.controller is not None)):
 			handle = nestCheck(self.controller[:], wxObject)
 		return handle
 
@@ -6027,10 +6028,10 @@ class handle_Base(Utilities, CommonEventFunctions):
 			- If None: Changes the size, regardless of the current size
 		"""
 
-		if (self.thing == None):
+		if (self.thing is None):
 			return
 
-		if (atleast == None):
+		if (atleast is None):
 			self.thing.SetSize(size)
 			return
 
@@ -6210,10 +6211,10 @@ class handle_Base(Utilities, CommonEventFunctions):
 		if (self.nestedParent.type.lower() == "wrap"):
 			return #TO DO: Calculate what the position is
 
-		if (self.nestedParent.rows == None):
+		if (self.nestedParent.rows is None):
 			return
 
-		if (index == None):
+		if (index is None):
 			index = self.getSizerIndex()
 
 		if (self.nestedParent.rows == -1):
@@ -6241,10 +6242,10 @@ class handle_Base(Utilities, CommonEventFunctions):
 		if (self.nestedParent.type.lower() == "wrap"):
 			return #TO DO: Calculate what the position is
 
-		if (self.nestedParent.columns == None):
+		if (self.nestedParent.columns is None):
 			return
 
-		if (index == None):
+		if (index is None):
 			index = self.getSizerIndex()
 		
 		if (self.nestedParent.columns == -1):
@@ -6313,11 +6314,11 @@ class handle_Base(Utilities, CommonEventFunctions):
 	def _encodePrintSettings(self, data, setupData = False, override = {}):
 		"""Turns a dictionary into a wxPrintDialogData object."""
 
-		if (data == None):
+		if (data is None):
 			if (not override):
 				return
 			data = override
-		elif ((not override) or (all(value == None for value in override.values()))):
+		elif ((not override) or (all(value is None for value in override.values()))):
 			if (isinstance(data, wx.PrintData)):
 				return wx.PrintDialogData(data)
 			elif (isinstance(data, wx.PrintDialogData) and (not setupData)):
@@ -6330,12 +6331,12 @@ class handle_Base(Utilities, CommonEventFunctions):
 			nonlocal override, isDict
 
 			if (isinstance(variable, tuple)):
-				if (all((key not in override) or (override[key] == None) for key in variable)):
+				if (all((key not in override) or (override[key] is None) for key in variable)):
 					return tuple(data.get(key, default) for key in variable)
 				
 				value = []
 				for i, key in enumerate(variable.keys()):
-					if ((key in override) and (override[key] != None)):
+					if ((key in override) and (override[key] is not None)):
 						value.append(override[key])
 					elif (isDict):
 						value.append(data.get(key, default))
@@ -6343,7 +6344,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 						value.append(getter()[i])
 				return tuple(value)
 
-			elif ((variable in override) and (override[variable] != None)):
+			elif ((variable in override) and (override[variable] is not None)):
 				return override[variable]
 			elif (isDict):
 				return data.get(variable, default)
@@ -6352,7 +6353,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 		def apply(variable, setter, getter, catalogue = None, default = None):
 			value = getValue(variable, getter, default)
 
-			if (value != None):
+			if (value is not None):
 				if (not catalogue):
 					return setter(value)
 				elif (value in catalogue.values()):
@@ -6476,7 +6477,7 @@ class handle_Container_Base(handle_Base):
 		#############################################################
 
 		#Account for all nested
-		if (label == None):
+		if (label is None):
 			if (window):
 				function = getattr(handle_Widget_Base, myFunction)
 				answer = function(self, *args, **kwargs)
@@ -7027,7 +7028,6 @@ class handle_Widget_Base(handle_Base):
 		Example Input: setShow()
 		Example Input: setShow(False)
 		"""
-		# print("@2")
 
 		self.thing.Show(state)
 
@@ -7059,7 +7059,7 @@ class handle_Widget_Base(handle_Base):
 						mySizer.thing.RemoveGrowableCol(column)
 
 				#Account for textbox sizers
-				if ((mySizer.substitute != None) and (mySizer.substitute.type.lower() == "text")):
+				if ((mySizer.substitute is not None) and (mySizer.substitute.type.lower() == "text")):
 					text = mySizer.substitute.thing.GetStaticBox()
 					if (not any(item.IsShown() for item in mySizer.thing.GetChildren())):
 						if (text.IsShown()):
@@ -7176,7 +7176,7 @@ class handle_Widget_Base(handle_Base):
 		Example Input: addToolTip("Shows what will be sent to the printer.")
 		"""
 
-		if (text == None):
+		if (text is None):
 			text = ""
 		else:
 			if (not isinstance(text, str)):
@@ -7195,23 +7195,23 @@ class handle_Widget_Base(handle_Base):
 			toolTip = wx.ToolTip(text)
 
 			#Apply properties
-			if (delayAppear != None):
+			if (delayAppear is not None):
 				toolTip.SetDelay(delayAppear)
 
-			if (delayDisappear != None):
+			if (delayDisappear is not None):
 				toolTip.SetAutoPop(delayDisappear)
 
-			if (delayReappear != None):
+			if (delayReappear is not None):
 				toolTip.SetReshow(delayReappear)
 
-			if (maxWidth != None):
+			if (maxWidth is not None):
 				toolTip.SetMaxWidth(maxWidth)
 
 			#Attach the tool tip to the wxObject
 			self.thing.SetToolTip(toolTip)
 
 		#Catalogue tool tip
-		if (label != None):
+		if (label is not None):
 			if (label in self.myWindow.toolTipCatalogue):
 				warnings.warn(f"Overwriting tool tip for {label} in {self.myWindow.__repr__()}", Warning, stacklevel = 2)
 
@@ -7236,7 +7236,7 @@ class handle_Widget_Base(handle_Base):
 		else:
 			window = self.myWindow
 
-		if (label != None):
+		if (label is not None):
 			if (label not in window.toolTipCatalogue):
 				warnings.warn(f"There is no tool tip {label} for {window.__repr__()}", Warning, stacklevel = 2)
 				return
@@ -7266,7 +7266,7 @@ class handle_Widget_Base(handle_Base):
 		else:
 			window = self.myWindow
 
-		if (label != None):
+		if (label is not None):
 			if (label not in window.toolTipCatalogue):
 				warnings.warn(f"There is no tool tip {label} for {window.__repr__()}", Warning, stacklevel = 2)
 				return
@@ -7296,7 +7296,7 @@ class handle_Widget_Base(handle_Base):
 		else:
 			window = self.myWindow
 
-		if (label != None):
+		if (label is not None):
 			if (label not in window.toolTipCatalogue):
 				warnings.warn(f"There is no tool tip {label} for {window.__repr__()}", Warning, stacklevel = 2)
 				return
@@ -7345,7 +7345,7 @@ class handle_WidgetText(handle_Widget_Base):
 				text = f"{text}"
 
 			#Apply Settings
-			if (alignment != None):
+			if (alignment is not None):
 				if (isinstance(alignment, bool)):
 					if (alignment):
 						style = "wx.ALIGN_LEFT"
@@ -7376,7 +7376,7 @@ class handle_WidgetText(handle_Widget_Base):
 				style = "wx.ALIGN_CENTRE"
 				self.flags_modification.append("ac")
 			
-			if (ellipsize != None):
+			if (ellipsize is not None):
 				if (isinstance(ellipsize, bool)):
 					if (ellipsize):
 						style += "|wx.ST_ELLIPSIZE_END"
@@ -7395,7 +7395,7 @@ class handle_WidgetText(handle_Widget_Base):
 			# font = self._getFont(size = size, bold = bold, italic = italic, color = color, family = family)
 			# self.thing.SetFont(font)
 
-			# if (wrap != None):
+			# if (wrap is not None):
 			#   if (wrap > 0):
 			#       self.wrapText(wrap)
 
@@ -7505,7 +7505,7 @@ class handle_WidgetText(handle_Widget_Base):
 		Example Text: wrapText(250)
 		"""
 
-		if (wrap != None):
+		if (wrap is not None):
 			self.thing.Wrap(wrap)
 
 	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
@@ -7609,7 +7609,7 @@ class handle_WidgetList(handle_Widget_Base):
 					warnings.warn(f"the default was not in the provided list of choices for a {self.type} in {self.__repr__()}", Warning, stacklevel = 4)
 					default = None
 
-			if (default == None):
+			if (default is None):
 				default = 0
 
 			self.thing.SetSelection(default)
@@ -7651,8 +7651,8 @@ class handle_WidgetList(handle_Widget_Base):
 			sortable, sortFunction, rowFormatter, pasteEntireRow, can_undo = self._getArguments(argument_catalogue, ["sortable", "sortFunction", "rowFormatter", "pasteEntireRow", "can_undo"])
 			can_scroll, can_expand, can_copy, can_paste, can_selectAll, can_edit = self._getArguments(argument_catalogue, ["can_scroll", "can_expand", "can_copy", "can_paste", "can_selectAll", "can_edit"])
 
-			if (columns == None):
-				if ((choices == None) or (not isinstance(choices, (list, tuple, range, dict))) or (len(choices) == 0)):
+			if (columns is None):
+				if ((choices is None) or (not isinstance(choices, (list, tuple, range, dict))) or (len(choices) == 0)):
 					columns = 0
 				elif (isinstance(choices, dict)):
 					columns = max((len(value) if (isinstance(value, (list, tuple, range))) else 1 for value in choices.values()))
@@ -7688,7 +7688,7 @@ class handle_WidgetList(handle_Widget_Base):
 			self.thing.putBlankLineBetweenGroups = groupSeparator
 			self.setSortFunction(sortFunction)
 
-			if (editOnClick != None):
+			if (editOnClick is not None):
 				if (editOnClick):
 					self.thing.cellEditMode = ObjectListView.ObjectListView.CELLEDIT_SINGLECLICK
 				else:
@@ -7741,7 +7741,7 @@ class handle_WidgetList(handle_Widget_Base):
 			self._betterBind(ObjectListView.EVT_DATA_GROUP_SELECTED, self.thing, self._onSelectGroup, mode = 2)
 
 			# myFunction, preEditFunction, postEditFunction = self._getArguments(argument_catalogue, ["myFunction", "preEditFunction", "postEditFunction"])
-			# if (myFunction != None):
+			# if (myFunction is not None):
 			#   myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
 			#   self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
 
@@ -7766,7 +7766,7 @@ class handle_WidgetList(handle_Widget_Base):
 			rowLines, rootLines, variableHeight, selectMultiple = self._getArguments(argument_catalogue, ["rowLines", "rootLines", "variableHeight", "selectMultiple"])
 
 			#Apply Settings
-			if (addButton == None):
+			if (addButton is None):
 				style = "wx.TR_NO_BUTTONS"
 			else:
 				if (addButton):
@@ -7780,14 +7780,14 @@ class handle_WidgetList(handle_Widget_Base):
 			if (rowHighlight):
 				style += "|wx.TR_FULL_ROW_HIGHLIGHT"
 
-			if (root == None):
+			if (root is None):
 				style += "|wx.TR_HIDE_ROOT"
 
 			if (rowLines or rootLines):
 				if (rowLines):
 					style += "|wx.TR_ROW_LINES"
 
-				if (rootLines and (root != None)):
+				if (rootLines and (root is not None)):
 					style += "|wx.TR_LINES_AT_ROOT"
 			else:
 				style += "|wx.TR_NO_LINES"
@@ -7850,55 +7850,55 @@ class handle_WidgetList(handle_Widget_Base):
 			rightClickFunction, middleClickFunction, doubleClickFunction = self._getArguments(argument_catalogue, ["rightClickFunction", "middleClickFunction", "doubleClickFunction"])
 			keyDownFunction, toolTipFunction, itemMenuFunction = self._getArguments(argument_catalogue, ["keyDownFunction", "toolTipFunction", "itemMenuFunction"])
 
-			if (myFunction != None):
+			if (myFunction is not None):
 				myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
 				self.setFunction_postClick(myFunction, myFunctionArgs, myFunctionKwargs)
 
-			if (preEditFunction != None):
+			if (preEditFunction is not None):
 				preEditFunctionArgs, preEditFunctionKwargs = self._getArguments(argument_catalogue, ["preEditFunctionArgs", "preEditFunctionKwargs"])
 				self.setFunction_preEdit(preEditFunction, preEditFunctionArgs, preEditFunctionKwargs)
 
-			if (postEditFunction != None):
+			if (postEditFunction is not None):
 				postEditFunctionArgs, postEditFunctionKwargs = self._getArguments(argument_catalogue, ["postEditFunctionArgs", "postEditFunctionKwargs"])
 				self.setFunction_postEdit(postEditFunction, postEditFunctionArgs, postEditFunctionKwargs)
 
-			if (preCollapseFunction != None):
+			if (preCollapseFunction is not None):
 				preCollapseFunctionArgs, preCollapseFunctionKwargs = self._getArguments(argument_catalogue, ["preCollapseFunctionArgs", "preCollapseFunctionKwargs"])
 				self.setFunction_collapse(preCollapseFunction, preCollapseFunctionArgs, preCollapseFunctionKwargs)
 
-			if (postCollapseFunction != None):
+			if (postCollapseFunction is not None):
 				postCollapseFunctionArgs, postCollapseFunctionKwargs = self._getArguments(argument_catalogue, ["postCollapseFunctionArgs", "postCollapseFunctionKwargs"])
 				self.setFunction_collapse(postCollapseFunction, postCollapseFunctionArgs, postCollapseFunctionKwargs)
 
-			if (preExpandFunction != None):
+			if (preExpandFunction is not None):
 				preExpandFunctionArgs, preExpandFunctionKwargs = self._getArguments(argument_catalogue, ["preExpandFunctionArgs", "preExpandFunctionKwargs"])
 				self.setFunction_expand(preExpandFunction, preExpandFunctionArgs, preExpandFunctionKwargs)
 
-			if (postExpandFunction != None):
+			if (postExpandFunction is not None):
 				postExpandFunctionArgs, postExpandFunctionKwargs = self._getArguments(argument_catalogue, ["postExpandFunctionArgs", "postExpandFunctionKwargs"])
 				self.setFunction_expand(postExpandFunction, postExpandFunctionArgs, postExpandFunctionKwargs)
 
-			if (rightClickFunction != None):
+			if (rightClickFunction is not None):
 				rightClickFunctionArgs, rightClickFunctionKwargs = self._getArguments(argument_catalogue, ["rightClickFunctionArgs", "rightClickFunctionKwargs"])
 				self.setFunction_rightClick(rightClickFunction, rightClickFunctionArgs, rightClickFunctionKwargs)
 
-			if (middleClickFunction != None):
+			if (middleClickFunction is not None):
 				middleClickFunctionArgs, middleClickFunctionKwargs = self._getArguments(argument_catalogue, ["middleClickFunctionArgs", "middleClickFunctionKwargs"])
 				self.setFunction_middleClick(middleClickFunction, middleClickFunctionArgs, middleClickFunctionKwargs)
 			
-			if (doubleClickFunction != None):
+			if (doubleClickFunction is not None):
 				doubleClickFunctionArgs, doubleClickFunctionKwargs = self._getArguments(argument_catalogue, ["doubleClickFunctionArgs", "doubleClickFunctionKwargs"])
 				self.setFunction_doubleClick(doubleClickFunction, doubleClickFunctionArgs, doubleClickFunctionKwargs)
 
-			if (keyDownFunction != None):
+			if (keyDownFunction is not None):
 				keyDownFunctionArgs, keyDownFunctionKwargs = self._getArguments(argument_catalogue, ["keyDownFunctionArgs", "keyDownFunctionKwargs"])
 				self.setFunction_keyDown(keyDownFunction, keyDownFunctionArgs, keyDownFunctionKwargs)
 
-			if (toolTipFunction != None):
+			if (toolTipFunction is not None):
 				toolTipFunctionArgs, toolTipFunctionKwargs = self._getArguments(argument_catalogue, ["toolTipFunctionArgs", "toolTipFunctionKwargs"])
 				self.setFunction_toolTip(toolTipFunction, toolTipFunctionArgs, toolTipFunctionKwargs)
 			
-			if (itemMenuFunction != None):
+			if (itemMenuFunction is not None):
 				itemMenuFunctionArgs, itemMenuFunctionKwargs = self._getArguments(argument_catalogue, ["itemMenuFunctionArgs", "itemMenuFunctionKwargs"])
 				self.setFunction_itemMenu(itemMenuFunction, itemMenuFunctionArgs, itemMenuFunctionKwargs)
 
@@ -7932,7 +7932,7 @@ class handle_WidgetList(handle_Widget_Base):
 			value = self.thing.GetString(index) #(str) - What is selected in the drop list
 
 		elif (self.type.lower() == "listfull"):
-			if (group == None):
+			if (group is None):
 				value = {"group": [item.key for item in self.thing.GetSelectedGroups()], "row": self.thing.GetSelectedObjects(), "latest": None}
 			elif (group):
 				value = [item.key for item in self.thing.GetSelectedGroups()]
@@ -8005,7 +8005,7 @@ class handle_WidgetList(handle_Widget_Base):
 				value.append(self.thing.GetString(i)) #(list) - What is in the drop list as strings
 
 		elif (self.type.lower() == "listfull"):
-			if (group == None):
+			if (group is None):
 				value = {"group": [item.key for item in self.thing.GetGroups()], "row": self.thing.GetObjects()}
 			elif (group):
 				value = [item.key for item in self.thing.GetGroups()]
@@ -8063,13 +8063,13 @@ class handle_WidgetList(handle_Widget_Base):
 
 	def getLatestSelected(self, event = None):
 		#Return copy, not origonal
-		if (self.lastSelection["latest"] == None):
+		if (self.lastSelection["latest"] is None):
 			return []
 		return [*self.lastSelection[self.lastSelection["latest"]]]
 
 	def getLastSelected(self, event = None, group = None):
 		#Return copy, not origonal
-		if (group == None):
+		if (group is None):
 			return {**self.lastSelection}
 		elif (group):
 			return [*self.lastSelection["group"]]
@@ -8077,8 +8077,8 @@ class handle_WidgetList(handle_Widget_Base):
 			return [*self.lastSelection["row"]]
 
 	def setLastSelected(self, newValue, group = None, event = None):
-		if (group == None):
-			if ((newValue == None) or (not isinstance(newValue, dict))):
+		if (group is None):
+			if ((newValue is None) or (not isinstance(newValue, dict))):
 				self.lastSelection = {"group": [], "row": [], "latest": None}
 			else:
 				latest = newValue.get("latest", None)
@@ -8086,7 +8086,7 @@ class handle_WidgetList(handle_Widget_Base):
 				self.setLastSelected(newValue.get("row", None), group = False)
 				self.lastSelection["latest"] = latest
 		elif (group):
-			if (newValue == None):
+			if (newValue is None):
 				self.lastSelection["group"] = []
 			else:
 				if (isinstance(newValue, (list, tuple))):
@@ -8097,7 +8097,7 @@ class handle_WidgetList(handle_Widget_Base):
 					self.lastSelection["group"] = [newValue]
 				self.lastSelection["latest"] = "group"
 		else:
-			if (newValue == None):
+			if (newValue is None):
 				self.lastSelection["row"] = []
 			else:
 				if (isinstance(newValue, (list, tuple))):
@@ -8155,12 +8155,12 @@ class handle_WidgetList(handle_Widget_Base):
 			elif (not isinstance(newValue, (list, tuple))):
 				newValue = [newValue]
 
-			if (filterNone != None):
+			if (filterNone is not None):
 				if (filterNone):
 					if (None in newValue):
 						newValue[:] = [str(value) for value in newValue if value is not None] #Filter out None
 				else:
-					newValue[:] = [str(value) if (value != None) else "" for value in newValue] #Replace None with blank space
+					newValue[:] = [str(value) if (value is not None) else "" for value in newValue] #Replace None with blank space
 
 			self.thing.Clear()
 			self.thing.AppendItems(newValue) #(list) - What the choice options will now be now
@@ -8193,11 +8193,11 @@ class handle_WidgetList(handle_Widget_Base):
 		"""
 
 		if (self.type.lower() == "listdrop"):
-			if (newValue != None):
+			if (newValue is not None):
 				if (isinstance(newValue, str)):
 					newValue = self.thing.FindString(newValue)
 
-				if (newValue == None):
+				if (newValue is None):
 					errorMessage = f"Invalid drop list selection in setSelection() for {self.__repr__()}"
 					raise ValueError(errorMessage)
 			else:
@@ -8205,7 +8205,7 @@ class handle_WidgetList(handle_Widget_Base):
 			self.thing.SetSelection(newValue) #(int) - What the choice options will now be
 
 		elif (self.type.lower() == "listfull"):
-			if (newValue == None):
+			if (newValue is None):
 				self.thing.UnselectAll()
 				return
 
@@ -8283,7 +8283,7 @@ class handle_WidgetList(handle_Widget_Base):
 
 		#Create columns
 		if (self.type.lower() == "listfull"):
-			if (column == None):
+			if (column is None):
 				column = len(self.columnCatalogue)
 
 			if (column not in self.columnCatalogue):
@@ -8318,53 +8318,53 @@ class handle_WidgetList(handle_Widget_Base):
 			self.columnCatalogue[column].setdefault("groupTitleSingleItem", None)
 			self.columnCatalogue[column].setdefault("groupTitlePluralItems", None)
 
-			if (title != None):
+			if (title is not None):
 				self.columnCatalogue[column]["title"] = title
-			if (align != None):
+			if (align is not None):
 				self.columnCatalogue[column]["align"] = align
-			if (label != None):
+			if (label is not None):
 				self.columnCatalogue[column]["valueGetter"] = label
-			if (setter != None):
+			if (setter is not None):
 				self.columnCatalogue[column]["valueSetter"] = setter
-			if (sortLabel != None):
+			if (sortLabel is not None):
 				self.columnCatalogue[column]["sortGetter"] = sortLabel
-			if (groupSortLabel != None):
+			if (groupSortLabel is not None):
 				self.columnCatalogue[column]["groupSortGetter"] = groupSortLabel
-			if (image != None):
+			if (image is not None):
 				self.columnCatalogue[column]["imageGetter"] = image
-			if (hidden != None):
+			if (hidden is not None):
 				self.columnCatalogue[column]["isHidden"] = hidden
-			if (editable != None):
+			if (editable is not None):
 				self.columnCatalogue[column]["isEditable"] = editable
-			if (sortable != None):
+			if (sortable is not None):
 				self.columnCatalogue[column]["isSortable"] = sortable
-			if (resizeable != None):
+			if (resizeable is not None):
 				self.columnCatalogue[column]["isResizeable"] = resizeable
-			if (searchable != None):
+			if (searchable is not None):
 				self.columnCatalogue[column]["isSearchable"] = searchable
-			if (reorderable != None):
+			if (reorderable is not None):
 				self.columnCatalogue[column]["isReorderable"] = reorderable
-			if (minWidth != None):
+			if (minWidth is not None):
 				self.columnCatalogue[column]["minimumWidth"] = minWidth
-			if (formatter != None):
+			if (formatter is not None):
 				self.columnCatalogue[column]["stringConverter"] = formatter
-			if (renderer != None):
+			if (renderer is not None):
 				self.columnCatalogue[column]["renderer"] = renderer
-			if (rendererArgs != None):
+			if (rendererArgs is not None):
 				self.columnCatalogue[column]["rendererArgs"] = rendererArgs
-			if (rendererKwargs != None):
+			if (rendererKwargs is not None):
 				self.columnCatalogue[column]["rendererKwargs"] = rendererKwargs
-			if (group != None):
+			if (group is not None):
 				if (isinstance(group, bool)):
 					if (group):
 						self.columnCatalogue[column]["useInitialLetterForGroupKey"] = True
 				else:
 					self.columnCatalogue[column]["useInitialLetterForGroupKey"] = False
 					self.columnCatalogue[column]["groupKeyGetter"] = group
-			if (groupFormatter != None):
+			if (groupFormatter is not None):
 				self.columnCatalogue[column]["groupKeyConverter"] = groupFormatter
 
-			if (width != None):
+			if (width is not None):
 				self.columnCatalogue[column]["width"] = width
 			else:
 				self.columnCatalogue[column]["width"] = self.getStringPixels(self.columnCatalogue[column]["title"])[0] + 40
@@ -8377,11 +8377,11 @@ class handle_WidgetList(handle_Widget_Base):
 			#Everything must have a label
 			if (not self.thing.InReportView()):
 				self.columnCatalogue[column]["valueGetter"] = f"value" 
-			elif (self.columnCatalogue[column]["valueGetter"] == None):
+			elif (self.columnCatalogue[column]["valueGetter"] is None):
 				self.columnCatalogue[column]["valueGetter"] = f"unnamed_{column}" 
 
 			#All images must be callable
-			if ((self.columnCatalogue[column]["imageGetter"] != None) and (not callable(self.columnCatalogue[column]["imageGetter"]))):
+			if ((self.columnCatalogue[column]["imageGetter"] is not None) and (not callable(self.columnCatalogue[column]["imageGetter"]))):
 				value = self.columnCatalogue[column]["imageGetter"]
 				self.columnCatalogue[column]["imageGetter"] = lambda item: value
 
@@ -8435,7 +8435,7 @@ class handle_WidgetList(handle_Widget_Base):
 			self.showGroup(column = column, state = True, refresh = refresh)
 			return
 
-		if (column != None):
+		if (column is not None):
 			if (not isinstance(column, int)):
 				for _column, catalogue in self.columnCatalogue.items():
 					if (catalogue["valueGetter"] == column):
@@ -8469,7 +8469,7 @@ class handle_WidgetList(handle_Widget_Base):
 
 		self.thing.SetShowGroups(True)
 
-		if (column == None):
+		if (column is None):
 			self.thing.SetAlwaysGroupByColumn(None)
 		else:
 			if (not isinstance(column, int)):
@@ -8490,27 +8490,27 @@ class handle_WidgetList(handle_Widget_Base):
 		self.showGroupCount(not state)
 
 	def setColor(self, even = None, odd = None, selected = None, group = None):
-		if (even != None):
+		if (even is not None):
 			self.thing.evenRowsBackColor = self._getColor(even)
-		if (odd != None):
+		if (odd is not None):
 			self.thing.oddRowsBackColor = self._getColor(odd)
-		if (selected != None):
+		if (selected is not None):
 			self.selectionColor = self._getColor(selected)
-		if (group != None):
+		if (group is not None):
 			self.thing.groupBackgroundColour = self._getColor(group)
 
 	def getSortColumn(self):
 		column = self.thing.GetSortColumn()
-		if (column != None):
+		if (column is not None):
 			return column.title
 		
 	def getGroupColumn(self):
 		column = self.thing.GetGroupByColumn()
-		if (column != None):
+		if (column is not None):
 			return column.title
 
 	def sortBy(self, label = None, ascending = True):
-		if (label == None):
+		if (label is None):
 			self.thing.SetSortColumn(None, resortNow = True)
 			# self.refreshColumns()
 			# self.refresh()
@@ -8543,7 +8543,7 @@ class handle_WidgetList(handle_Widget_Base):
 			except:
 				return group.key
 
-		if (self.thing.defaultGroupSortFunction == None):
+		if (self.thing.defaultGroupSortFunction is None):
 			sortFunction = _getLowerCaseKey
 		else:
 			sortFunction = self.thing.defaultGroupSortFunction
@@ -8560,13 +8560,15 @@ class handle_WidgetList(handle_Widget_Base):
 			self.thing.DisableSorting()
 
 	def updateUnsorted(self):
-		self.thing.UpdateUnsorted()
+		# self.thing.UpdateUnsorted()
+		pass
 
 	def setUnsortedFunction(self, myFunction = None, widgetArg = True):
-		if (myFunction and widgetArg):
-			self.thing.SetUnsortedFunction(lambda *args: myFunction(*args, self))
-		else:
-			self.thing.SetUnsortedFunction(myFunction)
+		pass
+		# if (myFunction and widgetArg):
+		# 	self.thing.SetUnsortedFunction(lambda *args: myFunction(*args, self))
+		# else:
+		# 	self.thing.SetUnsortedFunction(myFunction)
 
 	def setSortFunction(self, myFunction = None, widgetArg = True):
 		if (myFunction and widgetArg):
@@ -8585,6 +8587,12 @@ class handle_WidgetList(handle_Widget_Base):
 			self.thing.SetShowEmptyGroups(lambda *args: myFunction(*args, self))
 		else:
 			self.thing.SetShowEmptyGroups(myFunction)
+
+	def setFunction_getColor(self, myFunction = None, widgetArg = True):
+		if (myFunction and widgetArg):
+			self.thing.SetColorFunction(lambda *args: myFunction(*args, self))
+		else:
+			self.thing.SetColorFunction(myFunction)
 
 	def ensureGroups(self, groupList = None):
 		"""Makes sure these groups are shown, even if they are empty."""
@@ -8621,13 +8629,13 @@ class handle_WidgetList(handle_Widget_Base):
 				#Account for new branches
 				if (isinstance(newValue, dict)):
 					for key, value in newValue.items():
-						if (key != None):
+						if (key is not None):
 							branch = self.thing.AppendItem(where, str(key))
 
-						if (value != None):
+						if (value is not None):
 							self.appendValue(value, branch)
 				else:
-					if (newValue != None):
+					if (newValue is not None):
 						branch = self.thing.AppendItem(where, str(newValue))
 
 		elif (self.type.lower() == "listfull"):
@@ -8751,7 +8759,7 @@ class handle_WidgetList(handle_Widget_Base):
 			
 	def setFunction_preDrop(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
-			if (self.myDropTarget == None):
+			if (self.myDropTarget is None):
 				warnings.warn(f"'drop' was not enabled for {self.__repr__()} upon creation", Warning, stacklevel = 2)
 			else:
 				self.myDropTarget.preDropFunction = myFunction
@@ -8762,7 +8770,7 @@ class handle_WidgetList(handle_Widget_Base):
 			
 	def setFunction_postDrop(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
-			if (self.myDropTarget == None):
+			if (self.myDropTarget is None):
 				warnings.warn(f"'drop' was not enabled for {self.__repr__()} upon creation", Warning, stacklevel = 2)
 			else:
 				#wx.dataview.EVT_DATAVIEW_ITEM_DROP
@@ -8774,7 +8782,7 @@ class handle_WidgetList(handle_Widget_Base):
 			
 	def setFunction_dragOver(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type.lower() == "listfull"):
-			if (self.myDropTarget == None):
+			if (self.myDropTarget is None):
 				warnings.warn(f"'drop' was not enabled for {self.__repr__()} upon creation", Warning, stacklevel = 2)
 			else:
 				#wx.dataview.EVT_DATAVIEW_ITEM_DROP_POSSIBLE
@@ -8985,18 +8993,18 @@ class handle_WidgetList(handle_Widget_Base):
 		"""
 
 		if (self.type.lower() == "listfull"):
-			if (color == None):
+			if (color is None):
 				colorHandle = None
 			else:
 				colorHandle = self._getColor(color)
 
-			if (row != None):
-				if (column != None):
+			if (row is not None):
+				if (column is not None):
 					self.thing.SetCellColour(row, column, colorHandle)
 				else:
 					self.thing.SetRowColour(row, colorHandle)
 			else:
-				if (column != None):
+				if (column is not None):
 					self.thing.SetColumnColour(column, colorHandle)
 				else:
 					self.thing.SetBackgroundColour(colorHandle)
@@ -9036,7 +9044,7 @@ class handle_WidgetList(handle_Widget_Base):
 			if ((dragResult != wx.DragNone) and (dragResult != wx.DragError) and (dragResult != wx.DragCancel)):
 				if ((dragResult != wx.DragCopy) or ((dragResult == wx.DragCopy) and (overrideCopy))):
 					#Account for dropping it into a different application
-					if (dragDropDestination != None):
+					if (dragDropDestination is not None):
 						#Account for dropping it into the same thing it was dragged from
 						if (originList == dragDropDestination[0]):
 							if (dragDropDestination[1] < index):
@@ -9083,7 +9091,7 @@ class handle_WidgetList(handle_Widget_Base):
 
 		self.setLastSelected(self.getValue(group = False), group = False)
 		
-		if (event != None):
+		if (event is not None):
 			event.Skip()
 
 	def _onSelectGroup(self, event = None):
@@ -9091,7 +9099,7 @@ class handle_WidgetList(handle_Widget_Base):
 
 		self.setLastSelected(self.getValue(group = True), group = True)
 		
-		if (event != None):
+		if (event is not None):
 			event.Skip()
 
 	class _ListFull(ObjectListView.DataObjectListView):
@@ -9176,7 +9184,7 @@ class handle_WidgetList(handle_Widget_Base):
 				itemCount = self.parent.GetItemCount()
 
 				#Configure drop point
-				if (self.insertMode != None):
+				if (self.insertMode is not None):
 					if (self.insertMode < 0):
 						#Add from the end of the list
 						index = itemCount + self.insertMode + 1
@@ -9193,7 +9201,7 @@ class handle_WidgetList(handle_Widget_Base):
 						#Make sure it is looking at the correct column
 						if (x - item_x - item_width < 0):
 							#Account for dropping it at the bottom of a multi-column
-							if (columnFound != None):
+							if (columnFound is not None):
 								if (columnFound != item_x):
 									index = i
 									break
@@ -9308,7 +9316,7 @@ class handle_WidgetInput(handle_Widget_Base):
 
 			#Bind the function(s)
 			myFunction = self._getArguments(argument_catalogue, "myFunction")
-			if (myFunction != None):
+			if (myFunction is not None):
 				myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
 				self.setFunction_postEdit(myFunction, myFunctionArgs, myFunctionKwargs)
 
@@ -9339,13 +9347,13 @@ class handle_WidgetInput(handle_Widget_Base):
 			if (tab):
 				style += "|wx.TE_PROCESS_TAB" #Interpret 'Tab' as 4 spaces
 
-			if (wrap != None):
+			if (wrap is not None):
 				if (wrap > 0):
 					style += "|wx.TE_MULTILINE|wx.TE_WORDWRAP"
 				else:
 					style += "|wx.TE_CHARWRAP|wx.TE_MULTILINE"
 
-			# if (enterFunction != None):
+			# if (enterFunction is not None):
 				#Interpret 'Enter' as \n
 			#   style += "|wx.TE_PROCESS_ENTER"
 
@@ -9359,7 +9367,7 @@ class handle_WidgetInput(handle_Widget_Base):
 				style = "wx.DEFAULT"
 
 			#Account for empty text
-			if (text == None):
+			if (text is None):
 				text = wx.EmptyString
 
 			myId = self._getId(argument_catalogue)
@@ -9376,7 +9384,7 @@ class handle_WidgetInput(handle_Widget_Base):
 				self.thing = wx.TextCtrl(self.parent.thing, id = myId, value = text, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 				#Set maximum length
-				if (maxLength != None):
+				if (maxLength is not None):
 					self.thing.SetMaxLength(maxLength)
 
 			#flags += "|wx.RESERVE_SPACE_EVEN_IF_HIDDEN"
@@ -9386,19 +9394,19 @@ class handle_WidgetInput(handle_Widget_Base):
 			
 			#self._betterBind(wx.EVT_CHAR, self.thing, enterFunction, enterFunctionArgs, enterFunctionKwargs)
 			#self._betterBind(wx.EVT_KEY_UP, self.thing, self.testFunction, myFunctionArgs, myFunctionKwargs)
-			if (myFunction != None):
+			if (myFunction is not None):
 				myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
 				self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
 
-			if (enterFunction != None):
+			if (enterFunction is not None):
 				enterFunctionArgs, enterFunctionKwargs = self._getArguments(argument_catalogue, ["enterFunctionArgs", "enterFunctionKwargs"])
 				self.setFunction_enter(enterFunction, enterFunctionArgs, enterFunctionKwargs)
 			
-			if (postEditFunction != None):
+			if (postEditFunction is not None):
 				postEditFunctionArgs, postEditFunctionKwargs = self._getArguments(argument_catalogue, ["postEditFunctionArgs", "postEditFunctionKwargs"])
 				self.setFunction_postEdit(postEditFunction, postEditFunctionArgs, postEditFunctionKwargs)
 			
-			if (preEditFunction != None):
+			if (preEditFunction is not None):
 				preEditFunctionArgs, preEditFunctionKwargs = self._getArguments(argument_catalogue, ["preEditFunctionArgs", "preEditFunctionKwargs"])
 				self.setFunction_preEdit(preEditFunction, preEditFunctionArgs, preEditFunctionKwargs)
 
@@ -9419,7 +9427,7 @@ class handle_WidgetInput(handle_Widget_Base):
 			if (not hideSelection):
 				style += "|wx.TE_NOHIDESEL"
 
-			if (alignment != None):
+			if (alignment is not None):
 				if (isinstance(alignment, bool)):
 					if (alignment):
 						style += "|wx.TE_LEFT"
@@ -9448,30 +9456,30 @@ class handle_WidgetInput(handle_Widget_Base):
 			self.nest(self.myMenu)
 
 			#Determine if additional features are enabled
-			if (searchButton != None):
+			if (searchButton is not None):
 				self.thing.ShowSearchButton(True)
 			
-			if (cancelButton != None):
+			if (cancelButton is not None):
 				self.thing.ShowCancelButton(True)
 
 			#Bind the function(s)
-			if (myFunction != None):
+			if (myFunction is not None):
 				myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
 				self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
 
-			if (enterFunction != None):
+			if (enterFunction is not None):
 				enterFunctionArgs, enterFunctionKwargs = self._getArguments(argument_catalogue, ["enterFunctionArgs", "enterFunctionKwargs"])
 				self.setFunction_enter(enterFunction, enterFunctionArgs, enterFunctionKwargs)
 
-			if (searchFunction != None):
+			if (searchFunction is not None):
 				searchFunctionArgs, searchFunctionKwargs = self._getArguments(argument_catalogue, ["searchFunctionArgs", "searchFunctionKwargs"])
 				self.setFunction_search(searchFunction, searchFunctionArgs, searchFunctionKwargs)
 
-			if (cancelFunction != None):
+			if (cancelFunction is not None):
 				cancelFunctionArgs, cancelFunctionKwargs = self._getArguments(argument_catalogue, ["cancelFunctionArgs", "cancelFunctionKwargs"])
 				self.setFunction_cancel(cancelFunction, cancelFunctionArgs, cancelFunctionKwargs)
 
-			if (menuFunction != None):
+			if (menuFunction is not None):
 				menuFunctionArgs, menuFunctionKwargs = self._getArguments(argument_catalogue, ["menuFunctionArgs", "menuFunctionKwargs"])
 				self.setFunction_menuSelect(menuFunction, menuFunctionArgs, menuFunctionKwargs)
 			
@@ -9500,16 +9508,16 @@ class handle_WidgetInput(handle_Widget_Base):
 				if (readOnly):
 					style += "|wx.lib.agw.floatspin.FS_READONLY"
 
-				if (increment == None):
+				if (increment is None):
 					increment = 0.1
 
-				if (digits == None):
+				if (digits is None):
 					digits = 1
 
 				self.subType = "float"
 				self.thing = wx.lib.agw.floatspin.FloatSpin(self.parent.thing, id = myId, pos = wx.DefaultPosition, size = size, style = wx.SP_ARROW_KEYS|wx.SP_WRAP, value = myInitial, min_val = myMin, max_val = myMax, increment = increment, digits = digits, agwStyle = eval(style, {'__builtins__': None, "wx": wx}, {}))
 			else:
-				if (increment != None):
+				if (increment is not None):
 					style = "wx.lib.agw.floatspin.FS_LEFT"
 					self.subType = "float"
 					self.thing = wx.lib.agw.floatspin.FloatSpin(self.parent.thing, id = myId, pos = wx.DefaultPosition, size = size, style = wx.SP_ARROW_KEYS|wx.SP_WRAP, value = myInitial, min_val = myMin, max_val = myMax, increment = increment, digits = -1, agwStyle = eval(style, {'__builtins__': None, "wx": wx}, {}))
@@ -9534,19 +9542,19 @@ class handle_WidgetInput(handle_Widget_Base):
 			#Bind the function(s)
 			myFunction, changeTextFunction = self._getArguments(argument_catalogue, ["myFunction", "changeTextFunction"])
 
-			if (myFunction != None):
+			if (myFunction is not None):
 				myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
 				self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
 	
-			# if (changeTextFunction != None):
+			# if (changeTextFunction is not None):
 			#   if (isinstance(changeTextFunction, bool)):
-			#       if (changeTextFunction and (myFunction != None)):
+			#       if (changeTextFunction and (myFunction is not None)):
 			#           self._betterBind(wx.EVT_TEXT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 			#   else:
 			#       changeTextFunctionArgs, changeTextFunctionKwargs = self._getArguments(argument_catalogue, ["changeTextFunctionArgs", "changeTextFunctionKwargs"])
 			#       self._betterBind(wx.EVT_TEXT, self.thing, changeTextFunction, changeTextFunctionArgs, changeTextFunctionKwargs)
 
-			if (not ((self.exclude == None) or (isinstance(self.exclude, (list, tuple, range)) and (len(self.exclude) == 0)))):
+			if (not ((self.exclude is None) or (isinstance(self.exclude, (list, tuple, range)) and (len(self.exclude) == 0)))):
 				self._betterBind(wx.EVT_KILL_FOCUS, self.thing, self._onCheckValue_exclude)
 		
 		#########################################################
@@ -9593,7 +9601,7 @@ class handle_WidgetInput(handle_Widget_Base):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
 		if (self.type.lower() == "inputbox"):
-			if (newValue == None):
+			if (newValue is None):
 				newValue = "" #Filter None as blank text
 			self.thing.SetValue(newValue) #(str) - What will be shown in the text box
 
@@ -9610,7 +9618,7 @@ class handle_WidgetInput(handle_Widget_Base):
 			self.thing.SetValue(newValue) #(int / float) - Where the slider position will be
 
 		elif (self.type.lower() == "inputsearch"):
-			if (newValue == None):
+			if (newValue is None):
 				newValue = "" #Filter None as blank text
 			self.thing.SetValue(newValue) #(str) - What will be shown in the search box
 
@@ -9658,7 +9666,7 @@ class handle_WidgetInput(handle_Widget_Base):
 		elif (self.type.lower() == "inputspinner"):
 			self._betterBind(wx.EVT_KILL_FOCUS, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
-			if (not ((self.exclude == None) or (isinstance(self.exclude, (list, tuple, range)) and (len(self.exclude) == 0)))):
+			if (not ((self.exclude is None) or (isinstance(self.exclude, (list, tuple, range)) and (len(self.exclude) == 0)))):
 				self._betterBind(wx.EVT_KILL_FOCUS, self.thing, self._onCheckValue_exclude, rebind = True)
 
 		elif (self.type.lower() == "slider"):
@@ -9725,7 +9733,7 @@ class handle_WidgetInput(handle_Widget_Base):
 		"""Checks the current value to make sure the text is valid."""
 
 		if (self.type.lower() == "inputspinner"):
-			if (self.exclude != None):
+			if (self.exclude is not None):
 				#Error Check
 				if (not isinstance(self.exclude, (list, tuple, range))):
 					warnings.warn(f"'exclude' must be a list or tuple for {self.__repr__()}", Warning, stacklevel = 2)
@@ -9820,7 +9828,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			if (toggleText):
 				self._betterBind(wx.EVT_BUTTON, self.thing, self._onToggleText)
 
-			if (myFunction != None):
+			if (myFunction is not None):
 				myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
 				self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
 
@@ -9855,7 +9863,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			self.thing.SetValue(pressed) 
 
 			#Bind the function(s)
-			if (myFunction != None):
+			if (myFunction is not None):
 				myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
 				self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
 
@@ -9874,7 +9882,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			self.thing.SetValue(default)
 
 			#Bind the function(s)
-			if (myFunction != None):
+			if (myFunction is not None):
 				myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
 				self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
 
@@ -9906,7 +9914,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			self.thing = wx.CheckListBox(self.parent.thing, id = myId, choices = choices, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 			#Bind the function(s)
-			if (myFunction != None):
+			if (myFunction is not None):
 				myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
 				self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
 
@@ -9931,7 +9939,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			self.thing.SetValue(default)
 
 			#Bind the function(s)
-			if (myFunction != None):
+			if (myFunction is not None):
 				myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
 				self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
 
@@ -9968,13 +9976,13 @@ class handle_WidgetButton(handle_Widget_Base):
 					if (default in choices):
 						default = choices.index(default)
 
-				if (default == None):
+				if (default is None):
 					default = 0
 
 				self.thing.SetSelection(default)
 
 			#Bind the function(s)
-			if (myFunction != None):
+			if (myFunction is not None):
 				myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
 				self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
 
@@ -9986,10 +9994,10 @@ class handle_WidgetButton(handle_Widget_Base):
 				"""Determines what image to use."""
 				nonlocal self 
 
-				if ((imagePath != "") and (imagePath != None)):
-					if ((((internal != None) and (not internal)) or ((internal == None) and (not internalDefault))) and (not os.path.exists(imagePath))):
+				if ((imagePath != "") and (imagePath is not None)):
+					if ((((internal is not None) and (not internal)) or ((internal is None) and (not internalDefault))) and (not os.path.exists(imagePath))):
 						return self._getImage("error", internal = True)
-					elif (internal != None):
+					elif (internal is not None):
 						return self._getImage(imagePath, internal)
 					return self._getImage(imagePath, internalDefault)
 				else:
@@ -10009,19 +10017,19 @@ class handle_WidgetButton(handle_Widget_Base):
 
 			#Error Check
 			image = _imageCheck(idlePath, idle_internal, internal)
-			if (image == None):
+			if (image is None):
 				image = self._getImage("error", internal = True)
 
 			#Remember values
 			self.toggle = toggle
 
-			if (size == None):
+			if (size is None):
 				size = wx.DefaultSize
 
 			myId = self._getId(argument_catalogue)
 
 			#Create the thing to put in the grid
-			if (text != None):
+			if (text is not None):
 				if (toggle):
 					self.thing = wx.lib.buttons.GenBitmapTextToggleButton(self.parent.thing, id = myId, bitmap = image, label = text, size = size, style = wx.BU_AUTODRAW)
 				else:
@@ -10034,23 +10042,23 @@ class handle_WidgetButton(handle_Widget_Base):
 		
 			#Apply extra images
 			image = _imageCheck(disabledPath, disabled_internal, internal)
-			if (image != None):
+			if (image is not None):
 				self.thing.SetBitmapDisabled(image)
 
 			image = _imageCheck(selectedPath, selected_internal, internal)
-			if (image != None):
+			if (image is not None):
 				self.thing.SetBitmapSelected(image)
 
 			image = _imageCheck(focusPath, focus_internal, internal)
-			if (image != None):
+			if (image is not None):
 				self.thing.SetBitmapFocus(image)
 
 			image = _imageCheck(hoverPath, hover_internal, internal)
-			if (image != None):
+			if (image is not None):
 				self.thing.SetBitmapHover(image)
 
 			#Bind the function(s)
-			if (myFunction != None):
+			if (myFunction is not None):
 				myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
 				self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
 		
@@ -10180,7 +10188,7 @@ class handle_WidgetButton(handle_Widget_Base):
 				# if (not newValue.isdigit()):
 				newValue = self.thing.FindString(newValue)
 
-			if (newValue == None):
+			if (newValue is None):
 				errorMessage = f"Invalid radio button selection in setValue() for {self.__repr__()}"
 				raise ValueError(errorMessage)
 
@@ -10210,7 +10218,7 @@ class handle_WidgetButton(handle_Widget_Base):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
 		if (self.type.lower() == "buttonradiobox"):
-			if (newValue == None):
+			if (newValue is None):
 				newValue = 0
 			self.setValue(newValue, event)
 
@@ -10218,7 +10226,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			try:
 				if (isinstance(newValue, bool)):
 					newValue = int(newValue)
-				elif (newValue == None):
+				elif (newValue is None):
 					newValue = 0
 
 				if (isinstance(newValue, int)):
@@ -10378,10 +10386,10 @@ class handle_WidgetPicker(handle_Widget_Base):
 
 			myId = self._getId(argument_catalogue)
 
-			# if (initialDir == None):
+			# if (initialDir is None):
 			#   initialDir = ""
 
-			# if (initialFile == None):
+			# if (initialFile is None):
 			#   initialFile = ""
 
 			wildcard = self._getWildcard(wildcard)
@@ -10396,7 +10404,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			self.thing.SetInitialDirectory(initialDir)
 
 			#Bind the function(s)
-			if (myFunction != None):
+			if (myFunction is not None):
 				myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
 				self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
 
@@ -10413,7 +10421,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			if (directoryOnly):
 				style += "|wx.DIRCTRL_DIR_ONLY"
 
-			if (editLabelFunction != None):
+			if (editLabelFunction is not None):
 				style += "|wx.DIRCTRL_EDIT_LABELS"
 
 			if (selectMultiple):
@@ -10437,15 +10445,15 @@ class handle_WidgetPicker(handle_Widget_Base):
 				self.thing.ShowHidden(False)
 
 			#Bind the function(s)
-			if (myFunction != None):
+			if (myFunction is not None):
 				myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
 				self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
 
-			if (editLabelFunction != None):
+			if (editLabelFunction is not None):
 				editLabelFunctionArgs, editLabelFunctionKwargs = self._getArguments(argument_catalogue, ["editLabelFunctionArgs", "editLabelFunctionKwargs"])
 				self.setFunction_editLabel(myFunction, myFunctionArgs, myFunctionKwargs)
 
-			if (rightClickFunction != None):
+			if (rightClickFunction is not None):
 				rightClickFunctionArgs, rightClickFunctionKwargs = self._getArguments(argument_catalogue, ["rightClickFunctionArgs", "rightClickFunctionKwargs"])
 				self.setFunction_rightClick(myFunction, myFunctionArgs, myFunctionKwargs)
 
@@ -10456,7 +10464,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			date, dropDown, myFunction = self._getArguments(argument_catalogue, ["date", "dropDown", "myFunction"])
 
 			#Set the currently selected date
-			if (date != None):
+			if (date is not None):
 				try:
 					month, day, year = re.split("[\\\\/]", date) #Format: mm/dd/yyyy
 					month, day, year = int(month), int(day), int(year)
@@ -10485,7 +10493,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			self.thing = wx.adv.DatePickerCtrl(self.parent.thing, id = myId, dt = date, style = style)
 
 			#Bind the function(s)
-			if (myFunction != None):
+			if (myFunction is not None):
 				myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
 				self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
 
@@ -10497,7 +10505,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			myFunction, dayFunction, monthFunction, yearFunction = self._getArguments(argument_catalogue, ["myFunction", "dayFunction", "monthFunction", "yearFunction"])
 
 			#Set the currently selected date
-			if (date != None):
+			if (date is not None):
 				try:
 					month, day, year = re.split("[\\\\/]", date) #Format: mm/dd/yyyy
 					date = wx.DateTime(day, month, year)
@@ -10534,19 +10542,19 @@ class handle_WidgetPicker(handle_Widget_Base):
 			self.thing = wx.adv.CalendarCtrl(self.parent.thing, id = myId, date = date, style = eval(style, {'__builtins__': None, "wx.adv": wx.adv}, {}))
 
 			#Bind the function(s)
-			if (myFunction != None):
+			if (myFunction is not None):
 				myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
 				self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
 
-			if (dayFunction != None):
+			if (dayFunction is not None):
 				dayFunctionArgs, dayFunctionKwargs = self._getArguments(argument_catalogue, ["dayFunctionArgs", "dayFunctionKwargs"])
 				self.setFunction_editDay(myFunction, myFunctionArgs, myFunctionKwargs)
 
-			if (monthFunction != None):
+			if (monthFunction is not None):
 				monthFunctionArgs, monthFunctionKwargs = self._getArguments(argument_catalogue, ["monthFunctionArgs", "monthFunctionKwargs"])
 				self.setFunction_editMonth(myFunction, myFunctionArgs, myFunctionKwargs)
 
-			if (yearFunction != None):
+			if (yearFunction is not None):
 				yearFunctionArgs, yearFunctionKwargs = self._getArguments(argument_catalogue, ["yearFunctionArgs", "yearFunctionKwargs"])
 				self.setFunction_editYear(myFunction, myFunctionArgs, myFunctionKwargs)
 
@@ -10557,7 +10565,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			time, myFunction = self._getArguments(argument_catalogue, ["time", "myFunction"])
 
 			#Set the currently selected time
-			if (time != None):
+			if (time is not None):
 				try:
 					time = re.split(":", time) #Format: hour:minute:second
 					
@@ -10585,7 +10593,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			self.thing = wx.adv.TimePickerCtrl(self.parent.thing, id = myId, dt = time)
 
 			#Bind the function(s)
-			if (myFunction != None):
+			if (myFunction is not None):
 				myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
 				self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
 
@@ -10609,7 +10617,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			else:
 				style = style[1:] #Remove leading line
 
-			if (initial == None):
+			if (initial is None):
 				initial = wx.BLACK
 			else:
 				initial = wx.BLACK
@@ -10620,7 +10628,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			self.thing = wx.ColourPickerCtrl(self.parent.thing, id = myId, colour = initial, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 			#Bind the function(s)
-			if (myFunction != None):
+			if (myFunction is not None):
 				myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
 				self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
 
@@ -10655,7 +10663,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			self.thing.SetMaxPointSize(maxFontSize) 
 
 			#Bind the function(s)
-			if (myFunction != None):
+			if (myFunction is not None):
 				myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
 				self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
 		
@@ -10694,17 +10702,17 @@ class handle_WidgetPicker(handle_Widget_Base):
 		
 		elif (self.type.lower() == "pickerdate"):
 			value = self.thing.GetValue() #(str) - What date is selected in the date picker
-			if (value != None):
+			if (value is not None):
 				value = f"{value.GetMonth()}/{value.GetDay()}/{value.GetYear()}"
 
 		elif (self.type.lower() == "pickerdatewindow"):
 			value = self.thing.GetDate() #(str) - What date is selected in the date picker
-			if (value != None):
+			if (value is not None):
 				value = f"{value.GetMonth()}/{value.GetDay()}/{value.GetYear()}"
 
 		elif (self.type.lower() == "pickertime"):
 			value = self.thing.GetTime() #(str) - What date is selected in the date picker
-			if (value != None):
+			if (value is not None):
 				value = f"{value[0]}:{value[1]}:{value[2]}"
 
 		elif (self.type.lower() == "pickercolor"):
@@ -10729,7 +10737,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 		elif ((self.type.lower() == "pickerdate") or (self.type.lower() == "pickerdatewindow")):
 			#Format value
 			try:
-				if (newValue != None):
+				if (newValue is not None):
 					month, day, year = re.split("[\\\\/]", newValue) #Format: mm/dd/yyyy
 					month, day, year = int(month), int(day), int(year)
 					newValue = wx.DateTime(day, month, year)
@@ -10744,7 +10752,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 		elif (self.type.lower() == "pickertime"):
 			#Format value
 			try:
-				if (newValue != None):
+				if (newValue is not None):
 					time = re.split(":", newValue) #Format: hour:minute:second
 			
 					if (len(time) == 2):
@@ -10969,7 +10977,7 @@ class handle_Menu(handle_Container_Base):
 				style += "|wx.TB_FLAT"
 			if (not align):
 				style += "|wx.TB_NOALIGN"
-			if (top == None):
+			if (top is None):
 				style += "|wx.TB_RIGHT"
 			elif (not top):
 				style += "|wx.TB_BOTTOM"
@@ -10989,7 +10997,7 @@ class handle_Menu(handle_Container_Base):
 			self.thing.Realize()
 
 			#Bind the function(s)
-			if (myFunction != None):
+			if (myFunction is not None):
 				myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
 				self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
 		
@@ -11012,7 +11020,7 @@ class handle_Menu(handle_Container_Base):
 
 		if (self.type.lower() == "menu"):
 			#Get menu item
-			if (event == None):
+			if (event is None):
 				errorMessage = "Pass the event parameter to getValue() when working with menu items"
 				raise SyntaxError(errorMessage)
 			
@@ -11036,7 +11044,7 @@ class handle_Menu(handle_Container_Base):
 
 		if (self.type.lower() == "menu"):
 			#Get menu item
-			if (event == None):
+			if (event is None):
 				errorMessage = "Pass the event parameter to getValue() when working with menu items"
 				raise SyntaxError(errorMessage)
 			
@@ -11058,7 +11066,7 @@ class handle_Menu(handle_Container_Base):
 
 		if (self.type.lower() == "menu"):
 			#Get menu item
-			if (event == None):
+			if (event is None):
 				errorMessage = "Pass the event parameter to getValue() when working with menu items"
 				raise SyntaxError(errorMessage)
 			
@@ -11096,7 +11104,7 @@ class handle_Menu(handle_Container_Base):
 		"""
 
 		if (self.type.lower() == "toolbar"):
-			if (label == None):
+			if (label is None):
 				label = self[:]
 			elif (not isinstance(label, (list, tuple, range))):
 				label = [label]
@@ -11104,7 +11112,7 @@ class handle_Menu(handle_Container_Base):
 			for item in label:
 				with self[item] as myWidget:
 					#Account for no wx.App.MainLoop yet
-					if ((wx.EventLoop.GetActive() == None) and (not self.controller.finishing)):
+					if ((wx.EventLoop.GetActive() is None) and (not self.controller.finishing)):
 						#Queue the current state to apply later; setting the enable twice before wx.App.MainLoop starts will cause the code to freeze
 						self.myWindow._addFinalFunction(self.setEnable, myFunctionKwargs = {"label": myWidget, "state": state}, label = (myWidget, self.setEnable))
 						continue
@@ -11121,7 +11129,7 @@ class handle_Menu(handle_Container_Base):
 		"""
 
 		if (self.type.lower() == "toolbar"):
-			if (label == None):
+			if (label is None):
 				label = self[:]
 			elif (not isinstance(label, (list, tuple, range))):
 				label = [label]
@@ -11130,7 +11138,7 @@ class handle_Menu(handle_Container_Base):
 			for item in label:
 				with self[item] as myWidget:
 					#Account for no wx.App.MainLoop yet
-					if ((wx.EventLoop.GetActive() == None) and (not self.controller.finishing) and ((myWidget, self.setEnable) in self.finalFunctionCatalogue)):
+					if ((wx.EventLoop.GetActive() is None) and (not self.controller.finishing) and ((myWidget, self.setEnable) in self.finalFunctionCatalogue)):
 						answer.append(self.finalFunctionCatalogue[(myWidget, self.setEnable)][2]["state"])
 						continue
 
@@ -11152,7 +11160,7 @@ class handle_Menu(handle_Container_Base):
 		"""
 
 		if (self.type.lower() == "toolbar"):
-			if (label == None):
+			if (label is None):
 				label = self[:]
 			elif (not isinstance(label, (list, tuple, range))):
 				label = [label]
@@ -11180,7 +11188,7 @@ class handle_Menu(handle_Container_Base):
 		"""
 
 		if (self.type.lower() == "toolbar"):
-			if (label == None):
+			if (label is None):
 				label = self[:]
 			elif (not isinstance(label, (list, tuple, range))):
 				label = [label]
@@ -11771,7 +11779,7 @@ class handle_MenuItem(handle_Widget_Base):
 			myId = self._getArguments(argument_catalogue, ["myId"])
 
 			#Account for separators
-			if (text == None):
+			if (text is None):
 				myId = self._getId(argument_catalogue)
 
 				self.subType = "separator"
@@ -11785,13 +11793,13 @@ class handle_MenuItem(handle_Widget_Base):
 					text = " " #Must define text or wx.MenuItem will think myId is a stock item id
 
 				#Create Menu Item
-				if (check == None):
+				if (check is None):
 					self.subType = "normal"
 					self.thing = wx.MenuItem(self.parent.thing, myId, text)
 
 					#Determine icon
 					icon, internal = self._getArguments(argument_catalogue, ["icon", "internal"])
-					if (icon != None):
+					if (icon is not None):
 						image = self._getImage(icon, internal)
 						image = self._convertBitmapToImage(image)
 						image = image.Scale(16, 16, wx.IMAGE_QUALITY_HIGH)
@@ -11806,13 +11814,13 @@ class handle_MenuItem(handle_Widget_Base):
 						self.thing = wx.MenuItem(self.parent.thing, myId, text, kind = wx.ITEM_RADIO)
 
 				#Determine initial value
-				if (check != None):
+				if (check is not None):
 					if (default):
 						self.thing.Check(True)
 
 				#Determine how to do the bound function
-				if (myFunction == None):
-					if (special != None):
+				if (myFunction is None):
+					if (special is not None):
 						if (special[0] == "q" or special[0] == "e"):
 							buildSelf._betterBind(wx.EVT_MENU, self.thing, "self.onExit")
 						elif (special[0] == "c"):
@@ -11841,7 +11849,7 @@ class handle_MenuItem(handle_Widget_Base):
 			"""Builds a wx tool control object."""
 			nonlocal self, argument_catalogue
 
-			if (self.subHandle != None):
+			if (self.subHandle is not None):
 				widgetLabel = self._getArguments(argument_catalogue, ["widgetLabel"])
 				myFunction, myFunctionArgs, myFunctionKwargs = self.subHandle
 				self.subHandle = myFunction(*myFunctionArgs, label = widgetLabel, **myFunctionKwargs)
@@ -11849,7 +11857,7 @@ class handle_MenuItem(handle_Widget_Base):
 				self.nest(self.subHandle)
 			else:
 				text = self._getArguments(argument_catalogue, ["text"])
-				if (text == None):
+				if (text is None):
 					stretchable = self._getArguments(argument_catalogue, ["stretchable"])
 					if (stretchable):
 						self.subType = "stretchable"
@@ -11863,26 +11871,26 @@ class handle_MenuItem(handle_Widget_Base):
 					check, default, myFunction, special = self._getArguments(argument_catalogue, ["check", "default", "myFunction", "special"])
 					
 					#Get Images
-					if (icon == None):
+					if (icon is None):
 						warnings.warn(f"No icon provided for {self.__repr__()}", Warning, stacklevel = 5)
 						icon = "error"
 						internal = True
 					image = self._getImage(icon, internal)
 
-					if (disabled_icon == None):
+					if (disabled_icon is None):
 						imageDisabled = wx.NullBitmap
 					else:
-						if (disabled_internal == None):
+						if (disabled_internal is None):
 							disabled_internal = internal
 						imageDisabled = self._getImage(disabled_icon, disabled_internal)
 
 					#Configure Settings
-					# if (toolTip == None):
+					# if (toolTip is None):
 					#   toolTip = ""
 					# elif (not isinstance(toolTip, str)):
 					#   toolTip = f"{toolTip}"
 
-					if (check == None):
+					if (check is None):
 						self.subType = "normal"
 						kind = "wx.ITEM_NORMAL"
 					else:
@@ -11898,8 +11906,8 @@ class handle_MenuItem(handle_Widget_Base):
 					if (default):
 						self.thing.SetToggle(True)#Determine how to do the bound function
 					
-					if (myFunction == None):
-						if (special != None):
+					if (myFunction is None):
+						if (special is not None):
 							if (special[0] == "q" or special[0] == "e"):
 								self.parent._betterBind(wx.EVT_TOOL, self.thing, "self.onExit")
 							elif (special[0] == "c"):
@@ -11941,7 +11949,7 @@ class handle_MenuItem(handle_Widget_Base):
 			else:
 				value = self.thing.GetText() #(str) - What the selected item says
 				
-		elif ((self.type.lower() == "toolbaritem") and (self.subHandle != None)):
+		elif ((self.type.lower() == "toolbaritem") and (self.subHandle is not None)):
 			value = self.subHandle.getValue(event = event)
 			
 		else:
@@ -11954,13 +11962,13 @@ class handle_MenuItem(handle_Widget_Base):
 		"""Returns what the contextual index is for the object associated with this handle."""
 
 		if (self.type.lower() == "menuitem"):
-			if (event != None):
+			if (event is not None):
 				value = event.GetId()
 			else:
 				errorMessage = "Pass the event parameter to getIndex() when working with menu items"
 				raise SyntaxError(errorMessage)
 				
-		elif ((self.type.lower() == "toolbaritem") and (self.subHandle != None)):
+		elif ((self.type.lower() == "toolbaritem") and (self.subHandle is not None)):
 			value = self.subHandle.setValue(event = event)
 
 		else:
@@ -11982,7 +11990,7 @@ class handle_MenuItem(handle_Widget_Base):
 				errorMessage = f"Only a menu 'Check Box' or 'Radio Button' can be set to a different value for setValue() for {self.__repr__()}"
 				raise SyntaxError(errorMessage)
 
-		elif ((self.type.lower() == "toolbaritem") and (self.subHandle != None)):
+		elif ((self.type.lower() == "toolbaritem") and (self.subHandle is not None)):
 			self.subHandle.setValue(newValue, event = event)
 
 		else:
@@ -11996,7 +12004,7 @@ class handle_MenuItem(handle_Widget_Base):
 			self.parent._betterBind(wx.EVT_MENU, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		
 		elif (self.type.lower() == "toolbaritem"):
-			if (self.subHandle != None):
+			if (self.subHandle is not None):
 				self.subHandle.setFunction_click(myFunction = myFunction, myFunctionArgs = myFunctionArgs, myFunctionKwargs = myFunctionKwargs, **kwargs)
 			else:
 				self.parent._betterBind(wx.EVT_MENU, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
@@ -12007,7 +12015,7 @@ class handle_MenuItem(handle_Widget_Base):
 	def setFunction_enter(self, *args, **kwargs):
 		"""Override function for subHandle."""
 
-		if ((self.type.lower() == "toolbaritem") and (self.subHandle != None)):
+		if ((self.type.lower() == "toolbaritem") and (self.subHandle is not None)):
 			self.subHandle.setFunction_enter(*args, **kwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_enter() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -12015,7 +12023,7 @@ class handle_MenuItem(handle_Widget_Base):
 	def setFunction_preEdit(self, *args, **kwargs):
 		"""Override function for subHandle."""
 
-		if ((self.type.lower() == "toolbaritem") and (self.subHandle != None)):
+		if ((self.type.lower() == "toolbaritem") and (self.subHandle is not None)):
 			self.subHandle.setFunction_preEdit(*args, **kwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_preEdit() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -12023,7 +12031,7 @@ class handle_MenuItem(handle_Widget_Base):
 	def setFunction_postEdit(self, *args, **kwargs):
 		"""Override function for subHandle."""
 
-		if ((self.type.lower() == "toolbaritem") and (self.subHandle != None)):
+		if ((self.type.lower() == "toolbaritem") and (self.subHandle is not None)):
 			self.subHandle.setFunction_postEdit(*args, **kwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_postEdit() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -12031,7 +12039,7 @@ class handle_MenuItem(handle_Widget_Base):
 	def setFunction_search(self, *args, **kwargs):
 		"""Override function for subHandle."""
 
-		if ((self.type.lower() == "toolbaritem") and (self.subHandle != None)):
+		if ((self.type.lower() == "toolbaritem") and (self.subHandle is not None)):
 			self.subHandle.setFunction_search(*args, **kwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_search() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -12039,7 +12047,7 @@ class handle_MenuItem(handle_Widget_Base):
 	def setFunction_cancel(self, *args, **kwargs):
 		"""Override function for subHandle."""
 
-		if ((self.type.lower() == "toolbaritem") and (self.subHandle != None)):
+		if ((self.type.lower() == "toolbaritem") and (self.subHandle is not None)):
 			self.subHandle.setFunction_cancel(*args, **kwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_cancel() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -12047,7 +12055,7 @@ class handle_MenuItem(handle_Widget_Base):
 	def setFunction_menuSelect(self, *args, **kwargs):
 		"""Override function for subHandle."""
 
-		if ((self.type.lower() == "toolbaritem") and (self.subHandle != None)):
+		if ((self.type.lower() == "toolbaritem") and (self.subHandle is not None)):
 			self.subHandle.setFunction_menuSelect(*args, **kwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_menuSelect() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -12153,7 +12161,7 @@ class handle_MenuPopup(handle_Container_Base):
 			self.enabled = enabled
 
 			#Bind functions
-			if (rightClick != None):
+			if (rightClick is not None):
 				preFunction, preFunctionArgs, preFunctionKwargs = argument_catalogue["preFunction", "preFunctionArgs", "preFunctionKwargs"]
 				postFunction, postFunctionArgs, postFunctionKwargs = argument_catalogue["postFunction", "postFunctionArgs", "postFunctionKwargs"]
 
@@ -12179,7 +12187,7 @@ class handle_MenuPopup(handle_Container_Base):
 	def getValue(self, event = None):
 		"""Returns what the contextual value is for the object associated with this handle."""
 
-		if (self.popupMenu != None):
+		if (self.popupMenu is not None):
 			value = self.popupMenu.myMenu.getValue(event = event)
 		else:
 			warnings.warn(f"Popup Menu not shown for getValue() in {self.__repr__()}", Warning, stacklevel = 2)
@@ -12190,7 +12198,7 @@ class handle_MenuPopup(handle_Container_Base):
 	def getIndex(self, event = None):
 		"""Returns what the contextual index is for the object associated with this handle."""
 
-		if (self.popupMenu != None):
+		if (self.popupMenu is not None):
 			value = self.popupMenu.myMenu.getIndex(event = event)
 		else:
 			warnings.warn(f"Popup Menu not shown for getIndex() in {self.__repr__()}", Warning, stacklevel = 2)
@@ -12330,12 +12338,12 @@ class handle_MenuPopup(handle_Container_Base):
 
 			#Account for splitters and nested panels
 			grandParent = parent.GetParent()
-			while ((parent != grandParent) and (grandParent != None)):
+			while ((parent != grandParent) and (grandParent is not None)):
 				parent = grandParent
 				grandParent = parent.GetParent()
 
 				#Ignore root window position
-				if (grandParent != None):
+				if (grandParent is not None):
 					position += parent.GetPosition()
 		else:
 			#Get position on screen
@@ -12420,7 +12428,7 @@ class handle_MenuPopup(handle_Container_Base):
 						subMenu = menu.addSub(text = handle.text, label = handle.label, hidden = handle.hidden)
 						self.populateMenu(subMenu, handle.contents)
 
-					elif (handle.text != None):
+					elif (handle.text is not None):
 						menu.addItem(text = handle.text, icon = handle.icon, internal = handle.internal, special = None, check = handle.check, default = handle.default,
 							myFunction = handle.myFunction, myFunctionArgs = handle.myFunctionArgs, myFunctionKwargs = handle.myFunctionKwargs, 
 							label = handle.label, hidden = handle.hidden, enabled = handle.enabled)
@@ -12455,7 +12463,7 @@ class handle_MenuPopupItem(handle_Widget_Base):
 		text = self._getArguments(argument_catalogue, "text")
 
 		#Check for separator
-		if (text != None):
+		if (text is not None):
 			enabled, hidden = self._getArguments(argument_catalogue, ["enabled", "hidden"])
 
 			myFunction, myFunctionArgs, myFunctionKwargs, = self._getArguments(argument_catalogue, ["myFunction", "myFunctionArgs", "myFunctionKwargs"])
@@ -12463,11 +12471,11 @@ class handle_MenuPopupItem(handle_Widget_Base):
 			check, default, = self._getArguments(argument_catalogue, ["check", "default"])
 
 			#Prepare menu item
-			if (myFunction == None):
+			if (myFunction is None):
 				special = self._getArguments(argument_catalogue, "special")
-				if (special != None):
+				if (special is not None):
 					#Ensure correct format
-					if ((special != None) and (not isinstance(special, str))):
+					if ((special is not None) and (not isinstance(special, str))):
 						errorMessage = f"'special' should be a string for addItem() for {buildSelf.__repr__()}"
 						raise ValueError(errorMessage)
 
@@ -12545,13 +12553,13 @@ class handle_WidgetCanvas(handle_Widget_Base):
 
 			self.metric = metric
 			#Create the thing
-			if (panel != None):
+			if (panel is not None):
 				self.myPanel = self._makePanel(parent = buildSelf.parent, **panel)
 				self._finalNest(self.myPanel)
 				self.thing = self.myPanel.thing
 
 				#Bind Functions
-				if (initFunction != None):
+				if (initFunction is not None):
 					initFunctionArgs, initFunctionKwargs = self._getArguments(argument_catalogue, ["initFunctionArgs", "initFunctionKwargs"])
 					self.setFunction_init(initFunction, initFunctionArgs, initFunctionKwargs)
 
@@ -12562,7 +12570,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 
 			#Tell the window that EVT_PAINT will be running (reduces flickering)
 			self.myWindow.thing.SetBackgroundStyle(wx.BG_STYLE_PAINT)
-			if (panel != None):
+			if (panel is not None):
 				self.thing.SetBackgroundStyle(wx.BG_STYLE_PAINT)
 
 			self.new()
@@ -12604,7 +12612,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 
 	def setFunction_click(self, *args, **kwargs):
 		"""Overload function for setFunction_click() in handle_Panel."""
-		if (self.thing == None):
+		if (self.thing is None):
 			errorMessage = f"A panel was not created because 'panel' was None upon creation for {self.__repr__()}"
 			raise ValueError(errorMessage)
 
@@ -12613,7 +12621,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 	def update(self):
 		"""Redraws the canvas."""
 
-		if (self.thing == None):
+		if (self.thing is None):
 			errorMessage = f"A panel was not created because 'panel' was None upon creation for {self.__repr__()}"
 			raise ValueError(errorMessage)
 
@@ -12679,7 +12687,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		"""
 
 		#Do not queue empty functions
-		if (myFunction != None):
+		if (myFunction is not None):
 			self.drawQueue.append([myFunction, myFunctionArgs, myFunctionKwargs, includeDC])
 
 	def saveQueue(self, label = None):
@@ -12737,7 +12745,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		Example Input: fit()
 		"""
 
-		if (self.thing == None):
+		if (self.thing is None):
 			errorMessage = f"A panel was not created because 'panel' was None upon creation for {self.__repr__()}"
 			raise ValueError(errorMessage)
 
@@ -12760,7 +12768,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		"""
 
 		if (modifyUnits):
-			if (self.metric != None):
+			if (self.metric is not None):
 				if (self.metric):
 					dc.SetMapMode(wx.MM_METRIC)
 				else:
@@ -12841,7 +12849,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		"""
 
 		#Account for void color
-		if (color == None):
+		if (color is None):
 			color = wx.Colour(0, 0, 0)
 			style, image = self._getBrushStyle("transparent", None)
 			brush = wx.Brush(color, style)
@@ -12863,13 +12871,13 @@ class handle_WidgetCanvas(handle_Widget_Base):
 					#Determine color
 					if (multiple[0]):
 						#Account for void color
-						if (color[i] != None):
+						if (color[i] is not None):
 							color = wx.Colour(color[i][0], color[i][1], color[i][2])
 						else:
 							color = wx.Colour(0, 0, 0)
 					else:
 						#Account for void color
-						if (color != None):
+						if (color is not None):
 							color = wx.Colour(color[0], color[1], color[2])
 						else:
 							color = wx.Colour(0, 0, 0)
@@ -12877,13 +12885,13 @@ class handle_WidgetCanvas(handle_Widget_Base):
 					#Determine style
 					if (multiple[1]):
 						#Account for void color
-						if (color[i] != None):
+						if (color[i] is not None):
 							style, image = self._getBrushStyle(style[i], image)
 						else:
 							style, image = self._getBrushStyle("transparent", None)
 					else:
 						#Account for void color
-						if (color != None):
+						if (color is not None):
 							style, image = self._getBrushStyle(style, image)
 						else:
 							style, image = self._getBrushStyle("transparent", None)
@@ -12892,7 +12900,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 					brush = wx.Brush(color, style)
 
 					#Bind image if an image style was used
-					if (image != None):
+					if (image is not None):
 						brush.SetStipple(image)
 
 					#Remember the brush
@@ -12902,7 +12910,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 			#Create a single brush
 			else:
 				#Account for void color
-				if (color != None):
+				if (color is not None):
 					#Create brush
 					color = wx.Colour(color[0], color[1], color[2])
 					style, image = self._getBrushStyle(style, image)
@@ -12912,7 +12920,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 				brush = wx.Brush(color, style)
 
 				#Bind image if an image style was used
-				if (image != None):
+				if (image is not None):
 					brush.SetStipple(image)
 
 		return brush
@@ -12945,11 +12953,11 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		"""
 
 		#Ensure lower case
-		if (style != None):
+		if (style is not None):
 			style = style.lower()
 
 		#Normal
-		if (style == None):
+		if (style is None):
 			style = wx.BRUSHSTYLE_SOLID
 			image = None
 
@@ -12964,7 +12972,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		#Bitmap
 		elif (style[0] == "i"):
 			#Make sure an image was given
-			if (image != None):
+			if (image is not None):
 				#Ensure correct image format
 				image = self._getImage(imagePath, internal)
 
@@ -13062,13 +13070,13 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		Example Input: drawZoom(0, None)
 		"""
 
-		if (self.thing == None):
+		if (self.thing is None):
 			errorMessage = f"A panel was not created because 'panel' was None upon creation for {self.__repr__()}"
 			raise ValueError(errorMessage)
 
 		#Scale the canvas
-		if (x != None):
-			if (y != None):
+		if (x is not None):
+			if (y is not None):
 				self.thing.SetUserScale(x, y)
 			else:
 				self.thing.SetUserScale(x, x)
@@ -13087,14 +13095,14 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		Example Input: drawZoom(0, 2.5, 3)
 		"""
 
-		if (self.thing == None):
+		if (self.thing is None):
 			errorMessage = f"A panel was not created because 'panel' was None upon creation for {self.__repr__()}"
 			raise ValueError(errorMessage)
 
 		#Skip empty origins
-		if (x != None):
+		if (x is not None):
 			#Move the origin
-			if (y != None):
+			if (y is not None):
 				self._queue("self.thing.SetDeviceOrigin", [x, y])
 			else:
 				self._queue("self.thing.SetDeviceOrigin", [x, x])
@@ -13140,16 +13148,16 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		"""
 
 		#Skip blank images
-		if (imagePath != None):
+		if (imagePath is not None):
 			#Get correct image
 			image = self._getImage(imagePath, internal, alpha = alpha, scale = scale, rotate = rotate)
 
-			if (x == None):
+			if (x is None):
 				x = 0
 			elif (isinstance(x, str)):
 				x = ast.literal_eval(re.sub("^['\"]|['\"]$", "", x))
 
-			if (y == None):
+			if (y is None):
 				if (isinstance(x, (list, tuple))):
 					y = x[1]
 					x = x[0]
@@ -13215,7 +13223,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		Example Input: drawText("Lorem Ipsum", align = (0, 10, 275, 455), x_align = "center", angle = 90)
 		"""
 
-		if ((wrap != None) and (not isinstance(wrap, int))):
+		if ((wrap is not None) and (not isinstance(wrap, int))):
 			wrap = wx.Rect(wrap)
 		if (wrap):
 			dc = self._getDC()
@@ -13233,15 +13241,15 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		pen = self._getPen(color)
 		self._queue("dc.SetPen", pen)
 
-		if (align != None):
+		if (align is not None):
 			align = wx.Rect(align)
 		if (angle in [None, 0]):
-			if (x_align == None):
+			if (x_align is None):
 				x_align = 0
 			else:
 				x_align = {"l": wx.ALIGN_LEFT, "r": wx.ALIGN_RIGHT, "c": wx.ALIGN_CENTER_HORIZONTAL}[x_align[0].lower()]
 
-			if (y_align == None):
+			if (y_align is None):
 				y_align = wx.ALIGN_TOP
 			else:
 				y_align = {"t": wx.ALIGN_TOP, "b": wx.ALIGN_BOTTOM, "c": wx.ALIGN_CENTER_VERTICAL}[y_align[0].lower()]
@@ -13314,9 +13322,9 @@ class handle_WidgetCanvas(handle_Widget_Base):
 				else:
 					y_offset += 0
 
-		if ((angle != None) and (angle != 0)):
+		if ((angle is not None) and (angle != 0)):
 			self._queue("dc.DrawRotatedText", [_text, x + x_align + x_offset, y + y_align + y_offset, angle])
-		elif (align != None):
+		elif (align is not None):
 			self._queue("dc.DrawLabel", [_text, (x, y, align[2], align[3]), x_align|y_align])
 		else:
 			self._queue("dc.DrawText", [_text, x + x_offset + y_offset, y])
@@ -13484,7 +13492,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 					self._queue("dc.SetBrush", brush[i])
 
 				#Determine height and width
-				if (height != None):
+				if (height is not None):
 					if ((type(height) != list) and (type(height) != tuple)):
 						arcHeight = height
 					else:
@@ -13511,7 +13519,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 				#Draw the arc
 				self._queue("dc.DrawEllipticArc", [item[0], item[1], arcWidth, arcHeight, arcStart, arcEnd])
 		else:
-			if (height == None):
+			if (height is None):
 				height = width
 
 			self._queue("dc.SetPen", pen)
@@ -13554,7 +13562,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 					self._queue("dc.SetPen", pen[i])
 
 				#Determine height and width
-				if (height != None):
+				if (height is not None):
 					if ((type(height) != list) and (type(height) != tuple)):
 						checkMarkHeight = height
 					else:
@@ -13571,7 +13579,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 				self._queue("dc.DrawCheckMark", [item[0], item[1], checkMarkWidth, checkMarkHeight])
 		else:
 			#Draw the line
-			if (height == None):
+			if (height is None):
 				height = width
 
 			self._queue("dc.SetPen", pen)
@@ -13627,7 +13635,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 
 		#Draw the rectangle
 		if ((type(x) == list) or (type(x) == tuple)):
-			if (radius != None):
+			if (radius is not None):
 				#Create rounded rectangles
 				for i, item in enumerate(x):
 					#Setup colors
@@ -13642,7 +13650,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 						self._queue("dc.SetBrush", brush[i])
 
 					#Determine height and width
-					if (height != None):
+					if (height is not None):
 						if ((type(height) != list) and (type(height) != tuple)):
 							arcHeight = height
 						else:
@@ -13664,7 +13672,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 				if ((type(width) != list) and (type(width) != tuple)):
 					width = [width for item in x]
 
-				if (height != None):
+				if (height is not None):
 					if ((type(height) != list) and (type(height) != tuple)):
 						height = [height for item in x]
 				else:
@@ -13678,13 +13686,13 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		else:
 
 			#Draw the rectangle
-			if (height == None):
+			if (height is None):
 				height = width
 
 			self._queue("dc.SetPen", pen)
 			self._queue("dc.SetBrush", brush)
 
-			if (radius != None):
+			if (radius is not None):
 				self._queue("dc.DrawRoundedRectangle", [x, y, width, height, radius])
 			else:
 				self._queue("dc.DrawRectangle", [x, y, width, height])
@@ -13852,7 +13860,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 			if ((type(width) != list) and (type(width) != tuple)):
 				width = [width for item in x]
 
-			if (height != None):
+			if (height is not None):
 				if ((type(height) != list) and (type(height) != tuple)):
 					height = [height for item in x]
 			else:
@@ -13866,7 +13874,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		else:
 
 			#Draw the ellipse
-			if (height == None):
+			if (height is None):
 				height = width
 
 			self._queue("dc.SetPen", pen)
@@ -13943,10 +13951,10 @@ class handle_WidgetTable(handle_Widget_Base):
 			self.thing.CreateGrid(rows, columns)
 
 			#Grid Enabling
-			if (readOnly != None):
+			if (readOnly is not None):
 				if (readOnly):
 					self.thing.EnableCellEditControl(False)
-			if ((preEditFunction != None) or (postEditFunction != None)):
+			if ((preEditFunction is not None) or (postEditFunction is not None)):
 				self.thing.EnableEditing(True)
 
 			if (showGrid):
@@ -13971,7 +13979,7 @@ class handle_WidgetTable(handle_Widget_Base):
 			self.setRowSize(rowSize, autoSizeRow)
 			self.setColumnSize(columnSize, autoSizeColumn)
 
-			if (columnSize != None):
+			if (columnSize is not None):
 				if (isinstance(columnSize, dict)):
 					for column, value in columnSize.items():
 						self.thing.SetColSize(column, value)
@@ -13979,17 +13987,17 @@ class handle_WidgetTable(handle_Widget_Base):
 					for i in range(nColumns):
 						self.thing.SetColSize(i, columnSize)         
 
-			if (rowLabelSize != None):
+			if (rowLabelSize is not None):
 				self.thing.SetRowLabelSize(rowLabelSize)
 
-			if (columnLabelSize != None):
+			if (columnLabelSize is not None):
 				self.thing.SetColLabelSize(columnLabelSize)
 
 			##Minimum Sizes
-			if (rowSizeMinimum != None):
+			if (rowSizeMinimum is not None):
 				self.thing.SetRowMinimalAcceptableHeight(rowSizeMinimum)
 			
-			if (columnSizeMinimum != None):
+			if (columnSizeMinimum is not None):
 				self.thing.SetColMinimalAcceptableWidth(columnSizeMinimum)
 
 			##Grid Alignments
@@ -14004,7 +14012,7 @@ class handle_WidgetTable(handle_Widget_Base):
 				self.thing.SetRowLabelValue(i, str(colLabels[i]))
 
 			##Populate Given Cells
-			if (contents != None):
+			if (contents is not None):
 				for row in range(len(contents)):
 					for column in range(len(contents[0])):
 						self.thing.SetCellValue(row, column, contents[row][column])
@@ -14046,7 +14054,7 @@ class handle_WidgetTable(handle_Widget_Base):
 					if (column not in self.readOnlyCatalogue[row]):
 						self.readOnlyCatalogue[row][column] = {}
 					
-					if (readOnly != None):
+					if (readOnly is not None):
 						if (isinstance(readOnly, bool)):
 							self.readOnlyCatalogue[row][column] = readOnly
 						else:
@@ -14072,42 +14080,42 @@ class handle_WidgetTable(handle_Widget_Base):
 						self.readOnlyCatalogue[row][column] = readOnlyDefault
 
 			##Default Cell Selection
-			if ((default != None) and (default != (0, 0))):
+			if ((default is not None) and (default != (0, 0))):
 				self.thing.GoToCell(default[0], default[1])
 
 			#Bind the function(s)
-			if (preEditFunction != None):
+			if (preEditFunction is not None):
 				preEditFunctionArgs, preEditFunctionKwargs = self._getArguments(argument_catalogue, ["preEditFunctionArgs", "preEditFunctionKwargs"])
 				self.setFunction_preEdit(preEditFunction, preEditFunctionArgs, preEditFunctionKwargs)
 
 			self.setFunction_postEdit(self.setTableLastModifiedCell)
-			if (postEditFunction != None):
+			if (postEditFunction is not None):
 				postEditFunctionArgs, postEditFunctionKwargs = self._getArguments(argument_catalogue, ["postEditFunctionArgs", "postEditFunctionKwargs"])
 				self.setFunction_postEdit(postEditFunction, postEditFunctionArgs, postEditFunctionKwargs)
 			
-			if (dragFunction != None):      
+			if (dragFunction is not None):      
 				dragFunctionArgs, dragFunctionKwargs = self._getArguments(argument_catalogue, ["dragFunctionArgs", "dragFunctionKwargs"])
 				self.setFunction_drag(dragFunction, dragFunctionArgs, dragFunctionKwargs)
 
 			self.setFunction_selectMany(self.setTablePreviousCell)
-			if (selectManyFunction != None):
+			if (selectManyFunction is not None):
 				selectManyFunctionArgs, selectManyFunctionKwargs = self._getArguments(argument_catalogue, ["selectManyFunctionArgs", "selectManyFunctionKwargs"])
 				self.setFunction_selectMany(selectManyFunction, selectManyFunctionArgs, selectManyFunctionKwargs)
 
 			self.setFunction_selectSingle(self.setTablePreviousCell)
-			if (selectSingleFunction != None):
+			if (selectSingleFunction is not None):
 				selectSingleFunctionArgs, selectSingleFunctionKwargs = self._getArguments(argument_catalogue, ["selectSingleFunctionArgs", "selectSingleFunctionKwargs"])
 				self.setFunction_selectSingle(selectSingleFunction, selectSingleFunctionArgs, selectSingleFunctionKwargs)
 			
-			if (rightClickCellFunction != None):
+			if (rightClickCellFunction is not None):
 				rightClickCellFunctionArgs, rightClickCellFunctionKwargs = self._getArguments(argument_catalogue, ["rightClickCellFunctionArgs", "rightClickCellFunctionKwargs"])
 				self.setFunction_rightClickCell(rightClickCellFunction, rightClickCellFunctionArgs, rightClickCellFunctionKwargs)
 
-			if (rightClickLabelFunction != None):
+			if (rightClickLabelFunction is not None):
 				rightClickLabelFunctionArgs, rightClickLabelFunctionKwargs = self._getArguments(argument_catalogue, ["rightClickLabelFunctionArgs", "rightClickLabelFunctionKwargs"])
 				self.setFunction_rightClickLabel(rightClickLabelFunction, rightClickLabelFunctionArgs, rightClickLabelFunctionKwargs)
 
-			if (toolTips != None):
+			if (toolTips is not None):
 				self._betterBind(wx.EVT_MOTION, self.thing, self._onTableDisplayToolTip, toolTips)
 
 			if (arrowKeyExitEdit):
@@ -14138,7 +14146,7 @@ class handle_WidgetTable(handle_Widget_Base):
 		"""Returns what the contextual value is for the object associated with this handle."""
 
 		if (self.type.lower() == "table"):
-			if ((row == None) or (column == None)):
+			if ((row is None) or (column is None)):
 				value = []
 				selection = self.getTableCurrentCell(event = event)
 				for _row, _column in selection:
@@ -14277,7 +14285,7 @@ class handle_WidgetTable(handle_Widget_Base):
 			autoSize = self.autoSizeRow
 
 		default = self.thing.GetDefaultRowSize()
-		if (size == None):
+		if (size is None):
 			size = default
 
 		if (not isinstance(size, dict)):
@@ -14297,7 +14305,7 @@ class handle_WidgetTable(handle_Widget_Base):
 			self.rowSizeMaximum[None] = None
 
 		for row, value in size.items():
-			if ((row in self.rowSizeMaximum) and (self.rowSizeMaximum[row]) != None):
+			if ((row in self.rowSizeMaximum) and (self.rowSizeMaximum[row]) is not None):
 				if (value > self.rowSizeMaximum[row]):
 					size[row] = self.rowSizeMaximum[row]
 
@@ -14306,8 +14314,8 @@ class handle_WidgetTable(handle_Widget_Base):
 			self.thing.SetRowSize(row, size[None])
 
 		for row, value in size.items():
-			if (row != None):
-				if (value == None):
+			if (row is not None):
+				if (value is None):
 					value = default
 				self.thing.SetRowSize(row, value)
 
@@ -14341,7 +14349,7 @@ class handle_WidgetTable(handle_Widget_Base):
 			autoSize = self.autoSizeColumn
 
 		default = self.thing.GetDefaultColSize()
-		if (size == None):
+		if (size is None):
 			size = default
 
 		if (not isinstance(size, dict)):
@@ -14361,7 +14369,7 @@ class handle_WidgetTable(handle_Widget_Base):
 			self.columnSizeMaximum[None] = None
 
 		for column, value in size.items():
-			if ((column in self.columnSizeMaximum) and (self.columnSizeMaximum[column]) != None):
+			if ((column in self.columnSizeMaximum) and (self.columnSizeMaximum[column]) is not None):
 				if (value > self.columnSizeMaximum[column]):
 					size[column] = self.columnSizeMaximum[column]
 
@@ -14370,8 +14378,8 @@ class handle_WidgetTable(handle_Widget_Base):
 			self.thing.SetColSize(column, size[None])
 
 		for column, value in size.items():
-			if (column != None):
-				if (value == None):
+			if (column is not None):
+				if (value is None):
 					value = default
 				self.thing.SetColSize(column, value)
 
@@ -14387,7 +14395,7 @@ class handle_WidgetTable(handle_Widget_Base):
 		Example Input: setTableLastModifiedCell(1, 2)
 		"""
 
-		if ((row != None) and (column != None)):
+		if ((row is not None) and (column is not None)):
 			self.lastModifiedCell = (row, column)
 		else:
 			self.lastModifiedCell = self.getTableCurrentCell(event = event)[0]
@@ -14408,7 +14416,7 @@ class handle_WidgetTable(handle_Widget_Base):
 		Example Input: setTableLastModifiedCell(1, 2)
 		"""
 
-		if ((row != None) and (column != None)):
+		if ((row is not None) and (column is not None)):
 			self.previousCell = (row, column)
 		else:
 			self.previousCell = self.getTableCurrentCell(event = event)[0]
@@ -14481,7 +14489,7 @@ class handle_WidgetTable(handle_Widget_Base):
 		Example Input: enableTableEditing(row = 0, column = 0)
 		"""
 
-		if (state == None):
+		if (state is None):
 			newState = state
 		elif (isinstance(state, bool)):
 			newState = not state
@@ -14489,7 +14497,7 @@ class handle_WidgetTable(handle_Widget_Base):
 			newState = {}
 			for key, value in state.items():
 				if (not isinstance(value, dict)):
-					if (state == None):
+					if (state is None):
 						newState[key] = value
 					else:
 						newState[key] = not value
@@ -14498,7 +14506,7 @@ class handle_WidgetTable(handle_Widget_Base):
 						newState[key] = {}
 					for subKey, subValue in value.items():
 						if (not isinstance(subValue, dict)):
-							if (subValue == None):
+							if (subValue is None):
 								newState[key][subKey] = subValue
 							else:
 								newState[key][subKey] = not subValue
@@ -14546,8 +14554,8 @@ class handle_WidgetTable(handle_Widget_Base):
 			nonlocal self
 
 			#Determine affected cells
-			rowList = range(self.thing.GetNumberRows()) if (row == None) else [row]
-			columnList = range(self.thing.GetNumberCols()) if (column == None) else [column]
+			rowList = range(self.thing.GetNumberRows()) if (row is None) else [row]
+			columnList = range(self.thing.GetNumberCols()) if (column is None) else [column]
 
 			#Apply readOnly
 			for _row in rowList:
@@ -14558,15 +14566,15 @@ class handle_WidgetTable(handle_Widget_Base):
 			
 		#########################################################
 
-		if (state == None):
+		if (state is None):
 			state = self.readOnlyDefault
 
-		if (row == None):
+		if (row is None):
 			row = range(self.thing.GetNumberRows())
 		elif (not isinstance(row, (list, tuple, range))):
 			row = [row]
 		
-		if (column == None):
+		if (column is None):
 			column = range(self.thing.GetNumberCols())
 		elif (not isinstance(column, (list, tuple, range))):
 			column = [column]
@@ -14739,7 +14747,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 			#Create editor and/or renderer if needed
 			if (str(cellType) not in self.cellTypeCatalogue):
-				if (cellType[None] == None):
+				if (cellType[None] is None):
 					self.cellTypeCatalogue[str(cellType)] = [self.thing.GetDefaultRenderer(), self.thing.GetDefaultEditor()]
 				elif (isinstance(cellType[None], str) and (cellType[None].lower() in ["button"])):
 					self.cellTypeCatalogue[str(cellType)] = [self._TableCellRenderer(self, cellType = cellType)]
@@ -14758,7 +14766,7 @@ class handle_WidgetTable(handle_Widget_Base):
 							self.cellTypeCatalogue[str(cellType)] = [wx.grid.GridCellFloatRenderer(), wx.grid.GridCellFloatEditor(min = cellType["minimum"], max = cellType["maximum"])]
 
 					else:
-						if (cellType["showCheck"] != None):
+						if (cellType["showCheck"] is not None):
 							if (cellType["showCheck"]):
 								self.cellTypeCatalogue[str(cellType)] = [wx.grid.GridCellBoolRenderer(), wx.grid.GridCellBoolEditor()]
 							else:
@@ -14769,8 +14777,8 @@ class handle_WidgetTable(handle_Widget_Base):
 					self.cellTypeCatalogue[str(cellType)] = [self.thing.GetDefaultRenderer(), self._TableCellEditor(self, downOnEnter = self.enterKeyExitEdit, cellType = cellType)]
 
 			# #Change settings if needed
-			# rowList = range(self.thing.GetNumberRows()) if (row == None) else [row]
-			# columnList = range(self.thing.GetNumberCols()) if (column == None) else [column]
+			# rowList = range(self.thing.GetNumberRows()) if (row is None) else [row]
+			# columnList = range(self.thing.GetNumberCols()) if (column is None) else [column]
 			# for _row in rowList:
 			#   for _column in columnList:
 			#       if (isinstance(cellType[None], str) and (cellType[None].lower() in ["button"])):
@@ -14802,15 +14810,15 @@ class handle_WidgetTable(handle_Widget_Base):
 			cellType = _configureCellType(cellType, row, column)
 
 			#Determine affected cells
-			if ((row == None) and (column == None)):
+			if ((row is None) and (column is None)):
 				for item in self.cellTypeCatalogue[str(cellType)]:
 					if (isinstance(item, wx.grid.GridCellRenderer)):
 						self.thing.SetDefaultRenderer(item)
 					else:
 						self.thing.SetDefaultEditor(item)
 
-			rowList = range(self.thing.GetNumberRows()) if (row == None) else [row]
-			columnList = range(self.thing.GetNumberCols()) if (column == None) else [column]
+			rowList = range(self.thing.GetNumberRows()) if (row is None) else [row]
+			columnList = range(self.thing.GetNumberCols()) if (column is None) else [column]
 
 			#Assign editor to grid
 			for _row in rowList:
@@ -14828,7 +14836,7 @@ class handle_WidgetTable(handle_Widget_Base):
 			
 		#########################################################   
 
-		if (cellType == None):
+		if (cellType is None):
 			cellType = self.cellTypeDefault
 		if (not isinstance(row, (list, tuple, range))):
 			row = [row]
@@ -14898,7 +14906,7 @@ class handle_WidgetTable(handle_Widget_Base):
 		"""
 
 		#Account for None
-		if (value == None):
+		if (value is None):
 			if (noneReplace):
 				value = ""
 			else:
@@ -14926,7 +14934,7 @@ class handle_WidgetTable(handle_Widget_Base):
 		"""
 
 		#Account for None
-		if (listContents == None):
+		if (listContents is None):
 			if (noneReplace):
 				listContents = ""
 			else:
@@ -14955,7 +14963,7 @@ class handle_WidgetTable(handle_Widget_Base):
 		if ((row == -1) or (column == -1)):
 			return None #Nothing Selected
 
-		if ((row == None) and (column == None)):
+		if ((row is None) and (column is None)):
 			value = []
 			for i in range(self.thing.GetNumberRows()):
 				for j in range(self.thing.GetNumberCols()):
@@ -14964,11 +14972,11 @@ class handle_WidgetTable(handle_Widget_Base):
 			return None
 
 		#Account for entire row or column request
-		if ((row != None) and (column != None)):
+		if ((row is not None) and (column is not None)):
 			#Get the cell value
 			value = self.thing.GetCellValue(row, column)
 
-		elif (row == None):
+		elif (row is None):
 			value = []
 			for i in range(self.thing.GetNumberRows()):
 				#Get the cell value
@@ -15111,7 +15119,7 @@ class handle_WidgetTable(handle_Widget_Base):
 		Example Input: setTableRowLabel(0, "Row 1")
 		"""
 
-		if (row == None):
+		if (row is None):
 			row = range(self.thing.GetNumberRows())
 		elif (not isinstance(row, (list, tuple, range))):
 			row = [row]
@@ -15143,7 +15151,7 @@ class handle_WidgetTable(handle_Widget_Base):
 		Example Input: setTableColumnLabel(1, "Column 2")
 		"""
 
-		if (column == None):
+		if (column is None):
 			column = range(self.thing.GetNumberCols())
 		elif (not isinstance(column, (list, tuple, range))):
 			column = [column]
@@ -15173,7 +15181,7 @@ class handle_WidgetTable(handle_Widget_Base):
 		Example Input: getTableRowLabel(1)
 		"""
 
-		if (row == None):
+		if (row is None):
 			row = range(self.thing.GetNumberRows())
 		elif (not isinstance(row, (list, tuple, range))):
 			row = [row]
@@ -15198,7 +15206,7 @@ class handle_WidgetTable(handle_Widget_Base):
 		Example Input: getTableColumnLabel(range(5))
 		"""
 
-		if (column == None):
+		if (column is None):
 			column = range(self.thing.GetNumberCols())
 		elif (not isinstance(column, (list, tuple, range))):
 			column = [column]
@@ -15244,29 +15252,29 @@ class handle_WidgetTable(handle_Widget_Base):
 		Example Input: setTableCellColor(1, 2, "red")
 		"""
 
-		if (color == None):
+		if (color is None):
 			color = self.thing.GetDefaultCellBackgroundColour()
 		else:
 			color = self._getColor(color)
 
-		if (textColor == None):
+		if (textColor is None):
 			textColor = self.thing.GetDefaultCellTextColour()
 		else:
 			textColor = self._getColor(textColor)
 
-		if ((row == None) and (column == None)):
+		if ((row is None) and (column is None)):
 			for i in range(self.thing.GetNumberRows()):
 				for j in range(self.thing.GetNumberCols()):
 					#Color the cell
 					self.thing.SetCellBackgroundColour(i, j, color)
 					self.thing.SetCellTextColour (i, j, textColor)
 
-		elif ((row != None) and (column != None)):
+		elif ((row is not None) and (column is not None)):
 			#Color the cell
 			self.thing.SetCellBackgroundColour(row, column, color)
 			self.thing.SetCellTextColour(row, column, textColor)
 
-		elif (row == None):
+		elif (row is None):
 			for i in range(self.thing.GetNumberRows()):
 				#Color the cell
 				self.thing.SetCellBackgroundColour(i, column, color)
@@ -15605,17 +15613,17 @@ class handle_WidgetTable(handle_Widget_Base):
 			message = item[2] #(str) - What the tool tip message will say
 
 			#Determine if the tool tip should be shown
-			if ((row != None) and (column != None)):
+			if ((row is not None) and (column is not None)):
 				if ((currentRow == row) and (currentColumn == column)):
 					thing.SetToolTipString(message)
 				else:
 					thing.SetToolTipString("")
-			elif (row != None):
+			elif (row is not None):
 				if (currentRow == row):
 					thing.SetToolTipString(message)
 				else:
 					thing.SetToolTipString("")
-			elif (column != None):
+			elif (column is not None):
 				if (currentColumn == column):
 					thing.SetToolTipString(message)
 				else:
@@ -15705,8 +15713,8 @@ class handle_WidgetTable(handle_Widget_Base):
 			"""
 			nonlocal self, nRows, nColumns
 
-			if (autoSize[None] != None):
-				itemList = [item for item, state in autoSize.items() if ((item != None) and (state != False) and (item not in size))]
+			if (autoSize[None] is not None):
+				itemList = [item for item, state in autoSize.items() if ((item is not None) and (state != False) and (item not in size))]
 				if (autoSize[None]):
 					if (row):
 						n = nRows
@@ -15735,7 +15743,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 				#Account for exceeding maximum
 				tooLong = {}
-				if (autoSize != None):
+				if (autoSize is not None):
 					for i, item in enumerate(itemList):
 						if (item in itemSize):
 							value = itemSize[item]
@@ -15744,10 +15752,10 @@ class handle_WidgetTable(handle_Widget_Base):
 
 						if ((item in autoSize) and (autoSize[item] < value)):
 							tooLong[item] = value - autoSize[item]
-						elif ((autoSize[None] != None) and (autoSize[None] < value)):
+						elif ((autoSize[None] is not None) and (autoSize[None] < value)):
 							tooLong[item] = value - autoSize[None]
 
-					notIncluded = [item for item in range(n) if ((item != None) and (item not in tooLong))]
+					notIncluded = [item for item in range(n) if ((item is not None) and (item not in tooLong))]
 					if ((not distributeRemainer) or (len(notIncluded) == 0)):
 						for item, value in tooLong.items():
 							itemSize[item] = itemSize[None] - value
@@ -15799,7 +15807,7 @@ class handle_WidgetTable(handle_Widget_Base):
 			"""
 			nonlocal self
 
-			if (itemSize == None):
+			if (itemSize is None):
 				return
 
 			if (row):
@@ -15816,7 +15824,7 @@ class handle_WidgetTable(handle_Widget_Base):
 		##############################################################
 
 		try:
-			if ((self.autoSizeRow[None] != None) or (self.autoSizeColumn[None] != None)):
+			if ((self.autoSizeRow[None] is not None) or (self.autoSizeColumn[None] is not None)):
 				nRows = self.thing.GetNumberRows()
 				nColumns = self.thing.GetNumberCols()
 
@@ -15831,7 +15839,7 @@ class handle_WidgetTable(handle_Widget_Base):
 				apply(columnList, columnSize, row = False)
 
 		finally:
-			if (event != None):
+			if (event is not None):
 				event.Skip()
 	
 	def _onTableButton(self, event, pressed):
@@ -16588,7 +16596,7 @@ class handle_WidgetTable(handle_Widget_Base):
 					self.drawButton(dc, rectangle, isSelected, fitTo = self.cellType["text"], width_offset = 10, height_offset = 10, 
 						radius = 5, x_align = "center", y_align = "center", color = buttonColor, borderColor = buttonBorderColor)
 
-					if (self.cellType["text"] != None):
+					if (self.cellType["text"] is not None):
 						self.drawText(self.cellType["text"], dc, rectangle, isSelected, align = "center", color = textColor)
 
 					#Run Function
@@ -16639,7 +16647,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 			oldColor = dc.GetTextForeground()
 			try:
-				if (color != None):
+				if (color is not None):
 					color = tuple(min(255, max(0, item)) for item in color) #Ensure numbers are between 0 and 255
 				else:
 					if (isSelected):
@@ -16648,7 +16656,7 @@ class handle_WidgetTable(handle_Widget_Base):
 						color = self.COLOR_TEXT
 				dc.SetTextForeground(color)
 
-				if (align == None):
+				if (align is None):
 					x_align = 0
 					y_align = 0
 				else:
@@ -16676,7 +16684,7 @@ class handle_WidgetTable(handle_Widget_Base):
 			oldBrush = dc.GetBrush()
 
 			try:
-				if (color != None):
+				if (color is not None):
 					color = tuple(min(255, max(0, item)) for item in color) #Ensure numbers are between 0 and 255
 				else:
 					if (isSelected):
@@ -16719,7 +16727,7 @@ class handle_WidgetTable(handle_Widget_Base):
 			oldBrush = dc.GetBrush()
 
 			try:
-				if (color != None):
+				if (color is not None):
 					color = tuple(min(255, max(0, item)) for item in color) #Ensure numbers are between 0 and 255
 				else:
 					if (isSelected):
@@ -16728,26 +16736,26 @@ class handle_WidgetTable(handle_Widget_Base):
 						color = self.COLOR_BUTTON
 				dc.SetBrush(wx.Brush(color, style = wx.SOLID))
 
-				if (borderColor != None):
+				if (borderColor is not None):
 					borderColor = tuple(min(255, max(0, item)) for item in borderColor) #Ensure numbers are between 0 and 255
 				else:
 					borderColor = self.COLOR_BUTTON_BORDER
 				dc.SetPen(wx.Pen(borderColor, width = borderWidth, style = wx.SOLID))
 				# dc.SetPen(wx.TRANSPARENT_PEN)
 
-				if (fitTo == None):
+				if (fitTo is None):
 					width = rectangle.width
 					height = rectangle.height
 				else:
 					width, height = dc.GetTextExtent(fitTo)
 
-				if ((x_align == None) and (y_align == None)):
+				if ((x_align is None) and (y_align is None)):
 					x_align = 0
 					y_align = 0
 				else:
-					if (x_align == None):
+					if (x_align is None):
 						x_align = "center"
-					elif (y_align == None):
+					elif (y_align is None):
 						y_align = "center"
 
 					if (x_align.lower()[0] == "l"):
@@ -16803,9 +16811,9 @@ class handle_Sizer(handle_Container_Base):
 
 		output = handle_Container_Base.__str__(self)
 		
-		if (self.rows != None):
+		if (self.rows is not None):
 			output += f"-- Rows: {self.rows}\n"
-		if (self.columns != None):
+		if (self.columns is not None):
 			output += f"-- Columns: {self.columns}\n"
 		return output
 
@@ -16831,11 +16839,11 @@ class handle_Sizer(handle_Container_Base):
 			self.myWindow.sizersIterating[self][0] = False
 
 		state = handle_Container_Base.__exit__(self, exc_type, exc_value, traceback)
-		if (state != None):
+		if (state is not None):
 			return state
 
 	def _build(self, argument_catalogue):
-		if (self.type == None):
+		if (self.type is None):
 			errorMessage = "Must define sizer type before building"
 			raise SyntaxError(errorMessage)
 
@@ -16874,7 +16882,7 @@ class handle_Sizer(handle_Container_Base):
 		else:
 			#Determine direction
 			vertical = self._getArguments(argument_catalogue, "vertical")
-			if (vertical == None):
+			if (vertical is None):
 				direction = wx.BOTH
 			elif (vertical):
 				direction = wx.VERTICAL
@@ -16905,7 +16913,7 @@ class handle_Sizer(handle_Container_Base):
 					self.thing = wx.GridBagSizer(rowGap, colGap)
 
 					emptySpace = self._getArguments(argument_catalogue, "emptySpace")
-					if (emptySpace != None):
+					if (emptySpace is not None):
 						self.thing.SetEmptyCellSize(emptySpace)
 
 				else:
@@ -16940,13 +16948,12 @@ class handle_Sizer(handle_Container_Base):
 
 		#Account for nesting in a text sizer
 		if (sizerType != "text"):
-			if (text != None):
+			if (text is not None):
 				self.substitute = self._makeSizerText(text = text)
-		# print("@2.1")
 		#Post Build
 		self._postBuild(argument_catalogue)
 
-		if (self.substitute != None):
+		if (self.substitute is not None):
 			self.substitute.nest(self)
 
 		#Set sizer hints to main window while preserving size bounds
@@ -16972,7 +16979,7 @@ class handle_Sizer(handle_Container_Base):
 
 		self._checkHandleType("Flex", self.growFlexColumn)
 
-		if (growOnEmpty != None):
+		if (growOnEmpty is not None):
 			if (growOnEmpty):
 				self.growFlexColumn_notEmpty[column] = proportion
 			elif (column in self.growFlexColumn_notEmpty):
@@ -16998,7 +17005,7 @@ class handle_Sizer(handle_Container_Base):
 
 		self._checkHandleType("Flex", self.growFlexRow)
 
-		if (growOnEmpty != None):
+		if (growOnEmpty is not None):
 			if (not growOnEmpty):
 				self.growFlexRow_notEmpty[row] = proportion
 			elif (row in self.growFlexRow_notEmpty):
@@ -18015,6 +18022,7 @@ class handle_Dialog(handle_Base):
 		self.subType = None
 		self.timeEntered = None
 		self.inMainThread = True
+		self.childrenDialogs = set()
 
 	def __enter__(self):
 		"""Allows the user to use a with statement to build the GUI."""
@@ -18052,7 +18060,6 @@ class handle_Dialog(handle_Base):
 			difference = time.perf_counter() - self.timeEntered
 			if (difference < 0.05):
 				#Wait for a maximum of 0.05 seconds
-				print("@__exit__", difference)
 				time.sleep(0.05 - difference)
 			
 			self.hide()
@@ -18113,7 +18120,7 @@ class handle_Dialog(handle_Base):
 						style += "|wx.CANCEL_DEFAULT"
 
 			##Icons
-			if (icon != None):
+			if (icon is not None):
 				if (icon[0].lower() == "h"):
 					style += "|wx.ICON_HAND"
 					
@@ -18162,7 +18169,7 @@ class handle_Dialog(handle_Base):
 			self.freeze = freeze
 			self.blockAll = blockAll
 
-			if (self.parent == None):
+			if (self.parent is None):
 				parent = None
 			else:
 				parent = self.parent.thing
@@ -18177,11 +18184,13 @@ class handle_Dialog(handle_Base):
 				maximum, title, autoHide, can_abort, can_skip, stayOnTop = self._getArguments(argument_catalogue, ["maximum", "title", "autoHide", "can_abort", "can_skip", "stayOnTop"])
 				smooth, elapsedTime, estimatedTime, remainingTime, initial = self._getArguments(argument_catalogue, ["smooth", "elapsedTime", "estimatedTime", "remainingTime", "initial"])
 				
+				title = title or text or "Busy"
+
 				self.text = text
 				self.oneShot = None
 				self.progress = initial
 
-				if (maximum == None):
+				if (maximum is None):
 					self.startPulse = True
 					maximum = 100
 				else:
@@ -18242,7 +18251,7 @@ class handle_Dialog(handle_Base):
 			if (tab):
 				style += "|wx.TE_PROCESS_TAB"
 			
-			if (wrap != None):
+			if (wrap is not None):
 				if (wrap > 0):
 					style += "|wx.TE_MULTILINE|wx.TE_WORDWRAP"
 				else:
@@ -18250,7 +18259,7 @@ class handle_Dialog(handle_Base):
 
 			self.thing = wx.TextEntryDialog(None, text, caption = title, value = default, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
-			if (maximum != None):
+			if (maximum is not None):
 				self.thing.SetMaxLength(maximum)
 
 		def _build_choice():
@@ -18279,7 +18288,7 @@ class handle_Dialog(handle_Base):
 			else:
 				self.thing = wx.MultiChoiceDialog(None, text, title, formattedChoices, wx.CHOICEDLG_STYLE)
 
-			if (default != None):
+			if (default is not None):
 				if (single):
 					if (isinstance(default, (list, tuple, range, set))):
 						if (len(default) == 0):
@@ -18380,10 +18389,10 @@ class handle_Dialog(handle_Base):
 				else:
 					style = "wx.FD_DEFAULT_STYLE"
 
-			if (initialDir == None):
+			if (initialDir is None):
 				initialDir = ""
 
-			if (initialFile == None):
+			if (initialFile is None):
 				initialFile = ""
 
 			wildcard = self._getWildcard(wildcard)
@@ -18409,7 +18418,7 @@ class handle_Dialog(handle_Base):
 
 			simple = self._getArguments(argument_catalogue, ["simple"])
 
-			if (simple != None):
+			if (simple is not None):
 				self.subType = "simple"
 				self.thing = wx.ColourDialog(None)
 				self.thing.GetColourData().SetChooseFull(not simple)
@@ -18429,9 +18438,9 @@ class handle_Dialog(handle_Base):
 			overrideData = {"marginMinimum": marginMinimum, "marginLeft": marginLeft, 
 				"marginTop": marginTop, "marginRight": marginRight, "marginBottom": marginBottom, "marginLeftMinimum": marginLeftMinimum, 
 				"marginTopMinimum": marginTopMinimum, "marginRightMinimum": marginRightMinimum, "marginBottomMinimum": marginBottomMinimum} 
-			combinedOverride = {key: value for catalogue in (printOverride, overrideData) for key, value in catalogue.items() if (value != None)}
+			combinedOverride = {key: value for catalogue in (printOverride, overrideData) for key, value in catalogue.items() if (value is not None)}
 
-			if (printData == None):
+			if (printData is None):
 				printData = combinedOverride
 			dialogData = self._encodePrintSettings(printData, setupData = True, override = combinedOverride)
 
@@ -18453,9 +18462,9 @@ class handle_Dialog(handle_Base):
 			
 			overrideData = {"collate": collate, "copies": copies, "from": pageFrom, "to": pageTo, 
 				"min": pageMin, "max": pageMax, "printToFile": printToFile, "selected": selection}
-			combinedOverride = {key: value for catalogue in (printOverride, overrideData) for key, value in catalogue.items() if (value != None)}
+			combinedOverride = {key: value for catalogue in (printOverride, overrideData) for key, value in catalogue.items() if (value is not None)}
 			
-			if (printData == None):
+			if (printData is None):
 				printData = combinedOverride
 			dialogData = self._encodePrintSettings(printData, override = combinedOverride)
 			
@@ -18493,7 +18502,7 @@ class handle_Dialog(handle_Base):
 			self.thing = -1
 			self.myFrame = myFrame
 
-			if (valueLabel == None):
+			if (valueLabel is None):
 				valueLabel = myFrame.getValueLabel()
 			self.valueLabel = valueLabel
 		
@@ -18547,7 +18556,7 @@ class handle_Dialog(handle_Base):
 		"""Shows the dialog box for this handle."""
 
 		#Error Check
-		if (self.thing == None):
+		if (self.thing is None):
 			warnings.warn(f"The {self.type} dialogue box {self.__repr__()} has already been shown", Warning, stacklevel = 2)
 			return
 
@@ -18564,7 +18573,7 @@ class handle_Dialog(handle_Base):
 		for variable, handleDict in self.controller.backgroundFunction_pauseOnDialog.items():
 			for handle, functionDict in handleDict.items():
 				for function, attributes in functionDict.items():
-					if ((attributes["state"]) and ((self.label == None) or ((self.label != None) and (self.label not in attributes["exclude"])))):
+					if ((attributes["state"]) and ((self.label is None) or ((self.label is not None) and (self.label not in attributes["exclude"])))):
 						catalogue = getattr(handle, variable)
 						catalogue[function]["pause"] = True
 
@@ -18586,6 +18595,7 @@ class handle_Dialog(handle_Base):
 			self.hide()
 
 		elif (self.type.lower() == "custom"):
+			self.myFrame.myDialog = self
 
 			self.myFrame.runMyFunction(self.myFrame.preShowFunction, self.myFrame.preShowFunctionArgs, self.myFrame.preShowFunctionKwargs, includeEvent = True)
 			self.myFrame.runMyFunction(self.myFrame.postShowFunction, self.myFrame.postShowFunctionArgs, self.myFrame.postShowFunctionKwargs, includeEvent = True)
@@ -18597,11 +18607,13 @@ class handle_Dialog(handle_Base):
 		elif (self.type.lower() == "busy"):
 			#Hiding a sub-busy window in a thread can cause the parent busy window to go behind everything 
 			#if the top window is not the parent during creation
-			if ((not self.inMainThread) and (isinstance(self.parent, handle_Dialog))):
-				oldTopLevel = wx.GetApp().GetTopWindow()
-				wx.GetApp().SetTopWindow(self.parent.thing)
-			else:
-				oldTopLevel = None
+			oldTopLevel = None
+			if (isinstance(self.parent, handle_Dialog)):
+				self.parent.childrenDialogs.add(self)
+
+				if (not self.inMainThread):
+					oldTopLevel = wx.GetApp().GetTopWindow()
+					wx.GetApp().SetTopWindow(self.parent.thing)
 
 			#Create the dialog now
 			if (self.subType.lower() == "simple"):
@@ -18609,11 +18621,21 @@ class handle_Dialog(handle_Base):
 			else:
 				self.thing = wx.ProgressDialog(*self.buildArgs, **self.buildKwargs, style = eval("|".join(self.buildStyle), {'__builtins__': None, "wx": wx}, {}))
 
+				#Account for nested children
+				# self.thing.Bind(wx.EVT_CLOSE, self._onCloseChildren)
+
+				# for myId in [self.thing.GetAffirmativeId()]:
+				# 	child = self.thing.FindWindowById(myId)
+				# 	print("@1", child)
+				# 	if (child is None):
+				# 		continue
+				# 	child.Bind(wx.EVT_BUTTON, self._onCloseChildren)
+
 				if (self.startPulse):
 					self.setValue()
 
 			#Put the top window back after creation
-			if (oldTopLevel != None):
+			if (oldTopLevel is not None):
 				wx.GetApp().SetTopWindow(oldTopLevel)
 
 		elif (self.type.lower() == "file"):
@@ -18642,10 +18664,12 @@ class handle_Dialog(handle_Base):
 		"""Hides the dialog box for this handle."""
 
 		if (self.type.lower() == "busy"):
-
 			if (self.subType.lower() == "simple"):
 				del self.thing
 			else:
+				if (isinstance(self.parent, handle_Dialog)):
+					self.parent.childrenDialogs.discard(self)
+
 				#The dialog will not close until this condition is met
 				maximum = self.thing.GetRange()
 				if (self.thing.GetValue() < maximum):
@@ -18671,7 +18695,7 @@ class handle_Dialog(handle_Base):
 			self.thing = None
 
 		elif (self.type.lower() == "choice"):
-			if ((self.subType != None) and (self.subType.lower() == "single")):
+			if ((self.subType is not None) and (self.subType.lower() == "single")):
 				self.data = self.thing.GetSelection()
 			else:
 				self.data = self.thing.GetSelections()
@@ -18692,9 +18716,10 @@ class handle_Dialog(handle_Base):
 
 			# self.myFrame.thing.Destroy() #Don't destroy it so it can appear again without the user calling addDialog() again. Time will tell if this is a bad idea or not
 			self.thing = None
+			self.myFrame.myDialog = None
 
 		elif (self.type.lower() == "file"):
-			if ((self.subType != None) and ("single" in self.subType.lower())):
+			if ((self.subType is not None) and ("single" in self.subType.lower())):
 				self.data = self.thing.GetPath()
 			else:
 				self.data = self.thing.GetPaths()
@@ -18725,18 +18750,43 @@ class handle_Dialog(handle_Base):
 		for variable, handleDict in self.controller.backgroundFunction_pauseOnDialog.items():
 			for handle, functionDict in handleDict.items():
 				for function, attributes in functionDict.items():
-					if ((attributes["state"]) and ((self.label == None) or ((self.label != None) and (self.label not in attributes["exclude"])))):
+					if ((attributes["state"]) and ((self.label is None) or ((self.label is not None) and (self.label not in attributes["exclude"])))):
 						catalogue = getattr(handle, variable)
 						catalogue[function]["pause"] = False
+
+	def end(self, ok = None, cancel = None, close = None, yes = None, no = None, apply = None):
+		"""Stops showing the custom window.
+		This is meant to be used by a function other than the one that created the dialog.
+
+		Example Input: end()
+		Example Input: end(ok = True)
+		"""
+
+		if (ok):
+			returnCode = wx.ID_OK
+		elif (cancel):
+			returnCode = wx.ID_CANCEL
+		elif (close):
+			returnCode = wx.ID_CLOSE
+		elif (yes):
+			returnCode = wx.ID_YES
+		elif (no):
+			returnCode = wx.ID_NO
+		elif (apply):
+			returnCode = wx.ID_APPLY
+		else:
+			returnCode = wx.ID_CANCEL
+
+		self.myFrame.thing.EndModal(returnCode)
 
 	#Getters
 	def getValue(self, event = None):
 		"""Returns what the contextual value is for the object associated with this handle."""
 
 		if (self.type.lower() == "choice"):
-			if (self.data == None):
+			if (self.data is None):
 				value = None
-			elif ((self.subType != None) and (self.subType.lower() == "single")):
+			elif ((self.subType is not None) and (self.subType.lower() == "single")):
 				value = self.choices[self.data]
 			else:
 				value = [self.choices[i] for i in self.data]
@@ -18745,8 +18795,8 @@ class handle_Dialog(handle_Base):
 			value = self.data
 
 		elif (self.type.lower() == "custom"):
-			if (self.valueLabel == None):
-				if (self.valueLabel == None):
+			if (self.valueLabel is None):
+				if (self.valueLabel is None):
 					errorMessage = f"In order to use getValue() for {self.__repr__()} 'valueLabel' cannot be None\nEither provide it in makeDialogCustom() for {self.__repr__()} or use setValueLabel() for {self.myFrame.__repr__()}"
 					raise KeyError(errorMessage)
 			else:
@@ -18902,13 +18952,21 @@ class handle_Dialog(handle_Base):
 			return self.thing.WasCancelled()
 		return False
 
+	def _onCloseChildren(self):
+		"""Closes all children."""
+
+		print("@2", self.childrenDialogs)
+
+		for child in self.childrenDialogs:
+			child.end(cancel = True)
+
 	#Setters
 	def _formatText(self, text):
-		if (text == None):
+		if (text is None):
 			return self.text
 
 		current = self.thing.GetMessage()
-		if (self.oneShot != None):
+		if (self.oneShot is not None):
 			if (current == self.oneShot):
 				self.oneShot = None
 				return self.text
@@ -18933,7 +18991,7 @@ class handle_Dialog(handle_Base):
 				text = self._formatText(text)
 				self.progress = value
 
-				if (value == None):
+				if (value is None):
 					self.answer = self.threadSafe(self.thing.Pulse, text)
 				else:
 					self.answer = self.threadSafe(self.thing.Update, value, text)
@@ -18951,7 +19009,7 @@ class handle_Dialog(handle_Base):
 				text = self._formatText(text)
 
 				#Setting the value to zero causes the window to disappear
-				if (self.progress == None):
+				if (self.progress is None):
 					self.answer = self.threadSafe(self.thing.Pulse, text)
 				else:
 					self.answer = self.threadSafe(self.thing.Update, self.thing.GetValue(), text)
@@ -18974,7 +19032,7 @@ class handle_Dialog(handle_Base):
 		"""Sets the title."""
 
 		if (self.type.lower() == "print"):
-			if (text == None):
+			if (text is None):
 				text = "GUI_Maker Page"
 			self.title = text
 		else:
@@ -19238,7 +19296,7 @@ class _MyPreviewFrame(wx.PreviewFrame):
 		self.Bind(wx.EVT_CLOSE, self.OnClose)
 
 	def OnClose(self, event):
-		if (self.parent != None):
+		if (self.parent is not None):
 			self.parent.hide()
 		event.Skip()
 
@@ -19257,7 +19315,6 @@ class _MyPrintout(wx.Printout):
 
 		#Ensure this runs first
 		self.OnPreparePrinting()
-		# print("@4", self.GetSize())
 
 	def SetRaw(self, state):
 		self.raw = state
@@ -19358,6 +19415,7 @@ class handle_Window(handle_Container_Base):
 		handle_Container_Base.__init__(self)
 
 		#Defaults
+		self.myDialog = None
 		self.mainPanel = None
 		self.mainSizer = None
 		self.thing = None
@@ -19410,9 +19468,9 @@ class handle_Window(handle_Container_Base):
 
 		output = handle_Container_Base.__str__(self)
 		
-		if (self.mainPanel != None):
+		if (self.mainPanel is not None):
 			output += f"-- main panel id: {id(self.mainPanel)}\n"
-		if (self.mainSizer != None):
+		if (self.mainSizer is not None):
 			output += f"-- main sizer id: {id(self.mainSizer)}\n"
 		return output
 
@@ -19438,7 +19496,7 @@ class handle_Window(handle_Container_Base):
 			if (resize):
 				style += "|wx.RESIZE_BORDER"
 
-			if (topBar != None):
+			if (topBar is not None):
 				if (topBar):
 					style += "|wx.MINIMIZE_BOX|wx.MAXIMIZE_BOX|wx.CLOSE_BOX"
 			else:
@@ -19451,7 +19509,7 @@ class handle_Window(handle_Container_Base):
 				if (close):
 					style += "|wx.CLOSE_BOX"
 
-			if (title != None):
+			if (title is not None):
 				style += "|wx.CAPTION"
 			else:
 				title = ""
@@ -19469,7 +19527,7 @@ class handle_Window(handle_Container_Base):
 			
 			#Add Properties
 			icon, internal = self._getArguments(argument_catalogue, ["icon", "internal"])
-			if (icon != None):
+			if (icon is not None):
 				self.setIcon(icon, internal)
 
 			#Bind functions
@@ -19477,14 +19535,14 @@ class handle_Window(handle_Container_Base):
 			initFunction, initFunctionArgs, initFunctionKwargs = self._getArguments(argument_catalogue, ["initFunction", "initFunctionArgs", "initFunctionKwargs"])
 			idleFunction, idleFunctionArgs, idleFunctionKwargs = self._getArguments(argument_catalogue, ["idleFunction", "idleFunctionArgs", "idleFunctionKwargs"])
 			
-			if (initFunction != None):
+			if (initFunction is not None):
 				self.setFunction_init(initFunction, initFunctionArgs, initFunctionKwargs)
 
-			if (delFunction != None):
+			if (delFunction is not None):
 				self.setFunction_close(delFunction, delFunctionArgs, delFunctionKwargs)
 			else:
 				endProgram = self._getArguments(argument_catalogue, ["endProgram"])
-				if (endProgram != None):
+				if (endProgram is not None):
 					if (endProgram):
 						delFunction = self.controller.onExit
 					else:
@@ -19494,7 +19552,7 @@ class handle_Window(handle_Container_Base):
 
 				self.setFunction_close(delFunction)
 
-			if (idleFunction != None):
+			if (idleFunction is not None):
 				self.idleQueue = None
 				self._betterBind(wx.EVT_IDLE, self.thing, idleFunction, idleFunctionArgs, idleFunctionKwargs)
 			else:
@@ -19542,7 +19600,7 @@ class handle_Window(handle_Container_Base):
 			if (resize):
 				style += "|wx.RESIZE_BORDER"
 
-			if (topBar != None):
+			if (topBar is not None):
 				if (topBar):
 					style += "|wx.MINIMIZE_BOX|wx.MAXIMIZE_BOX|wx.CLOSE_BOX"
 			else:
@@ -19555,7 +19613,7 @@ class handle_Window(handle_Container_Base):
 				if (close):
 					style += "|wx.CLOSE_BOX"
 
-			if (title != None):
+			if (title is not None):
 				style += "|wx.CAPTION"
 			else:
 				title = ""
@@ -19571,7 +19629,7 @@ class handle_Window(handle_Container_Base):
 				self.thing.SetMaxSize(screenSize)
 
 			#Set Properties
-			if (icon != None):
+			if (icon is not None):
 				self.setIcon(icon, internal)
 
 			#Remember Values
@@ -19581,10 +19639,10 @@ class handle_Window(handle_Container_Base):
 			delFunction, delFunctionArgs, delFunctionKwargs = self._getArguments(argument_catalogue, ["delFunction", "delFunctionArgs", "delFunctionKwargs"])
 			initFunction, initFunctionArgs, initFunctionKwargs = self._getArguments(argument_catalogue, ["initFunction", "initFunctionArgs", "initFunctionKwargs"])
 			
-			if (initFunction != None):
+			if (initFunction is not None):
 				self.setFunction_init(initFunction, initFunctionArgs, initFunctionKwargs)
 
-			if (delFunction != None):
+			if (delFunction is not None):
 				self.setFunction_close(delFunction, delFunctionArgs, delFunctionKwargs)
 			
 			#Setup sizers and panels
@@ -19607,7 +19665,7 @@ class handle_Window(handle_Container_Base):
 
 					if (not isinstance(addNo, (bool, type(None)))):
 						self._addAttributeOverride(addNo, "myId", wx.ID_NO)
-					elif (addNo or ((addYes not in [False, None]) and (addNo == None))):
+					elif (addNo or ((addYes not in [False, None]) and (addNo is None))):
 						buttonSizer.addButton("No", myId = {"myId": wx.ID_NO})
 
 					if (not isinstance(addOk, (bool, type(None)))):
@@ -19641,36 +19699,6 @@ class handle_Window(handle_Container_Base):
 					# self.thing.SetAutoLayout(True)
 					# rootSizer.thing.Fit(self.thing)
 
-		# def _build_preview():
-		# 	"""Builds a wx preview frame object."""
-		# 	nonlocal self, argument_catalogue
-
-		# 	printout, enablePrint = self._getArguments(argument_catalogue, ["printout", "enablePrint"])
-
-		# 	if (enablePrint):
-		# 		preview = _MyPrintPreview(self, printout, printout.clone())
-		# 	else:
-		# 		preview = _MyPrintPreview(self, printout)
-
-		# 	#Pre Settings
-		# 	if ("__WXMAC__" in wx.PlatformInfo):
-		# 		preview.SetZoom(50)
-		# 	else:
-		# 		preview.SetZoom(35)
-
-		# 	if (not preview.IsOk()):
-		# 		warnings.warn(f"'printout' {printout.__repr__()} was not created correctly for {self.__repr__()}", Warning, stacklevel = 2)
-		# 		self.thing = None
-		# 		return
-
-		# 	self.thing = _MyPreviewFrame(self, preview, None, "Print Preview")
-
-		# 	#Post Settings
-		# 	image = self._getImage("print", internal = True)
-		# 	self.thing.SetIcon(wx.Icon(image))
-
-		# 	self.thing.Initialize()
-
 		#########################################################
 
 		self._preBuild(argument_catalogue)
@@ -19679,12 +19707,15 @@ class handle_Window(handle_Container_Base):
 			_build_frame()
 		elif (self.type.lower() == "dialog"):
 			_build_dialog()
-		# elif (self.type.lower() == "preview"):
-		# 	_build_preview()
 		else:
 			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self._postBuild(argument_catalogue)
+
+	def getDialog(self):
+		"""Returns the custom dialog wiundow that this window is currently showing."""
+
+		return self.myDialog
 
 	def getTitle(self):
 		"""Returns the title for this window."""
@@ -19694,7 +19725,7 @@ class handle_Window(handle_Container_Base):
 	def checkActive(self, event = None):
 		"""Returns if the window is active or not."""
 
-		if (event != None):
+		if (event is not None):
 			if (isinstance(event, wx._core.ActivateEvent)):
 				return event.GetActive()
 		return self.thing.IsActive()
@@ -19780,7 +19811,7 @@ class handle_Window(handle_Container_Base):
 		Example Input: setWindowSize((350, 250))
 		"""
 
-		if (x == None):
+		if (x is None):
 			self.setSize(wx.DefaultSize, atleast = atleast)
 			return
 
@@ -19791,7 +19822,7 @@ class handle_Window(handle_Container_Base):
 			else:
 				x = ast.literal_eval(re.sub("^['\"]|['\"]$", "", x))
 
-		if (y == None):
+		if (y is None):
 			y = x[1]
 			x = x[0]
 
@@ -19819,7 +19850,7 @@ class handle_Window(handle_Container_Base):
 		Example Input: setWindowPosition((350, 250))
 		"""
 
-		if (x == None):
+		if (x is None):
 			self.thing.SetPosition(wx.DefaultPosition)
 			return
 
@@ -19833,7 +19864,7 @@ class handle_Window(handle_Container_Base):
 			else:
 				x = ast.literal_eval(re.sub("^['\"]|['\"]$", "", x))
 
-		if (y == None):
+		if (y is None):
 			y = x[1]
 			x = x[0]
 
@@ -19860,7 +19891,7 @@ class handle_Window(handle_Container_Base):
 		Example Input: setMinimumFrameSize((200, 100))
 		"""
 
-		if (y == None):
+		if (y is None):
 			y = x[1]
 			x = x[0]
 
@@ -19886,7 +19917,7 @@ class handle_Window(handle_Container_Base):
 		Example Input: setMaximumFrameSize((700, 100), y_offset = 0)
 		"""
 
-		if (y == None):
+		if (y is None):
 			y = x[1]
 			x = x[0]
 
@@ -19916,7 +19947,7 @@ class handle_Window(handle_Container_Base):
 		Example Input: centerWindow(offset = (0, -100))
 		"""
 
-		if (offset == None):
+		if (offset is None):
 			offset = (0, 0)
 
 		screenSize = self.getScreenSize(number = number)
@@ -19931,6 +19962,7 @@ class handle_Window(handle_Container_Base):
 	def showWindow(self, asDialog = False):
 		"""Shows a specific window to the user.
 		If the window is already shown, it will bring it to the front
+		Use: https://wxpython.org/Phoenix/docs/html/wx.Window.html#wx.Window.ShowWithEffect
 
 		Example Input: showWindow()
 		Example Input: showWindow(asDialog = True)
@@ -19991,14 +20023,14 @@ class handle_Window(handle_Container_Base):
 
 		self.runMyFunction(self.preHideFunction, self.preHideFunctionArgs, self.preHideFunctionKwargs, includeEvent = True)
 
-		if (self.controller.windowDisabler != None):
+		if (self.controller.windowDisabler is not None):
 			if (self.controller.windowDisabler[0] == self.thing):
 				self.controller.windowDisabler[1] = None
 				self.controller.windowDisabler = None
 
 		if (self.visible):
 			if (isinstance(self.thing, wx.Dialog)):
-				if (event == None):
+				if (event is None):
 					errorMessage = f"Must either use onHideWindow() or pass 'event' to hideWindow() to hide a custom dialog for {self.__repr__()}"
 					raise ValueError(errorMessage)
 				self.thing.EndModal(event.GetEventObject().GetId())
@@ -20054,7 +20086,7 @@ class handle_Window(handle_Container_Base):
 			return sizerList[0]
 
 		#Account for whole list request
-		elif (sizerLabel == None):
+		elif (sizerLabel is None):
 			return sizerList
 
 		#Search for requested sizer
@@ -20169,7 +20201,7 @@ class handle_Window(handle_Container_Base):
 			raise ValueError(errorMessage)
 
 		#Account for whole list request
-		if (menuLabel == None):
+		if (menuLabel is None):
 			return menuList
 
 		#Search for requested menu
@@ -20256,7 +20288,7 @@ class handle_Window(handle_Container_Base):
 		Example Input: checkStatusBar()
 		"""
 
-		if (self.statusBar == None):
+		if (self.statusBar is None):
 			return
 
 		if (timer):
@@ -20277,9 +20309,9 @@ class handle_Window(handle_Container_Base):
 		Example Input: addStatusBar()
 		"""
 
-		if (self.statusBar == None):
+		if (self.statusBar is None):
 			if (self.type.lower() == "dialog"):
-				if (self.mainPanel != None):
+				if (self.mainPanel is not None):
 					self.statusBar = wx.StatusBar(self.mainPanel.thing)
 					rootSizer = self.mainPanel.thing.GetSizer()
 				else:
@@ -20305,7 +20337,7 @@ class handle_Window(handle_Container_Base):
 		Example Input: removeStatusBar()
 		"""
 
-		if (self.statusBar == None):
+		if (self.statusBar is None):
 			warnings.warn(f"There is no status bar for {self.__repr__()}", Warning, stacklevel = 2)
 			return
 
@@ -20342,11 +20374,11 @@ class handle_Window(handle_Container_Base):
 		Example Input: setStatusWidth(number = 1, autoWidth = True)
 		"""
 
-		if (self.statusBar == None):
+		if (self.statusBar is None):
 			warnings.warn(f"There is no status bar in setStatusWidth() for {self.__repr__()}", Warning, stacklevel = 2)
 			return
 
-		if (number == None):
+		if (number is None):
 			number = []
 		elif (not isinstance(number, (list, tuple, range))):
 			number = [number]
@@ -20357,7 +20389,7 @@ class handle_Window(handle_Container_Base):
 		elif (len(number) == 0):
 			self.statusBar_autoWidth = None
 
-		if (width == None):
+		if (width is None):
 			width = -1
 
 		if (isinstance(width, (list, tuple, range))):
@@ -20435,15 +20467,15 @@ class handle_Window(handle_Container_Base):
 
 					applyMessage(text)
 
-					if (text == None):
+					if (text is None):
 						text = self.statusTextDefault.get(number, " ")
 					if (callable(text)):
 						text = text()
-					if (text == None):
+					if (text is None):
 						text = " "
 					self.statusBar.SetStatusText(text, number)
 
-					if (delay == None):
+					if (delay is None):
 						break
 
 					for i in range(1, (delay // delayChunk) + 1):
@@ -20464,11 +20496,11 @@ class handle_Window(handle_Container_Base):
 				wx.CallAfter(applyMessage, text)
 				return
 
-			if (text == None):
+			if (text is None):
 				text = self.statusTextDefault.get(number, " ")
 			if (callable(text)):
 				text = text()
-			if (text == None):
+			if (text is None):
 				text = " "
 			self.statusBar.SetStatusText(text, number)
 
@@ -20478,7 +20510,7 @@ class handle_Window(handle_Container_Base):
 		##################################################
 
 		#Error Checking
-		if (self.statusBar == None):
+		if (self.statusBar is None):
 			if (autoAdd):
 				self.addStatusBar()
 			else:
@@ -20516,7 +20548,7 @@ class handle_Window(handle_Container_Base):
 		Example Input: setStatusTextDefault("Ready")
 		"""
 
-		if (message == None):
+		if (message is None):
 			message = " "
 		self.statusTextDefault[number] = message
 
@@ -20526,7 +20558,7 @@ class handle_Window(handle_Container_Base):
 		Example Input: getStatusText()
 		"""
 
-		if (self.statusBar == None):
+		if (self.statusBar is None):
 			warnings.warn(f"There is no status bar in getStatusText() for {self.__repr__()}", Warning, stacklevel = 2)
 			return
 		if (self.statusBar.GetFieldsCount() <= number):
@@ -20677,14 +20709,14 @@ class handle_Window(handle_Container_Base):
 			"""Invalidates the 'best size' calculation for everything nested."""
 
 			for item in itemList:
-				if (item == None):
+				if (item is None):
 					continue
 				elif (isinstance(item, handle_NotebookPage)):
 					applyInvalidateNested([item.mySizer, item.myPanel])
 					continue
 				elif (isinstance(item, handle_MenuPopup)):
 					continue
-				elif (item.thing == None):
+				elif (item.thing is None):
 					khikukuhk
 
 				if (hasattr(item.thing, "InvalidateBestSize")):
@@ -20731,7 +20763,7 @@ class handle_Window(handle_Container_Base):
 
 		#Skip empty windows
 		if (len(catalogue) > 1):
-			if (autoSize == None):
+			if (autoSize is None):
 				autoSize = self.autoSize
 
 			#Auto-size the window
@@ -20739,7 +20771,7 @@ class handle_Window(handle_Container_Base):
 				if (invalidateNested):
 					applyInvalidateNested(self[:])
 
-				if (self.mainPanel != None):
+				if (self.mainPanel is not None):
 					if (invalidateNested):
 						applyInvalidateNested(self.mainPanel[:])
 					self.mainPanel.thing.InvalidateBestSize()
@@ -20753,16 +20785,16 @@ class handle_Window(handle_Container_Base):
 				applyUpdateNested(self[:])
 
 			if (useSizeEvent):
-				if (self.mainPanel != None):
+				if (self.mainPanel is not None):
 					self.mainPanel.thing.SendSizeEvent()
 				self.thing.SendSizeEvent()
 			else:
-				if (self.mainPanel != None):
+				if (self.mainPanel is not None):
 					self.mainPanel.thing.Layout()
 					self.mainPanel.thing.Refresh()
 					# self.mainPanel.thing.Update()
 
-				# if (self.mainSizer != None):
+				# if (self.mainSizer is not None):
 				#   self.mainSizer.thing.Layout() 
 
 				self.thing.Layout()
@@ -20781,7 +20813,7 @@ class handle_Window(handle_Container_Base):
 
 		self.refresh(event = event, includeEvent = includeEvent)
 
-		if (event != None):
+		if (event is not None):
 			event.Skip()
 
 	def refresh(self, event = None, includeEvent = False):
@@ -20800,7 +20832,7 @@ class handle_Window(handle_Container_Base):
 	def _addFinalFunction(self, myFunction, myFunctionArgs = None, myFunctionKwargs = None, label = None):
 		"""Adds a function to the queue that will run after building, but before launching, the app."""
 
-		if (label == None):
+		if (label is None):
 			self.finalFunctionList.append([myFunction, myFunctionArgs, myFunctionKwargs])
 		else:
 			self.finalFunctionCatalogue[label] = [myFunction, myFunctionArgs, myFunctionKwargs]
@@ -20826,7 +20858,7 @@ class handle_Window(handle_Container_Base):
 		"""
 
 		#Get the correct object to bind to
-		if (self.mainPanel != None):
+		if (self.mainPanel is not None):
 			thing = self.mainPanel
 		else:
 			thing = self
@@ -21501,7 +21533,7 @@ class handle_Panel(handle_Container_Base):
 			nonlocal self, argument_catalogue
 
 			#Error Check
-			if (self.parent.thing == None):
+			if (self.parent.thing is None):
 				errorMessage = f"The object {self.parent.__repr__()} must be fully created for {self.__repr__()}"
 				raise RuntimeError(errorMessage)
 
@@ -21557,7 +21589,7 @@ class handle_Panel(handle_Container_Base):
 				self.thing = wx.Panel(self.parent.thing, id = myId, pos = position, size = size, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
 
 			#Bind Functions
-			if (initFunction != None):
+			if (initFunction is not None):
 				initFunctionArgs, initFunctionKwargs = self._getArguments(argument_catalogue, ["initFunctionArgs", "initFunctionKwargs"])
 				self._betterBind(wx.EVT_INIT_DIALOG, self.thing, initFunction, initFunctionArgs, initFunctionKwargs)
 
@@ -21659,7 +21691,7 @@ class handle_Splitter(handle_Container_Base):
 			self.thing.SetMinimumPaneSize(minimumSize)
 
 			##Divider position from the right
-			if (dividerPosition != None):
+			if (dividerPosition is not None):
 				self.thing.SetSashPosition(dividerPosition)
 
 			##Left panel growth ratio
@@ -21669,7 +21701,7 @@ class handle_Splitter(handle_Container_Base):
 			self.thing.SetSashSize(dividerSize)
 
 			#Bind Functions
-			if (initFunction != None):
+			if (initFunction is not None):
 				initFunctionArgs, initFunctionKwargs = self._getArguments(argument_catalogue, ["initFunctionArgs", "initFunctionKwargs"])
 				self.setFunction_init(initFunction, initFunctionArgs, initFunctionKwargs)
 
@@ -21701,7 +21733,7 @@ class handle_Splitter(handle_Container_Base):
 			self.thing = wx.lib.agw.fourwaysplitter.FourWaySplitter(self.parent.thing, agwStyle = wx.SP_LIVE_UPDATE)
 
 			#Bind Functions
-			if (initFunction != None):
+			if (initFunction is not None):
 				initFunctionArgs, initFunctionKwargs = self._getArguments(argument_catalogue, ["initFunctionArgs", "initFunctionKwargs"])
 				self.setFunction_init(initFunction, initFunctionArgs, initFunctionKwargs)
 
@@ -21743,7 +21775,7 @@ class handle_Splitter(handle_Container_Base):
 				self.thing.SetOrientation(wx.HORIZONTAL)
 
 			#Bind Functions
-			if (initFunction != None):
+			if (initFunction is not None):
 				initFunctionArgs, initFunctionKwargs = self._getArguments(argument_catalogue, ["initFunctionArgs", "initFunctionKwargs"])
 				self.setFunction_init(initFunction, initFunctionArgs, initFunctionKwargs)
 
@@ -21814,7 +21846,7 @@ class handle_Splitter(handle_Container_Base):
 			if (isinstance(newValue, str)):
 				newValue = ast.literal_eval(re.sub("^['\"]|['\"]$", "", newValue))
 
-			if (newValue != None):
+			if (newValue is not None):
 				self.thing.SetSashPosition(newValue)
 		else:
 			warnings.warn(f"Add {self.type} to setSashPosition() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -21865,7 +21897,7 @@ class handle_AuiManager(handle_Container_Base):
 		paneInfo = wx.lib.agw.aui.AuiPaneInfo()
 
 		#Default Position
-		if (default != None):
+		if (default is not None):
 			if (default[0].lower() == "c"):
 				paneInfo.CenterPane()
 			elif (default[0].lower() == "t"):
@@ -21898,11 +21930,11 @@ class handle_AuiManager(handle_Container_Base):
 		paneInfo.Resizable(resizable)
 		paneInfo.Movable(movable)
 
-		if (minimumSize != None):
+		if (minimumSize is not None):
 			paneInfo.MinSize(minimumSize)
-		if (maximumSize != None):
+		if (maximumSize is not None):
 			paneInfo.MaxSize(maximumSize)
-		if (bestSize != None):
+		if (bestSize is not None):
 			paneInfo.BestSize(bestSize)
 
 		if (fixedSize):
@@ -21912,11 +21944,11 @@ class handle_AuiManager(handle_Container_Base):
 			paneInfo.Float()
 			paneInfo.PinButton(True)
 
-		if (label != None):
+		if (label is not None):
 			paneInfo.Name(str(label))
 
 		#Account for overriding the handle with your own widget or panel
-		if (handle == None):
+		if (handle is None):
 			#Get the object
 			handle = handle_NotebookPage()
 			handle.type = "auiPage"
@@ -22099,7 +22131,7 @@ class handle_Notebook(handle_Container_Base):
 			#Configure Flags            
 			flags, x, border = self._getItemMod(flags)
 
-			if (tabSide == None):
+			if (tabSide is None):
 				tabSide = "top"
 			else:
 				if (not isinstance(tabSide, str)):
@@ -22132,27 +22164,27 @@ class handle_Notebook(handle_Container_Base):
 
 			#Bind Functions
 			self.parent._betterBind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.thing, self.onRefresh)
-			if (initFunction != None):
+			if (initFunction is not None):
 				initFunctionArgs, initFunctionKwargs = self._getArguments(argument_catalogue, ["initFunctionArgs", "initFunctionKwargs"])
 				self.setFunction_init(initFunction, initFunctionArgs, initFunctionKwargs)
 			
-			if (prePageChangeFunction != None):
+			if (prePageChangeFunction is not None):
 				prePageChangeFunctionArgs, prePageChangeFunctionKwargs = self._getArguments(argument_catalogue, ["prePageChangeFunctionArgs", "prePageChangeFunctionKwargs"])
 				self.setFunction_prePageChange(initFunction, initFunctionArgs, initFunctionKwargs)
 
-			if (postPageChangeFunction != None):
+			if (postPageChangeFunction is not None):
 				postPageChangeFunctionArgs, postPageChangeFunctionKwargs = self._getArguments(argument_catalogue, ["postPageChangeFunctionArgs", "postPageChangeFunctionKwargs"])
 				self.setFunction_postPageChange(initFunction, initFunctionArgs, initFunctionKwargs)
 
 			#Determine if there is padding on the tabs
-			if ((padding != None) and (padding != -1)):
+			if ((padding is not None) and (padding != -1)):
 				#Ensure correct format
-				if ((padding[0] != None) and (padding[0] != -1)):
+				if ((padding[0] is not None) and (padding[0] != -1)):
 					width = padding[0]
 				else:
 					width = 0
 
-				if ((padding[1] != None) and (padding[1] != -1)):
+				if ((padding[1] is not None) and (padding[1] != -1)):
 					height = padding[1]
 				else:
 					height = 0
@@ -22181,7 +22213,7 @@ class handle_Notebook(handle_Container_Base):
 			fixedWidth, drawFocus = self._getArguments(argument_catalogue, ["fixedWidth", "drawFocus"])
 
 			#Create Styles
-			if (tabSide != None):
+			if (tabSide is not None):
 				if (tabSide[0] == "t"):
 					style = "wx.lib.agw.aui.AUI_NB_TOP"
 				elif (tabSide[0] == "b"):
@@ -22219,13 +22251,13 @@ class handle_Notebook(handle_Container_Base):
 			if (addScrollButton):
 				style += "|wx.lib.agw.aui.AUI_NB_SCROLL_BUTTONS"
 
-			if (addListDrop != None):
+			if (addListDrop is not None):
 				if (addListDrop):
 					style += "|wx.lib.agw.aui.AUI_NB_WINDOWLIST_BUTTON"
 				else:
 					style += "|wx.lib.agw.aui.AUI_NB_USE_IMAGES_DROPDOWN"
 
-			if (addCloseButton != None):
+			if (addCloseButton is not None):
 				if (addCloseButton):
 					style += "|wx.lib.agw.aui.AUI_NB_CLOSE_ON_ALL_TABS"
 				else:
@@ -22249,7 +22281,7 @@ class handle_Notebook(handle_Container_Base):
 				self.myWindow = buildSelf.myWindow
 
 			#Link to window's aui manager
-			if (self.myWindow.auiManager == None):
+			if (self.myWindow.auiManager is None):
 				self.myWindow.auiManager = handle_AuiManager(self, self.myWindow)#, reduceFlicker = reduceFlicker)
 				self._build(locals())
 
@@ -22388,20 +22420,20 @@ class handle_Notebook(handle_Container_Base):
 			handleList.append(handle)
 
 			#Determine if there is an icon on the tab
-			if (handle.icon != None):
+			if (handle.icon is not None):
 				#Add this icon to the notebook's image catalogue
 				handle.iconIndex = self.thing.notebookImageList.Add(handle.icon)
 				self.thing.AssignImageList(self.thing.notebookImageList)
 
 			#Create the tab
-			if ((insert != None) and (insert != -1)):
-				if (handle.iconIndex != None):
+			if ((insert is not None) and (insert != -1)):
+				if (handle.iconIndex is not None):
 					self.thing.InsertPage(insert, handle.myPanel.thing, handle.text, default, handle.iconIndex)
 				else:
 					self.thing.InsertPage(insert, handle.myPanel.thing, handle.text, default)
 
 			else:
-				if (handle.iconIndex != None):
+				if (handle.iconIndex is not None):
 					self.thing.AddPage(handle.myPanel.thing, handle.text, default, handle.iconIndex)
 				else:
 					self.thing.AddPage(handle.myPanel.thing, handle.text, default)
@@ -22435,7 +22467,7 @@ class handle_Notebook(handle_Container_Base):
 			return currentPage
 		for item in self:
 			if (self.getPageIndex(item) == currentPage):
-				if (index == None):
+				if (index is None):
 					return item
 				else:
 					return item.label
@@ -22446,7 +22478,7 @@ class handle_Notebook(handle_Container_Base):
 	def getPage(self, pageLabel = None):
 		"""Returns the requested page handle."""
 
-		if (pageLabel == None):
+		if (pageLabel is None):
 			return self.getCurrentPage()
 
 		if (isinstance(pageLabel, handle_NotebookPage)):
@@ -22472,7 +22504,7 @@ class handle_Notebook(handle_Container_Base):
 		Example Input: getPageIndex(0)
 		"""
 
-		if (pageLabel == None):
+		if (pageLabel is None):
 			return self.getCurrentPage(index = True)
 		
 		if (isinstance(pageLabel, int)):
@@ -22503,7 +22535,7 @@ class handle_Notebook(handle_Container_Base):
 		Example Input: getPageText(1)
 		"""
 
-		if (pageIndex == None):
+		if (pageIndex is None):
 			pageIndex = self.getCurrentPage(index = True)
 		elif (not isinstance(pageIndex, int)):
 			pageIndex = self.getPageIndex(pageIndex)
@@ -22728,9 +22760,9 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 
 		output = handle_Container_Base.__str__(self)
 
-		if (self.text != None):
+		if (self.text is not None):
 			output += f"-- text: {self.text}\n"
-		if (self.icon != None):
+		if (self.icon is not None):
 			output += f"-- icon: {self.icon}\n"
 
 		return output
@@ -22818,7 +22850,7 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		self._finalNest(self.myPanel)
 
 		#Format text
-		if (text == None):
+		if (text is None):
 			self.text = ""
 		else:
 			if (not isinstance(text, str)):
@@ -22829,7 +22861,7 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		#Format Icon
 		if (self.type.lower() == "notebookpage"):
 			icon_path, icon_internal = self._getArguments(argument_catalogue, ["icon_path", "icon_internal"])
-			if (icon_path != None):
+			if (icon_path is not None):
 				self.icon = self._getImage(icon_path, icon_internal)
 			else:
 				self.icon = None
@@ -22932,7 +22964,7 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 			self.parent.setPageText(self, text = newValue)
 
 		elif (self.type.lower() == "auipage"):
-			if (self.label == None):
+			if (self.label is None):
 				warnings.warn(f"A label is needed for {self.__repr__()} to change the caption", Warning, stacklevel = 2)
 
 			self.myManager.setTitle(self.label, newValue)
@@ -22950,7 +22982,7 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		"""Overload for dockCenter() in handle_AuiManager."""
 
 		if (self.type.lower() == "auipage"):
-			if (self.label == None):
+			if (self.label is None):
 				warnings.warn(f"A label is needed for {self.__repr__()} to programatically dock it", Warning, stacklevel = 2)
 
 			self.myManager.dockCenter(self.label, *args, **kwargs)
@@ -22962,7 +22994,7 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		"""Overload for dockTop() in handle_AuiManager."""
 
 		if (self.type.lower() == "auipage"):
-			if (self.label == None):
+			if (self.label is None):
 				warnings.warn(f"A label is needed for {self.__repr__()} to programatically dock it", Warning, stacklevel = 2)
 
 			self.myManager.dockTop(self.label, *args, **kwargs)
@@ -22974,7 +23006,7 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		"""Overload for dockBottom() in handle_AuiManager."""
 
 		if (self.type.lower() == "auipage"):
-			if (self.label == None):
+			if (self.label is None):
 				warnings.warn(f"A label is needed for {self.__repr__()} to programatically dock it", Warning, stacklevel = 2)
 
 			self.myManager.dockBottom(self.label, *args, **kwargs)
@@ -22986,7 +23018,7 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		"""Overload for dockLeft() in handle_AuiManager."""
 
 		if (self.type.lower() == "auipage"):
-			if (self.label == None):
+			if (self.label is None):
 				warnings.warn(f"A label is needed for {self.__repr__()} to programatically dock it", Warning, stacklevel = 2)
 
 			self.myManager.dockLeft(self.label, *args, **kwargs)
@@ -22998,7 +23030,7 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		"""Overload for dockRight() in handle_AuiManager."""
 
 		if (self.type.lower() == "auipage"):
-			if (self.label == None):
+			if (self.label is None):
 				warnings.warn(f"A label is needed for {self.__repr__()} to programatically dock it", Warning, stacklevel = 2)
 
 			self.myManager.dockRight(self.label, *args, **kwargs)
@@ -23037,7 +23069,7 @@ class MyApp():
 			"""
 
 			#Account for multiple instances of the same app
-			if (self.root != None):
+			if (self.root is not None):
 				if (self.root.oneInstance):
 					#Ensure only one instance per user runs
 					self.root.oneInstance_name = f"SingleApp-{wx.GetUserId()}"
@@ -23047,7 +23079,7 @@ class MyApp():
 						wx.MessageBox("Cannot run multiple instances of this program", "Runtime Error")
 						return False
 
-			if (self.newMainLoop != None):
+			if (self.newMainLoop is not None):
 				self.newMainLoop()
 				wx.CallAfter(self.ExitMainLoop)
 
@@ -23093,8 +23125,9 @@ class Controller(Utilities, CommonEventFunctions):
 	having to learn how to use the complicated program.
 	"""
 
-	def __init__(self, debugging = False, best = False, oneInstance = False, allowBuildErrors = None, 
-		checkComplexity = True, startInThread = False, newMainLoop = None, printMakeVariables = False):
+	def __init__(self, debugging = False, best = False, oneInstance = False, 
+		allowBuildErrors = None, checkComplexity = True, startInThread = False, 
+		newMainLoop = None, printMakeVariables = False, logCMD = False):
 		"""Defines the internal variables needed to run.
 
 		debugging (bool) - Determiens if debugging information is given to the user
@@ -23154,6 +23187,9 @@ class Controller(Utilities, CommonEventFunctions):
 		self.old_stdout = sys.stdout.write
 		self.old_stderr = sys.stderr.write
 
+		if (logCMD):
+			self.logCMD()
+
 		#Record Address
 		self._setAddressValue([id(self)], {None: self})
 
@@ -23201,8 +23237,8 @@ class Controller(Utilities, CommonEventFunctions):
 		"""Allows the user to use a with statement to build the GUI."""
 
 		#Error handling
-		if (traceback != None):
-			if (self.allowBuildErrors == None):
+		if (traceback is not None):
+			if (self.allowBuildErrors is None):
 				return False
 			elif (not self.allowBuildErrors):
 				return True
@@ -23237,6 +23273,11 @@ class Controller(Utilities, CommonEventFunctions):
 
 		self.labelCatalogueOrder.remove(key)
 		del self.labelCatalogue[key]
+
+	def exit(self):
+		"""Closes the GUI."""
+
+		self.app.OnExit()
 
 	def get(self, *args, returnExists = False, **kwargs):
 		"""Overload for get() in Utilities."""
@@ -23610,7 +23651,7 @@ class Controller(Utilities, CommonEventFunctions):
 		Example Input: enableToolTips(enabled = False)
 		"""
 
-		if (enabled != None):
+		if (enabled is not None):
 			self.enableToolTips(enabled)
 		else:
 			if (wx.ToolTip.IsEnabled()):
@@ -23660,7 +23701,7 @@ class Controller(Utilities, CommonEventFunctions):
 			"""
 			nonlocal self
 
-			self._logPrint(args, fileName = fileName, timestamp = timestamp, **kwargs)
+			self._logPrint(*args, fileName = fileName, timestamp = timestamp, **kwargs)
 
 			#Run the normal print function
 			return self.old_stdout(*args)
@@ -23673,7 +23714,7 @@ class Controller(Utilities, CommonEventFunctions):
 			"""
 			nonlocal self
 
-			self._logError(args, fileName = fileName, timestamp = timestamp, **kwargs)
+			self._logError(*args, fileName = fileName, timestamp = timestamp, **kwargs)
 
 			#Run the normal stderr function
 			return self.old_stderr(*args)
@@ -24081,20 +24122,20 @@ class _mp_CallArgsInfo:
 		args, varParamName, varOptParamName, argsDefaults, kwargs, kwargsDefaults, annotations = inspect.getfullargspec(func)
 		self.allArgs = {}
 
-		if (argsDefaults != None):
+		if (argsDefaults is not None):
 			argsDefaults_startsAt = len(args) - len(argsDefaults) - 1
 		for i, variable in enumerate(args):
 			if ((i == 0) and (firstArgIdx > 0)):
 				continue #skip self
 
-			if ((argsDefaults == None) or (i < argsDefaults_startsAt)):
+			if ((argsDefaults is None) or (i < argsDefaults_startsAt)):
 				self.allArgs[variable] = self.NO_DEFAULT()
 			else:
 				self.allArgs[variable] = argsDefaults[i - argsDefaults_startsAt - 1]
 
 		self.allKwargs = {}
 		for variable in kwargs:
-			if ((kwargsDefaults == None) or (variable not in kwargsDefaults)):
+			if ((kwargsDefaults is None) or (variable not in kwargsDefaults)):
 				self.allKwargs[variable] = self.NO_DEFAULT()
 			else:
 				self.allKwargs[variable] = kwargsDefaults[variable]
@@ -24142,10 +24183,10 @@ pubsub.core.callables.CallArgsInfo = _mp_CallArgsInfo
 #User Things
 class User_Utilities():
 	def __init__(self, catalogue_variable = None, label_variable = None, **kwargs):
-		if ((catalogue_variable != None) and (not isinstance(catalogue_variable, (str, Controller)))):
+		if ((catalogue_variable is not None) and (not isinstance(catalogue_variable, (str, Controller)))):
 			errorMessage = f"'catalogue_variable' must be a str, not a {type(catalogue_variable)}"
 			raise ValueError(errorMessage)
-		if ((label_variable != None) and (not isinstance(label_variable, str))):
+		if ((label_variable is not None) and (not isinstance(label_variable, str))):
 			errorMessage = f"'label_variable' must be a str, not a {type(label_variable)}"
 			raise ValueError(errorMessage)
 
@@ -24158,20 +24199,20 @@ class User_Utilities():
 
 	def __str__(self):
 		output = f"{type(self).__name__}()\n-- id: {id(self)}\n"
-		if (hasattr(self, "parent") and (self.parent != None)):
+		if (hasattr(self, "parent") and (self.parent is not None)):
 			output += f"-- Parent: {self.parent.__repr__()}\n"
-		if (hasattr(self, "root") and (self.root != None)):
+		if (hasattr(self, "root") and (self.root is not None)):
 			output += f"-- Root: {self.root.__repr__()}\n"
 		return output
 
 	def __len__(self):
-		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable != None)):
+		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable is not None)):
 			if (isinstance(self._catalogue_variable, Controller)):
 				return self._catalogue_variable.__len__()
 		return len(self[:])
 
 	def __contains__(self, key):
-		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable != None)):
+		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable is not None)):
 			if (isinstance(self._catalogue_variable, Controller)):
 				return self._catalogue_variable.__contains__(key)
 
@@ -24181,7 +24222,7 @@ class User_Utilities():
 		# if (key in self[:]):
 		#   return True
 		# else:
-		#   if (hasattr(self, "_catalogue_variable") and (self._label_variable != None)):
+		#   if (hasattr(self, "_catalogue_variable") and (self._label_variable is not None)):
 		#       for item in self[:]:
 		#           if (hasattr(item, self._label_variable)):
 		#               if (key == getattr(item, self._label_variable)):
@@ -24189,7 +24230,7 @@ class User_Utilities():
 		# return False
 
 	def __iter__(self):
-		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable != None)):
+		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable is not None)):
 			if (isinstance(self._catalogue_variable, Controller)):
 				return self._catalogue_variable.__iter__()
 
@@ -24197,7 +24238,7 @@ class User_Utilities():
 		return _Iterator(dataCatalogue)
 
 	def __getitem__(self, key):
-		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable != None)):
+		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable is not None)):
 			if (isinstance(self._catalogue_variable, Controller)):
 				return self._catalogue_variable.__getitem__(key)
 			
@@ -24205,7 +24246,7 @@ class User_Utilities():
 		return self._get(dataCatalogue, key)
 
 	def __setitem__(self, key, value):
-		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable != None)):
+		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable is not None)):
 			if (isinstance(self._catalogue_variable, Controller)):
 				return self._catalogue_variable.__setitem__(key, value)
 		
@@ -24213,7 +24254,7 @@ class User_Utilities():
 		dataCatalogue[key] = value
 
 	def __delitem__(self, key):
-		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable != None)):
+		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable is not None)):
 			if (isinstance(self._catalogue_variable, Controller)):
 				return self._catalogue_variable.__delitem__(key)
 		
@@ -24221,18 +24262,18 @@ class User_Utilities():
 		del dataCatalogue[key]
 
 	def __enter__(self):
-		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable != None)):
+		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable is not None)):
 			if (isinstance(self._catalogue_variable, Controller)):
 				return self._catalogue_variable.__enter__()
 			
 		return self
 
 	def __exit__(self, exc_type, exc_value, traceback):
-		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable != None)):
+		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable is not None)):
 			if (isinstance(self._catalogue_variable, Controller)):
 				return self._catalogue_variable.__exit__(exc_type, exc_value, traceback)
 			
-		if (traceback != None):
+		if (traceback is not None):
 			return False
 
 	def keys(self, *args, **kwargs):
@@ -24250,7 +24291,7 @@ class User_Utilities():
 	def _getDataCatalogue(self):
 		"""Returns the data catalogue used to select items from this thing."""
 
-		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable != None)):
+		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable is not None)):
 			if (isinstance(self._catalogue_variable, str)):
 				if (not hasattr(self, self._catalogue_variable)):
 					warnings.warn(f"There is no variable {self._catalogue_variable} in {self.__repr__()} to use for the data catalogue", Warning, stacklevel = 2)
@@ -24280,25 +24321,25 @@ class User_Utilities():
 		Example Input: _get(self.rowCatalogue, slice(2, 7, None))
 		"""
 
-		if (exclude == None):
+		if (exclude is None):
 			exclude = []
 		elif (not isinstance(exclude, (list, tuple, set, range, types.GeneratorType))):
 			exclude = [exclude]
 
 		#Account for retrieving all nested
-		if (itemLabel == None):
+		if (itemLabel is None):
 			itemLabel = slice(None, None, None)
 
 		#Account for indexing
 		if (isinstance(itemLabel, slice)):
-			if (itemLabel.step != None):
+			if (itemLabel.step is not None):
 				raise FutureWarning(f"Add slice steps to _get() for indexing {self.__repr__()}")
 			
-			elif ((itemLabel.start != None) and (itemLabel.start not in itemCatalogue)):
+			elif ((itemLabel.start is not None) and (itemLabel.start not in itemCatalogue)):
 				errorMessage = f"There is no item labled {itemLabel.start} in the row catalogue for {self.__repr__()}"
 				raise KeyError(errorMessage)
 			
-			elif ((itemLabel.stop != None) and (itemLabel.stop not in itemCatalogue)):
+			elif ((itemLabel.stop is not None) and (itemLabel.stop not in itemCatalogue)):
 				errorMessage = f"There is no item labled {itemLabel.stop} in the row catalogue for {self.__repr__()}"
 				raise KeyError(errorMessage)
 
@@ -24306,9 +24347,9 @@ class User_Utilities():
 			begin = False
 			for item in sorted(itemCatalogue.keys(), key = lambda item: f"{item}"):
 				#Allow for slicing with non-integers
-				if ((not begin) and ((itemLabel.start == None) or (itemCatalogue[item].label == itemLabel.start))):
+				if ((not begin) and ((itemLabel.start is None) or (itemCatalogue[item].label == itemLabel.start))):
 					begin = True
-				elif ((itemLabel.stop != None) and (itemCatalogue[item].label == itemLabel.stop)):
+				elif ((itemLabel.stop is not None) and (itemCatalogue[item].label == itemLabel.stop)):
 					break
 
 				#Slice catalogue via creation date
@@ -24322,9 +24363,9 @@ class User_Utilities():
 			answer = itemCatalogue[itemLabel]
 
 		if (returnExists):
-			return answer != None
+			return answer is not None
 
-		if (answer != None):
+		if (answer is not None):
 			if (isinstance(answer, (list, tuple, range))):
 				if (len(answer) == 1):
 					answer = answer[0]
@@ -24357,17 +24398,17 @@ class User_Utilities():
 
 		if (not isinstance(exclude, (list, tuple, range))):
 			exclude = [exclude]
-		if (getFunction == None):
+		if (getFunction is None):
 			getFunction = getattr
 
-		if ((order != None) and (not isinstance(order, bool))):
+		if ((order is not None) and (not isinstance(order, bool))):
 			data = [getFunction(item, variable) for item in self.getOrder(order, includeMissing = includeMissing, 
 				getFunction = getFunction, sortNone = sortNone, exclude = exclude) if (item not in exclude)]
 		else:
 			data = [getFunction(item, variable) for item in self if (item not in exclude)]
 
-			if ((order != None) and (isinstance(order, bool)) and order):
-				data = sorted(filter(lambda item: True if (sortNone != None) else (item != None), data), 
+			if ((order is not None) and (isinstance(order, bool)) and order):
+				data = sorted(filter(lambda item: True if (sortNone is not None) else (item is not None), data), 
 					key = lambda item: (((item is None)     if (reverse) else (item is not None)) if (sortNone) else
 										((item is not None) if (reverse) else (item is None)), item), 
 					reverse = reverse)
@@ -24400,20 +24441,20 @@ class User_Utilities():
 			excludeFunction = lambda handle: handle in exclude
 		else:
 			excludeFunction = exclude
-		if (getFunction == None):
+		if (getFunction is None):
 			getFunction = getattr
 
-		if (variable == None):
+		if (variable is None):
 			handleList = self.getHandle(where = where, exclude = excludeFunction, getFunction = getFunction, compareFunction = compareFunction)
 		else:
 			try:
-				handleList = sorted(filter(lambda item: hasattr(item, variable) and (not excludeFunction(item)) and ((sortNone != None) or (getFunction(item, variable) != None)), 
+				handleList = sorted(filter(lambda item: hasattr(item, variable) and (not excludeFunction(item)) and ((sortNone is not None) or (getFunction(item, variable) is not None)), 
 					self.getHandle(where = where, exclude = excludeFunction, getFunction = getFunction, compareFunction = compareFunction)), 
 					key = lambda item: (((getFunction(item, variable) is None)     if (reverse) else (getFunction(item, variable) is not None)) if (sortNone) else
 										((getFunction(item, variable) is not None) if (reverse) else (getFunction(item, variable) is None)), getFunction(item, variable)), 
 					reverse = reverse)
 			except TypeError as error:
-				for item in filter(lambda item: hasattr(item, variable) and (not excludeFunction(item)) and ((sortNone != None) or (getFunction(item, variable) != None)), 
+				for item in filter(lambda item: hasattr(item, variable) and (not excludeFunction(item)) and ((sortNone is not None) or (getFunction(item, variable) is not None)), 
 					self.getHandle(where = where, exclude = excludeFunction, getFunction = getFunction, compareFunction = compareFunction)):
 
 					print(getFunction(item, variable), item)
@@ -24448,9 +24489,9 @@ class User_Utilities():
 			excludeFunction = lambda handle: handle in exclude
 		else:
 			excludeFunction = exclude
-		if (getFunction == None):
+		if (getFunction is None):
 			getFunction = getattr
-		if (compareFunction == None):
+		if (compareFunction is None):
 			if (compareAsStrings):
 				compareFunction = lambda handle, where: all(hasattr(handle, variable) and (f"{getFunction(handle, variable)}" == f"{value}") for variable, value in where.items())
 			else:
@@ -24459,7 +24500,7 @@ class User_Utilities():
 		handleList = []
 		for handle in self:
 			if (not excludeFunction(handle)):
-				if ((where == None) or (len(where) == 0)):
+				if ((where is None) or (len(where) == 0)):
 					handleList.append(handle)
 				elif (compareFunction(handle, where)):
 					handleList.append(handle)
@@ -24500,7 +24541,7 @@ class User_Utilities():
 		Example Input:: getNumber({1: 2, 3: {4: 5}})
 		"""
 
-		if ((depthMax != None) and (_currentDepth > depthMax)):
+		if ((depthMax is not None) and (_currentDepth > depthMax)):
 			return 0
 		elif (isinstance(itemList, str)):
 			return 1
@@ -24662,7 +24703,7 @@ class User_Utilities():
 			Example input: next(2)
 			"""
 
-			if (n == None):
+			if (n is None):
 				try:
 					return next(self)
 				except StopIteration:
@@ -24693,7 +24734,7 @@ class User_Utilities():
 			while True:
 				answer = self.next(n = n, terminator = terminator)
 
-				if (((n != None) and all(item == terminator for item in answer)) or (answer == None)):
+				if (((n is not None) and all(item == terminator for item in answer)) or (answer is None)):
 					break
 				yield answer
 
