@@ -5,6 +5,8 @@ __version__ = "4.3.0"
 # - Add Wrap Sizer: https://www.blog.pythonlibrary.org/2014/01/22/wxpython-wrap-widgets-with-wrapsizer/
 # - Look through these demos for more things: https://github.com/wxWidgets/Phoenix/tree/master/demo
 # - Look through the menu examples: https://www.programcreek.com/python/example/44403/wx.EVT_FIND
+# - Add https://wxpython.org/Phoenix/docs/html/wx.MDIParentFrame.html; use: https://stackoverflow.com/questions/46999890/display-html-using-a-wxpython-control
+# - Add https://wxpython.org/Phoenix/docs/html/wx.ConfigBase.html#wx.ConfigBase
 # https://wxpython.org/Phoenix/docs/html/wx.lib.agw.html
 # https://wxpython.org/Phoenix/docs/html/wx.html2.WebView.html
 
@@ -28,6 +30,7 @@ import types
 import bisect
 import ctypes
 import string
+import operator
 # import builtins
 
 import typing #NoReturn, Union
@@ -40,6 +43,7 @@ import functools
 import wx
 import wx.adv
 import wx.grid
+import wx.html
 import wx.lib.masked
 import wx.lib.buttons
 import wx.lib.dialogs
@@ -71,7 +75,8 @@ import forks.objectlistview.ObjectListView as ObjectListView #Use my own fork
 import queue
 import threading
 import subprocess
-import pubsub.pub
+# import pubsub.pub
+from forks.pypubsub.src.pubsub import pub as pubsub_pub #Use my own fork
 
 
 #Import needed support modules
@@ -102,7 +107,7 @@ import PIL
 valueQueue = {} #Used to keep track of values the user wants to have
 dragDropDestination = None #Used to help a source know if a destination is itself
 nestingCatalogue = {} #Used to keep track of what is nested in what
-topicManager = pubsub.pub.getDefaultTopicMgr()
+topicManager = pubsub_pub.getDefaultTopicMgr()
 
 threads_max = 50 #Crashes around 600
 threadCatalogue = {} #Used to keep track of labeled threads
@@ -3142,7 +3147,7 @@ class Utilities():
 		italic (bool) - If True: the font will be italicized
 		color (str)   - The color of the text. Can be an RGB tuple (r, g, b) or hex value
 		family (str)  - What font family it is.
-			~ "times new roman"         
+			~ "times new roman"
 
 		Example Input: _makeText()
 		Example Input: _makeText(text = "Lorem Ipsum")
@@ -3183,6 +3188,33 @@ class Utilities():
 
 		handle = handle_WidgetText()
 		handle.type = "Hyperlink"
+		handle._build(locals())
+
+		return handle
+
+
+	def _makeHtml(self, text = "", can_scroll = True, can_select = True, position = None, size = None,
+
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
+
+		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
+		label = None, parent = None, handle = None, myId = None):
+		"""Adds a widget that represents html to the next cell on the grid.
+
+		text (str)            - What text is shown
+		myFunction (str)        - What function will be ran when the link is clicked
+		flags (list)            - A list of strings for which flag to add to the sizer
+		label (any)           - What this is catalogued as
+		myFunctionArgs (any)    - The arguments for 'myFunction'
+		myFunctionKwargs (any)  - The keyword arguments for 'myFunction'function
+
+
+		Example Input: _makeHtml(text = "<html><body>Lorem Ipsum</body></html>")
+		Example Input: _makeHtml(text = "Lorem <b>ipsum</b> <i><u>dolor</u></i> sit <font color='red'>amet</font>.")
+		"""
+
+		handle = handle_WidgetText()
+		handle.type = "Html"
 		handle._build(locals())
 
 		return handle
@@ -5812,10 +5844,10 @@ class handle_Base(Utilities, CommonEventFunctions):
 
 				arguments = inspect.getcallargs(function, *args, **kwargs)
 				del arguments["self"]
-				pubsub.pub.sendMessage(label, **arguments)
+				pubsub_pub.sendMessage(label, **arguments)
 			
 			setattr(function.__self__, function.__name__, types.MethodType(wrapper, function.__self__)) #Replace function with wrapped function
-			pubsub.pub.subscribe(function, label)
+			pubsub_pub.subscribe(function, label)
 
 		def checkFit(function, topic, topicFunction):
 			"""Ensures that the function fits with the given topic."""
@@ -7399,6 +7431,33 @@ class handle_WidgetText(handle_Widget_Base):
 			#   if (wrap > 0):
 			#       self.wrapText(wrap)
 
+		def _build_html():
+			"""Builds a blank wx html object.
+			Use: https://wxpython.org/Phoenix/docs/html/html_overview.html
+			Use: https://wxpython.org/Phoenix/docs/html/wx.html.HtmlWindow.html
+			Use: https://wxpython.org/Phoenix/docs/html/wx.html2.WebView.html
+			"""
+			nonlocal self
+
+			myId = self._getId(argument_catalogue)
+
+			text, can_scroll, can_select, position, size = self._getArguments(argument_catalogue, ["text", "can_scroll", "can_select", "position", "size"])
+
+			style = []
+			if (can_scroll):
+				style.append(wx.html.HW_SCROLLBAR_AUTO)
+			else:
+				style.append(wx.html.HW_SCROLLBAR_NEVER)
+
+			if (not can_select):
+				style.append(wx.html.HW_NO_SELECTION)
+
+			#Create the thing to put in the grid
+			self.thing = wx.html.HtmlWindow(self.parent.thing, id = myId, pos = position or wx.DefaultPosition, 
+				size = size or wx.DefaultSize, style = functools.reduce(operator.ior, style or [0]))
+
+			self.setValue(text)
+
 		def _build_hyperlink():
 			"""Builds a wx hyperlink object."""
 			nonlocal self, argument_catalogue
@@ -7443,6 +7502,8 @@ class handle_WidgetText(handle_Widget_Base):
 
 		if (self.type.lower() == "text"):
 			_build_text()
+		elif (self.type.lower() == "html"):
+			_build_html()
 		elif (self.type.lower() == "hyperlink"):
 			_build_hyperlink()
 		elif (self.type.lower() == "empty"):
@@ -7458,6 +7519,9 @@ class handle_WidgetText(handle_Widget_Base):
 
 		if (self.type.lower() == "text"):
 			value = self.thing.GetLabel() #(str) - What the text says
+
+		elif (self.type.lower() == "html"):
+			value = self.thing.ToText() #(str) - What the internal html is
 
 		elif (self.type.lower() == "hyperlink"):
 			value = self.thing.GetURL() #(str) - What the link is
@@ -7477,6 +7541,9 @@ class handle_WidgetText(handle_Widget_Base):
 				newValue = f"{newValue}"
 
 			self.thing.SetLabel(newValue) #(str) - What the static text will now say
+
+		elif (self.type.lower() == "html"):
+			self.thing.SetPage(newValue or "")
 
 		elif (self.type.lower() == "hyperlink"):
 			if (not isinstance(newValue, str)):
@@ -11343,6 +11410,21 @@ class handle_Menu(handle_Container_Base):
 			handle._build(locals())
 		else:
 			warnings.warn(f"Add {self.type} to addText() for {self.__repr__()}", Warning, stacklevel = 2)
+			return
+
+		return handle
+
+	def addHtml(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		"""Adds a text widget to the tool bar."""
+
+		if (self.type.lower() == "toolbar"):
+			handle = handle_MenuItem()
+			handle.type = "ToolBarItem"
+			handle.subHandle = [handle._makeHtml, args, kwargs]
+			handle._build(locals())
+		else:
+			warnings.warn(f"Add {self.type} to addHtml() for {self.__repr__()}", Warning, stacklevel = 2)
 			return
 
 		return handle
@@ -17078,6 +17160,25 @@ class handle_Sizer(handle_Container_Base):
 		
 		return handle
 
+	def addHtml(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
+		"""Adds an html viewer to the grid.
+
+		flags (list)    - A list of strings for which flag to add to the sizer. Can be just a string if only 1 flag is given
+		selected (bool) - If True: This is the default thing selected
+		flex (int)      - Only for Box Sizers:
+			~ If 0: The cell will not grow or shrink; acts like a Flex Grid cell
+			~ If not 0: The cell will grow and shrink to match the cells that have the same number
+
+		Example Input: addHtml()
+		Example Input: addHtml(text = "<html><body>Lorem Ipsum</body></html>")
+		Example Input: addHtml(text = "Lorem <b>ipsum</b> <i><u>dolor</u></i> sit <font color='red'>amet</font>.")
+		"""
+
+		handle = self._makeHtml(*args, **kwargs)
+		self.nest(handle, flex = flex, flags = flags, selected = selected)
+		
+		return handle
+
 	def addHyperlink(self, *args, flex = 0, flags = "c1", selected = False, **kwargs):
 		"""Adds a hyperlink text to the next cell on the grid.
 
@@ -19959,7 +20060,7 @@ class handle_Window(handle_Container_Base):
 		self.thing.SetPosition((size_x, size_y))
 
 	#Visibility
-	def showWindow(self, asDialog = False):
+	def showWindow(self, asDialog = False, ensureVisible = True):
 		"""Shows a specific window to the user.
 		If the window is already shown, it will bring it to the front
 		Use: https://wxpython.org/Phoenix/docs/html/wx.Window.html#wx.Window.ShowWithEffect
@@ -19984,15 +20085,20 @@ class handle_Window(handle_Container_Base):
 			else:
 				self.thing.Raise()
 
+		if (ensureVisible and self.showWindowCheck(state = False, onScreen = True)):
+			self.setWindowPosition()
+
 		self.runMyFunction(self.postShowFunction, self.postShowFunctionArgs, self.postShowFunctionKwargs, includeEvent = True)
 
-	def showWindowCheck(self, notShown = False, onScreen = False):
+	def showWindowCheck(self, state = True, onScreen = False):
 		"""Checks if a window is currently being shown to the user.
 
-		notShown (bool) - If True: Checks if the window is NOT shown instead
+		state (bool) - If True: Checks if the window is NOT shown instead
 		onScreen (bool) - If True: Checks if the window is visible on the computer monitor (not dragged off to the side)
 
 		Example Input: showWindowCheck()
+		Example Input: showWindowCheck(state = False)
+		Example Input: showWindowCheck(onScreen = True)
 		"""
 
 		if (onScreen):
@@ -20003,7 +20109,7 @@ class handle_Window(handle_Container_Base):
 		else:
 			flag = self.visible
 
-		if (notShown):
+		if (not state):
 			flag = not flag
 
 		return flag
@@ -20937,6 +21043,14 @@ class handle_Window(handle_Container_Base):
 
 		mySizer = self.getSizer(sizerLabel)
 		handle = mySizer.addText(*args, **kwargs)
+
+		return handle
+
+	def addHtml(self, sizerLabel, *args, **kwargs):
+		"""Overload for addHtml in handle_Sizer()."""
+
+		mySizer = self.getSizer(sizerLabel)
+		handle = mySizer.addHtml(*args, **kwargs)
 
 		return handle
 
@@ -23901,6 +24015,14 @@ class Controller(Utilities, CommonEventFunctions):
 
 		return handle
 
+	def addHtml(self, windowLabel, *args, **kwargs):
+		"""Overload for addHtml in handle_Window()."""
+
+		myFrame = self.getWindow(windowLabel, frameOnly = False)
+		handle = myFrame.addHtml(*args, **kwargs)
+
+		return handle
+
 	def addHyperlink(self, windowLabel, *args, **kwargs):
 		"""Overload for addHyperlink in handle_Window()."""
 
@@ -24110,75 +24232,75 @@ class Controller(Utilities, CommonEventFunctions):
 		return handle
 
 #Monkey Patches
-import pubsub.core.callables
-class _mp_CallArgsInfo:
-	"""Overridden to allow any valid combination of args and kwargs."""
+# import pubsub.core.callables
+# class _mp_CallArgsInfo:
+# 	"""Overridden to allow any valid combination of args and kwargs."""
 
-	class NO_DEFAULT:
-		def __repr__(self):
-			return "NO_DEFAULT"
+# 	class NO_DEFAULT:
+# 		def __repr__(self):
+# 			return "NO_DEFAULT"
 
-	def __init__(self, func, firstArgIdx, ignoreArgs = None):
-		args, varParamName, varOptParamName, argsDefaults, kwargs, kwargsDefaults, annotations = inspect.getfullargspec(func)
-		self.allArgs = {}
+# 	def __init__(self, func, firstArgIdx, ignoreArgs = None):
+# 		args, varParamName, varOptParamName, argsDefaults, kwargs, kwargsDefaults, annotations = inspect.getfullargspec(func)
+# 		self.allArgs = {}
 
-		if (argsDefaults is not None):
-			argsDefaults_startsAt = len(args) - len(argsDefaults) - 1
-		for i, variable in enumerate(args):
-			if ((i == 0) and (firstArgIdx > 0)):
-				continue #skip self
+# 		if (argsDefaults is not None):
+# 			argsDefaults_startsAt = len(args) - len(argsDefaults) - 1
+# 		for i, variable in enumerate(args):
+# 			if ((i == 0) and (firstArgIdx > 0)):
+# 				continue #skip self
 
-			if ((argsDefaults is None) or (i < argsDefaults_startsAt)):
-				self.allArgs[variable] = self.NO_DEFAULT()
-			else:
-				self.allArgs[variable] = argsDefaults[i - argsDefaults_startsAt - 1]
+# 			if ((argsDefaults is None) or (i < argsDefaults_startsAt)):
+# 				self.allArgs[variable] = self.NO_DEFAULT()
+# 			else:
+# 				self.allArgs[variable] = argsDefaults[i - argsDefaults_startsAt - 1]
 
-		self.allKwargs = {}
-		for variable in kwargs:
-			if ((kwargsDefaults is None) or (variable not in kwargsDefaults)):
-				self.allKwargs[variable] = self.NO_DEFAULT()
-			else:
-				self.allKwargs[variable] = kwargsDefaults[variable]
+# 		self.allKwargs = {}
+# 		for variable in kwargs:
+# 			if ((kwargsDefaults is None) or (variable not in kwargsDefaults)):
+# 				self.allKwargs[variable] = self.NO_DEFAULT()
+# 			else:
+# 				self.allKwargs[variable] = kwargsDefaults[variable]
 
-		self.acceptsAllKwargs = (varOptParamName is not None)
-		self.acceptsAllUnnamedArgs = (varParamName is not None)
-		self.allParams = [*self.allArgs.keys(), *self.allKwargs.keys()]
+# 		self.acceptsAllKwargs = (varOptParamName is not None)
+# 		self.acceptsAllUnnamedArgs = (varParamName is not None)
+# 		self.allParams = [*self.allArgs.keys(), *self.allKwargs.keys()]
 
-		if ignoreArgs:
-			for var_name in ignoreArgs:
-				if (var_name in self.allArgs):
-					del self.allArgs[var_name]
-				elif (var_name in self.allKwargs):
-					del self.allKwargs[var_name]
+# 		if ignoreArgs:
+# 			for var_name in ignoreArgs:
+# 				if (var_name in self.allArgs):
+# 					del self.allArgs[var_name]
+# 				elif (var_name in self.allKwargs):
+# 					del self.allKwargs[var_name]
 
-			if (varOptParamName in ignoreArgs):
-				self.acceptsAllKwargs = False
-			if (varParamName in ignoreArgs):
-				self.acceptsAllUnnamedArgs = False
+# 			if (varOptParamName in ignoreArgs):
+# 				self.acceptsAllKwargs = False
+# 			if (varParamName in ignoreArgs):
+# 				self.acceptsAllUnnamedArgs = False
 
-		self.numRequired = sum([1 for value in [*self.allArgs.values(), *self.allKwargs.values()] if (isinstance(value, self.NO_DEFAULT))])
-		assert self.numRequired >= 0
+# 		self.numRequired = sum([1 for value in [*self.allArgs.values(), *self.allKwargs.values()] if (isinstance(value, self.NO_DEFAULT))])
+# 		assert self.numRequired >= 0
 
-		# if listener wants topic, remove that arg from args/defaultVals
-		self.autoTopicArgName = None
-		self.__setupAutoTopic()
+# 		# if listener wants topic, remove that arg from args/defaultVals
+# 		self.autoTopicArgName = None
+# 		self.__setupAutoTopic()
 
-	def getAllArgs(self):
-		return tuple(self.allParams)
+# 	def getAllArgs(self):
+# 		return tuple(self.allParams)
 
-	def getOptionalArgs(self):
-		return tuple([key for key, value in [*self.allArgs.items(), *self.allKwargs.items()] if (not isinstance(value, self.NO_DEFAULT))])
+# 	def getOptionalArgs(self):
+# 		return tuple([key for key, value in [*self.allArgs.items(), *self.allKwargs.items()] if (not isinstance(value, self.NO_DEFAULT))])
 
-	def getRequiredArgs(self):
-		return tuple([key for key, value in [*self.allArgs.items(), *self.allKwargs.items()] if (isinstance(value, self.NO_DEFAULT))])
+# 	def getRequiredArgs(self):
+# 		return tuple([key for key, value in [*self.allArgs.items(), *self.allKwargs.items()] if (isinstance(value, self.NO_DEFAULT))])
 
-	def __setupAutoTopic(self):
-		for variable, value in {**self.allArgs, **self.allKwargs}.items():
-			if (value == pubsub.core.callables.AUTO_TOPIC):
-				del self.allArgs[variable]
-				return
+# 	def __setupAutoTopic(self):
+# 		for variable, value in {**self.allArgs, **self.allKwargs}.items():
+# 			if (value == pubsub.core.callables.AUTO_TOPIC):
+# 				del self.allArgs[variable]
+# 				return
 
-pubsub.core.callables.CallArgsInfo = _mp_CallArgsInfo
+# pubsub.core.callables.CallArgsInfo = _mp_CallArgsInfo
 
 #User Things
 class User_Utilities():
