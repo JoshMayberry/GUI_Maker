@@ -3294,7 +3294,7 @@ class Utilities():
 		return handle
 
 	def _makeListFull(self, choices = [], default = False, single = False, editable = False,
-		editOnClick = True, cellType = None, cellTypeDefault = "text",  
+		editOnClick = True, cellType = None, cellTypeDefault = "text", useWeakRefs = True,  
 
 		sortable = True, sortFunction = None, rowFormatter = None,
 		columns = None, columnTitles = {}, columnWidth = {}, columnLabels = {},
@@ -7713,7 +7713,7 @@ class handle_WidgetList(handle_Widget_Base):
 			report, single, editable, editOnClick, columnLabels = self._getArguments(argument_catalogue, ["report", "single", "editable", "editOnClick", "columnLabels"])
 			columnImage, columnAlign, columnFormatter, showColumnContextMenu = self._getArguments(argument_catalogue, ["columnImage", "columnAlign", "columnFormatter", "showColumnContextMenu"])
 			border, rowLines, columnLines, showContextMenu = self._getArguments(argument_catalogue, ["border", "rowLines", "columnLines", "showContextMenu"])
-			columns, drag, drop, choices, showEmptyGroups = self._getArguments(argument_catalogue, ["columns", "drag", "drop", "choices", "showEmptyGroups"])
+			columns, drag, drop, choices, showEmptyGroups, useWeakRefs = self._getArguments(argument_catalogue, ["columns", "drag", "drop", "choices", "showEmptyGroups", "useWeakRefs"])
 			group, groupFormatter, groupSeparator, copyEntireRow = self._getArguments(argument_catalogue, ["group", "groupFormatter", "groupSeparator", "copyEntireRow"])
 			sortable, sortFunction, rowFormatter, pasteEntireRow, can_undo = self._getArguments(argument_catalogue, ["sortable", "sortFunction", "rowFormatter", "pasteEntireRow", "can_undo"])
 			can_scroll, can_expand, can_copy, can_paste, can_selectAll, can_edit = self._getArguments(argument_catalogue, ["can_scroll", "can_expand", "can_copy", "can_paste", "can_selectAll", "can_edit"])
@@ -7748,7 +7748,7 @@ class handle_WidgetList(handle_Widget_Base):
 
 			#Create the thing to put in the grid
 			self.thing = self._ListFull(self, self.parent.thing, myId = myId, sortable = sortable, rowFormatter = rowFormatter,
-				singleSelect = single, verticalLines = columnLines, horizontalLines = rowLines, showContextMenu = showContextMenu,
+				singleSelect = single, verticalLines = columnLines, horizontalLines = rowLines, showContextMenu = showContextMenu, useWeakRefs = useWeakRefs,
 				showEmptyGroups = showEmptyGroups, groupIndent = groupIndent, hideFirstIndent = hideFirstIndent, showColumnContextMenu = showColumnContextMenu,
 				key_copyEntireRow = copyEntireRow, key_pasteEntireRow = pasteEntireRow, key_scroll = can_scroll, key_expand = can_expand, 
 				key_copy = can_copy, key_paste = can_paste, key_selectAll = can_selectAll, key_edit = can_edit, key_undo = can_undo)
@@ -8177,36 +8177,22 @@ class handle_WidgetList(handle_Widget_Base):
 
 	#Setters
 	def _formatList(self, newValue, filterNone = False):
-
 		if (isinstance(newValue, (range, types.GeneratorType))):
 			newValue = list(newValue)
-		elif (not isinstance(newValue, (list, tuple))):
+		elif (not isinstance(newValue, (list, tuple, set))):
 			newValue = [newValue]
 
 		if (any((not hasattr(item, '__dict__') for item in newValue))):
+			jkhkhjhhjk
 			objectList = []
-			for item in newValue:
-				if (hasattr(item, '__dict__')):
-					objectList.append(item)
+			for catalogue in newValue:
+				if (hasattr(catalogue, '__dict__')):
+					objectList.append(catalogue)
 					continue
 
-				#Finish formatting insurance
-				if (not isinstance(item, dict)):
-					jhkjhk
-				else:
-					itemDict = item
-
 				#Add Items
-				contents = {}
-				for column, text in itemDict.items():
-					if (isinstance(column, int)):
-						variable = self.columnCatalogue[column]["valueGetter"]
-					else:
-						variable = column
-
-					contents[variable] = f"{text}"
+				contents = {self.columnCatalogue[column]["valueGetter"] if (isinstance(column, int)) else column: f"{text}" for column, text in catalogue.items()}
 				contents["__repr__"] = lambda self: f"""ListItem({", ".join(f"{variable} = {getattr(self, variable).__repr__() if hasattr(getattr(self, variable), '__repr__') else getattr(self, variable)}" for variable in dir(self) if not variable.startswith("__"))})"""
-
 				objectList.append(type("ListItem", (object,), contents)())
 		else:
 			#The user gave a list of objects
@@ -11274,7 +11260,8 @@ class handle_Menu(handle_Container_Base):
 		return state
 
 	#Add things
-	def addItem(self, text = "", icon = None, internal = False, disabled_icon = None, disabled_internal = None,
+	def addItem(self, text = "", icon = None, internal = False, scale = None, 
+		disabled_icon = None, disabled_internal = None, disabled_scale = None,
 		special = None, check = None, default = False, stretchable = None,
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
@@ -11882,10 +11869,10 @@ class handle_MenuItem(handle_Widget_Base):
 					#Determine icon
 					icon, internal = self._getArguments(argument_catalogue, ["icon", "internal"])
 					if (icon is not None):
-						image = self._getImage(icon, internal)
-						image = self._convertBitmapToImage(image)
-						image = image.Scale(16, 16, wx.IMAGE_QUALITY_HIGH)
-						image = self._convertImageToBitmap(image)
+						image = self._getImage(icon, internal, scale = (16, 16))
+						# image = self._convertBitmapToImage(image)
+						# image = image.Scale(16, 16, wx.IMAGE_QUALITY_HIGH)
+						# image = self._convertImageToBitmap(image)
 						self.thing.SetBitmap(image)
 				else:
 					if (check):
@@ -11948,8 +11935,8 @@ class handle_MenuItem(handle_Widget_Base):
 						self.subType = "separator"
 						self.thing = self.parent.thing.AddSeparator()
 				else:
-					icon, internal = self._getArguments(argument_catalogue, ["icon", "internal"])
-					disabled_icon, disabled_internal = self._getArguments(argument_catalogue, ["disabled_icon", "disabled_internal"])
+					icon, internal, scale = self._getArguments(argument_catalogue, ["icon", "internal", "scale"])
+					disabled_icon, disabled_internal, disabled_scale = self._getArguments(argument_catalogue, ["disabled_icon", "disabled_internal", "disabled_scale"])
 					check, default, myFunction, special = self._getArguments(argument_catalogue, ["check", "default", "myFunction", "special"])
 					
 					#Get Images
@@ -11957,14 +11944,14 @@ class handle_MenuItem(handle_Widget_Base):
 						warnings.warn(f"No icon provided for {self.__repr__()}", Warning, stacklevel = 5)
 						icon = "error"
 						internal = True
-					image = self._getImage(icon, internal)
+					image = self._getImage(icon, internal, scale = scale)
 
 					if (disabled_icon is None):
 						imageDisabled = wx.NullBitmap
 					else:
 						if (disabled_internal is None):
 							disabled_internal = internal
-						imageDisabled = self._getImage(disabled_icon, disabled_internal)
+						imageDisabled = self._getImage(disabled_icon, disabled_internal, scale = disabled_scale)
 
 					#Configure Settings
 					# if (toolTip is None):
@@ -19193,8 +19180,8 @@ class handle_Dialog(handle_Base):
 			previewFrame = _MyPreviewFrame(self, preview, None, title = "Print Preview", 
 				pos = self.position or wx.DefaultPosition, size = self.size or wx.DefaultSize)
 
-			image = self._getImage("print", internal = True)
-			previewFrame.SetIcon(wx.Icon(image))
+			image = self._getImage("print", internal = True, returnIcon = True)
+			previewFrame.SetIcon(image)
 			previewFrame.Initialize()
 
 
@@ -20733,13 +20720,13 @@ class handle_Window(handle_Container_Base):
 		"""
 
 		#Get the image
-		image = self._getImage(icon, internal)
-		image = self._convertBitmapToImage(image)
-		image = image.Scale(16, 16, wx.IMAGE_QUALITY_HIGH)
-		image = self._convertImageToBitmap(image)
+		myIcon = self._getImage(icon, internal, returnIcon = True)
+		# image = self._convertBitmapToImage(image)
+		# image = image.Scale(16, 16, wx.IMAGE_QUALITY_HIGH)
+		# image = self._convertImageToBitmap(image)
 
-		#Create the icon
-		myIcon = wx.Icon(image)
+		# #Create the icon
+		# myIcon = wx.Icon(image)
 		self.thing.SetIcon(myIcon)
 
 	def closeWindow(self):
@@ -22976,7 +22963,7 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		if (self.type.lower() == "notebookpage"):
 			icon_path, icon_internal = self._getArguments(argument_catalogue, ["icon_path", "icon_internal"])
 			if (icon_path is not None):
-				self.icon = self._getImage(icon_path, icon_internal)
+				self.icon = self._getImage(icon_path, icon_internal)#, returnIcon = True)
 			else:
 				self.icon = None
 				self.iconIndex = None
