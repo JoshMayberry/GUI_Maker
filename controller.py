@@ -997,7 +997,7 @@ class Utilities():
 				myFunctionKwargs = myFunctionKwargsList
 
 			#Check for User-defined function
-			if (type(myFunction) != str):
+			if (not isinstance(myFunction, str)):
 				#The address is already given
 				myFunctionEvaluated = myFunction
 			else:
@@ -1007,7 +1007,7 @@ class Utilities():
 			#Ensure the *args and **kwargs are formatted correctly 
 			if (myFunctionArgs is not None):
 				#Check for single argument cases
-				if ((type(myFunctionArgs) != list)):
+				if (not isinstance(myFunctionArgs, list)):
 					#The user passed one argument that was not a list
 					myFunctionArgs = [myFunctionArgs]
 				# else:
@@ -1016,7 +1016,7 @@ class Utilities():
 				#       myFunctionArgs = [myFunctionArgs]
 
 			#Check for user error
-			if ((type(myFunctionKwargs) != dict) and (myFunctionKwargs is not None)):
+			if ((not isinstance(myFunctionKwargs, dict)) and (myFunctionKwargs is not None)):
 				errorMessage = f"myFunctionKwargs must be a dictionary for function {myFunctionEvaluated.__repr__()}"
 				raise ValueError(errorMessage)
 
@@ -1245,10 +1245,10 @@ class Utilities():
 			"""
 
 			#Ensure the *args and **kwargs are formatted correctly 
-			if ((type(myFunctionArgs) != list) and (myFunctionArgs is not None)):
+			if ((not isinstance(myFunctionArgs, (list, tuple))) and (myFunctionArgs is not None)):
 				myFunctionArgs = [myFunctionArgs]
 
-			if ((type(myFunctionKwargs) != list) and (myFunctionKwargs is not None)):
+			if ((not isinstance(myFunctionKwargs, (list, tuple))) and (myFunctionKwargs is not None)):
 				myFunctionKwargs = [myFunctionKwargs]
 
 			#Has both args and kwargs
@@ -1407,7 +1407,7 @@ class Utilities():
 							myFunctionKwargs = myFunctionKwargsList
 
 						#Check for User-defined function
-						if (type(myFunction) != str):
+						if (not isinstance(myFunction,  str)):
 							#The address is already given
 							myFunctionEvaluated = myFunction
 						else:
@@ -1466,6 +1466,63 @@ class Utilities():
 			position = position.Get()
 
 		return position
+
+	#Ensure Functions
+	def ensure_set(self, item, convertNone = False):
+		"""Makes sure the given item is a set.
+
+		Example Input: ensure_set(exclude)
+		Example Input: ensure_set(exclude, convertNone = True)
+		"""
+
+		if (item is not None):
+			if (isinstance(item, (str, int, float))):
+				return {item}
+			elif (not isinstance(item, set)):
+				return set(item)
+			return item
+
+		if (convertNone):
+			return set()
+
+	def ensure_list(self, item, convertNone = False):
+		"""Makes sure the given item is a list.
+
+		Example Input: ensure_list(exclude)
+		Example Input: ensure_list(exclude, convertNone = True)
+		"""
+
+		if (item is not None):
+			if (isinstance(item, (str, int, float))):
+				return [item]
+			elif (not isinstance(item, list)):
+				return list(item)
+			return item
+
+		if (convertNone):
+			return []
+
+	def ensure_container(self, item, evaluateGenerator = True, convertNone = False):
+		"""Makes sure the given item is a container.
+
+		Example Input: ensure_container(valueList)
+		Example Input: ensure_container(valueList, convertNone = True)
+		Example Input: ensure_container(valueList, evaluateGenerator = False)
+		"""
+
+		if (item is None):
+			if (convertNone):
+				return (None,)
+			return ()
+		
+		if (isinstance(item, (str, int, float, dict))):
+			return (item,)
+
+		if (not isinstance(item, (list, tuple, set))):
+			if (evaluateGenerator):
+				return tuple(item)
+			return item
+		return item
 
 	#Background Processes
 	def passFunction(self, myFunction, myFunctionArgs = None, myFunctionKwargs = None, thread = None):
@@ -2000,7 +2057,7 @@ class Utilities():
 		fixedFlags = ""
 		if (flags is not None):
 			#Ensure that 'flags' is a list
-			if (type(flags) != list):
+			if (not isinstance(flags, list)):
 				flags = [flags]
 
 			#Evaluate each flag
@@ -2239,7 +2296,7 @@ class Utilities():
 		"""
 
 		if ((imagePath is not None) and (imagePath != "")):
-			if (type(imagePath) != str):
+			if (not isinstance(imagePath, str)):
 				if (PIL.Image.isImageType(imagePath)):
 					if (self is None):
 						util = Utilities()
@@ -4897,6 +4954,7 @@ class Utilities():
 		Example Input: makeDialogChoice(["Lorem", "Ipsum"])
 		Example Input: makeDialogChoice(["Lorem", "Ipsum"], default = 1)
 		Example Input: makeDialogChoice(["Lorem", "Ipsum"], single = False, default = [0, 1])
+		Example Input: makeDialogChoice([{label: "Lorem", value: 3}, {label: "Ipsum", value: 2}], formatter = lambda catalogue: catalogue["label"])
 		"""
 
 		handle = handle_Dialog()
@@ -8737,6 +8795,27 @@ class handle_WidgetList(handle_Widget_Base):
 
 	def setRedoHistory(self, redoHistory = []):
 		self.thing.SetRedoHistory(redoHistory)
+
+	def copy(self, row = None, column = None, *args, **kwargs):
+		"""Copies the given rows and columns.
+
+		row (handle) - The row to copy
+			- If list: will copy all the given rows
+			- If None: Will copy all rows
+
+		column (handle) - The column to copy
+			- If list: will copy all the given columns
+			- If None: Will copy all columns
+
+		Example Input: copy()
+		"""
+
+		if (row is not None):
+			row = self.ensure_container(row)
+		if (column is not None):
+			column = self.ensure_container(column)
+
+		self.thing.CopyObjectsToClipboard(row, column, *args, **kwargs)
 
 	#Change Settings
 	def setFunction_preClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
@@ -12873,7 +12952,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 
 		#Account for brush lists
 		multiple = False
-		if ((type(color[0]) == tuple) or (type(color[0]) == list)):
+		if (isinstance(color[0], (tuple, list))):
 			multiple = True
 
 		#Create a brush list
@@ -12926,11 +13005,10 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		else:
 			#Account for brush lists
 			multiple = [False, False]
-			if ((type(color) == tuple) or (type(color) == list)):
-				if ((type(color[0]) == tuple) or (type(color[0]) == list)):
-					multiple[0] = True
+			if (isinstance(color, (tuple, list)) and isinstance(color[0], (tuple, list))):
+				multiple[0] = True
 
-			if ((type(style) == tuple) or (type(style) == list)):
+			if (isinstance(style, (tuple, list))):
 				multiple[1] = True
 
 			#Create a brush list
@@ -13419,7 +13497,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		pen = self._getPen(color)
 
 		#Draw the point
-		if ((type(x) == list) or (type(x) == tuple)):
+		if (isinstance(x, (tuple, list))):
 			self._queue("dc.DrawPointList", [x, pen])
 		else:
 			self._queue("dc.SetPen", pen)
@@ -13450,9 +13528,9 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		pen = self._getPen(color, width)
 
 		#Draw the line
-		if ((type(x1) == list) or (type(x1) == tuple)):
+		if (isinstance(x1, (tuple, list))):
 			#Determine input type
-			if ((type(x1[0]) == list) or (type(x1[0]) == tuple)):
+			if (isinstance(x1[0], (tuple, list))):
 				#Type [(x1, y1), (x2, y2)]
 				lines = [(item[0][0], item[0][1], item[1][0], item[1][1]) for item in x] #Leaf coordinates correctly
 			else:
@@ -19100,7 +19178,7 @@ class handle_Dialog(handle_Base):
 				if (self.progress is None):
 					self.answer = self.threadSafe(self.thing.Pulse, text)
 				else:
-					self.answer = self.threadSafe(self.thing.Update, self.thing.GetValue(), text)
+					self.answer = self.threadSafe(self.thing.Update, self.thing.GetValue() or 1, text)
 
 				if (oneShot):
 					self.oneShot = text
@@ -24303,11 +24381,19 @@ class User_Utilities():
 		self._label_variable = label_variable
 
 	def __repr__(self):
-		representation = f"{type(self).__name__}(id = {id(self)})"
+		representation = f"{type(self).__name__}(id = {id(self)}"
+
+		if (hasattr(self, "label")):
+			representation += f", label = {self.label})"
+		else:
+			representation += ")"
+
 		return representation
 
 	def __str__(self):
 		output = f"{type(self).__name__}()\n-- id: {id(self)}\n"
+		if (hasattr(self, "label") and (self.label is not None)):
+			output += f"-- Label: {self.label}\n"
 		if (hasattr(self, "parent") and (self.parent is not None)):
 			output += f"-- Parent: {self.parent.__repr__()}\n"
 		if (hasattr(self, "root") and (self.root is not None)):
@@ -24413,6 +24499,7 @@ class User_Utilities():
 				else:
 					dataCatalogue = self._catalogue_variable
 		else:
+			warnings.warn(f"There is no _catalogue_variable in {self.__repr__()} to use for the data catalogue", Warning, stacklevel = 2)
 			dataCatalogue = {}
 
 		return dataCatalogue
@@ -24623,6 +24710,7 @@ class User_Utilities():
 		Example Input: getUnique("Format_{}")
 		Example Input: getUnique(exclude = [item.database_id for item in self.parent])
 		"""
+		assert increment is not 0
 
 		if (not isinstance(exclude, (list, tuple, range, set, types.GeneratorType))):
 			exclude = [exclude]
