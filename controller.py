@@ -19184,6 +19184,14 @@ class handle_Dialog(handle_Base):
 					self.oneShot = text
 		else:
 			warnings.warn(f"Add {self.type} to setText() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setDefaultText(self, text = "", apply = True, event = None):
+		"""Sets the contextual default text for the object associated with this handle to what the user supplies."""
+
+		self.text = text
+
+		if (apply):
+			self.setText(event = event)
 	
 	def setMax(self, value, event = None):
 		"""Sets the contextual max for the object associated with this handle to what the user supplies."""
@@ -24370,6 +24378,9 @@ class Controller(Utilities, CommonEventFunctions):
 #User Things
 class User_Utilities():
 	def __init__(self, catalogue_variable = None, label_variable = None, **kwargs):
+		if (catalogue_variable is None):
+			self._dataCatalogue = {}
+
 		if ((catalogue_variable is not None) and (not isinstance(catalogue_variable, (str, Controller)))):
 			errorMessage = f"'catalogue_variable' must be a str, not a {type(catalogue_variable)}"
 			raise ValueError(errorMessage)
@@ -24378,13 +24389,13 @@ class User_Utilities():
 			raise ValueError(errorMessage)
 
 		self._catalogue_variable = catalogue_variable
-		self._label_variable = label_variable
+		self._label_variable = label_variable or "label"
 
 	def __repr__(self):
 		representation = f"{type(self).__name__}(id = {id(self)}"
 
 		if (hasattr(self, "label")):
-			representation += f", label = {self.label})"
+			representation += f", label = {getattr(self, self._label_variable)})"
 		else:
 			representation += ")"
 
@@ -24392,8 +24403,8 @@ class User_Utilities():
 
 	def __str__(self):
 		output = f"{type(self).__name__}()\n-- id: {id(self)}\n"
-		if (hasattr(self, "label") and (self.label is not None)):
-			output += f"-- Label: {self.label}\n"
+		if (hasattr(self, "label") and (getattr(self, self._label_variable) is not None)):
+			output += f"-- Label: {getattr(self, self._label_variable)}\n"
 		if (hasattr(self, "parent") and (self.parent is not None)):
 			output += f"-- Parent: {self.parent.__repr__()}\n"
 		if (hasattr(self, "root") and (self.root is not None)):
@@ -24490,19 +24501,16 @@ class User_Utilities():
 			if (isinstance(self._catalogue_variable, str)):
 				if (not hasattr(self, self._catalogue_variable)):
 					warnings.warn(f"There is no variable {self._catalogue_variable} in {self.__repr__()} to use for the data catalogue", Warning, stacklevel = 2)
-					dataCatalogue = {}
+					return {}
 				else:
-					dataCatalogue = getattr(self, self._catalogue_variable)
+					return getattr(self, self._catalogue_variable)
 			else:
 				if (isinstance(self._catalogue_variable, Controller)):
-					dataCatalogue = self._catalogue_variable.labelCatalogue #This might be causing some bugs with slices ex: self[:]
+					return self._catalogue_variable.labelCatalogue #This might be causing some bugs with slices ex: self[:]
 				else:
-					dataCatalogue = self._catalogue_variable
+					return self._catalogue_variable
 		else:
-			warnings.warn(f"There is no _catalogue_variable in {self.__repr__()} to use for the data catalogue", Warning, stacklevel = 2)
-			dataCatalogue = {}
-
-		return dataCatalogue
+			return self._dataCatalogue
 
 	def _get(self, itemCatalogue, itemLabel = None, returnExists = False, exclude = None):
 		"""Searches the label catalogue for the requested object.
