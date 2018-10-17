@@ -24810,6 +24810,30 @@ class User_Utilities():
 
 		return Utilities._getWildcard(None, *args, **kwargs)
 
+	def ensure_set(self, *args, **kwargs):
+		"""Grants user access to Utilities.ensure_set().
+
+		Example Input: ensure_set(myList)
+		"""
+
+		return Utilities.ensure_set(None, *args, **kwargs)
+
+	def ensure_list(self, *args, **kwargs):
+		"""Grants user access to Utilities.ensure_list().
+
+		Example Input: ensure_list(myList)
+		"""
+
+		return Utilities.ensure_list(None, *args, **kwargs)
+
+	def ensure_container(self, *args, **kwargs):
+		"""Grants user access to Utilities.ensure_container().
+
+		Example Input: ensure_container(myList)
+		"""
+
+		return Utilities.ensure_container(None, *args, **kwargs)
+
 	class CustomIterator():
 		"""Iterates over items in an external list."""
 		def __init__(self, parent, variableName, loop = False, printError = False):
