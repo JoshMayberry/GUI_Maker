@@ -5349,6 +5349,7 @@ class handle_Dummy():
 			return super(type(self), self).__getattr__(name, value)
 		except:
 			return self.dummyFunction
+			# return handle_Dummy()
 
 	def dummyFunction(*args, **kwargs):
 		pass
@@ -5523,6 +5524,13 @@ class handle_Base(Utilities, CommonEventFunctions):
 		self.attributeOverride = {} #Stores variables to override for children {label (str): {variable (str): value (any)}}
 		self.attributeAppend = {} #Stores variables to add to the current variables for children {label (str): {variable (str): value (any)}}
 		self.makeFunction = inspect.stack()[2].function #The function used to create this handle
+
+		if (buildSelf is None):
+			self.parentSizer = None
+			self.myWindow = None
+			self.controller = None
+			self.parent = None
+			return
 
 		#Determine native sizer
 		if (isinstance(buildSelf, handle_Sizer)):
@@ -12717,7 +12725,8 @@ class handle_WidgetCanvas(handle_Widget_Base):
 				# self._betterBind(wx.EVT_ERASE_BACKGROUND, self.thing, self.onDoNothing) #Disable background erasing to reduce flicker
 
 			#Tell the window that EVT_PAINT will be running (reduces flickering)
-			self.myWindow.thing.SetBackgroundStyle(wx.BG_STYLE_PAINT)
+			if (self.myWindow is not None):
+				self.myWindow.thing.SetBackgroundStyle(wx.BG_STYLE_PAINT)
 			if (panel is not None):
 				self.thing.SetBackgroundStyle(wx.BG_STYLE_PAINT)
 
@@ -18470,7 +18479,7 @@ class handle_Dialog(handle_Base):
 							default = formattedChoices.index(default)
 						
 						else:
-							warnings.warn(f"{self.default} not in 'choices' {choices} for {self.__repr__()}", Warning, stacklevel = 2)
+							warnings.warn(f"{default} not in 'choices' {choices} for {self.__repr__()}", Warning, stacklevel = 2)
 							default = 0
 
 					self.thing.SetSelection(default)
@@ -18484,7 +18493,7 @@ class handle_Dialog(handle_Base):
 							if (default[i] in choices):
 								default[i] = choices.index(default[i])
 
-							if (default[i] in formattedChoices):
+							elif (default[i] in formattedChoices):
 								default[i] = formattedChoices.index(default[i])
 
 							else:
@@ -24833,6 +24842,110 @@ class User_Utilities():
 		"""
 
 		return Utilities.ensure_container(None, *args, **kwargs)
+
+	def makeCanvas(self, *args, **kwargs):
+		"""Grants user access to Utilities._makeCanvas().
+
+		Example Input: makeCanvas()
+		"""
+
+		return Utilities._makeCanvas(None, *args, panel = None, **kwargs)
+
+	def makeDialogMessage(self, *args, **kwargs):
+		"""Grants user access to Utilities.makeDialogMessage().
+
+		Example Input: makeDialogMessage()
+		"""
+
+		return Utilities.makeDialogMessage(None, *args, **kwargs)
+
+	def makeDialogError(self, *args, **kwargs):
+		"""Grants user access to Utilities.makeDialogError().
+
+		Example Input: makeDialogError()
+		"""
+
+		return Utilities.makeDialogError(None, *args, **kwargs)
+		
+	def makeDialogScroll(self, *args, **kwargs):
+		"""Grants user access to Utilities.makeDialogScroll().
+
+		Example Input: makeDialogScroll()
+		"""
+
+		return Utilities.makeDialogScroll(None, *args, **kwargs)
+
+	def makeDialogBusy(self, *args, **kwargs):
+		"""Grants user access to Utilities.makeDialogBusy().
+
+		Example Input: makeDialogBusy()
+		"""
+
+		return Utilities.makeDialogBusy(None, *args, **kwargs)
+		
+	def makeDialogChoice(self, *args, **kwargs):
+		"""Grants user access to Utilities.makeDialogChoice().
+
+		Example Input: makeDialogChoice()
+		"""
+
+		return Utilities.makeDialogChoice(None, *args, **kwargs)
+		
+	def makeDialogInput(self, *args, **kwargs):
+		"""Grants user access to Utilities.makeDialogInput().
+
+		Example Input: makeDialogInput()
+		"""
+
+		return Utilities.makeDialogInput(None, *args, **kwargs)
+
+	def makeDialogFile(self, *args, **kwargs):
+		"""Grants user access to Utilities.makeDialogFile().
+
+		Example Input: makeDialogFile()
+		"""
+
+		return Utilities.makeDialogFile(None, *args, **kwargs)
+
+	def makeDialogColor(self, *args, **kwargs):
+		"""Grants user access to Utilities.makeDialogColor().
+
+		Example Input: makeDialogColor()
+		"""
+
+		return Utilities.makeDialogColor(None, *args, **kwargs)
+
+	def makeDialogPrintSetup(self, *args, **kwargs):
+		"""Grants user access to Utilities.makeDialogPrintSetup().
+
+		Example Input: makeDialogPrintSetup()
+		"""
+
+		return Utilities.makeDialogPrintSetup(None, *args, **kwargs)
+		
+	def makeDialogPrint(self, *args, **kwargs):
+		"""Grants user access to Utilities.makeDialogPrint().
+
+		Example Input: makeDialogPrint()
+		"""
+
+		return Utilities.makeDialogPrint(None, *args, **kwargs)
+
+	def makeDialogPrintPreview(self, *args, **kwargs):
+		"""Grants user access to Utilities.makeDialogPrintPreview().
+
+		Example Input: makeDialogPrintPreview()
+		"""
+
+		return Utilities.makeDialogPrintPreview(None, *args, **kwargs)
+		
+	def makeDialogCustom(self, *args, **kwargs):
+		"""Grants user access to Utilities.makeDialogCustom().
+
+		Example Input: makeDialogCustom()
+		"""
+
+		return Utilities.makeDialogCustom(None, *args, **kwargs)
 
 	class CustomIterator():
 		"""Iterates over items in an external list."""
