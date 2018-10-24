@@ -38,6 +38,7 @@ import inspect
 import warnings
 import traceback
 import functools
+import contextlib
 
 #Import wxPython elements to create GUI
 import wx
@@ -83,6 +84,7 @@ from forks.pypubsub.src.pubsub import pub as pubsub_pub #Use my own fork
 import re
 import PIL
 
+import Utilities as MyUtilities
 
 #Required Modules
 ##py -m pip install
@@ -597,7 +599,7 @@ class _MyThread(threading.Thread):
 			self.stopFunction()
 
 #Global Inheritance Classes
-class Utilities():
+class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 	"""Contains common functions needed for various other functions.
 	This is here for convenience in programming.
 	"""
@@ -1466,63 +1468,6 @@ class Utilities():
 			position = position.Get()
 
 		return position
-
-	#Ensure Functions
-	def ensure_set(self, item, convertNone = False):
-		"""Makes sure the given item is a set.
-
-		Example Input: ensure_set(exclude)
-		Example Input: ensure_set(exclude, convertNone = True)
-		"""
-
-		if (item is not None):
-			if (isinstance(item, (str, int, float))):
-				return {item}
-			elif (not isinstance(item, set)):
-				return set(item)
-			return item
-
-		if (convertNone):
-			return set()
-
-	def ensure_list(self, item, convertNone = False):
-		"""Makes sure the given item is a list.
-
-		Example Input: ensure_list(exclude)
-		Example Input: ensure_list(exclude, convertNone = True)
-		"""
-
-		if (item is not None):
-			if (isinstance(item, (str, int, float))):
-				return [item]
-			elif (not isinstance(item, list)):
-				return list(item)
-			return item
-
-		if (convertNone):
-			return []
-
-	def ensure_container(self, item, evaluateGenerator = True, convertNone = False):
-		"""Makes sure the given item is a container.
-
-		Example Input: ensure_container(valueList)
-		Example Input: ensure_container(valueList, convertNone = True)
-		Example Input: ensure_container(valueList, evaluateGenerator = False)
-		"""
-
-		if (item is None):
-			if (convertNone):
-				return (None,)
-			return ()
-		
-		if (isinstance(item, (str, int, float, dict))):
-			return (item,)
-
-		if (not isinstance(item, (list, tuple, set))):
-			if (evaluateGenerator):
-				return tuple(item)
-			return item
-		return item
 
 	#Background Processes
 	def passFunction(self, myFunction, myFunctionArgs = None, myFunctionKwargs = None, thread = None):
@@ -3319,6 +3264,7 @@ class Utilities():
 		return handle
 
 	def _makeListDrop(self, choices = [], default = None, alphabetic = False, readOnly = False,
+		formatter = None, inputBox = False, autoComplete = False, dropDown = True,
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
@@ -3342,6 +3288,7 @@ class Utilities():
 		Example Input: _makeListDrop(choices = ["Lorem", "Ipsum", "Dolor"])
 		Example Input: _makeListDrop(choices = ["Lorem", "Ipsum", "Dolor"], label = "chosen")
 		Example Input: _makeListDrop(choices = ["Lorem", "Ipsum", "Dolor"], alphabetic = True)
+		Example Input: _makeListDrop(choices = [{label: "Lorem", value: 3}, {label: "Ipsum", value: 2}], formatter = lambda catalogue: catalogue["label"])
 		"""
 
 		handle = handle_WidgetList()
@@ -3679,8 +3626,9 @@ class Utilities():
 
 		return handle
 	
-	def _makeInputSearch(self, text = None, menuLabel = None, searchButton = True, cancelButton = True,
-		hideSelection = True, tab = False, alignment = 0, menuReplaceText = False,
+	def _makeInputSearch(self, choices = None, text = None, menuLabel = None, 
+		searchButton = True, cancelButton = True, hideSelection = True, 
+		tab = False, alignment = 0, menuReplaceText = False, autoComplete = True,
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 		enterFunction = None, enterFunctionArgs = None, enterFunctionKwargs = None, 
@@ -4529,8 +4477,6 @@ class Utilities():
 		rightClickLabelFunction (str)       - What function will be ran when a column or row label is right clicked
 		rightClickLabelFunctionArgs (any)   - The arguments for 'rightClickLabelFunction'
 		rightClickLabelFunctionKwargs (any) - The keyword arguments for 'rightClickLabelFunction'function
-
-		wizardFrameNumber (int) - The number of the wizard page. If None, it assumes either a frame or a panel
 
 		Example Input: _makeTable()
 		Example Input: _makeTable(rows = 3, columns = 4)
@@ -5510,6 +5456,12 @@ class handle_Base(Utilities, CommonEventFunctions):
 			return labelCatalogue.items(*args, **kwargs)
 		return list(labelCatalogue.items(*args, **kwargs)) + [(None, item) for item in self.unnamedList]
 
+	@contextlib.contextmanager
+	def bookend_build(self, argument_catalogue):
+		self._preBuild(argument_catalogue)
+		yield
+		self._postBuild(argument_catalogue)
+
 	def _preBuild(self, argument_catalogue):
 		"""Runs before this object is built."""
 
@@ -5676,10 +5628,19 @@ class handle_Base(Utilities, CommonEventFunctions):
 			flags.extend(handle.flags_modification)
 			flags, position, border = self._getItemMod(flags)
 
-			if (isinstance(handle, handle_NotebookPage)):
+			if (isinstance(self, handle_WizardPage)):
+				if (isinstance(handle, handle_Sizer)):
+					self.thing.SetSizer(handle.thing)
+					# self.thing.SetAutoLayout(True)
+					# handle.thing.Fit(self.thing)
+				else:
+					warnings.warn(f"Add {handle.__class__} as a handle for handle_Panel to nest() in {self.__repr__()}", Warning, stacklevel = 2)
+					return
+
+			elif (isinstance(handle, handle_Base_NotebookPage)):
 				handle.mySizerItem = self.thing.Add(handle.mySizer.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
 
-			elif (isinstance(handle, (handle_Widget_Base, handle_Sizer, handle_Splitter, handle_Notebook, handle_Panel))):
+			elif (isinstance(handle, (handle_Widget_Base, handle_Sizer, handle_Splitter, handle_Base_Notebook, handle_Panel))):
 				handle.mySizerItem = self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
 
 			elif (isinstance(handle, handle_Menu)):
@@ -6165,7 +6126,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 				elif (isinstance(item, (handle_MenuPopup, handle_Menu, handle_MenuItem, handle_MenuPopupItem, handle_MenuPopupSubMenu))):
 					applyUpdateNested(item[:])
 
-				elif (isinstance(item, handle_NotebookPage)):
+				elif (isinstance(item, handle_Base_NotebookPage)):
 					applyUpdateNested([item.mySizer, item.myPanel])
 
 				elif (item.thing is None):
@@ -7659,6 +7620,7 @@ class handle_WidgetList(handle_Widget_Base):
 		#Internal Variables
 		self.dragable = False
 		self.myDropTarget = None
+		self.ignoreAutoComplete = False
 		self.expanded = {None: False} #(group (str): state (bool), None: default state (bool))
 
 		self.columnCatalogue = {}
@@ -7701,55 +7663,82 @@ class handle_WidgetList(handle_Widget_Base):
 		"""Determiens which build system to use for this handle."""
 
 		def _build_listDrop():
-			"""Builds a wx choice object."""
+			"""Builds a wx choice object.
+			Use: https://bitbucket.org/raz/wxautocompletectrl/src/default/autocomplete.py
+			Use: https://wiki.wxpython.org/Combo%20Box%20that%20Suggests%20Options
+			"""
 			nonlocal self, argument_catalogue
 
-			choices, alphabetic, default, readOnly = self._getArguments(argument_catalogue, ["choices", "alphabetic", "default", "readOnly"])
+			def yieldValue():
+				nonlocal choices
 
-			#Ensure that the choices given are a list or tuple
-			if (not isinstance(choices, (list, tuple))):
-				choices = list(choices)
+				for item in self.ensure_container(self._Munge(choices, extraArgs = (self,), returnMunger_onFail = True), convertNone = False):
+					yield f"{item}"
+
+			#########################################
+
+			choices, alphabetic, default, readOnly = self._getArguments(argument_catalogue, ["choices", "alphabetic", "default", "readOnly"])
+			formatter, inputBox, dropDown, autoComplete = self._getArguments(argument_catalogue, ["formatter", "inputBox", "dropDown", "autoComplete"])
 
 			#Ensure that the choices are all strings
-			choices = [str(item) for item in choices]
+			self.choices = self.ensure_container(self._Munge(choices, extraArgs = (self,), returnMunger_onFail = True), convertNone = False)
+
+			#Format choices to display
+			if (formatter):
+				self.formattedChoices = [f"{formatter(item)}" for item in self.choices]
+			else:
+				self.formattedChoices = [f"{item}" for item in self.choices]
 
 			#Apply Settings
+			style = []
 			if (alphabetic):
-				style = "wx.CB_SORT"
-			else:
-				style = "0"
+				style.append(wx.CB_SORT)
 
 			myId = self._getId(argument_catalogue)
 
 			#Create the thing to put in the grid
-			inputBox = False
 			if (inputBox):
-				#wx.CB_DROPDOWN wx.CB_SIMPLE wx.CB_READONLY wx.CB_SORT
 				if (readOnly):
-					style += "|wx.CB_READONLY"
+					style.append(wx.CB_READONLY)
 				else:
-					style += "|wx.TE_PROCESS_ENTER"
+					style.append(wx.TE_PROCESS_ENTER)
 
-				self.thing = wx.ComboBox(self.parent.thing, id = myId, choices = choices, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+				if (not dropDown):
+					style.append(wx.CB_SIMPLE)
+				else:
+					style.append(wx.CB_DROPDOWN)
+
+				self.thing = wx.ComboBox(self.parent.thing, id = myId, choices = self.formattedChoices, style = functools.reduce(operator.ior, style or [0]))
 			else:
-				self.thing = wx.Choice(self.parent.thing, id = myId, choices = choices, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+				self.thing = wx.Choice(self.parent.thing, id = myId, choices = self.formattedChoices, style = functools.reduce(operator.ior, style or [0]))
 			
 			#Set default position
-			if (type(default) == str):
-				if (default in choices):
-					default = choices.index(default)
+			default = self._Munge(default, extraArgs = (self,), returnMunger_onFail = True)
+			if (isinstance(default, (list, tuple, range, set))):
+				if (not default):
+					default = None
 				else:
-					warnings.warn(f"the default was not in the provided list of choices for a {self.type} in {self.__repr__()}", Warning, stacklevel = 4)
+					default = default[0]
+
+			if ((default is not None) and (not isinstance(default, int))):
+				if (default in self.choices):
+					default = self.choices.index(default)
+				
+				elif (default in self.formattedChoices):
+					default = self.formattedChoices.index(default)
+				
+				else:
+					warnings.warn(f"the default {default} was not in the provided list of choices for a {self.type} in {self.__repr__()}", Warning, stacklevel = 4)
 					default = None
 
-			if (default is None):
-				default = 0
-
-			self.thing.SetSelection(default)
+			self.thing.SetSelection(default or 0)
 
 			#Bind the function(s)
 			myFunction, myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunction", "myFunctionArgs", "myFunctionKwargs"])
 			self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
+
+			if (autoComplete):
+				self.update_autoComplete()
 
 		def _build_listFull():
 			"""Builds a wx choice object.
@@ -8062,7 +8051,7 @@ class handle_WidgetList(handle_Widget_Base):
 
 		if (self.type.lower() == "listdrop"):
 			index = self.thing.GetSelection()
-			value = self.thing.GetString(index) #(str) - What is selected in the drop list
+			value = self.choices[index] #(any) - What was selected in the drop list
 
 		elif (self.type.lower() == "listfull"):
 			if (group is None):
@@ -8265,21 +8254,18 @@ class handle_WidgetList(handle_Widget_Base):
 			objectList = newValue
 		return objectList
 
-	def setValue(self, newValue, filterNone = False, event = None):
+	def setValue(self, newValue = None, filterNone = False, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
 		if (self.type.lower() == "listdrop"):
-			if (isinstance(newValue, (range, types.GeneratorType))):
-				newValue = list(newValue)
-			elif (not isinstance(newValue, (list, tuple))):
-				newValue = [newValue]
+			newValue = self.ensure_container(newValue, convertNone = False)
 
 			if (filterNone is not None):
 				if (filterNone):
 					if (None in newValue):
-						newValue[:] = [str(value) for value in newValue if value is not None] #Filter out None
+						newValue[:] = tuple(str(value) for value in newValue if value is not None) #Filter out None
 				else:
-					newValue[:] = [str(value) if (value is not None) else "" for value in newValue] #Replace None with blank space
+					newValue[:] = tuple(str(value) if (value is not None) else "" for value in newValue) #Replace None with blank space
 
 			self.thing.Clear()
 			self.thing.AppendItems(newValue) #(list) - What the choice options will now be now
@@ -8374,6 +8360,23 @@ class handle_WidgetList(handle_Widget_Base):
 						self._onSelectRow()
 		else:
 			warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setChoices(self, choices = None):
+		self.choices = choices or ()
+
+	def setText(self, text = None, triggerEvent = True):
+		if (triggerEvent):
+			self.thing.SetValue(text or "")
+		else:
+			self.thing.ChangeValue(text or "")
+
+	def update_autoComplete(self, event = None):
+		"""Updates the auto completer."""
+
+		self.thing.AutoComplete(self.choices)
+
+		if (event is not None):
+			event.Skip()
 
 	def reveal(self, row, event = None):
 		"""Ensures that the given item's group is expanded and visible."""
@@ -9557,36 +9560,39 @@ class handle_WidgetInput(handle_Widget_Base):
 			searchButton, cancelButton, tab, alignment = self._getArguments(argument_catalogue, ["searchButton", "cancelButton", "tab", "alignment"])
 			menuLabel, menuFunction, menuReplaceText, hideSelection, = self._getArguments(argument_catalogue, ["menuLabel", "menuFunction", "menuReplaceText", "hideSelection"])
 			myFunction, enterFunction, searchFunction, cancelFunction = self._getArguments(argument_catalogue, ["myFunction", "enterFunction", "searchFunction", "cancelFunction"])
+			choices, autoComplete = self._getArguments(argument_catalogue, ["choices", "autoComplete"])
 
 			#Configure Settings
-			style = "wx.TE_PROCESS_ENTER"
+			style = [wx.TE_PROCESS_ENTER]
 
 			if (tab):
-				style += "|wx.TE_PROCESS_TAB" #Interpret 'Tab' as 4 spaces
+				style.append(wx.TE_PROCESS_TAB) #Interpret 'Tab' as 4 spaces
 
 			if (not hideSelection):
-				style += "|wx.TE_NOHIDESEL"
+				style.append(wx.TE_NOHIDESEL)
 
 			if (alignment is not None):
 				if (isinstance(alignment, bool)):
 					if (alignment):
-						style += "|wx.TE_LEFT"
+						style.append(wx.TE_LEFT)
 					else:
-						style += "|wx.TE_CENTRE"
+						style.append(wx.TE_CENTRE)
 				elif (alignment == 0):
-					style += "|wx.TE_LEFT"
+					style.append(wx.TE_LEFT)
 				elif (alignment == 1):
-					style += "|wx.TE_RIGHT"
+					style.append(wx.TE_RIGHT)
 				else:
-					style += "|wx.TE_CENTRE"
+					style.append(wx.TE_CENTRE)
 			else:
-				style += "|wx.TE_CENTRE"
-
+				style.append(wx.TE_CENTRE)
 
 			myId = self._getId(argument_catalogue)
 
 			#Create the thing to put in the grid
-			self.thing = wx.SearchCtrl(self.parent.thing, id = myId, value = wx.EmptyString, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+			self.thing = wx.SearchCtrl(self.parent.thing, id = myId, value = wx.EmptyString, style = functools.reduce(operator.ior, style or [0]))
+
+			self.setChoices(choices)
+			self.update_autoComplete()
 
 			#Create the menu associated with this widget
 			if (isinstance(menuLabel, handle_Menu)):
@@ -9868,6 +9874,17 @@ class handle_WidgetInput(handle_Widget_Base):
 
 		else:
 			warnings.warn(f"Add {self.type} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setChoices(self, choices = None):
+		self.choices = choices or ()
+
+	def update_autoComplete(self, event = None):
+		"""Updates the auto completer."""
+
+		self.thing.AutoComplete(self.choices)
+
+		if (event is not None):
+			event.Skip()
 
 	def _onCheckValue_exclude(self, event):
 		"""Checks the current value to make sure the text is valid."""
@@ -17996,7 +18013,7 @@ class handle_Sizer(handle_Container_Base):
 		Example Input: addNotebook(padding = (5, None))
 		"""
 
-		handle = handle_Notebook()
+		handle = handle_Notebook_Simple()
 		handle.type = "Notebook"
 		handle._build(locals())
 
@@ -18044,7 +18061,7 @@ class handle_Sizer(handle_Container_Base):
 		Example Input: addNotebookAui("myNotebook")
 		"""
 
-		handle = handle_Notebook()
+		handle = handle_Notebook_Aui()
 		handle.type = "AuiNotebook"
 		handle._build(locals())
 
@@ -20899,7 +20916,7 @@ class handle_Window(handle_Container_Base):
 			for item in itemList:
 				if (item is None):
 					continue
-				elif (isinstance(item, handle_NotebookPage)):
+				elif (isinstance(item, handle_Base_NotebookPage)):
 					applyInvalidateNested([item.mySizer, item.myPanel])
 					continue
 				elif (isinstance(item, handle_MenuPopup)):
@@ -20921,7 +20938,7 @@ class handle_Window(handle_Container_Base):
 				elif (isinstance(item, (handle_MenuPopup, handle_Menu, handle_MenuItem, handle_MenuPopupItem, handle_MenuPopupSubMenu))):
 					applyUpdateNested(item[:])
 
-				elif (isinstance(item, handle_NotebookPage)):
+				elif (isinstance(item, handle_Base_NotebookPage)):
 					applyUpdateNested([item.mySizer, item.myPanel])
 
 				elif (item.thing is None):
@@ -21706,6 +21723,153 @@ class handle_Window(handle_Container_Base):
 		myWidget = self.getWidget(widgetLabel)
 		myWidget.setFunction_click(*args, **kwargs)
 
+class handle_Wizard(handle_Window):
+	"""A handle for working with a wxWizard.
+
+	Use: https://www.blog.pythonlibrary.org/2011/01/27/wxpython-a-wizard-tutorial/
+	Use: http://xoomer.virgilio.it/infinity77/wxPython/wizard/wx.wizard.html
+	"""
+
+	def __init__(self, controller):
+		"""Initializes defaults."""
+
+		#Initialize inherited classes
+		handle_Window.__init__(self, controller)
+
+		#Internal Variables
+		self.pages = []
+
+	def _build(self, argument_catalogue):
+		"""Builds a wx wizard object."""
+
+		with self.bookend_build(argument_catalogue):
+			title, position, size, panel = self._getArguments(argument_catalogue, ["title", "position", "size", "panel"])
+			image, internal, resizable = self._getArguments(argument_catalogue, ["image", "internal", "resizable"])
+
+			if (self.parent is None):
+				parent = None
+			else:
+				parent = self.parent.thing
+
+
+			style = []
+			if (resizable):
+				style.append(wx.RESIZE_BORDER)
+
+			# myId = self._getId(argument_catalogue)
+			myId = wx.ID_ANY
+
+			self.thing = wx.adv.Wizard(parent, id = myId, title = title or "", bitmap = image or wx.NullBitmap, pos = position or wx.DefaultPosition, style = functools.reduce(operator.ior, style or [wx.DEFAULT_DIALOG_STYLE]))
+
+			# print("@1", self.thing.GetPageAreaSizer())
+
+	def start(self):
+		self.thing.SetPageSize(tuple(max(item) for item in zip(*(page.mySizer.thing.CalcMin() for page in self))))
+		self.thing.RunWizard(self.pages[0].thing)
+		self.thing.Destroy()
+
+	def addPage(self, text = None, sizer = {}, image = None, internal = False,
+		insert = None, default = False, icon_path = None, icon_internal = False,
+
+		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
+		label = None, parent = None, handle = None):
+		"""Adds a page to the wizard.
+		Lists can be given to add multiple pages. They are added in order from left to right.
+		If only a 'pageLabel' is a list, they will all have the same 'text'.
+		If 'pageLabel' and 'text' are a list of different lengths, it will not add any of them.
+
+		text (str)  - What the page's tab will say
+			- If None: The tab will be blank
+		label (str) - What this is called in the idCatalogue
+		
+		insert (int)   - Determines where the new page will be added
+			- If None or -1: The page will be added to the end
+			- If not None or -1: This is the page index to place this page in 
+		default (bool) - Determines if the new page should be automatically selected
+
+		icon_path (str)      - Determiens if there should be an icon to the left of the text
+		icon_internal (bool) - Determiens if 'image_path' refers to an internal image
+
+		Example Input: addPage()
+		Example Input: addPage("page_1")
+		Example Input: addPage(0, "Lorem")
+		Example Input: addPage([0, 1], "Lorem")
+		Example Input: addPage([0, 1], ["Lorem", "Ipsum"])
+		Example Input: addPage(0, "Lorem", insert = 2)
+		Example Input: addPage(0, "Lorem", default = True)
+		"""
+
+		kwargs = locals()
+		def yieldPage(labelList, textList):
+			nonlocal self, insert, default
+
+			for i, label in enumerate(labelList):
+				if (len(textList) is 1):
+					text = textList[0]
+				else:
+					text = textList[i]
+
+				handle = handle_WizardPage()
+				handle.type = "wizardPage"
+				with handle._build({**kwargs, **locals(), "parent": self}): pass
+
+				self.pages.append(handle)
+
+				self._finalNest(handle)
+
+				yield handle
+
+		###########################################
+
+		#Error Check
+		if (isinstance(label, (list, tuple, range)) and isinstance(text, (list, tuple, range))):
+			if (len(label) != len(text)):
+				errorMessage = f"'label' and 'text' must be the same length for {self.__repr__()}"
+				raise ValueError(errorMessage)
+
+		handleList = tuple(yieldPage(self.ensure_container(label, convertNone = False), self.ensure_container(text, convertNone = False)))
+		if (not handleList):
+			return None
+
+		# self.thing.FitToPage(handleList[-1].thing)
+
+		if (len(handleList) is 1):
+			return handleList[0]
+		return handleList
+
+	def setFunction_pageChange(self, *args, **kwargs):
+		return self.setFunction_postPageChange(*args, **kwargs)
+
+	def setFunction_prePrePageChange(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(wx.adv.EVT_WIZARD_BEFORE_PAGE_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	def setFunction_prePageChange(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(wx.adv.EVT_WIZARD_PAGE_CHANGING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	def setFunction_postPageChange(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(wx.adv.EVT_WIZARD_PAGE_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	def setFunction_pageShow(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(wx.adv.EVT_WIZARD_PAGE_SHOWN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	def setFunction_cancel(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(wx.adv.EVT_WIZARD_CANCEL, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	def setFunction_help(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(wx.adv.EVT_WIZARD_HELP, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	def setFunction_finish(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(wx.adv.EVT_WIZARD_FINISHED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	def addStatusBar(self, *args, **kwargs):
+		pass
+
+	def checkStatusBar(self, *args, **kwargs):
+		return 0
+
+	def setStatusText(self, *args, **kwargs):
+		pass
+ 
 class handle_Panel(handle_Container_Base):
 	"""A handle for working with a wxPanel."""
 
@@ -22146,14 +22310,10 @@ class handle_AuiManager(handle_Container_Base):
 		#Account for overriding the handle with your own widget or panel
 		if (handle is None):
 			#Get the object
-			handle = handle_NotebookPage()
+			handle = handle_NotebookPage_Aui()
 			handle.type = "auiPage"
-			kwargs = locals()
 
-			kwargs["parent"] = self.myWindow
-			kwargs["myManager"] = self
-
-			handle._build(kwargs)
+			with handle._build({**locals(), "parent": self.myWindow, "myManager": self}): pass
 
 		#Add Pane
 		self.thing.AddPane(handle.myPanel.thing, paneInfo) 
@@ -22293,7 +22453,27 @@ class handle_AuiManager(handle_Container_Base):
 		paneInfo.Right()
 		self.thing.Update()
 
-class handle_Notebook(handle_Container_Base):
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class handle_Base_Notebook(handle_Container_Base):
+	"""A handle for working with notebook-like objects"""
+
+class handle_Notebook_Simple(handle_Base_Notebook):
 	"""A handle for working with a wxNotebook."""
 
 	def __init__(self):
@@ -22305,24 +22485,14 @@ class handle_Notebook(handle_Container_Base):
 		#Internal Variables
 		self.notebookImageList = wx.ImageList(16, 16) #A wxImageList containing all tab images associated with this notebook
 
-	def __str__(self):
-		"""Gives diagnostic information on the Notebook when it is printed out."""
-
-		output = handle_Container_Base.__str__(self)
-		return output
-
 	def _build(self, argument_catalogue):
-		"""Determiens which build system to use for this handle."""
+		"""Builds a wx notebook object."""
 
-		def _build_notebook():
-			"""Builds a wx notebook object."""
-			nonlocal self, argument_catalogue
-
+		with self.bookend_build(argument_catalogue):
 			flags, tabSide, reduceFlicker, fixedWidth, padding, buildSelf = self._getArguments(argument_catalogue, ["flags", "tabSide", "reduceFlicker", "fixedWidth", "padding", "self"])
 			initFunction, postPageChangeFunction, prePageChangeFunction, multiLine = self._getArguments(argument_catalogue, ["initFunction", "postPageChangeFunction", "prePageChangeFunction", "multiLine"])
 
 			size, position = self._getArguments(argument_catalogue, ["size", "position"])
-
 
 			#Configure Flags            
 			flags, x, border = self._getItemMod(flags)
@@ -22395,164 +22565,46 @@ class handle_Notebook(handle_Container_Base):
 			else:
 				self.myWindow = buildSelf.myWindow
 
-		def _build_auiNotebook():
-			"""Builds a wx auiNotebook object."""
-			nonlocal self, argument_catalogue
-
-			flags, buildSelf = self._getArguments(argument_catalogue, ["flags", "self"])
-			initFunction, postPageChangeFunction, prePageChangeFunction = self._getArguments(argument_catalogue, ["initFunction", "postPageChangeFunction", "prePageChangeFunction"])
-
-			tabSide, tabSplit, tabMove, tabBump = self._getArguments(argument_catalogue, ["tabSide", "tabSplit", "tabMove", "tabBump"])
-			tabSmart, tabOrderAccess, tabFloat = self._getArguments(argument_catalogue, ["tabSmart", "tabOrderAccess", "tabFloat"])
-			addScrollButton, addListDrop, addCloseButton = self._getArguments(argument_catalogue, ["addScrollButton", "addListDrop", "addCloseButton"])
-			closeOnLeft, middleClickClose = self._getArguments(argument_catalogue, ["closeOnLeft", "middleClickClose"])
-			fixedWidth, drawFocus = self._getArguments(argument_catalogue, ["fixedWidth", "drawFocus"])
-
-			#Create Styles
-			if (tabSide is not None):
-				if (tabSide[0] == "t"):
-					style = "wx.lib.agw.aui.AUI_NB_TOP"
-				elif (tabSide[0] == "b"):
-					style = "wx.lib.agw.aui.AUI_NB_BOTTOM"
-				elif (tabSide[0] == "l"):
-					style = "wx.lib.agw.aui.AUI_NB_LEFT"
-				else:
-					style = "wx.lib.agw.aui.AUI_NB_RIGHT"
-			else:
-				style = "wx.lib.agw.aui.AUI_NB_TOP"
-
-			if (tabSplit):
-				style += "|wx.lib.agw.aui.AUI_NB_TAB_SPLIT"
-
-			if (tabMove):
-				style += "|wx.lib.agw.aui.AUI_NB_TAB_MOVE"
-
-			if (tabBump):
-				style += "|wx.lib.agw.aui.AUI_NB_TAB_EXTERNAL_MOVE"
-
-			if (tabSmart):
-				# style += "|wx.lib.agw.aui.AUI_NB_HIDE_ON_SINGLE_TAB"
-				style += "|wx.lib.agw.aui.AUI_NB_SMART_TABS"
-				style += "|wx.lib.agw.aui.AUI_NB_DRAW_DND_TAB"
-
-			if (tabOrderAccess):
-				style += "|wx.lib.agw.aui.AUI_NB_ORDER_BY_ACCESS"
-
-			if (tabFloat):
-				style += "|wx.lib.agw.aui.AUI_NB_TAB_FLOAT"
-
-			if (fixedWidth):
-				style += "|wx.lib.agw.aui.AUI_NB_TAB_FIXED_WIDTH"
-
-			if (addScrollButton):
-				style += "|wx.lib.agw.aui.AUI_NB_SCROLL_BUTTONS"
-
-			if (addListDrop is not None):
-				if (addListDrop):
-					style += "|wx.lib.agw.aui.AUI_NB_WINDOWLIST_BUTTON"
-				else:
-					style += "|wx.lib.agw.aui.AUI_NB_USE_IMAGES_DROPDOWN"
-
-			if (addCloseButton is not None):
-				if (addCloseButton):
-					style += "|wx.lib.agw.aui.AUI_NB_CLOSE_ON_ALL_TABS"
-				else:
-					style += "|wx.lib.agw.aui.AUI_NB_CLOSE_ON_ACTIVE_TAB"
-
-				if (closeOnLeft):
-					style += "|wx.lib.agw.aui.AUI_NB_CLOSE_ON_TAB_LEFT"
-
-			if (middleClickClose):
-				style += "|wx.lib.agw.aui.AUI_NB_MIDDLE_CLICK_CLOSE"
-
-			if (not drawFocus):
-				style += "|wx.lib.agw.aui.AUI_NB_NO_TAB_FOCUS"
-
-			self.thing = wx.lib.agw.aui.auibook.AuiNotebook(self.parent.thing, agwStyle = eval(style, {'__builtins__': None, "wx.lib.agw.aui": wx.lib.agw.aui}, {}))
-
-			#Set values
-			if (isinstance(self, handle_Window)):
-				self.myWindow = buildSelf
-			else:
-				self.myWindow = buildSelf.myWindow
-
-			#Link to window's aui manager
-			if (self.myWindow.auiManager is None):
-				self.myWindow.auiManager = handle_AuiManager(self, self.myWindow)#, reduceFlicker = reduceFlicker)
-				self._build(locals())
-
-			self.myWindow.auiManager.addPane(self)
-		
-		#########################################################
-
-		self._preBuild(argument_catalogue)
-
-		if (self.type.lower() == "notebook"):
-			_build_notebook()
-		elif (self.type.lower() == "auinotebook"):
-			_build_auiNotebook()
-		else:
-			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
-
-		self._postBuild(argument_catalogue)
 
 	def setSelection(self, newValue, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
-		if (self.type.lower() == "notebook"):
-			self.changePage(newValue)
-		else:
-			warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
+		self.changePage(newValue)
 
 	def getValue(self, event = None):
 		"""Gets the contextual value for the object associated with this handle to what the user supplies."""
 
-		if (self.type.lower() == "notebook"):
-			index = self.getCurrentPage(index = True)
-			return self.getPageText(index)
-		else:
-			warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
+		index = self.getCurrentPage(index = True)
+		return self.getPageText(index)
 
 	#Change Settings
 	def setFunction_init(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the object is first created."""
 
-		if (self.type.lower() == "notebook"):
-			self.parent._betterBind(wx.EVT_INIT_DIALOG, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		else:
-			warnings.warn(f"Add {self.type} to setFunction_init() for {self.__repr__()}", Warning, stacklevel = 2)
+		self.parent._betterBind(wx.EVT_INIT_DIALOG, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
 	def setFunction_prePageChange(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the page begins to change."""
 
-		if (self.type.lower() == "notebook"):
-			self.parent._betterBind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		else:
-			warnings.warn(f"Add {self.type} to setFunction_prePageChange() for {self.__repr__()}", Warning, stacklevel = 2)
+		self.parent._betterBind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
 	def setFunction_postPageChange(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the page has finished changing."""
 
-		if (self.type.lower() == "notebook"):
-			self.parent._betterBind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.thing, self.onRefresh, rebind = True) #Bugfix for cloned pages
-			self.parent._betterBind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		else:
-			warnings.warn(f"Add {self.type} to setFunction_postPageChange() for {self.__repr__()}", Warning, stacklevel = 2)
+		self.parent._betterBind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.thing, self.onRefresh, rebind = True) #Bugfix for cloned pages
+		self.parent._betterBind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
 	def setFunction_rightClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "notebook"):
-			self._betterBind(wx.EVT_RIGHT_DOWN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-			for handle in self[:]:
-				handle.setFunction_rightClick(myFunction = myFunction, myFunctionArgs = myFunctionArgs, myFunctionKwargs = myFunctionKwargs)
-		else:
-			warnings.warn(f"Add {self.type} to setFunction_rightClick() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(wx.EVT_RIGHT_DOWN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		for handle in self[:]:
+			handle.setFunction_rightClick(myFunction = myFunction, myFunctionArgs = myFunctionArgs, myFunctionKwargs = myFunctionKwargs)
 
 	def addPage(self, text = None, panel = {}, sizer = {},
 		insert = None, default = False, icon_path = None, icon_internal = False,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
 		label = None, parent = None, handle = None):
-		"""Adds a gage to the notebook.
+		"""Adds a page to the notebook.
 		Lists can be given to add multiple pages. They are added in order from left to right.
 		If only a 'pageLabel' is a list, they will all have the same 'text'.
 		If 'pageLabel' and 'text' are a list of different lengths, it will not add any of them.
@@ -22578,69 +22630,64 @@ class handle_Notebook(handle_Container_Base):
 		Example Input: addPage(0, "Lorem", default = True)
 		"""
 
+		kwargs = locals()
+		def yieldPage(labelList, textList):
+			nonlocal self, insert, default
+
+			if (not labelList):
+				return
+
+			#Add pages
+			for i, label in enumerate(labelList):
+				#Format text
+				if (len(textList) is 1):
+					text = textList[0]
+				else:
+					text = textList[i]
+
+				#Get the object
+				handle = handle_NotebookPage_Simple()
+				handle.type = "notebookPage"
+				handle._build({**kwargs, **locals(), "parent": self})
+
+				#Determine if there is an icon on the tab
+				if (handle.icon is not None):
+					#Add this icon to the notebook's image catalogue
+					handle.iconIndex = self.thing.notebookImageList.Add(handle.icon)
+					self.thing.AssignImageList(self.thing.notebookImageList)
+
+				#Create the tab
+				if ((insert is not None) and (insert != -1)):
+					if (handle.iconIndex is not None):
+						self.thing.InsertPage(insert, handle.myPanel.thing, handle.text, default, handle.iconIndex)
+					else:
+						self.thing.InsertPage(insert, handle.myPanel.thing, handle.text, default)
+
+				else:
+					if (handle.iconIndex is not None):
+						self.thing.AddPage(handle.myPanel.thing, handle.text, default, handle.iconIndex)
+					else:
+						self.thing.AddPage(handle.myPanel.thing, handle.text, default)
+
+				#Record nesting
+				self._finalNest(handle)
+
+				yield handle
+
+		###########################################
+
 		#Error Check
 		if (isinstance(label, (list, tuple, range)) and isinstance(text, (list, tuple, range))):
 			if (len(label) != len(text)):
 				errorMessage = f"'label' and 'text' must be the same length for {self.__repr__()}"
 				raise ValueError(errorMessage)
 
-		#Account for multiple objects
-		if (not isinstance(label, (list, tuple, range))):
-			labelList = [label]
-		else:
-			labelList = label
-
-		if (not isinstance(text, (list, tuple, range))):
-			textList = [text]
-		else:
-			textList = text
-
-		if (len(labelList) == 0):
+		handleList = tuple(yieldPage(self.ensure_container(label, convertNone = False), self.ensure_container(text, convertNone = False)))
+		if (not handleList):
 			return None
-
-		#Add pages
-		handleList = []
-		for i, label in enumerate(labelList):
-			#Format text
-			if (len(textList) != 1):
-				text = textList[i]
-			else:
-				text = textList[0]
-
-			#Get the object
-			handle = handle_NotebookPage()
-			handle.type = "notebookPage"
-			kwargs = locals()
-			kwargs["parent"] = self
-			handle._build(kwargs)
-			handleList.append(handle)
-
-			#Determine if there is an icon on the tab
-			if (handle.icon is not None):
-				#Add this icon to the notebook's image catalogue
-				handle.iconIndex = self.thing.notebookImageList.Add(handle.icon)
-				self.thing.AssignImageList(self.thing.notebookImageList)
-
-			#Create the tab
-			if ((insert is not None) and (insert != -1)):
-				if (handle.iconIndex is not None):
-					self.thing.InsertPage(insert, handle.myPanel.thing, handle.text, default, handle.iconIndex)
-				else:
-					self.thing.InsertPage(insert, handle.myPanel.thing, handle.text, default)
-
-			else:
-				if (handle.iconIndex is not None):
-					self.thing.AddPage(handle.myPanel.thing, handle.text, default, handle.iconIndex)
-				else:
-					self.thing.AddPage(handle.myPanel.thing, handle.text, default)
-
-			#Record nesting
-			self._finalNest(handle)
-
-		if (len(handleList) > 1):
-			return handleList
-		else:
+		elif (len(handleList) is 1):
 			return handleList[0]
+		return handleList
 
 	##Getters
 	def getCurrentPage(self, index = None):
@@ -22677,7 +22724,7 @@ class handle_Notebook(handle_Container_Base):
 		if (pageLabel is None):
 			return self.getCurrentPage()
 
-		if (isinstance(pageLabel, handle_NotebookPage)):
+		if (isinstance(pageLabel, handle_Base_NotebookPage)):
 			return pageLabel
 		
 		if (pageLabel in self):
@@ -22931,7 +22978,128 @@ class handle_Notebook(handle_Container_Base):
 
 		self.thing.AdvanceSelection(False)
 
-class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
+class handle_Notebook_Aui(handle_Notebook_Simple):
+	"""A handle for working with a wxNotebook."""
+
+	def _build(self, argument_catalogue):
+		"""Builds a wx auiNotebook object."""
+
+		with self.bookend_build(argument_catalogue):
+			flags, buildSelf = self._getArguments(argument_catalogue, ["flags", "self"])
+			initFunction, postPageChangeFunction, prePageChangeFunction = self._getArguments(argument_catalogue, ["initFunction", "postPageChangeFunction", "prePageChangeFunction"])
+
+			tabSide, tabSplit, tabMove, tabBump = self._getArguments(argument_catalogue, ["tabSide", "tabSplit", "tabMove", "tabBump"])
+			tabSmart, tabOrderAccess, tabFloat = self._getArguments(argument_catalogue, ["tabSmart", "tabOrderAccess", "tabFloat"])
+			addScrollButton, addListDrop, addCloseButton = self._getArguments(argument_catalogue, ["addScrollButton", "addListDrop", "addCloseButton"])
+			closeOnLeft, middleClickClose = self._getArguments(argument_catalogue, ["closeOnLeft", "middleClickClose"])
+			fixedWidth, drawFocus = self._getArguments(argument_catalogue, ["fixedWidth", "drawFocus"])
+
+			#Create Styles
+			if (tabSide is not None):
+				if (tabSide[0] == "t"):
+					style = "wx.lib.agw.aui.AUI_NB_TOP"
+				elif (tabSide[0] == "b"):
+					style = "wx.lib.agw.aui.AUI_NB_BOTTOM"
+				elif (tabSide[0] == "l"):
+					style = "wx.lib.agw.aui.AUI_NB_LEFT"
+				else:
+					style = "wx.lib.agw.aui.AUI_NB_RIGHT"
+			else:
+				style = "wx.lib.agw.aui.AUI_NB_TOP"
+
+			if (tabSplit):
+				style += "|wx.lib.agw.aui.AUI_NB_TAB_SPLIT"
+
+			if (tabMove):
+				style += "|wx.lib.agw.aui.AUI_NB_TAB_MOVE"
+
+			if (tabBump):
+				style += "|wx.lib.agw.aui.AUI_NB_TAB_EXTERNAL_MOVE"
+
+			if (tabSmart):
+				# style += "|wx.lib.agw.aui.AUI_NB_HIDE_ON_SINGLE_TAB"
+				style += "|wx.lib.agw.aui.AUI_NB_SMART_TABS"
+				style += "|wx.lib.agw.aui.AUI_NB_DRAW_DND_TAB"
+
+			if (tabOrderAccess):
+				style += "|wx.lib.agw.aui.AUI_NB_ORDER_BY_ACCESS"
+
+			if (tabFloat):
+				style += "|wx.lib.agw.aui.AUI_NB_TAB_FLOAT"
+
+			if (fixedWidth):
+				style += "|wx.lib.agw.aui.AUI_NB_TAB_FIXED_WIDTH"
+
+			if (addScrollButton):
+				style += "|wx.lib.agw.aui.AUI_NB_SCROLL_BUTTONS"
+
+			if (addListDrop is not None):
+				if (addListDrop):
+					style += "|wx.lib.agw.aui.AUI_NB_WINDOWLIST_BUTTON"
+				else:
+					style += "|wx.lib.agw.aui.AUI_NB_USE_IMAGES_DROPDOWN"
+
+			if (addCloseButton is not None):
+				if (addCloseButton):
+					style += "|wx.lib.agw.aui.AUI_NB_CLOSE_ON_ALL_TABS"
+				else:
+					style += "|wx.lib.agw.aui.AUI_NB_CLOSE_ON_ACTIVE_TAB"
+
+				if (closeOnLeft):
+					style += "|wx.lib.agw.aui.AUI_NB_CLOSE_ON_TAB_LEFT"
+
+			if (middleClickClose):
+				style += "|wx.lib.agw.aui.AUI_NB_MIDDLE_CLICK_CLOSE"
+
+			if (not drawFocus):
+				style += "|wx.lib.agw.aui.AUI_NB_NO_TAB_FOCUS"
+
+			self.thing = wx.lib.agw.aui.auibook.AuiNotebook(self.parent.thing, agwStyle = eval(style, {'__builtins__': None, "wx.lib.agw.aui": wx.lib.agw.aui}, {}))
+
+			#Set values
+			if (isinstance(self, handle_Window)):
+				self.myWindow = buildSelf
+			else:
+				self.myWindow = buildSelf.myWindow
+
+			#Link to window's aui manager
+			if (self.myWindow.auiManager is None):
+				self.myWindow.auiManager = handle_AuiManager(self, self.myWindow)#, reduceFlicker = reduceFlicker)
+				self._build(locals())
+
+			self.myWindow.auiManager.addPane(self)
+
+	def setSelection(self, newValue, event = None):
+		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
+
+		warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def getValue(self, event = None):
+		"""Gets the contextual value for the object associated with this handle to what the user supplies."""
+
+		warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	#Change Settings
+	def setFunction_init(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		"""Changes the function that runs when the object is first created."""
+
+		warnings.warn(f"Add {self.type} to setFunction_init() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_prePageChange(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		"""Changes the function that runs when the page begins to change."""
+
+		warnings.warn(f"Add {self.type} to setFunction_prePageChange() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_postPageChange(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		"""Changes the function that runs when the page has finished changing."""
+
+		warnings.warn(f"Add {self.type} to setFunction_postPageChange() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_rightClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+
+		warnings.warn(f"Add {self.type} to setFunction_rightClick() for {self.__repr__()}", Warning, stacklevel = 2)
+
+class handle_Base_NotebookPage(handle_Sizer):
 	"""A handle for working with a wxNotebook."""
 
 	def __init__(self):
@@ -22997,6 +23165,7 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 
 		self.mySizer.__delitem__(key)
 
+	@contextlib.contextmanager
 	def _build(self, argument_catalogue):
 		"""Adds a page to the notebook.
 		Lists can be given to add multiple pages. They are added in order from left to right.
@@ -23020,50 +23189,40 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		Example Input: _build(0, "Lorem", select = True)
 		"""
 
-		self._preBuild(argument_catalogue)
+		with self.bookend_build(argument_catalogue):
+			text, panel, sizer = self._getArguments(argument_catalogue, ["text", "panel", "sizer"])
 
-		text, panel, sizer = self._getArguments(argument_catalogue, ["text", "panel", "sizer"])
-
-		if (isinstance(self.parent, handle_Window)):
-			self.myWindow = self.parent
-		else:
-			self.myWindow = self.parent.myWindow
-
-		#Setup Panel
-		if (isinstance(panel, dict)):
-			panel["parent"] = self.parent
-			self.myPanel = self._readBuildInstructions_panel(self, 0, panel)
-
-			#Setup Sizer
-			sizer["parent"] = self.myPanel
-			self.mySizer = self._readBuildInstructions_sizer(self, 0, sizer)
-
-			self.myPanel.nest(self.mySizer)
-		else:
-			self.myPanel = panel
-			self.mySizer = sizer
-
-		self._finalNest(self.myPanel)
-
-		#Format text
-		if (text is None):
-			self.text = ""
-		else:
-			if (not isinstance(text, str)):
-				self.text = f"{text}"
+			if (isinstance(self.parent, handle_Window)):
+				self.myWindow = self.parent
 			else:
-				self.text = text
+				self.myWindow = self.parent.myWindow
 
-		#Format Icon
-		if (self.type.lower() == "notebookpage"):
-			icon_path, icon_internal = self._getArguments(argument_catalogue, ["icon_path", "icon_internal"])
-			if (icon_path is not None):
-				self.icon = self._getImage(icon_path, icon_internal)#, returnIcon = True)
+			#Setup Panel
+			if (isinstance(panel, dict)):
+				panel["parent"] = self.parent
+				self.myPanel = self._readBuildInstructions_panel(self, 0, panel)
+
+				#Setup Sizer
+				sizer["parent"] = self.myPanel
+				self.mySizer = self._readBuildInstructions_sizer(self, 0, sizer)
+
+				self.myPanel.nest(self.mySizer)
 			else:
-				self.icon = None
-				self.iconIndex = None
+				self.myPanel = panel
+				self.mySizer = sizer
 
-		self._postBuild(argument_catalogue)
+			self._finalNest(self.myPanel)
+
+			#Format text
+			if (text is None):
+				self.text = ""
+			else:
+				if (not isinstance(text, str)):
+					self.text = f"{text}"
+				else:
+					self.text = text
+
+			yield
 
 	def getSizer(self):
 		return self.mySizer
@@ -23074,34 +23233,23 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		Example Input: notebookRemovePage()
 		"""
 
-		if (self.type.lower() == "notebookpage"):
-			self.parent.remove(self, *args, **kwargs)
-		else:
-			warnings.warn(f"Add {self.type} to remove() for {self.__repr__()}", Warning, stacklevel = 2)
+		return self.parent.remove(self, *args, **kwargs)
 
 	def hidePage(self, *args, **kwargs):
-		if (self.type.lower() == "notebookpage"):
-			self.parent.hidePage(self, *args, **kwargs)
-		else:
-			warnings.warn(f"Add {self.type} to hidePage() for {self.__repr__()}", Warning, stacklevel = 2)
+		
+		return self.parent.hidePage(self, *args, **kwargs)
 
 	def showPage(self, *args, **kwargs):
-		if (self.type.lower() == "notebookpage"):
-			self.parent.showPage(self, *args, **kwargs)
-		else:
-			warnings.warn(f"Add {self.type} to showPage() for {self.__repr__()}", Warning, stacklevel = 2)
+		
+		return self.parent.showPage(self, *args, **kwargs)
 
 	def checkPageShown(self, *args, **kwargs):
-		if (self.type.lower() == "notebookpage"):
-			self.parent.checkPageShown(self, *args, **kwargs)
-		else:
-			warnings.warn(f"Add {self.type} to checkPageShown() for {self.__repr__()}", Warning, stacklevel = 2)
+		
+		return self.parent.checkPageShown(self, *args, **kwargs)
 
 	def changePage(self, *args, **kwargs):
-		if (self.type.lower() == "notebookpage"):
-			self.parent.changePage(self, *args, **kwargs)
-		else:
-			warnings.warn(f"Add {self.type} to changePage() for {self.__repr__()}", Warning, stacklevel = 2)
+		
+		returnself.parent.changePage(self, *args, **kwargs)
 
 	def getIndex(self, *args, **kwargs):
 		"""Returns the page index for a page with the given label in the given notebook.
@@ -23109,13 +23257,7 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		Example Input: getIndex()
 		"""
 
-		if (self.type.lower() == "notebookpage"):
-			pageNumber = self.parent.getIndex(self, *args, **kwargs)
-		else:
-			warnings.warn(f"Add {self.type} to getIndex() for {self.__repr__()}", Warning, stacklevel = 2)
-			pageNumber = None
-
-		return pageNumber
+		return self.parent.getIndex(self, *args, **kwargs)
 
 	def getValue(self, event = None):
 		"""Returns the first page index for a page with the given label in the given notebook.
@@ -23123,13 +23265,8 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		Example Input: getValue()
 		"""
 
-		if (self.type.lower() == "notebookpage"):
-			text = self.getPageText()
-		else:
-			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
-			text = None
+		return self.getPageText()
 
-		return text
 
 	def getPageText(self):
 		"""Returns the page text.
@@ -23147,6 +23284,53 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 
 		return self.parent.getPageIndex(self)
 
+class handle_NotebookPage_Simple(handle_Base_NotebookPage):
+	"""A handle for working with a page in a wxNotebook."""
+
+	def __str__(self):
+		"""Gives diagnostic information on the Notebook when it is printed out."""
+
+		output = handle_Container_Base.__str__(self)
+
+		if (self.text is not None):
+			output += f"-- text: {self.text}\n"
+		if (self.icon is not None):
+			output += f"-- icon: {self.icon}\n"
+
+		return output
+
+	def _build(self, argument_catalogue):
+		"""Adds a page to the notebook.
+		Lists can be given to add multiple pages. They are added in order from left to right.
+		If only a 'pageLabel' is a list, they will all have the same 'text'.
+		If 'pageLabel' and 'text' are a list of different lengths, it will not add any of them.
+
+		pageLabel (str)     - The catalogue label for the panel to add to the notebook
+		text (str)          - What the page's tab will say
+			- If None: The tab will be blank
+		label (str)       - What this is called in the idCatalogue
+
+		icon_path (str)      - Determiens if there should be an icon to the left of the text
+		icon_internal (bool) - Determiens if 'image_path' refers to an internal image
+
+		Example Input: _build(0)
+		Example Input: _build("page_1")
+		Example Input: _build(0, "Lorem")
+		Example Input: _build([0, 1], "Lorem")
+		Example Input: _build([0, 1], ["Lorem", "Ipsum"])
+		Example Input: _build(0, "Lorem", insert = 2)
+		Example Input: _build(0, "Lorem", select = True)
+		"""
+
+		with super()._build(argument_catalogue):
+			#Format Icon
+			icon_path, icon_internal = self._getArguments(argument_catalogue, ["icon_path", "icon_internal"])
+			if (icon_path is not None):
+				self.icon = self._getImage(icon_path, icon_internal)#, returnIcon = True)
+			else:
+				self.icon = None
+				self.iconIndex = None
+
 	##Setters
 	def setValue(self, newValue = "", event = None):
 		"""Changes the given notebook page's tab text.
@@ -23156,83 +23340,70 @@ class handle_NotebookPage(handle_Sizer):#, handle_Container_Base):
 		Example Input: notebookSetPageText("Ipsum")
 		"""
 
-		if (self.type.lower() == "notebookpage"):
-			self.parent.setPageText(self, text = newValue)
-
-		elif (self.type.lower() == "auipage"):
-			if (self.label is None):
-				warnings.warn(f"A label is needed for {self.__repr__()} to change the caption", Warning, stacklevel = 2)
-
-			self.myManager.setTitle(self.label, newValue)
-		else:
-			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+		self.parent.setPageText(self, text = newValue)
 
 	def setFunction_rightClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "notebookpage"):
-			self._betterBind(wx.EVT_RIGHT_DOWN, self.myPanel.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		else:
-			warnings.warn(f"Add {self.type} to setFunction_rightClick() for {self.__repr__()}", Warning, stacklevel = 2)
+
+		self._betterBind(wx.EVT_RIGHT_DOWN, self.myPanel.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+
+class handle_NotebookPage_Aui(handle_Base_NotebookPage):
+	"""A handle for working with a wxNotebook."""
+
+	##Setters
+	def setValue(self, newValue = "", event = None):
+		"""Changes the given notebook page's tab text.
+
+		newValue (str) - What the page's tab will now say
+
+		Example Input: notebookSetPageText("Ipsum")
+		"""
+
+		if (self.label is None):
+			warnings.warn(f"A label is needed for {self.__repr__()} to change the caption", Warning, stacklevel = 2)
+
+		self.myManager.setTitle(self.label, newValue)
 
 	#Etc
 	def dockCenter(self, *args, **kwargs):
 		"""Overload for dockCenter() in handle_AuiManager."""
 
-		if (self.type.lower() == "auipage"):
-			if (self.label is None):
-				warnings.warn(f"A label is needed for {self.__repr__()} to programatically dock it", Warning, stacklevel = 2)
+		if (self.label is None):
+			warnings.warn(f"A label is needed for {self.__repr__()} to programatically dock it", Warning, stacklevel = 2)
 
-			self.myManager.dockCenter(self.label, *args, **kwargs)
-
-		else:
-			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+		self.myManager.dockCenter(self.label, *args, **kwargs)
 
 	def dockTop(self, *args, **kwargs):
 		"""Overload for dockTop() in handle_AuiManager."""
 
-		if (self.type.lower() == "auipage"):
-			if (self.label is None):
-				warnings.warn(f"A label is needed for {self.__repr__()} to programatically dock it", Warning, stacklevel = 2)
+		if (self.label is None):
+			warnings.warn(f"A label is needed for {self.__repr__()} to programatically dock it", Warning, stacklevel = 2)
 
-			self.myManager.dockTop(self.label, *args, **kwargs)
-
-		else:
-			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+		self.myManager.dockTop(self.label, *args, **kwargs)
 
 	def dockBottom(self, *args, **kwargs):
 		"""Overload for dockBottom() in handle_AuiManager."""
 
-		if (self.type.lower() == "auipage"):
-			if (self.label is None):
-				warnings.warn(f"A label is needed for {self.__repr__()} to programatically dock it", Warning, stacklevel = 2)
+		if (self.label is None):
+			warnings.warn(f"A label is needed for {self.__repr__()} to programatically dock it", Warning, stacklevel = 2)
 
-			self.myManager.dockBottom(self.label, *args, **kwargs)
-
-		else:
-			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+		self.myManager.dockBottom(self.label, *args, **kwargs)
 
 	def dockLeft(self, *args, **kwargs):
 		"""Overload for dockLeft() in handle_AuiManager."""
 
-		if (self.type.lower() == "auipage"):
-			if (self.label is None):
-				warnings.warn(f"A label is needed for {self.__repr__()} to programatically dock it", Warning, stacklevel = 2)
+		if (self.label is None):
+			warnings.warn(f"A label is needed for {self.__repr__()} to programatically dock it", Warning, stacklevel = 2)
 
-			self.myManager.dockLeft(self.label, *args, **kwargs)
-
-		else:
-			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+		self.myManager.dockLeft(self.label, *args, **kwargs)
 
 	def dockRight(self, *args, **kwargs):
 		"""Overload for dockRight() in handle_AuiManager."""
 
-		if (self.type.lower() == "auipage"):
-			if (self.label is None):
-				warnings.warn(f"A label is needed for {self.__repr__()} to programatically dock it", Warning, stacklevel = 2)
+		if (self.label is None):
+			warnings.warn(f"A label is needed for {self.__repr__()} to programatically dock it", Warning, stacklevel = 2)
 
-			self.myManager.dockRight(self.label, *args, **kwargs)
-
-		else:
-			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+		self.myManager.dockRight(self.label, *args, **kwargs)
 
 class MyApp():
 	"""Needed to make the GUI work.
@@ -23315,6 +23486,103 @@ class MyApp():
 
 		def MainLoop(self):
 			self.building = False
+
+class handle_WizardPage(handle_Base_NotebookPage):
+	"""A handle for working with a wxNotebook."""
+
+	@contextlib.contextmanager
+	def _build(self, argument_catalogue):
+		"""Adds a page to the notebook.
+		Lists can be given to add multiple pages. They are added in order from left to right.
+		If only a 'pageLabel' is a list, they will all have the same 'text'.
+		If 'pageLabel' and 'text' are a list of different lengths, it will not add any of them.
+
+		pageLabel (str)     - The catalogue label for the panel to add to the notebook
+		text (str)          - What the page's tab will say
+			- If None: The tab will be blank
+		label (str)       - What this is called in the idCatalogue
+
+		icon_path (str)      - Determiens if there should be an icon to the left of the text
+		icon_internal (bool) - Determiens if 'image_path' refers to an internal image
+
+		Example Input: _build(0)
+		Example Input: _build("page_1")
+		Example Input: _build(0, "Lorem")
+		Example Input: _build([0, 1], "Lorem")
+		Example Input: _build([0, 1], ["Lorem", "Ipsum"])
+		Example Input: _build(0, "Lorem", insert = 2)
+		Example Input: _build(0, "Lorem", select = True)
+		"""
+
+		with self.bookend_build(argument_catalogue):
+			text, sizer = self._getArguments(argument_catalogue, ["text", "sizer"])
+			image, internal = self._getArguments(argument_catalogue, ["image", "internal"])
+
+			self.thing = _myWizardPage(self, bitmap = self._getImage(image, internal = internal))
+			
+			self.myPanel = self
+
+			if (not isinstance(sizer, dict)):
+				self.mySizer = sizer
+			else:
+				self.mySizer = self._readBuildInstructions_sizer(self, 0, {**sizer, "parent": self})
+
+			self.nest(self.mySizer)
+
+			yield
+
+	def getValue(self, event = None):
+		"""Returns the first page index for a page with the given label in the given notebook.
+
+		Example Input: getValue()
+		"""
+
+		warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	##Setters
+	def setValue(self, newValue = "", event = None):
+		"""Changes the given notebook page's tab text.
+
+		newValue (str) - What the page's tab will now say
+
+		Example Input: notebookSetPageText("Ipsum")
+		"""
+
+		warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+
+class _myWizardPage(wx.adv.WizardPage):
+	def __init__(self, parent, nextPage = None, previousPage = None, autoNext = True, autoPrevious = True, bitmap = wx.NullBitmap):
+
+		wx.adv.WizardPage.__init__(self, parent.parent.thing, bitmap = bitmap or wx.NullBitmap)
+
+		self.parent = parent
+		pages = self.parent.parent.pages
+		
+		if ((not autoPrevious) or (not pages)):
+			self.SetPrev(previousPage = previousPage)
+		else:
+			self.SetPrev(previousPage = previousPage or pages[-1])
+
+		self.SetNext(nextPage = nextPage)
+		if (autoNext and pages):
+			pages[-1].thing.SetNext(nextPage = self.parent)
+
+	def SetNext(self, nextPage = None):
+		self.nextPage = nextPage
+ 
+	def SetPrev(self, previousPage = None):
+		self.previousPage = previousPage
+
+		# if (previousPage is None):
+		# 	self.parent.parent.thing.GetPageAreaSizer().Add(self)
+ 
+	def GetNext(self):
+		if (self.nextPage is not None):
+			return self.nextPage.thing
+ 
+	def GetPrev(self):
+		if (self.previousPage is not None):
+			return self.previousPage.thing
 
 class Controller(Utilities, CommonEventFunctions):
 	"""This module will help to create a simple GUI using wxPython without 
@@ -23667,6 +23935,25 @@ class Controller(Utilities, CommonEventFunctions):
 
 		handle = handle_Window(self)
 		handle.type = "Dialog"
+		handle._build(locals())
+		self._finalNest(handle)
+
+		return handle
+
+	def addWizard(self, label = None, title = "", position = wx.DefaultPosition, size = None, panel = True, 
+		image = None, internal = False, resizable = True,
+
+		hidden = True, enabled = True, maxSize = None, minSize = None, toolTip = None, 
+		parent = None, handle = None):
+		"""Creates a new wizard dialog window.
+
+		Example Input: addWizard()
+		Example Input: addWizard(0)
+		Example Input: addWizard(0, title = "Example")
+		"""
+
+		handle = handle_Wizard(self)
+		handle.type = "Wizard"
 		handle._build(locals())
 		self._finalNest(handle)
 
@@ -24385,7 +24672,7 @@ class Controller(Utilities, CommonEventFunctions):
 # pubsub.core.callables.CallArgsInfo = _mp_CallArgsInfo
 
 #User Things
-class User_Utilities():
+class User_Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 	def __init__(self, catalogue_variable = None, label_variable = None, **kwargs):
 		if (catalogue_variable is None):
 			self._dataCatalogue = {}
@@ -24819,30 +25106,6 @@ class User_Utilities():
 
 		return Utilities._getWildcard(None, *args, **kwargs)
 
-	def ensure_set(self, *args, **kwargs):
-		"""Grants user access to Utilities.ensure_set().
-
-		Example Input: ensure_set(myList)
-		"""
-
-		return Utilities.ensure_set(None, *args, **kwargs)
-
-	def ensure_list(self, *args, **kwargs):
-		"""Grants user access to Utilities.ensure_list().
-
-		Example Input: ensure_list(myList)
-		"""
-
-		return Utilities.ensure_list(None, *args, **kwargs)
-
-	def ensure_container(self, *args, **kwargs):
-		"""Grants user access to Utilities.ensure_container().
-
-		Example Input: ensure_container(myList)
-		"""
-
-		return Utilities.ensure_container(None, *args, **kwargs)
-
 	def makeCanvas(self, *args, **kwargs):
 		"""Grants user access to Utilities._makeCanvas().
 
@@ -24947,149 +25210,3 @@ class User_Utilities():
 
 		return Utilities.makeDialogCustom(None, *args, **kwargs)
 
-	class CustomIterator():
-		"""Iterates over items in an external list."""
-		def __init__(self, parent, variableName, loop = False, printError = False):
-			"""
-			parent (object) - The object that will be using this iterator; typically self
-			variableName (str) - The name of a variable in *parent* that will be used as the list to iterate through
-			loop (bool) - If the iterator should never stop, and link the two ends of the list
-			printError (bool) - If errors should be printed
-
-			Example Input: CustomIterator(self, "printBarcode_containerList")
-			"""
-
-			self.index = -1
-			self.loop = loop
-			self.parent = parent
-			self.printError = printError
-
-			if (not isinstance(variableName, str)):
-				errorMessage = f"'variableName' must be a str, not a {type(variableName)}"
-				raise ValueError(errorMessage)
-			if (not hasattr(self.parent, variableName)):
-				errorMessage = f"{self.parent.__repr__()} must have a variable named {variableName}"
-				raise ValueError(errorMessage)
-			if (not isinstance(getattr(self.parent, variableName), (list, tuple))):
-				errorMessage = f"{variableName} in {self.parent.__repr__()} must be a list or tuple, not a {type(getattr(self.parent, variableName))}"
-				raise ValueError(errorMessage)
-			self._variableName = variableName
-
-		def __iter__(self):
-			return self
-
-		def __next__(self):
-			"""Returns the next item in the list.
-
-			Example Use: next(self.printBarcode_containerIterator)
-			"""
-
-			try:
-				self.index += 1
-				return self._getItem()
-			except IndexError:
-				if (self.loop):
-					return self.start()
-				else:
-					raise StopIteration
-
-		def previous(self):
-			"""Returns the previous item in the list.
-
-			Example input: previous()
-			"""
-
-			try:
-				if (self.index == -1):
-					self.index = len(self) - 1
-			
-				self.index -= 1
-				return self._getItem()
-			except IndexError:
-				if (self.loop):
-					return self.end()
-				else:
-					raise StopIteration
-
-		def start(self):
-			"""Returns the first item in the list.
-
-			Example Input: start()
-			"""
-
-			try:
-				self.index = 0
-				return self._getItem()
-			except IndexError:
-				raise StopIteration
-
-		def end(self):
-			"""Returns the last item in the list.
-
-			Example Input: end()
-			"""
-
-			try:
-				self.index = len(self.parent.printBarcode_containerList) - 1
-				return self._getItem()
-			except IndexError:
-				raise StopIteration
-
-		def next(self, n = None, terminator = None):
-			"""Returns the next item(s) in the list.
-
-			n (int) - How many pairs the results should be grouped in
-				- If None: Will run as an alias for next(self)
-
-			Example input: next()
-			Example input: next(2)
-			"""
-
-			if (n is None):
-				try:
-					return next(self)
-				except StopIteration:
-					return terminator
-
-			answer = []
-			for i in range(n):
-				try:
-					answer.append(next(self))
-				except StopIteration:
-					answer.append(terminator)
-
-			return answer
-
-		def asGenerator(self, n = None, terminator = None, resetIndex = True):
-			"""Returns a generator for iterating through this iterator.
-
-			n (int) - How many pairs the results should be grouped in.
-
-			Example Input: asGenerator()
-			Example Input: asGenerator(2)
-
-			Example Use: for topHandle, bottomHandle in self.printBarcode_containerIterator.asGenerator(2): pass
-			"""
-
-			if (resetIndex):
-				self.index = -1
-			while True:
-				answer = self.next(n = n, terminator = terminator)
-
-				if (((n is not None) and all(item == terminator for item in answer)) or (answer is None)):
-					break
-				yield answer
-
-		def _getItem(self):
-			"""Returns the item for the current index.
-
-			Example Input: _getItem()
-			Example Input: _getItem(0)
-			"""
-
-			try:
-				return getattr(self.parent, self._variableName)[self.index]
-			except IndexError as error:
-				if (self.printError):
-					traceback.print_exception(type(error), error, error.__traceback__)
-				raise error
