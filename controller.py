@@ -58,6 +58,7 @@ import wx.lib.mixins.listctrl
 import wx.lib.agw.multidirdialog
 import wx.lib.agw.fourwaysplitter
 import wx.lib.agw.ultimatelistctrl
+import wx.lib.agw.genericmessagedialog
 import forks.objectlistview.ObjectListView as ObjectListView #Use my own fork
 
 #Import matplotlib elements to add plots to the GUI
@@ -85,6 +86,11 @@ import re
 import PIL
 
 import Utilities as MyUtilities
+
+if (__name__ == "__main__"):
+	import LICENSE_forSections as Legal
+else:
+	from . import LICENSE_forSections as Legal
 
 #Required Modules
 ##py -m pip install
@@ -3572,6 +3578,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 	
 	def _makeInputBox(self, text = None, maxLength = None, 
 		password = False, readOnly = False, tab = True, wrap = None, ipAddress = False,
+		autoComplete = None, caseSensitive = False,
 		
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 		enterFunction = None, enterFunctionArgs = None, enterFunctionKwargs = None, 
@@ -6109,6 +6116,11 @@ class handle_Base(Utilities, CommonEventFunctions):
 		self.thing.SetSize(newSize)
 
 	#Etc
+	def setFocus(self):
+		"""Sets the focus to this handle's wx object."""
+
+		self.thing.SetFocus()
+
 	def onRefresh(self, event, *args, **kwargs):
 		"""A wxEvent version of refresh()."""
 
@@ -7407,49 +7419,49 @@ class handle_WidgetText(handle_Widget_Base):
 			if (alignment is not None):
 				if (isinstance(alignment, bool)):
 					if (alignment):
-						style = "wx.ALIGN_LEFT"
+						style = [wx.ALIGN_LEFT]
 						self.flags_modification.append("al")
 					else:
-						style = "wx.ALIGN_CENTRE"
+						style = [wx.ALIGN_CENTRE]
 						self.flags_modification.append("ac")
 				elif (isinstance(alignment, str)):
 					if (alignment[0].lower() == "l"):
-						style = "wx.ALIGN_LEFT"
+						style = [wx.ALIGN_LEFT]
 						self.flags_modification.append("al")
 					elif (alignment[0].lower() == "r"):
-						style = "wx.ALIGN_RIGHT"
+						style = [wx.ALIGN_RIGHT]
 						self.flags_modification.append("ar")
 					else:
-						style = "wx.ALIGN_CENTRE"
+						style = [wx.ALIGN_CENTRE]
 						self.flags_modification.append("ac")
 				elif (alignment == 0):
-					style = "wx.ALIGN_LEFT"
+					style = [wx.ALIGN_LEFT]
 					self.flags_modification.append("al")
 				elif (alignment == 1):
-					style = "wx.ALIGN_RIGHT"
+					style = [wx.ALIGN_RIGHT]
 					self.flags_modification.append("ar")
 				else:
-					style = "wx.ALIGN_CENTRE"
+					style = [wx.ALIGN_CENTRE]
 					self.flags_modification.append("ac")
 			else:
-				style = "wx.ALIGN_CENTRE"
+				style = [wx.ALIGN_CENTRE]
 				self.flags_modification.append("ac")
 			
 			if (ellipsize is not None):
 				if (isinstance(ellipsize, bool)):
 					if (ellipsize):
-						style += "|wx.ST_ELLIPSIZE_END"
+						style.append(wx.ST_ELLIPSIZE_END)
 				elif (ellipsize == 0):
-					style += "|wx.ST_ELLIPSIZE_START"
+					style.append(wx.ST_ELLIPSIZE_START)
 				elif (ellipsize == 1):
-					style += "|wx.ST_ELLIPSIZE_MIDDLE"
+					style.append(wx.ST_ELLIPSIZE_MIDDLE)
 				else:
-					style += "|wx.ST_ELLIPSIZE_END"
+					style.append(wx.ST_ELLIPSIZE_END)
 
 			myId = self._getId(argument_catalogue)
 
 			#Create the thing to put in the grid
-			self.thing = wx.StaticText(self.parent.thing, id = myId, label = text, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+			self.thing = wx.StaticText(self.parent.thing, id = myId, label = text, style = functools.reduce(operator.ior, style or [0]))
 
 			# font = self._getFont(size = size, bold = bold, italic = italic, color = color, family = family)
 			# self.thing.SetFont(font)
@@ -8083,6 +8095,9 @@ class handle_WidgetList(handle_Widget_Base):
 
 		return value
 
+	def getText(self, event = None):
+		return self.thing.GetValue()
+
 	def getChecked(self, event = None):
 		value = []
 		for item in self.thing.GetObjects():
@@ -8263,9 +8278,9 @@ class handle_WidgetList(handle_Widget_Base):
 			if (filterNone is not None):
 				if (filterNone):
 					if (None in newValue):
-						newValue[:] = tuple(str(value) for value in newValue if value is not None) #Filter out None
+						newValue = tuple(str(value) for value in newValue if value is not None) #Filter out None
 				else:
-					newValue[:] = tuple(str(value) if (value is not None) else "" for value in newValue) #Replace None with blank space
+					newValue = tuple(str(value) if (value is not None) else "" for value in newValue) #Replace None with blank space
 
 			self.thing.Clear()
 			self.thing.AppendItems(newValue) #(list) - What the choice options will now be now
@@ -8365,18 +8380,22 @@ class handle_WidgetList(handle_Widget_Base):
 		self.choices = choices or ()
 
 	def setText(self, text = None, triggerEvent = True):
+
+		if ((self.type.lower() == "listdrop") and (self.subtype.lower != "autocomplete")):
+			return self.setSelection(text, triggerEvent = triggerEvent)
+
 		if (triggerEvent):
 			self.thing.SetValue(text or "")
 		else:
 			self.thing.ChangeValue(text or "")
 
-	def update_autoComplete(self, event = None):
+	def update_autoComplete(self, choices = None, event = None):
 		"""Updates the auto completer."""
 
-		self.thing.AutoComplete(self.choices)
+		if (choices):
+			self.setChoices(choices)
 
-		if (event is not None):
-			event.Skip()
+		self.thing.AutoComplete(self.choices or ())
 
 	def reveal(self, row, event = None):
 		"""Ensures that the given item's group is expanded and visible."""
@@ -9477,37 +9496,28 @@ class handle_WidgetInput(handle_Widget_Base):
 			nonlocal self, argument_catalogue
 
 			password, readOnly, tab, wrap = self._getArguments(argument_catalogue, ["password", "readOnly", "tab", "wrap"])
-			text, ipAddress, maxLength = self._getArguments(argument_catalogue, ["text", "ipAddress", "maxLength"])
+			text, ipAddress, maxLength, autoComplete, caseSensitive = self._getArguments(argument_catalogue, ["text", "ipAddress", "maxLength", "autoComplete", "caseSensitive"])
 
 			#Prepare style attributes
-			style = ""
+			style = []
 			if (password):
-				style += "|wx.TE_PASSWORD"
+				style.append(wx.TE_PASSWORD)
 
 			if (readOnly):
-				style += "|wx.TE_READONLY"
+				style.append(wx.TE_READONLY)
 
 			if (tab):
-				style += "|wx.TE_PROCESS_TAB" #Interpret 'Tab' as 4 spaces
+				style.append(wx.TE_PROCESS_TAB) #Interpret 'Tab' as 4 spaces
 
 			if (wrap is not None):
 				if (wrap > 0):
-					style += "|wx.TE_MULTILINE|wx.TE_WORDWRAP"
+					style.extend((wx.TE_MULTILINE, wx.TE_WORDWRAP))
 				else:
-					style += "|wx.TE_CHARWRAP|wx.TE_MULTILINE"
+					style.extend((wx.TE_CHARWRAP, wx.TE_MULTILINE))
 
 			# if (enterFunction is not None):
 				#Interpret 'Enter' as \n
-			#   style += "|wx.TE_PROCESS_ENTER"
-
-			#style = "|wx.EXPAND"
-
-			#Strip of extra divider
-			if (style != ""):
-				if (style[0] == "|"):
-					style = style[1:]
-			else:
-				style = "wx.DEFAULT"
+			#   style.append(wx.TE_PROCESS_ENTER)
 
 			#Account for empty text
 			if (text is None):
@@ -9516,15 +9526,23 @@ class handle_WidgetInput(handle_Widget_Base):
 			myId = self._getId(argument_catalogue)
 
 			#Create the thing to put in the grid
-			if (ipAddress):
+			if (autoComplete):
+				self.subType = "autoComplete"
+				self.thing = MyUtilities.wxPython.AutocompleteTextCtrl(self.parent, id = myId, value = text, style = style)
+
+				#Set maximum length
+				if (maxLength is not None):
+					self.thing.SetMaxLength(maxLength)
+			
+			elif (ipAddress):
 				self.subType = "ipAddress"
-				self.thing = wx.lib.masked.ipaddrctrl.IpAddrCtrl(self.parent.thing, id = myId, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+				self.thing = wx.lib.masked.ipaddrctrl.IpAddrCtrl(self.parent.thing, id = myId, style = functools.reduce(operator.ior, style or (wx.DEFAULT)))
 
 				if (text != wx.EmptyString):
 					self.thing.SetValue(text)
 			else:
 				self.subType = "normal"
-				self.thing = wx.TextCtrl(self.parent.thing, id = myId, value = text, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+				self.thing = wx.TextCtrl(self.parent.thing, id = myId, value = text, style = functools.reduce(operator.ior, style or (wx.DEFAULT)))
 
 				#Set maximum length
 				if (maxLength is not None):
@@ -9742,6 +9760,9 @@ class handle_WidgetInput(handle_Widget_Base):
 
 		return value
 
+	def getText(self, *args, **kwargs):
+		return self.getValue(*args, **kwargs)
+
 	#Setters
 	def setValue(self, newValue = None, event = None, **kwargs):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
@@ -9749,7 +9770,7 @@ class handle_WidgetInput(handle_Widget_Base):
 		if (self.type.lower() == "inputbox"):
 			if (newValue is None):
 				newValue = "" #Filter None as blank text
-			self.thing.SetValue(newValue) #(str) - What will be shown in the text box
+			self.thing.SetValue(newValue) #(str) - What will be shown in the input box
 
 		elif (self.type.lower() == "inputspinner"):
 			if (isinstance(newValue, str)):
@@ -9878,13 +9899,13 @@ class handle_WidgetInput(handle_Widget_Base):
 	def setChoices(self, choices = None):
 		self.choices = choices or ()
 
-	def update_autoComplete(self, event = None):
+	def update_autoComplete(self, choices = None, event = None):
 		"""Updates the auto completer."""
 
-		self.thing.AutoComplete(self.choices)
+		if (choices):
+			self.setChoices(choices)
 
-		if (event is not None):
-			event.Skip()
+		self.thing.AutoComplete(self.choices or ())
 
 	def _onCheckValue_exclude(self, event):
 		"""Checks the current value to make sure the text is valid."""
@@ -23405,6 +23426,32 @@ class handle_NotebookPage_Aui(handle_Base_NotebookPage):
 
 		self.myManager.dockRight(self.label, *args, **kwargs)
 
+class ExceptionDialog(wx.lib.agw.genericmessagedialog.GenericMessageDialog):
+	"""
+	Modified code from: https://www.blog.pythonlibrary.org/2014/01/31/wxpython-how-to-catch-all-exceptions/
+	"""
+ 
+	#----------------------------------------------------------------------
+	def __init__(self, msg):
+		wx.lib.agw.genericmessagedialog.GenericMessageDialog.__init__(self, None, msg, "Objection!", wx.OK|wx.ICON_ERROR)
+ 
+def MyExceptionHook(etype, value, trace):
+	"""Handler for all unhandled exceptions.
+	Modified code from: https://www.blog.pythonlibrary.org/2014/01/31/wxpython-how-to-catch-all-exceptions/
+ 
+	:param `etype`: the exception type (`SyntaxError`, `ZeroDivisionError`, etc...);
+	:type `etype`: `Exception`
+	:param string `value`: the exception error message;
+	:param string `trace`: the traceback header, if any (otherwise, it prints the
+	 standard Python header: ``Traceback (most recent call last)``.
+	"""
+
+	frame = wx.GetApp().GetTopWindow()
+ 
+	dlg = ExceptionDialog("".join(traceback.format_exception(etype, value, trace)))
+	dlg.ShowModal()
+	dlg.Destroy()
+
 class MyApp():
 	"""Needed to make the GUI work.
 	For more functions to override: https://wxpython.org/Phoenix/docs/html/wx.AppConsole.html
@@ -23419,6 +23466,7 @@ class MyApp():
 			self.app = self._App(self, root = parent, **kwargs)
 
 	def MainLoop(self):
+		# sys.excepthook = MyExceptionHook
 		self.app.MainLoop()
 
 	class _App(wx.App):
