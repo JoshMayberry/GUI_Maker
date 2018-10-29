@@ -3122,7 +3122,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		size = None, bold = False, italic = False, color = None, family = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Creates a wx text object.
 		If you want to update this text, you will need to run the function setObjectValue() or setObjectValueWithLabel().
 		If you provide a variable to this function and that variable changes- the text on the GUI will not update.
@@ -3180,7 +3180,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a hyperlink text to the next cell on the grid.
 
 		text (str)            - What text is shown
@@ -3206,7 +3206,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a widget that represents html to the next cell on the grid.
 
 		text (str)            - What text is shown
@@ -3230,7 +3230,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 	def _makeEmpty(self, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds an empty space to the next cell on the grid.
 
 		label (any)     - What this is catalogued as
@@ -3250,7 +3250,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 	def _makeLine(self, vertical = False,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a simple line to the window.
 		It can be horizontal or vertical.
 
@@ -3275,7 +3275,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a dropdown list with choices to the next cell on the grid.
 
 		choices (list)          - A list of the choices as strings
@@ -3330,7 +3330,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		dragOverFunction = None, dragOverFunctionArgs = None, dragOverFunctionKwargs = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a full list with choices to the next cell on the grid.
 		https://wxpython.org/Phoenix/docs/html/wx.ListCtrl.html
 
@@ -3474,7 +3474,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		itemMenuFunction = None, itemMenuFunctionArgs = None, itemMenuFunctionKwargs = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a tree list to the next cell on the grid.
 
 		choices (list)          - A list of the choices as strings
@@ -3555,7 +3555,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a slider bar to the next cell on the grid.
 
 		myMin (int)             - The minimum value of the slider bar
@@ -3577,8 +3577,8 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		return handle
 	
 	def _makeInputBox(self, text = None, maxLength = None, 
-		password = False, readOnly = False, tab = True, wrap = None, ipAddress = False,
-		autoComplete = None, caseSensitive = False,
+		password = False, readOnly = False, tab = False, wrap = None, ipAddress = False,
+		autoComplete = None, caseSensitive = False, alwaysShow = False,
 		
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 		enterFunction = None, enterFunctionArgs = None, enterFunctionKwargs = None, 
@@ -3586,7 +3586,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		preEditFunction = None, preEditFunctionArgs = None, preEditFunctionKwargs = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds an input box to the next cell on the grid.
 
 		flags (list)    - A list of strings for which flag to add to the sizer
@@ -3599,7 +3599,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		hidden (bool)    - If True: The widget is hidden from the user, but it is still created
 		password (bool)  - If True: The text within is shown as dots
 		readOnly (bool)  - If True: The user cannot change the text
-		tab (bool)       - If True: The 'Tab' key will move the focus to the next widget
+		tab (bool)       - If False: The 'Tab' key will move the focus to the next widget
 		wrap (int)       - How many pixels wide the line will be before it wraps. 
 		  If None: no wrapping is done
 		  If positive: Will not break words
@@ -3644,7 +3644,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		menuFunction = None, menuFunctionArgs = None, menuFunctionKwargs = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds an input box to the next cell on the grid.
 
 		text (str)      - What is initially in the box
@@ -3703,7 +3703,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		changeTextFunction = True, changeTextFunctionArgs = None, changeTextFunctionKwargs = None,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a spin control to the next cell on the grid. This is an input box for numbers.
 
 		myMin (int)       - The minimum value of the input spinner
@@ -3747,7 +3747,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		
 		valueLabel = None,
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a button to the next cell on the grid.
 
 		text (str)              - What will be written on the button
@@ -3776,7 +3776,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		pressed = False,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a toggle button to the next cell on the grid.
 
 		text (str)              - What will be written on the button
@@ -3803,7 +3803,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		
 		valueLabel = None,
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a button to the next cell on the grid.
 		Each time this button is pressed, it will change the text to display the next item in the list.
 		When it reaches the end of the list, it will start back at the beginning
@@ -3833,7 +3833,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a check box to the next cell on the grid.
 		Event fires every time the check box is clicked
 
@@ -3861,7 +3861,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a checklist to the next cell on the grid.
 
 		choices (list)          - A list of strings that are the choices for the check boxes
@@ -3887,7 +3887,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a radio button to the next cell on the grid. If default, it will disable the other
 		radio buttons of the same group.
 
@@ -3915,7 +3915,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a box filled with grouped radio buttons to the next cell on the grid.
 		Because these buttons are grouped, only one can be selected
 
@@ -3946,7 +3946,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a context help button to the next cell on the grid.
 
 		flags (list)            - A list of strings for which flag to add to the sizer
@@ -3975,7 +3975,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a button to the next cell on the grid. You design what the button looks like yourself.
 
 		idlePath (str)         - Where the image of the button idling is on the computer
@@ -4003,7 +4003,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 	def _makeImage(self, imagePath = "", internal = False, size = wx.DefaultSize,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds an embeded image to the next cell on the grid.
 
 		imagePath (str) - Where the image is on the computer. Can be a PIL image. If None, it will be a blank image
@@ -4079,7 +4079,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 	def _makeProgressBar(self, myInitial = 0, myMax = 100, vertical = False,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds progress bar to the next cell on the grid.
 
 		myInitial (int)         - The value that the progress bar starts at
@@ -4103,7 +4103,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a tool bar to the next cell on the grid.
 		Menu items can be added to this.
 
@@ -4125,7 +4125,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a color picker to the next cell on the grid.
 		It can display the name or RGB of the color as well.
 
@@ -4149,7 +4149,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a color picker to the next cell on the grid.
 		It can display the name or RGB of the color as well.
 
@@ -4177,7 +4177,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a file picker to the next cell on the grid.
 
 		flags (list)      - A list of strings for which flag to add to the sizer
@@ -4219,7 +4219,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		rightClickFunction = None, rightClickFunctionArgs = None, rightClickFunctionKwargs = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a file picker window to the next cell on the grid.
 
 		myFunction (str)               - What function will be ran when the file is chosen
@@ -4251,7 +4251,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a time picker to the next cell on the grid.
 		The input time is in military time.
 
@@ -4280,7 +4280,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a date picker to the next cell on the grid.
 
 		myFunction (str)        - What function will be ran when the date is changed
@@ -4312,7 +4312,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		yearFunction = None, yearFunctionArgs = None, yearFunctionArgsKwargs = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a date picker to the next cell on the grid.
 
 		myFunction (str)          - What function will be ran when the date is changed
@@ -4363,7 +4363,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Creates a blank canvas window.
 
 		panel (dict) - Instructions for the panel. Keys correspond to the args and kwargs for makePanel
@@ -4395,7 +4395,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		rightClickLabelFunction = None, rightClickLabelFunctionArgs = None, rightClickLabelFunctionKwargs = None,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 
 		"""Adds a table to the next cell on the grid. 
 		If enabled, it can be edited; the column &  sizerNumber, size can be changed.
@@ -4523,7 +4523,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 	def _makeMenu(self, text = " ", detachable = False, menuBar = True,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a menu to a pre-existing menuBar.
 		This is a collapsable array of menu items.
 
@@ -4548,7 +4548,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Creates a blank panel.
 
 		border (str)        - What style the border has. "simple", "raised", "sunken" or "none". Only the first two letters are necissary
@@ -4587,7 +4587,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		size = wx.DefaultSize, scroll_x = False, scroll_y = False, scrollToTop = True, scrollToChild = True,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Creates a grid sizer to the specified size.
 
 		label (any)     - What this is catalogued as
@@ -4615,7 +4615,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		size = wx.DefaultSize, scroll_x = False, scroll_y = False, scrollToTop = True, scrollToChild = True,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Creates a flex grid sizer.
 		############## NEEDS TO BE FIXED #################
 
@@ -4649,7 +4649,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		size = wx.DefaultSize, scroll_x = False, scroll_y = False, scrollToTop = True, scrollToChild = True,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Creates a bag grid sizer.
 
 		label (any)      - What this is catalogued as
@@ -4681,7 +4681,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		size = wx.DefaultSize, scroll_x = False, scroll_y = False, scrollToTop = True, scrollToChild = True,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Creates a box sizer.
 
 		label (any)     - What this is catalogued as
@@ -4704,7 +4704,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		size = wx.DefaultSize, scroll_x = False, scroll_y = False, scrollToTop = True, scrollToChild = True,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Creates a static box sizer.
 		This is a sizer surrounded by a box with a title, much like a wxRadioBox.
 
@@ -4729,7 +4729,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		size = wx.DefaultSize, scroll_x = False, scroll_y = False, scrollToTop = True, scrollToChild = True,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Creates a wrap sizer.
 		The widgets will arrange themselves into rows and columns on their own, starting in the top-left corner.
 
@@ -4756,7 +4756,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		addYes = False, addOk = False, addCancel = False, addHelp = False, default = False,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Pauses the running code and shows a dialog box to get input from the user or display a message.
 		_________________________________________________________________________
 
@@ -4811,7 +4811,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 	def makeDialogScroll(self, text = "", title = "",
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Pauses the running code and shows a dialog box that scrolls.
 		_________________________________________________________________________
 
@@ -4843,7 +4843,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		cursor = False, freeze = False,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Does not pause the running code, but instead ignores user inputs by 
 		locking the GUI until the code tells the dialog box to go away. 
 		This is done by either exiting a while loop or using the hide() function.
@@ -4884,7 +4884,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		default = None, formatter = None,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Pauses the running code and shows a dialog box that has choices in a list.
 
 		choices (list) - What can be chosen from
@@ -4920,12 +4920,12 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		password = False, readOnly = False, tab = False, wrap = None, maximum = None,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Pauses the running code and shows a dialog box that has an input box.
 
 		password (bool) - If True: The text within is shown as dots
 		readOnly (bool) - If True: The user cannot change the text
-		tab (bool)      - If True: The 'Tab' key will move the focus to the next widget
+		tab (bool)      - If False: The 'Tab' key will move the focus to the next widget
 		wrap (int)      - How many pixels wide the line will be before it wraps. 
 			- If None: no wrapping is done
 			- If positive: Will not break words
@@ -4957,7 +4957,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		saveConfirmation = False, saveFile = False, preview = True, single = True, newDirButton = False,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Pauses the running code and shows a dialog box to get input from the user about files.
 		title (str)   - What is shown on the top of the popout window
 		default (str) - What the default value will be for the input box
@@ -4993,7 +4993,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 	def makeDialogColor(self, simple = True,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Pauses the running code and shows a dialog box to get input from the user about color.
 
 		simple (bool) - Determines the amount of complexity the color picker window will have.
@@ -5029,7 +5029,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		marginLeftMinimum = None, marginTopMinimum = None, marginRightMinimum = None, marginBottomMinimum = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Pauses the running code and shows a dialog box to get input from the user about which printer with what settings to use.
 
 		pageNumbers (bool) - Determines the state of the 'page numbers' control box
@@ -5073,7 +5073,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		collate = None, copies = None, printData = None, printOverride = {}, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Pauses the running code and shows a dialog box to get input from the user about printing.
 
 		pageNumbers (bool) - Determines the state of the 'page numbers' control box
@@ -5117,7 +5117,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		size = None, position = None, content = None,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Pauses the running code and shows a dialog box to get input from the user about printing.
 		_________________________________________________________________________
 
@@ -5138,7 +5138,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 	def makeDialogCustom(self, myFrame = None, valueLabel = None,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Allows the user to define how the frame looks on their own.
 
 		myFrame (handle_Window) - What frame to use as the window
@@ -5558,7 +5558,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 		buildSelf = argument_catalogue["self"]
 		hidden, enabled = self._getArguments(argument_catalogue, ["hidden", "enabled"])
 		maxSize, minSize = self._getArguments(argument_catalogue, ["maxSize", "minSize"])
-		toolTip = self._getArguments(argument_catalogue, ["toolTip"])
+		toolTip, tabSkip = self._getArguments(argument_catalogue, ["toolTip", "tabSkip"])
 
 		#Determine visibility
 		if (isinstance(self, handle_Window)):
@@ -5595,6 +5595,13 @@ class handle_Base(Utilities, CommonEventFunctions):
 		#Determine tool tip
 		if (toolTip is not None):
 			self.addToolTip(toolTip)
+
+		if (tabSkip):
+			if (isinstance(self.parent, handle_NavigatorBase)):
+				self._betterBind(wx.EVT_SET_FOCUS, self.thing, self.parent._onTabTraversal_child)
+				self.parent.tab_skipSet.add(self.thing)
+			else:
+				raise NotImplementedError()
 
 	def nest(self, handle = None, flex = 0, flags = "c1", selected = False, linkCopy = False):
 		"""Nests an object inside of self.
@@ -6972,7 +6979,7 @@ class handle_Widget_Base(handle_Base):
 		postFunction = None, postFunctionArgs = None, postFunctionKwargs = None,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		parent = None, handle = None, myId = None):
+		parent = None, handle = None, myId = None, tabSkip = False):
 		"""Enables a popup menu.
 
 		label (str) - A unique name for this popupMenu. Used to interact with it later.
@@ -7230,7 +7237,7 @@ class handle_Widget_Base(handle_Base):
 	def addToolTip(self, text = "", maxWidth = None, 
 		delayAppear = None, delayDisappear = None, delayReappear = None,
 
-		label = None, identity = None, myId = None):
+		label = None, identity = None, myId = None, tabSkip = False):
 		"""Adds a small text box that will appear when the mouse hovers over a wxObject.
 
 		triggerObjectLabel (str) - The id catalogue number for the object that triggers the tool tip
@@ -7461,7 +7468,7 @@ class handle_WidgetText(handle_Widget_Base):
 			myId = self._getId(argument_catalogue)
 
 			#Create the thing to put in the grid
-			self.thing = wx.StaticText(self.parent.thing, id = myId, label = text, style = functools.reduce(operator.ior, style or [0]))
+			self.thing = wx.StaticText(self.parent.thing, id = myId, label = text, style = functools.reduce(operator.ior, style or (0,)))
 
 			# font = self._getFont(size = size, bold = bold, italic = italic, color = color, family = family)
 			# self.thing.SetFont(font)
@@ -7493,7 +7500,7 @@ class handle_WidgetText(handle_Widget_Base):
 
 			#Create the thing to put in the grid
 			self.thing = wx.html.HtmlWindow(self.parent.thing, id = myId, pos = position or wx.DefaultPosition, 
-				size = size or wx.DefaultSize, style = functools.reduce(operator.ior, style or [0]))
+				size = size or wx.DefaultSize, style = functools.reduce(operator.ior, style or (0,)))
 
 			self.setValue(text)
 
@@ -7720,9 +7727,9 @@ class handle_WidgetList(handle_Widget_Base):
 				else:
 					style.append(wx.CB_DROPDOWN)
 
-				self.thing = wx.ComboBox(self.parent.thing, id = myId, choices = self.formattedChoices, style = functools.reduce(operator.ior, style or [0]))
+				self.thing = wx.ComboBox(self.parent.thing, id = myId, choices = self.formattedChoices, style = functools.reduce(operator.ior, style or (0,)))
 			else:
-				self.thing = wx.Choice(self.parent.thing, id = myId, choices = self.formattedChoices, style = functools.reduce(operator.ior, style or [0]))
+				self.thing = wx.Choice(self.parent.thing, id = myId, choices = self.formattedChoices, style = functools.reduce(operator.ior, style or (0,)))
 			
 			#Set default position
 			default = self._Munge(default, extraArgs = (self,), returnMunger_onFail = True)
@@ -9495,8 +9502,9 @@ class handle_WidgetInput(handle_Widget_Base):
 			"""Builds a wx text control or ip address control object."""
 			nonlocal self, argument_catalogue
 
+			text, ipAddress, maxLength = self._getArguments(argument_catalogue, ["text", "ipAddress", "maxLength"])
 			password, readOnly, tab, wrap = self._getArguments(argument_catalogue, ["password", "readOnly", "tab", "wrap"])
-			text, ipAddress, maxLength, autoComplete, caseSensitive = self._getArguments(argument_catalogue, ["text", "ipAddress", "maxLength", "autoComplete", "caseSensitive"])
+			autoComplete, caseSensitive, alwaysShow = self._getArguments(argument_catalogue, ["autoComplete", "caseSensitive", "alwaysShow"])
 
 			#Prepare style attributes
 			style = []
@@ -9528,7 +9536,7 @@ class handle_WidgetInput(handle_Widget_Base):
 			#Create the thing to put in the grid
 			if (autoComplete):
 				self.subType = "autoComplete"
-				self.thing = MyUtilities.wxPython.AutocompleteTextCtrl(self.parent, id = myId, value = text, style = style)
+				self.thing = MyUtilities.wxPython.AutocompleteTextCtrl(self.parent, id = myId, value = text, style = style, caseSensitive = caseSensitive, alwaysShow = alwaysShow)
 
 				#Set maximum length
 				if (maxLength is not None):
@@ -9536,13 +9544,13 @@ class handle_WidgetInput(handle_Widget_Base):
 			
 			elif (ipAddress):
 				self.subType = "ipAddress"
-				self.thing = wx.lib.masked.ipaddrctrl.IpAddrCtrl(self.parent.thing, id = myId, style = functools.reduce(operator.ior, style or (wx.DEFAULT)))
+				self.thing = wx.lib.masked.ipaddrctrl.IpAddrCtrl(self.parent.thing, id = myId, style = functools.reduce(operator.ior, style or (0,)))
 
 				if (text != wx.EmptyString):
 					self.thing.SetValue(text)
 			else:
 				self.subType = "normal"
-				self.thing = wx.TextCtrl(self.parent.thing, id = myId, value = text, style = functools.reduce(operator.ior, style or (wx.DEFAULT)))
+				self.thing = wx.TextCtrl(self.parent.thing, id = myId, value = text, style = functools.reduce(operator.ior, style or (0,)))
 
 				#Set maximum length
 				if (maxLength is not None):
@@ -9607,7 +9615,7 @@ class handle_WidgetInput(handle_Widget_Base):
 			myId = self._getId(argument_catalogue)
 
 			#Create the thing to put in the grid
-			self.thing = wx.SearchCtrl(self.parent.thing, id = myId, value = wx.EmptyString, style = functools.reduce(operator.ior, style or [0]))
+			self.thing = wx.SearchCtrl(self.parent.thing, id = myId, value = wx.EmptyString, style = functools.reduce(operator.ior, style or (0,)))
 
 			self.setChoices(choices)
 			self.update_autoComplete()
@@ -11392,7 +11400,7 @@ class handle_Menu(handle_Container_Base):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1"):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1"):
 		"""Adds a menu item to a specific pre-existing menu.
 		Note: More special IDs for future implementation can be found at: https://wiki.wxpython.org/SpecialIDs
 
@@ -11486,7 +11494,7 @@ class handle_Menu(handle_Container_Base):
 	def addSub(self, text = "", flex = 0, flags = "c1", 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a sub menu to a specific pre-existing menu.
 		To adding items to a sub menu is the same as for menus.
 
@@ -11512,7 +11520,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addText(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a text widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11527,7 +11535,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addHtml(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a text widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11547,7 +11555,7 @@ class handle_Menu(handle_Container_Base):
 		return self.addStretchableSpace(*args, **kwargs)
 
 	def addHyperlink(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a hyperlink widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11562,7 +11570,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addLine(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a line widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11577,7 +11585,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addListDrop(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a drop list widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11592,7 +11600,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addListFull(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a full list widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11607,7 +11615,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addListTree(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a full list widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11622,7 +11630,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addInputSlider(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds an input slider widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11637,7 +11645,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addInputBox(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds an input box widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11652,7 +11660,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addInputSearch(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a search box widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11667,7 +11675,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addInputSpinner(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds an input spinner widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11682,7 +11690,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addButton(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a button widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11697,7 +11705,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addButtonList(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a button widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11712,7 +11720,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addButtonToggle(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a toggle button widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11727,7 +11735,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addButtonCheck(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a check button widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11742,7 +11750,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addButtonCheckList(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a check list widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11757,7 +11765,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addButtonRadio(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a radio button widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11772,7 +11780,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addButtonRadioBox(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a radio button box widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11787,7 +11795,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addButtonImage(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds an image button widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11802,7 +11810,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addImage(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds an image widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11817,7 +11825,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addProgressBar(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a progress bar widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11832,7 +11840,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addPickerColor(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a color picker widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11847,7 +11855,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addPickerFont(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a font picker widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11862,7 +11870,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addPickerFile(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a file picker widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11877,7 +11885,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addPickerFileWindow(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a file window picker widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11892,7 +11900,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addPickerTime(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a time picker widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11907,7 +11915,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addPickerDate(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a date picker widget to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -11922,7 +11930,7 @@ class handle_Menu(handle_Container_Base):
 		return handle
 
 	def addPickerDateWindow(self, *args, hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, widgetLabel = None, parent = None, handle = None, myId = None, flex = 0, flags = "c1", **kwargs):
+		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a text date window picker to the tool bar."""
 
 		if (self.type.lower() == "toolbar"):
@@ -12425,7 +12433,7 @@ class handle_MenuPopup(handle_Container_Base):
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds an item to a catalogued popup menu.
 
 		text (str)           - The label of the item. This is what is shown to the user
@@ -12484,7 +12492,7 @@ class handle_MenuPopup(handle_Container_Base):
 	def addSub(self, text = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Adds a sub menu to a specific pre-existing menu.
 		To adding items to a sub menu is the same as for menus.
 
@@ -17892,7 +17900,7 @@ class handle_Sizer(handle_Container_Base):
 		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None, selected = False, flex = 0, flags = "c1"):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False, selected = False, flex = 0, flags = "c1"):
 		"""Creates two blank panels in next to each other. 
 		The border between double panels is dragable.
 
@@ -17930,7 +17938,7 @@ class handle_Sizer(handle_Container_Base):
 		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Creates four blank panels next to each other like a grid.
 		The borders between quad panels are dragable. The itersection point is also dragable.
 		The panel order is top left, top right, bottom left, bottom right.
@@ -17958,7 +17966,7 @@ class handle_Sizer(handle_Container_Base):
 		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, myId = None):
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
 		"""Creates any number of panels side by side of each other.
 		The borders between poly panels are dragable.
 
@@ -18003,7 +18011,7 @@ class handle_Sizer(handle_Container_Base):
 		prePageChangeFunction = None, prePageChangeFunctionArgs = None, prePageChangeFunctionKwargs = None,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, size = wx.DefaultSize, position = wx.DefaultPosition,
-		parent = None, handle = None, myId = None):
+		parent = None, handle = None, myId = None, tabSkip = False):
 		"""Creates a blank notebook.
 
 		label (str)        - What this is called in the idCatalogue
@@ -19704,40 +19712,40 @@ class handle_Window(handle_Container_Base):
 
 			#Determine window style
 			tabTraversal, stayOnTop, floatOnParent, resize, topBar, minimize, maximize, close, title = self._getArguments(argument_catalogue, ["tabTraversal", "stayOnTop", "floatOnParent", "resize", "topBar", "minimize", "maximize", "close", "title"])
-			style = "wx.CLIP_CHILDREN|wx.SYSTEM_MENU"
+			style = [wx.CLIP_CHILDREN, wx.SYSTEM_MENU]
 			if (tabTraversal):
-				style += "|wx.TAB_TRAVERSAL"
+				style.append(wx.TAB_TRAVERSAL)
 
 			if (stayOnTop):
-				style += "|wx.STAY_ON_TOP"
+				style.append(wx.STAY_ON_TOP)
 
 			if (floatOnParent):
-				style += "|wx.FRAME_FLOAT_ON_PARENT"
+				style.append(wx.FRAME_FLOAT_ON_PARENT)
 
 			if (resize):
-				style += "|wx.RESIZE_BORDER"
+				style.append(wx.RESIZE_BORDER)
 
 			if (topBar is not None):
 				if (topBar):
-					style += "|wx.MINIMIZE_BOX|wx.MAXIMIZE_BOX|wx.CLOSE_BOX"
+					style.extend((wx.MINIMIZE_BOX, wx.MAXIMIZE_BOX, wx.CLOSE_BOX))
 			else:
 				if (minimize):
-					style += "|wx.MINIMIZE_BOX"
+					style.append(wx.MINIMIZE_BOX)
 
 				if (maximize):
-					style += "|wx.MAXIMIZE_BOX"
+					style.append(wx.MAXIMIZE_BOX)
 
 				if (close):
-					style += "|wx.CLOSE_BOX"
+					style.append(wx.CLOSE_BOX)
 
 			if (title is not None):
-				style += "|wx.CAPTION"
+				style.append(wx.CAPTION)
 			else:
 				title = ""
 
 			#Make the frame
 			size, position, smallerThanScreen = self._getArguments(argument_catalogue, ["size", "position", "smallerThanScreen"])
-			self.thing = wx.Frame(None, title = title, size = size, pos = position, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+			self.thing = wx.Frame(None, title = title, size = size, pos = position, style = functools.reduce(operator.ior, style or (0,)))
 
 			# if (smallerThanScreen not in [None, False]):
 			#   screenSize = self.getScreenSize()
@@ -20473,7 +20481,7 @@ class handle_Window(handle_Container_Base):
 		postFunction = None, postFunctionArgs = None, postFunctionKwargs = None,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		parent = None, handle = None, myId = None):
+		parent = None, handle = None, myId = None, tabSkip = False):
 		"""Enables a popup menu.
 
 		label (str) - A unique name for this popupMenu. Used to interact with it later.
@@ -21793,7 +21801,7 @@ class handle_Wizard(handle_Window):
 		insert = None, default = False, icon_path = None, icon_internal = False,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None):
+		label = None, parent = None, handle = None, tabSkip = False):
 		"""Adds a page to the wizard.
 		Lists can be given to add multiple pages. They are added in order from left to right.
 		If only a 'pageLabel' is a list, they will all have the same 'text'.
@@ -21890,8 +21898,48 @@ class handle_Wizard(handle_Window):
 
 	def setStatusText(self, *args, **kwargs):
 		pass
+
+class handle_NavigatorBase():
+	"""COntains functions for tab traversal"""
+
+	def __init__(self):
+		"""Initializes defaults."""
+
+		self.tab_pressed = False
+		self.tab_skipSet = set()
+		self.tab_direction = True
+
+	def _postBuild(self, *args, **kwargs):
+		self._betterBind(wx.EVT_NAVIGATION_KEY, self.thing, self._onTabTraversal_panel, mode = 2)
+		return super()._postBuild(*args, **kwargs)
+
+	def _onTabTraversal_panel(self, event):
+		"""Helps to skip widgets that are marked to be skipped during tab traversal."""
+
+		def reset():
+			nonlocal self
+			self.tab_pressed = False
+
+		############################################
+
+		self.tab_pressed = True
+		self.tab_direction = event.GetDirection()
+		wx.CallLater(100, reset)
+		event.Skip()
+
+	def _onTabTraversal_child(self, event):
+		"""Handles skipping widgets that are marked to be skipped during tab traversal.
+		Modified code from Frank Millman on: http://wxpython-users.1045709.n5.nabble.com/Skipping-widgets-in-tab-traversal-my-solution-but-td2324585.html
+		"""
+
+		thing = event.GetEventObject()
+		if (self.tab_pressed):
+			self.tab_pressed = False
+			if (thing in self.tab_skipSet):
+				thing.Navigate(self.tab_direction)
+		event.Skip()
  
-class handle_Panel(handle_Container_Base):
+class handle_Panel(handle_NavigatorBase, handle_Container_Base):
 	"""A handle for working with a wxPanel."""
 
 	def __init__(self):
@@ -21899,6 +21947,7 @@ class handle_Panel(handle_Container_Base):
 
 		#Initialize inherited classes
 		handle_Container_Base.__init__(self)
+		handle_NavigatorBase.__init__(self)
 
 	def __str__(self):
 		"""Gives diagnostic information on the Panel when it is printed out."""
@@ -21924,37 +21973,37 @@ class handle_Panel(handle_Container_Base):
 			initFunction = self._getArguments(argument_catalogue, ["initFunction"])
 
 			#Setup
-			style = "wx.EXPAND|wx.ALL"
+			style = [wx.EXPAND, wx.ALL]
 			if (type(border) == str):
 				#Ensure correct caseing
 				border = border.lower()
 
 				if (border[0:2] == "si"):
-					style += "|wx.SIMPLE_BORDER"
+					style.append(wx.SIMPLE_BORDER)
 
 				elif (border[0] == "r"):
-					style += "|wx.RAISED_BORDER"
+					style.append(wx.RAISED_BORDER)
 
 				elif (border[0:2] == "su"):
-					style += "|wx.SUNKEN_BORDER"
+					style.append(wx.SUNKEN_BORDER)
 
 				elif (border[0] == "n"):
-					style += "|wx.NO_BORDER"
+					style.append(wx.NO_BORDER)
 
 				else:
 					errorMessage = f"Unknown border {border} in {self.__repr__()}"
 					raise KeyError(errorMessage)
 			else:
-				style += "|wx.NO_BORDER"
+				style.append(wx.NO_BORDER)
 
 			if (tabTraversal):
-				style += "|wx.TAB_TRAVERSAL"
+				style.append(wx.TAB_TRAVERSAL)
 
 			myId = self._getId(argument_catalogue)
 
 			#Create the panel
 			if ((scroll_x not in [False, None]) or (scroll_y not in [False, None])):
-				self.thing = wx.lib.scrolledpanel.ScrolledPanel(self.parent.thing, id = myId, pos = position, size = size, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+				self.thing = wx.lib.scrolledpanel.ScrolledPanel(self.parent.thing, id = myId, pos = position, size = size, style = functools.reduce(operator.ior, style or (0,)))
 
 				instructions = {}
 				instructions["scrollToTop"] = scrollToTop
@@ -21967,13 +22016,13 @@ class handle_Panel(handle_Container_Base):
 				self.thing.SetupScrolling(**instructions)
 
 			else:
-				self.thing = wx.Panel(self.parent.thing, id = myId, pos = position, size = size, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+				self.thing = wx.Panel(self.parent.thing, id = myId, pos = position, size = size, style = functools.reduce(operator.ior, style or (0,)))
 
 			#Bind Functions
 			if (initFunction is not None):
 				initFunctionArgs, initFunctionKwargs = self._getArguments(argument_catalogue, ["initFunctionArgs", "initFunctionKwargs"])
 				self._betterBind(wx.EVT_INIT_DIALOG, self.thing, initFunction, initFunctionArgs, initFunctionKwargs)
-
+			
 			#Update catalogue
 			for key, value in locals().items():
 				if (key != "self"):
@@ -22624,7 +22673,7 @@ class handle_Notebook_Simple(handle_Base_Notebook):
 		insert = None, default = False, icon_path = None, icon_internal = False,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None):
+		label = None, parent = None, handle = None, tabSkip = False):
 		"""Adds a page to the notebook.
 		Lists can be given to add multiple pages. They are added in order from left to right.
 		If only a 'pageLabel' is a list, they will all have the same 'text'.
@@ -23535,8 +23584,15 @@ class MyApp():
 		def MainLoop(self):
 			self.building = False
 
-class handle_WizardPage(handle_Base_NotebookPage):
+class handle_WizardPage(handle_NavigatorBase, handle_Base_NotebookPage):
 	"""A handle for working with a wxNotebook."""
+
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize inherited classes
+		handle_Base_NotebookPage.__init__(self)
+		handle_NavigatorBase.__init__(self)
 
 	@contextlib.contextmanager
 	def _build(self, argument_catalogue):
@@ -23861,7 +23917,7 @@ class Controller(Utilities, CommonEventFunctions):
 		idleFunction = None, idleFunctionArgs = None, idleFunctionKwargs = None, 
 
 		hidden = True, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		parent = None, handle = None):
+		parent = None, handle = None, tabSkip = False):
 		"""Creates a new window.
 
 		label (any) - What this is catalogued as
@@ -23931,7 +23987,7 @@ class Controller(Utilities, CommonEventFunctions):
 		delFunction = None, delFunctionArgs = None, delFunctionKwargs = None, 
 
 		hidden = True, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		parent = None, handle = None):
+		parent = None, handle = None, tabSkip = False):
 		"""Creates a new dialog window.
 
 		label (any) - What this is catalogued as
@@ -23992,7 +24048,7 @@ class Controller(Utilities, CommonEventFunctions):
 		image = None, internal = False, resizable = True,
 
 		hidden = True, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		parent = None, handle = None):
+		parent = None, handle = None, tabSkip = False):
 		"""Creates a new wizard dialog window.
 
 		Example Input: addWizard()

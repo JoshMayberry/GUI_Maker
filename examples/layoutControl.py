@@ -31,16 +31,17 @@ def buildWindow():
 			with mySizer.addSizerGridFlex(rows = 3, columns = 2) as mySubSizer:
 				mySubSizer.growFlexRow(2)
 				mySubSizer.growFlexColumnAll()	
-				mySubSizer.addText(text = "Sit")
-				mySubSizer.addInputBox(text = "Amet")
+				mySubSizer.addInputBox(text = "Sit")
+				mySubSizer.addText(text = "Amet")
 				mySubSizer.addInputBox(text = "Consectetur")
 
 		with myFrame.addSizerGridFlex(rows = 3, columns = 2) as mySizer:
 			mySizer.growFlexRowAll()
 			mySizer.growFlexColumnAll()	
-			mySizer.addText("Lorem")
-			mySizer.addText("Ipsum")
-			mySizer.addText("Dolor")
+			mySizer.addButton("Adipiscing", myFunction = lambda event: print("Adipiscing"))
+			mySizer.addButton("Elit", tabSkip = True, myFunction = lambda event: print("Elit"))
+			mySizer.addButton("Sed", tabSkip = True, myFunction = lambda event: print("Sed"))
+			mySizer.addButton("Do", myFunction = lambda event: print("Do"))
 
 #Run Program
 if __name__ == '__main__':
