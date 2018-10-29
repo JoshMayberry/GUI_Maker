@@ -21767,7 +21767,10 @@ class handle_Wizard(handle_Window):
 		handle_Window.__init__(self, controller)
 
 		#Internal Variables
-		self.pageNode = anytree.Node("root")
+		self.currentNode = None
+		self.nodeResolver = anytree.Resolver("name")
+		self.pageNode = anytree.Node("root", handle = self)
+		self.pageElements = set()
 
 	def _build(self, argument_catalogue):
 		"""Builds a mimic for a wx wizard object."""
@@ -21777,7 +21780,6 @@ class handle_Wizard(handle_Window):
 			tabTraversal, stayOnTop, resizable, title = self._getArguments(argument_catalogue, ["tabTraversal", "stayOnTop", "resizable", "title"])
 			size, position, panel, valueLabel = self._getArguments(argument_catalogue, ["size", "position", "panel", "valueLabel"])
 			icon, icon_internal, smallerThanScreen = self._getArguments(argument_catalogue, ["icon", "icon_internal", "smallerThanScreen"])
-			addNext, addPrevious, addCancel, addFinish, addLine = self._getArguments(argument_catalogue, ["addNext", "addPrevious", "addCancel", "addFinish", "addLine"])
 			image, internal, resizable = self._getArguments(argument_catalogue, ["image", "internal", "resizable"])
 
 			#Configure Style
@@ -21819,100 +21821,44 @@ class handle_Wizard(handle_Window):
 			
 			#Setup sizers and panels
 			if (panel):
-				self.mainPanel = self._makePanel()#"-1", parent = handle, size = (10, 10), tabTraversal = tabTraversal, useDefaultSize = False)
+				self.mainPanel = self._makePanel(tabTraversal = tabTraversal)
 				self._finalNest(self.mainPanel)
 
-			self.mainSizer = self._makeSizerBox()
+			with self._makeSizerBox() as rootSizer:
+				self._finalNest(rootSizer)
+				self.mainSizer = rootSizer.addSizerBox(flex = 1)
 
-			if (panel):
-				self.mainPanel.nest(self.mainSizer)
-			else:
-				self._finalNest(self.mainSizer)
-				self.thing.SetSizer(self.mainSizer.thing)
+				rootSizer.addLine(flex = 0)
+				
+				with rootSizer.addSizerWrap(vertical = False, flex = 0) as mySizer:
+					self.choiceSizer = mySizer
 
+				with rootSizer.addSizerGridFlex(rows = 1, columns = 3, flex = 0) as buttonSizer:
+					with buttonSizer.addButton("Previous", myId = wx.ID_BACKWARD) as myWidget:
+						self.button_previous = myWidget
+						myWidget.setFunction_click(self.onPreviousPage)
 
+					with buttonSizer.addButton("Finish", myId = wx.ID_OK) as myWidget:
+						self.button_finish = myWidget
 
+					buttonSizer.addButton("Cancel", myId = wx.ID_CANCEL)
 
+				if (panel):
+					self.mainPanel.thing.SetSizer(rootSizer.thing)
+				else:
+					self.thing.SetSizer(rootSizer.thing)
 
-
-
-			# #Unpack arguments
-			# panel = argument_catalogue["panel"]
-			
-			# #Setup sizers and panels
-			# if (panel):
-			# 	self.mainPanel = self._makePanel()#"-1", parent = handle, size = (10, 10), tabTraversal = tabTraversal, useDefaultSize = False)
-			# 	self._finalNest(self.mainPanel)
-
-			# self.mainSizer = self._makeSizerBox()
-			# self._finalNest(self.mainSizer)
-
-			# if (panel):
-			# 	self.mainPanel.thing.SetSizer(self.mainSizer.thing)
-			# else:
-			# 	self.thing.SetSizer(self.mainSizer.thing)
-
-
-
-
-
-
-
-			# #Setup sizers and panels
-			# if (panel):
-			# 	self.mainPanel = self._makePanel()#"-1", parent = handle, size = (10, 10), tabTraversal = tabTraversal, useDefaultSize = False)
-			# 	self._finalNest(self.mainPanel)
-
-			# with self._makeSizerBox() as rootSizer:
-			# 	self._finalNest(rootSizer)
-			# 	self.mainSizer = rootSizer.addSizerBox(flex = 1)
-
-			# 	if (addLine):
-			# 		rootSizer.addLine(flex = 0)
-
-			# 	with rootSizer.addSizerBox(vertical = False, flex = 0) as buttonSizer:
-			# 		if (addPrevious is not None):
-			# 			if (not isinstance(addPrevious, bool)):
-			# 				self._addAttributeOverride(addPrevious, "myId", wx.ID_BACKWARD)
-			# 			elif (addPrevious):
-			# 				buttonSizer.addButton("Previous", myId = wx.ID_BACKWARD)
-
-			# 		if (addNext is not None):
-			# 			if (not isinstance(addNext, bool)):
-			# 				self._addAttributeOverride(addNext, "myId", wx.ID_FORWARD)
-			# 			elif (addNext):
-			# 				buttonSizer.addButton("Next", myId = wx.ID_FORWARD)
-					
-			# 		if (addFinish is not None):
-			# 			if (not isinstance(addFinish, bool)):
-			# 				self._addAttributeOverride(addFinish, "myId", wx.ID_OK)
-			# 			elif (addFinish):
-			# 				buttonSizer.addButton("Finish", myId = wx.ID_OK)
-					
-			# 		if (addCancel is not None):
-			# 			if (not isinstance(addCancel, bool)):
-			# 				self._addAttributeOverride(addCancel, "myId", wx.ID_CANCEL)
-			# 			elif (addCancel):
-			# 				buttonSizer.addButton("Cancel", myId = wx.ID_CANCEL)
-
-			# 	if (panel):
-			# 		self.mainPanel.thing.SetSizer(rootSizer.thing)
-			# 	else:
-			# 		self.thing.SetSizer(rootSizer.thing)
+	def reset(self):
+		self.currentNode = None
+		self.showPage()
 
 	def start(self):
+		self.reset()
 		with self.makeDialogCustom(myFrame = self) as myDialog:
-			print("@1", myDialog)
-
-		# self.showWindow()
-		# if (not self.thing.IsRunning()):
-		# 	self.thing.SetPageSize(tuple(max(item) for item in zip(*(page.mySizer.thing.CalcMin() for page in self))))
-		# self.thing.RunWizard(self.pages[0].thing)
-
-		# self.thing.Destroy()  #Don't destroy it so it can appear again without the user calling addWizard() again. Time will tell if this is a bad idea or not
+			pass
 
 	def addPage(self, text = None, sizer = {}, panel = {}, image = None, internal = False,
-		icon_path = None, icon_internal = False, 
+		icon_path = None, icon_internal = False, parentNode = None, default = False,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
 		label = None, parent = None, handle = None, tabSkip = False,
@@ -21926,35 +21872,103 @@ class handle_Wizard(handle_Window):
 			- If None: The tab will be blank
 		label (str) - What this is called in the idCatalogue
 
-		insert (int)   - Determines where the new page will be added
-			- If None or -1: The page will be added to the end
-			- If not None or -1: This is the page index to place this page in 
-	
-		icon_path (str)      - Determiens if there should be an icon to the left of the text
-		icon_internal (bool) - Determiens if 'image_path' refers to an internal image
-
 		Example Input: addPage()
 		Example Input: addPage("Lorem")
 		Example Input: addPage(["Lorem", "Ipsum"])
 		Example Input: addPage({"choice_1": "Lorem", "choice_2": "Ipsum"})
 		"""
 
-		# handle = self._makeText(text = text)
-		# handle = self._readBuildInstructions_panel(self, 0, panel)
-		# self.mainSizer.nest(handle, flex = flex, flags = flags, selected = selected)
-
-		handle = handle_WizardPage()
+		handle = handle_WizardPage(self)
 		handle.type = "wizardPage"
-		with handle._build({**locals(), "parent": self}): pass
-
-		print("@1", handle)
-		print("@2", handle.myPanel)
+		with handle._build({**locals(), "parent": self, "parentNode": parentNode or self.pageNode}): pass
+		handle.pageElements.add(handle.myPanel)
 		self.mainSizer.nest(handle.myPanel, flex = flex, flags = flags, selected = selected)
 
-		# handle = self._makeText(text = text)
-		# self.mainSizer.nest(handle, flex = flex, flags = flags, selected = selected)
+		previousNode = handle.pageNode.parent
+		with self.choiceSizer.addButton(handle.text or f"{len(previousNode.children)}", myId = wx.ID_FORWARD) as myWidget:
+			previousNode.handle.pageElements.add(myWidget)
+			myWidget.setFunction_click(self.onNextPage, myFunctionKwargs = {"branch": handle.nodeLabel})
 
 		return handle
+
+	def onShowPage(self, event, *args, **kwargs):
+		"""A wxEvent version of showPage()."""
+
+		self.showPage(*args, **kwargs)
+		event.Skip()
+
+	def showPage(self, branch = None, node = None, default = None):
+		"""Shows the page with the given node.
+
+		Example Input: showPage()
+		"""
+
+		def getNode(sourceNode):
+			nonlocal branch, default
+
+			label = branch or default or getattr(sourceNode, "default", None)
+			if (label is not None):
+				try:
+					return self.nodeResolver.get(sourceNode, label)
+				except anytree.resolver.ChildResolverError:
+					errorMessage = f"There is no wizard page with the label {label} in {sourceNode}"
+					print("@handle_Wizard.showPage", errorMessage)
+			
+			return sourceNode.children[0]
+
+		#####################
+
+		self.mainSizer.hide()
+		self.choiceSizer.hide()
+
+		self.currentNode = node or getNode(self.currentNode or self.pageNode)
+
+		self.choiceSizer.hide()
+		for myWidget in self.currentNode.handle.pageElements:
+			myWidget.show()
+
+		self.mainPanel.thing.Layout()
+
+		self.button_previous.setEnable(self.currentNode.parent.parent is not None)
+		self.button_finish.setEnable(not self.currentNode.children)
+
+	def onNextPage(self, event, *args, **kwargs):
+		"""A wxEvent version of nextPage()."""
+
+		self.nextPage(*args, **kwargs)
+		event.Skip()
+
+	def nextPage(self, branch = None):
+		"""Moves to the next page.
+
+		branch (int) Which branch to go down
+			- If None: Will use the default branch
+			- If str: Will use the branch with the matching label
+
+		Example Input: nextPage()
+		Example Input: nextPage(2)
+		Example Input: nextPage("lorem")
+		"""
+
+		return self.showPage(branch = branch)
+
+	def onPreviousPage(self, event, *args, **kwargs):
+		"""A wxEvent version of previousPage()."""
+
+		self.previousPage(*args, **kwargs)
+		event.Skip()
+
+	def previousPage(self):
+		"""Moves to the previous page.
+
+		Example Input: previousPage()
+		"""
+
+		node = self.currentNode.parent
+		# if (node is None):
+		# 	return
+
+		return self.showPage(node = node)
 
 	# def setFunction_pageChange(self, *args, **kwargs):
 	# 	return self.setFunction_postPageChange(*args, **kwargs)
@@ -23558,15 +23572,17 @@ class handle_NotebookPage_Aui(handle_Base_NotebookPage):
 class handle_WizardPage(handle_NavigatorBase, handle_Base_NotebookPage):
 	"""A handle for working with a wxNotebook."""
 
-	def __init__(self):
+	def __init__(self, wizard):
 		"""Initializes defaults."""
 
 		#Initialize inherited classes
 		handle_Base_NotebookPage.__init__(self)
 		handle_NavigatorBase.__init__(self)
 
+		self.wizard = wizard
 		self.pageNode = None
 		self.currentNode = None
+		self.pageElements = set()
 
 	@contextlib.contextmanager
 	def _build(self, argument_catalogue):
@@ -23592,30 +23608,23 @@ class handle_WizardPage(handle_NavigatorBase, handle_Base_NotebookPage):
 		Example Input: _build(0, "Lorem", select = True)
 		"""
 
-
-		# if (isinstance(sizer, dict)):
-		# 	sizer["parent"] = self.myPanel
-		# 	argument_catalogue["sizer"] = self._readBuildInstructions_sizer(self, 0, sizer)
-
-		# sizer = self._getArguments(argument_catalogue, ("sizer",))
-		# argument_catalogue["sizer"] = None
-
-		with super()._build(argument_catalogue, nestPanel = False):#, nestSizer = False):
-
-			# with self.addSizerBox() as rootSizer:
-			# 	rootSizer.nest(self.mySizer, flex = 1)
-			
+		with super()._build(argument_catalogue, nestPanel = False, nestSizer = False):
 			self.thing = self.myPanel.thing
-			# self.myPanel.nest(rootSizer)
+			
+			with self._makeSizerBox() as rootSizer:
+				rootSizer.nest(self.mySizer, flex = 1)
+				self.myPanel.nest(rootSizer)
 
-			# self.pageNode = anytree.Node(self.label or f"{len(self.parent.pageNode.children)}", parent = self.parent.pageNode)
+			parentNode, default = self._getArguments(argument_catalogue, ("parentNode", "default",))
+			self.nodeLabel = self.label or f"{len(self.parent.pageNode.children)}"
+			self.pageNode = anytree.Node(self.nodeLabel, parent = parentNode, handle = self)
+
+			if (default):
+				parentNode.default = self.pageNode.name
+
 			yield
 
-	def addPage(self, text = None, sizer = {}, panel = {}, image = None, internal = False,
-		icon_path = None, icon_internal = False, 
-
-		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, tabSkip = False):
+	def addPage(self, *args, parentNode = None, **kwargs):
 		"""Adds a page to the wizard.
 		Lists can be given to add multiple pages. They are added in order from left to right.
 		If only a 'pageLabel' is a list, they will all have the same 'text'.
@@ -23625,28 +23634,14 @@ class handle_WizardPage(handle_NavigatorBase, handle_Base_NotebookPage):
 			- If None: The tab will be blank
 		label (str) - What this is called in the idCatalogue
 
-		insert (int)   - Determines where the new page will be added
-			- If None or -1: The page will be added to the end
-			- If not None or -1: This is the page index to place this page in 
-	
-		icon_path (str)      - Determiens if there should be an icon to the left of the text
-		icon_internal (bool) - Determiens if 'image_path' refers to an internal image
-
 		Example Input: addPage()
 		Example Input: addPage("Lorem")
 		Example Input: addPage(["Lorem", "Ipsum"])
 		Example Input: addPage({"choice_1": "Lorem", "choice_2": "Ipsum"})
 		"""
 
-		raise NotImplementedError()
+		return self.wizard.addPage(*args, parentNode = parentNode or self.pageNode, **kwargs)
 
-		handle = handle_WizardPage()
-		handle.type = "wizardPage"
-		with handle._build({**locals(), "parent": self}): pass
-
-		self.mySizer.nest(handle.myPanel)
-
-		return handle
 
 # 	def getValue(self, event = None):
 # 		"""Returns the first page index for a page with the given label in the given notebook.
@@ -24165,7 +24160,6 @@ class Controller(Utilities, CommonEventFunctions):
 
 	def addWizard(self, label = None, title = "", position = wx.DefaultPosition, size = wx.DefaultSize, panel = True, 
 		image = None, internal = False, icon = None, icon_internal = False, resizable = True,
-		addNext = True, addPrevious = True, addCancel = True, addFinish = True, addLine = True,
 		tabTraversal = True, stayOnTop = False, floatOnParent = False, valueLabel = None, smallerThanScreen = True,
 
 		hidden = True, enabled = True, maxSize = None, minSize = None, toolTip = None, 

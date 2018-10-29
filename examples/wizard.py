@@ -45,49 +45,39 @@ def buildWindow():
 		# myWizard.setFunction_cancel(onWizard_cancel)
 		# myWizard.setFunction_finish(onWizard_finish)
 
-		with myWizard.mainSizer as mySizer:
-			mySizer.addText("Lorem")
-			mySizer.addText("Ipsum")
-
-		with myWizard.addPage(label = "main", flex = 1) as myWizardPage:
+		with myWizard.addPage(label = "main", default = True) as myWizardPage:
 			mySizer = myWizardPage.mySizer
-			mySizer.addText(text = "Which Way?", flex = 1)
-			mySizer.addText(text = "Lorem")
-			mySizer.addText(text = "Ipsum")
-			pass
+			mySizer.addText(text = "Which Way?")
 
-		# with myWizard.addPage(label = "main2") as myWizardPage:
-		# 	myWizardPage.addText(text = "Which Way2?")
+			with myWizardPage.addPage(text = "North", label = "north") as firstChoice:
+				firstChoice.mySizer.addText(text = "You find a river")
 
-		# 	with myWizardPage.addPage(text = "North", label = "north") as firstChoice:
-		# 		firstChoice.addText(text = "You find a river")
+				with firstChoice.addPage(text = "Make Camp", default = True) as secondChoice:
+					secondChoice.mySizer.addText(text = "Good night")
 
-		# 		with firstChoice.addPage(text = "Make Camp") as secondChoice:
-		# 			secondChoice.addText(text = "Good night")
+				with firstChoice.addPage(text = "Go Fishing") as secondChoice:
+					secondChoice.mySizer.addText(text = "Fun!")
 
-		# 		with firstChoice.addPage(text = "Go Fishing") as secondChoice:
-		# 			secondChoice.addText(text = "Fun!")
+					with secondChoice.addPage(text = "Make Camp") as thirdChoice:
+						thirdChoice.mySizer.addText(text = "Good night")
 
-		# 			with secondChoice.addPage(text = "Make Camp") as thirdChoice:
-		# 				thirdChoice.addText(text = "Good night")
+			with myWizardPage.addPage(text = "East", label = "east", default = True) as firstChoice:
+				firstChoice.mySizer.addText(text = "You come to a dead end")
 
-		# 	with myWizardPage.addPage(text = "East", label = "east") as firstChoice:
-		# 		firstChoice.addText(text = "You come to a dead end")
+			with myWizardPage.addPage(text = "South", label = "south") as firstChoice:
+				firstChoice.mySizer.addText(text = "You find a town")
 
-		# 	with myWizardPage.addPage(text = "South", label = "south") as firstChoice:
-		# 		firstChoice.addText(text = "You find a town")
+				with firstChoice.addPage(text = "Sleep", default = True) as secondChoice:
+					secondChoice.mySizer.addText(text = "Good night")
 
-		# 		with firstChoice.addPage(text = "Sleep") as secondChoice:
-		# 			secondChoice.addText(text = "Good night")
+				with firstChoice.addPage(text = "Eat") as secondChoice:
+					secondChoice.mySizer.addText(text = "Yum!")
 
-		# 		with firstChoice.addPage(text = "Eat") as secondChoice:
-		# 			secondChoice.addText(text = "Yum!")
+					with secondChoice.addPage(text = "Sleep") as thirdChoice:
+						thirdChoice.mySizer.addText(text = "Good night")
 
-		# 			with secondChoice.addPage(text = "Sleep") as thirdChoice:
-		# 				thirdChoice.addText(text = "Good night")
-
-		# with myWizard.addPage(label = "secret") as myWizardPage:
-		# 	myWizardPage.addText(text = "Secret Room")
+		with myWizard.addPage(label = "secret") as myWizardPage:
+			myWizardPage.mySizer.addText(text = "Secret Room")
 
 		# import anytree
 		# print(anytree.RenderTree(myWizard.pageNode))
