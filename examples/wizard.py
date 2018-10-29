@@ -41,24 +41,58 @@ def buildWindow():
 			mySizer.addButton("Launch Wizard", myFunction = onShow)
 
 	with gui.addWizard(label = 1, title = "My Wizard") as myWizard:
-		myWizard.setFunction_pageChange(onWizard_pageChange)
-		myWizard.setFunction_cancel(onWizard_cancel)
-		myWizard.setFunction_finish(onWizard_finish)
-		
-		with myWizard.addPage() as myWizardPage:
-			myWizardPage.addText(text = "lorem")
+		# myWizard.setFunction_pageChange(onWizard_pageChange)
+		# myWizard.setFunction_cancel(onWizard_cancel)
+		# myWizard.setFunction_finish(onWizard_finish)
 
-		with myWizard.addPage(label = 2) as myWizardPage:
-			myWizardPage.addText(text = "ipsum")
+		with myWizard.mainSizer as mySizer:
+			mySizer.addText("Lorem")
+			mySizer.addText("Ipsum")
 
-		with myWizard.addPage() as myWizardPage:
-			myWizardPage.addText(text = "dolor")
+		with myWizard.addPage(label = "main", flex = 1) as myWizardPage:
+			mySizer = myWizardPage.mySizer
+			mySizer.addText(text = "Which Way?", flex = 1)
+			mySizer.addText(text = "Lorem")
+			mySizer.addText(text = "Ipsum")
+			pass
 
-		with myWizard.addPage() as myWizardPage:
-			myWizardPage.addText(text = "sit")
+		# with myWizard.addPage(label = "main2") as myWizardPage:
+		# 	myWizardPage.addText(text = "Which Way2?")
 
-		with myWizard.addPage() as myWizardPage:
-			myWizardPage.addText(text = "amet")
+		# 	with myWizardPage.addPage(text = "North", label = "north") as firstChoice:
+		# 		firstChoice.addText(text = "You find a river")
+
+		# 		with firstChoice.addPage(text = "Make Camp") as secondChoice:
+		# 			secondChoice.addText(text = "Good night")
+
+		# 		with firstChoice.addPage(text = "Go Fishing") as secondChoice:
+		# 			secondChoice.addText(text = "Fun!")
+
+		# 			with secondChoice.addPage(text = "Make Camp") as thirdChoice:
+		# 				thirdChoice.addText(text = "Good night")
+
+		# 	with myWizardPage.addPage(text = "East", label = "east") as firstChoice:
+		# 		firstChoice.addText(text = "You come to a dead end")
+
+		# 	with myWizardPage.addPage(text = "South", label = "south") as firstChoice:
+		# 		firstChoice.addText(text = "You find a town")
+
+		# 		with firstChoice.addPage(text = "Sleep") as secondChoice:
+		# 			secondChoice.addText(text = "Good night")
+
+		# 		with firstChoice.addPage(text = "Eat") as secondChoice:
+		# 			secondChoice.addText(text = "Yum!")
+
+		# 			with secondChoice.addPage(text = "Sleep") as thirdChoice:
+		# 				thirdChoice.addText(text = "Good night")
+
+		# with myWizard.addPage(label = "secret") as myWizardPage:
+		# 	myWizardPage.addText(text = "Secret Room")
+
+		# import anytree
+		# print(anytree.RenderTree(myWizard.pageNode))
+
+		# sys.exit()
 
 #Run Program
 if __name__ == '__main__':
