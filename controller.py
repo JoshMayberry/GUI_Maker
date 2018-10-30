@@ -51,7 +51,7 @@ import wx.lib.masked
 import wx.lib.buttons
 import wx.lib.dialogs
 import wx.lib.agw.aui
-# import wx.lib.newevent
+import wx.lib.newevent
 import wx.lib.wordwrap
 import wx.lib.splitter
 import wx.lib.agw.floatspin
@@ -167,6 +167,13 @@ def printCurrentTrace(printout = True, quitAfter = False):
 #Controllers
 def build(*args, **kwargs):
 	"""Starts the GUI making process."""
+	global myEventCatalogue, MyEvent
+	global Controller
+
+	#Give custom events an event binder
+	myEventCatalogue.clear()
+	for subclass in MyEvent.__subclasses__():
+		subclass.makeBinder()
 
 	return Controller(*args, **kwargs)
 
@@ -227,81 +234,67 @@ class PriorityQueue(queue.PriorityQueue):
 		return super().get(*args, **kwargs)[2]
 
 #Event System
-class Event(object):
-	"""Used to create simple events.
-	Modified code from spassig on https://stackoverflow.com/questions/1092531/event-system-in-python
-	_________________________________________________________________________
+myEventCatalogue = {}
+class MyEvent(wx.PyCommandEvent):
+	"""Used to create my own events.
+	Modified code from: ObjectListView.DOLVEvent.py
+
+	Use: https://wiki.wxpython.org/CustomEventClasses
+	Use: https://wxpython.org/Phoenix/docs/html/wx.lib.newevent.html
 
 	Example Use:
-		class MyBroadcaster()
-			def __init__():
-				self.onChange = Event()
+		#Make event handler
+		class EVT_FINISHED(MyEvent):
+			def __init__(self, parent, **kwargs):
+				super().__init__(self, parent, canVeto = True)
 
-		theBroadcaster = MyBroadcaster()
+				self.page = kwargs.pop("page", None)
+				self.wizard = kwargs.pop("wizard", None)
 
-		#Add listener to the event
-		theBroadcaster.onChange += myFunction
+		#Bind event
+		self._betterBind(self.EVT_FINISHED, self.thing, myFunction, mode = 2)
 
-		#Remove listener from the event
-		theBroadcaster.onChange -= myFunction
+		#Trigger event manually
+		self.triggerEvent(self.EVT_FINISHED, page = self.currentPage, wizard = self)
 
-		#Fire event
-		theBroadcaster.onChange.fire()
-	_________________________________________________________________________
+		#Trigger event from other event
+		myWidget.setFunction_click(self.onTriggerEvent, myFunctionArgs = (self.EVT_FINISHED,))
+		myWidget.setFunction_click(self.onTriggerEvent, myFunctionKwargs = {"eventType": self.EVT_FINISHED, "okFunction": self.hideWindow, "okFunctionKwargs": {"modalId": wx.ID_OK}})
 	"""
 
-	def __init__(self):
-		self.__handlers = [] #(function, args, kwargs)
+	def __init__(self, source, parent, canVeto = False):
+		global myEventCatalogue
+		
+		wx.PyCommandEvent.__init__(self, myEventCatalogue[source.__class__].typeId, -1)
 
-	def __iadd__(self, myFunction):
-		answer = self.add(myFunction, myFunctionArgs = None, myFunctionKwargs = None)
-		return answer
+		self.veto = False
+		self.parent = parent
+		self.canVeto = canVeto
+		self.SetEventObject(parent.thing)
 
-	def __isub__(self, myFunction):
-		answer = self.sub(myFunction, myFunctionArgs = None, myFunctionKwargs = None)
-		return answer
+	def Veto(self, state = True):
+		self.veto = state and self.canVeto
 
-	def add(self, myFunction, myFunctionArgs = None, myFunctionKwargs = None):
-		self.__handlers.append((myFunction, myFunctionArgs, myFunctionKwargs))
-		return self
+	def IsVetoed(self):
+		return self.veto
 
-	def sub(self, myFunction, myFunctionArgs = None, myFunctionKwargs = None):
-		self.__handlers.remove((myFunction, myFunctionArgs, myFunctionKwargs))
-		return self
+	@classmethod
+	def makeBinder(cls, *, useId = True, returnEvent = False, returnBinder = False, **kwargs):
+		"""Creates an event binder for this event."""
 
-	def fire(self, *args, **kwargs):
-		def setupFunction(myFunctionList, myFunctionArgsList, myFunctionKwargsList):
-			"""Sets up a function to run."""
-			nonlocal self, args, kwargs
+		if (useId):
+			event, binder = wx.lib.newevent.NewCommandEvent(**kwargs)
+		else:
+			event, binder = wx.lib.newevent.NewEvent(**kwargs)
 
-			#Skip empty functions
-			if (myFunctionList is not None):
-				myFunctionList, myFunctionArgsList, myFunctionKwargsList = Utilities._formatFunctionInputList(None, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
-				
-				#Run each function
-				for i, myFunction in enumerate(myFunctionList):
-					#Skip empty functions
-					if (myFunction is not None):
-						myFunctionEvaluated, myFunctionArgs, myFunctionKwargs = Utilities._formatFunctionInput(None, i, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
+		myEventCatalogue[cls] = binder
 
-						#Combine with args and kwargs provided by fire()
-						if (myFunctionArgs is not None):
-							myFunctionArgsCombined = myFunctionArgs + [item for item in args]
-						else:
-							myFunctionArgsCombined = args
-
-						if (myFunctionKwargs is not None):
-							myFunctionKwargsCombined = {**myFunctionKwargs, **kwargs}
-						else:
-							myFunctionKwargsCombined = {**kwargs}
-
-						#Run function
-						myFunction(*myFunctionArgsCombined, **myFunctionKwargsCombined)
-
-		#########################################################
-
-		for myFunction, myFunctionArgs, myFunctionKwargs in self.__handlers:
-			setupFunction(myFunction, myFunctionArgs, myFunctionKwargs)
+		if (returnEvent):
+			if (returnBinder):
+				return event, binder
+			return event
+		elif (returnBinder):
+			return binder
 
 #Decorators
 def wrap_showError(makeDialog = True, fileName = "error_log.log"):
@@ -339,48 +332,6 @@ def wrap_showError(makeDialog = True, fileName = "error_log.log"):
 						myDialog.show()
 					except:
 						traceback.print_exc()
-
-			return answer
-		return wrapper
-	return decorator
-
-def wrap_eventInit(eventName = "event"):
-	def decorator(function):
-		@functools.wraps(function)
-		def wrapper(self, *args, **kwargs):
-			"""Adds a function to the event handler for this object.
-
-			Example Usage: @GUI_Maker.wrap_eventInit(eventName = "_event")
-			"""
-
-			#Ensure that an event object exists
-			if (not hasattr(self, eventName)):
-				setattr(self, eventName, Event())
-
-			answer = function(self, *args, **kwargs)
-
-			return answer
-		return wrapper
-	return decorator
-
-def wrap_eventAdd(myFunction, eventName = "event"):
-	def decorator(function):
-		@functools.wraps(function)
-		def wrapper(self, *args, **kwargs):
-			"""Adds a function to the event handler for this object.
-
-			Example Usage: @GUI_Maker.wrap_eventAdd(myFunction, eventName = "_event")
-			"""
-
-			#Ensure that an event object exists
-			if (not hasattr(self, eventName)):
-				setattr(self, eventName, Event())
-
-			#Add function to event object
-			event = getattr(self, eventName)
-			event.add(myFunction)
-
-			answer = function(self, *args, **kwargs)
 
 			return answer
 		return wrapper
@@ -868,7 +819,6 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 
 		answer = None
 
-
 		try:
 			#Skip empty functions
 			if (myFunction is not None):
@@ -1066,6 +1016,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		Example Input: _betterBind(wx.EVT_BUTTON, menuItem, "self.onExit", "Extra Information")
 		Example Input: _betterBind(wx.EVT_BUTTON, menuItem, ["self.toggleObjectWithLabel", "self.onQueueValue", ], [["myCheckBox", True], None])
 		"""
+		global MyEvent, myEventCatalogue
 
 		#Create the sub-function that does the binding
 		def bind(myFunctionEvaluated, myFunctionArgs, myFunctionKwargs):
@@ -1127,6 +1078,9 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 
 		#Skip empty functions
 		if (myFunctionList is not None):
+			if (isinstance(eventType, type) and issubclass(eventType, MyEvent)):
+				eventType = myEventCatalogue[eventType]
+
 			myFunctionList, myFunctionArgsList, myFunctionKwargsList = self._formatFunctionInputList(myFunctionList, myFunctionArgsList, myFunctionKwargsList)
 			#Run each function
 			for i, myFunction in enumerate(myFunctionList):
@@ -4753,6 +4707,209 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 
 		return handle
 
+	#Splitters
+	def _makeSplitterDouble(self, sizer_0 = {}, sizer_1 = {}, panel_0 = {}, panel_1 = {},
+
+		dividerSize = 1, dividerPosition = None, dividerGravity = 0.5, 
+		vertical = True, minimumSize = 20, 
+		
+		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None, 
+
+		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
+		label = None, parent = None, handle = None, myId = None, tabSkip = False, selected = False, flex = 0, flags = "c1"):
+		"""Creates two blank panels in next to each other. 
+		The border between double panels is dragable.
+
+		leftSize (int)        - The size of the left panel. (length, width)
+		rightSize (int)       - The size of the right panel. (length, width)
+			- If True: 'leftPanel' is the top panel; 'rightPanel' is the bottom panel
+			- If False: 'leftPanel' is the left panel; 'rightPanel' is the right panel
+		border (str)          - What style the border has. "simple", "raised", "sunken" or "none". Only the first two letters are necissary
+		dividerSize (int)     - How many pixels thick the dividing line is. Not available yet
+		dividerPosition (int) - How many pixels to the right the dividing line starts after the 'minimumSize' location
+			- If None: The line will start at the 'minimumSize' value
+		dividerGravity (int)  - From 0.0 to 1.1, how much the left (or top) panel grows with respect to the right (or bottom) panel upon resizing
+		vertical (bool)       - Determines the direction that the frames are split
+		minimumSize (int)     - How many pixels the smaller pane must have between its far edge and the splitter.
+		
+		initFunction (str)       - The function that is ran when the panel first appears
+		initFunctionArgs (any)   - The arguments for 'initFunction'
+		initFunctionKwargs (any) - The keyword arguments for 'initFunction'function
+
+		label (any)   - What this is catalogued as
+
+		Example Input: _makeSplitterDouble()
+		Example Input: _makeSplitterDouble(horizontal = False)
+		Example Input: _makeSplitterDouble(minimumSize = 100)
+		"""
+
+		handle = handle_Splitter()
+		handle.type = "Double"
+		handle._build(locals())
+
+		return handle
+
+	def _makeSplitterQuad(self, sizer_0 = {}, sizer_1 = {}, sizer_2 = {}, sizer_3 = {},
+
+		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
+
+		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
+		"""Creates four blank panels next to each other like a grid.
+		The borders between quad panels are dragable. The itersection point is also dragable.
+		The panel order is top left, top right, bottom left, bottom right.
+		
+		border (str) - What style the border has. "simple", "raised", "sunken" or "none". Only the first two letters are necissary
+		label (str)  - What this is called in the idCatalogue
+		
+		initFunction (str)       - The function that is ran when the panel first appears
+		initFunctionArgs (any)   - The arguments for 'initFunction'
+		initFunctionKwargs (any) - The keyword arguments for 'initFunction'function
+		tabTraversal (bool)      - If True: Hitting the Tab key will move the selected widget to the next one
+
+		Example Input: _makeSplitterQuad()
+		"""
+
+		handle = handle_Splitter()
+		handle.type = "Quad"
+		handle._build(locals())
+
+		return handle
+
+	def _makeSplitterPoly(self, panelNumbers, sizers = {},
+		dividerSize = 1, dividerPosition = None, dividerGravity = 0.5, vertical = False, minimumSize = 20, 
+
+		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
+
+		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
+		"""Creates any number of panels side by side of each other.
+		The borders between poly panels are dragable.
+
+		panelNumbers (list)   - How many panels to set side by side. [1, 2, 3, 4, ..., n]
+		splitterNumber (int)  - The index number of the splitter
+		horizontal (bool)     - Determines the that direction the frames are split
+									~ If True: 'leftPanel' is the top panel; 'rightPanel' is the bottom panel
+									~ If False: 'leftPanel' is the left panel; 'rightPanel' is the right panel
+		border (str)          - What style the border has. "simple", "raised", "sunken" or "none". Only the first two letters are necissary
+		dividerSize (int)     - How many pixels thick the dividing line is. Not available yet
+		dividerPosition (int) - How many pixels to the right the dividing line starts after the 'minimumSize' location
+									~ If None: The line will start at the 'minimumSize' value
+		dividerGravity (int)  - From 0.0 to 1.1, how much the left (or top) panel grows with respect to the right (or bottom) panel upon resizing
+		tabTraversal (bool)   - If True: Pressing [tab] will move the cursor to the next widget
+		horizontal (bool)     - Determines the that direction the frames are split
+		minimumSize (int)     - How many pixels the smaller pane must have between its far edge and the splitter.
+		label (str)           - What this is called in the idCatalogue
+		
+		initFunction (str)       - The function that is ran when the panel first appears
+		initFunctionArgs (any)   - The arguments for 'initFunction'
+		initFunctionKwargs (any) - The keyword arguments for 'initFunction'function
+		tabTraversal (bool)      - If True: Hitting the Tab key will move the selected widget to the next one
+
+		Example Input: _makeSplitterPoly([0, 1, 2, 3], 0)
+		Example Input: _makeSplitterPoly([0, 1, 2, 3], 0, panelSizes = [(200, 300), (300, 300), (100, 300)])
+		Example Input: _makeSplitterPoly([0, 1, 2, 3], 0, horizontal = False)
+		Example Input: _makeSplitterPoly([0, 1, 2, 3], 0, minimumSize = 100)
+		"""
+
+		handle = handle_Splitter()
+		handle.type = "Poly"
+		handle._build(locals())
+
+		return handle
+
+	#Notebooks
+	def _makeNotebook(self, label = None, tabSide = "top",
+		fixedWidth = False, multiLine = False, padding = None, reduceFlicker = True,
+
+		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
+		postPageChangeFunction = None, postPageChangeFunctionArgs = None, postPageChangeFunctionKwargs = None,
+		prePageChangeFunction = None, prePageChangeFunctionArgs = None, prePageChangeFunctionKwargs = None,
+
+		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, size = wx.DefaultSize, position = wx.DefaultPosition,
+		parent = None, handle = None, myId = None, tabSkip = False):
+		"""Creates a blank notebook.
+
+		label (str)        - What this is called in the idCatalogue
+		flags (list)       - A list of strings for which flag to add to the sizer
+
+		tabSide (str)     - Determines which side of the panel the tabs apear on. Only the first letter is needed
+			- "top": Tabs will be placed on the top (north) side of the panel
+			- "bottom": Tabs will be placed on the bottom (south) side of the panel
+			- "left": Tabs will be placed on the left (west) side of the panel
+			- "right": Tabs will be placed on the right (east) side of the panel
+		fixedWidth (bool) - Determines how tab width is determined (windows only)
+			- If True: All tabs will be the same width
+			- If False: Tab width will be differnet from eachother
+		multiLine (bool) - Determines if there can be several rows of tabs
+			- If True: There can be multiple rows
+			- If False: There cannot be multiple rows
+		padding (tuple) - Determines if there is empty space around all of the tab's icon and text in the form (left and right, top and bottom)
+			- If None or -1: There is no empty spage
+			- If not None or -1: This is how many pixels of empty space there will be
+
+		initFunction (str)       - The function that is ran when the panel first appears
+		initFunctionArgs (any)   - The arguments for 'initFunction'
+		initFunctionKwargs (any) - The keyword arguments for 'initFunction'function
+
+		Example Input: _makeNotebook()
+		Example Input: _makeNotebook("myNotebook")
+		Example Input: _makeNotebook(padding = (5, 5))
+		Example Input: _makeNotebook(padding = (5, None))
+		"""
+
+		handle = handle_Notebook_Simple()
+		handle.type = "Notebook"
+		handle._build(locals())
+
+		return handle
+
+	def _makeNotebookAui(self, label = None,
+
+		tabSide = "top", tabSplit = True, tabMove = True, tabBump = False, 
+		tabSmart = True, tabOrderAccess = False, tabFloat = False, 
+		addScrollButton = False, addListDrop = None, addCloseButton = None, 
+		closeOnLeft = False, middleClickClose = False, fixedWidth = False, drawFocus = True, 
+
+		initFunction = None, initFunctionArgs = None, initFunctionKwargs = None,
+		postPageChangeFunction = None, postPageChangeFunctionArgs = None, postPageChangeFunctionKwargs = None,
+		prePageChangeFunction = None, prePageChangeFunctionArgs = None, prePageChangeFunctionKwargs = None,
+
+		handle = None, parent = None):
+		"""Creates a blank notebook with dockable pages.
+
+		label (str)        - What this is called in the idCatalogue
+		flags (list)       - A list of strings for which flag to add to the sizer
+
+		tabSide (str)     - Determines which side of the panel the tabs apear on. Only the first letter is needed
+			- "top": Tabs will be placed on the top (north) side of the panel
+			- "bottom": Tabs will be placed on the bottom (south) side of the panel
+			- "left": Tabs will be placed on the left (west) side of the panel
+			- "right": Tabs will be placed on the right (east) side of the panel
+		fixedWidth (bool) - Determines how tab width is determined (windows only)
+			- If True: All tabs will be the same width
+			- If False: Tab width will be 
+		multiLine (bool) - Determines if there can be several rows of tabs
+			- If True: There can be multiple rows
+			- If False: There cannot be multiple rows
+		padding (tuple) - Determines if there is empty space around all of the tab's icon and text in the form (left and right, top and bottom)
+			- If None or -1: There is no empty spage
+			- If not None or -1: This is how many pixels of empty space there will be
+
+		initFunction (str)       - The function that is ran when the panel first appears
+		initFunctionArgs (any)   - The arguments for 'initFunction'
+		initFunctionKwargs (any) - The keyword arguments for 'initFunction'function
+
+		Example Input: _makeNotebookAui()
+		Example Input: _makeNotebookAui("myNotebook")
+		"""
+
+		handle = handle_Notebook_Aui()
+		handle.type = "AuiNotebook"
+		handle._build(locals())
+
+		return handle
+
 	#Dialog Boxes
 	def makeDialogMessage(self, text = "", title = "", stayOnTop = False, icon = None, 
 		addYes = False, addOk = False, addCancel = False, addHelp = False, default = False,
@@ -6021,6 +6178,39 @@ class handle_Base(Utilities, CommonEventFunctions):
 
 		return self.nestedParent
 
+	def onTriggerEvent(self, event, *args, **kwargs):
+		"""A wxEvent version of triggerEvent().
+
+		Example Use: myWidget.setFunction_click(self.onTriggerEvent, myFunctionArgs = (self.EVT_FINISHED,))
+		Example Use: myWidget.setFunction_click(self.onTriggerEvent, myFunctionKwargs = {"eventType": self.EVT_FINISHED, "okFunction": self.hideWindow, "okFunctionKwargs": {"modalId": wx.ID_OK}})
+		"""
+
+		self.triggerEvent(*args, **kwargs)
+		event.Skip()
+
+	def triggerEvent(self, eventType = None, *, returnEvent = False,
+		okFunction = None, okFunctionArgs = None, okFunctionKwargs = None,
+		vetoFunction = None, vetoFunctionArgs = None, vetoFunctionKwargs = None, **kwargs):
+		"""Allows the user to easily trigger an event remotely.
+
+		Example Input: triggerEvent(self.EVT_PAGE_CHANGED)
+		Example Input: triggerEvent(self.EVT_PAGE_CHANGING, returnEvent = True, fromNode = self.currentNode, toNode = node)
+		Example Input: triggerEvent(self.EVT_FINISHED, okFunction = self.hideWindow, okFunctionKwargs = {"modalId": wx.ID_OK})
+		"""
+
+		assert eventType
+		newEvent = eventType(self, **kwargs)
+		self.thing.GetEventHandler().ProcessEvent(newEvent)
+		if (returnEvent):
+			return newEvent
+
+		if (newEvent.IsVetoed()):
+			self.runMyFunction(vetoFunction, vetoFunctionArgs, vetoFunctionKwargs)
+			return False
+
+		self.runMyFunction(okFunction, okFunctionArgs, okFunctionKwargs)
+		return True
+
 	#Getters
 	def getLabel(self, event = None):
 		"""Returns the label for this object."""
@@ -7167,7 +7357,7 @@ class handle_Widget_Base(handle_Base):
 
 		Example Input: show()
 		"""
-		
+
 		self.setShow(True)
 
 	def hide(self, event = None):
@@ -18221,6 +18411,225 @@ class handle_Sizer(handle_Container_Base):
 
 		return handle
 
+class handle_SizerProxy(handle_Container_Base):
+	"""A handle for working with a wxSizer."""
+
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize inherited classes
+		handle_Sizer.__init__(self)
+
+		#Defaults
+		self.mySizer = None
+
+	def __str__(self):
+		"""Gives diagnostic information on the Sizer when it is printed out."""
+
+		output = handle_Sizer.__str__(self)
+		
+		if (self.mySizer is not None):
+			output += f"-- Sizer Proxy: {id(self.mySizer)}\n"
+		return output
+
+	#Hook functions
+	@MyUtilities.common.setDocstring(handle_Sizer.growFlexColumn)
+	def growFlexColumn(self, *args, **kwargs):
+		return self.mySizer.growFlexColumn(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.growFlexRow)
+	def growFlexRow(self, *args, **kwargs):
+		return self.mySizer.growFlexRow(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.growFlexColumnAll)
+	def growFlexColumnAll(self, *args, **kwargs):
+		return self.mySizer.growFlexColumnAll(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.growFlexRowAll)
+	def growFlexRowAll(self, *args, **kwargs):
+		return self.mySizer.growFlexRowAll(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer._addFinalFunction)
+	def _addFinalFunction(self, *args, **kwargs):
+		return self.mySizer._addFinalFunction(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addKeyPress)
+	def addKeyPress(self, *args, **kwargs):
+		return self.mySizer.addKeyPress(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addText)
+	def addText(self, *args, **kwargs):
+		return self.mySizer.addText(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addHtml)
+	def addHtml(self, *args, **kwargs):
+		return self.mySizer.addHtml(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addHyperlink)
+	def addHyperlink(self, *args, **kwargs):
+		return self.mySizer.addHyperlink(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addEmpty)
+	def addEmpty(self, *args, **kwargs):
+		return self.mySizer.addEmpty(*args, **kwargs)
+
+	def addLine(self, *args, **kwargs):
+		return self.mySizer.addLine(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addListDrop)
+	def addListDrop(self, *args, **kwargs):
+		return self.mySizer.addListDrop(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addListFull)
+	def addListFull(self, *args, **kwargs):
+		return self.mySizer.addListFull(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addListTree)
+	def addListTree(self, *args, **kwargs):
+		return self.mySizer.addListTree(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addInputSlider)
+	def addInputSlider(self, *args, **kwargs):
+		return self.mySizer.addInputSlider(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addInputBox)
+	def addInputBox(self, *args, **kwargs):
+		return self.mySizer.addInputBox(*args, **kwargs)
+
+	def addInputSearch(self, *args, **kwargs):
+		return self.mySizer.addInputSearch(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addInputSpinner)
+	def addInputSpinner(self, *args, **kwargs):
+		return self.mySizer.addInputSpinner(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addButton)
+	def addButton(self, *args, **kwargs):
+		return self.mySizer.addButton(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addButtonList)
+	def addButtonList(self, *args, **kwargs):
+		return self.mySizer.addButtonList(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addButtonToggle)
+	def addButtonToggle(self, *args, **kwargs):
+		return self.mySizer.addButtonToggle(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addButtonCheck)
+	def addButtonCheck(self, *args, **kwargs):
+		return self.mySizer.addButtonCheck(*args, **kwargs)
+
+	def addButtonCheckList(self, *args, **kwargs):
+		return self.mySizer.addButtonCheckList(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addButtonRadio)
+	def addButtonRadio(self, *args, **kwargs):
+		return self.mySizer.addButtonRadio(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addButtonRadioBox)
+	def addButtonRadioBox(self, *args, **kwargs):
+		return self.mySizer.addButtonRadioBox(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addButtonHelp)
+	def addButtonHelp(self, *args, **kwargs):
+		return self.mySizer.addButtonHelp(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addButtonImage)
+	def addButtonImage(self, *args, **kwargs):
+		return self.mySizer.addButtonImage(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addImage)
+	def addImage(self, *args, **kwargs):
+		return self.mySizer.addImage(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addProgressBar)
+	def addProgressBar(self, *args, **kwargs):
+		return self.mySizer.addProgressBar(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addToolBar)
+	def addToolBar(self, *args, **kwargs):
+		return self.mySizer.addToolBar(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addPickerColor)
+	def addPickerColor(self, *args, **kwargs):
+		return self.mySizer.addPickerColor(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addPickerFont)
+	def addPickerFont(self, *args, **kwargs):
+		return self.mySizer.addPickerFont(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addPickerFile)
+	def addPickerFile(self, *args, **kwargs):
+		return self.mySizer.addPickerFile(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addPickerFileWindow)
+	def addPickerFileWindow(self, *args, **kwargs):
+		return self.mySizer.addPickerFileWindow(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addPickerTime)
+	def addPickerTime(self, *args, **kwargs):
+		return self.mySizer.addPickerTime(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addPickerDate)
+	def addPickerDate(self, *args, **kwargs):
+		return self.mySizer.addPickerDate(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addPickerDateWindow)
+	def addPickerDateWindow(self, *args, **kwargs):
+		return self.mySizer.addPickerDateWindow(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addCanvas)
+	def addCanvas(self, *args, **kwargs):
+		return self.mySizer.addCanvas(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addTable)
+	def addTable(self, *args, **kwargs):
+		return self.mySizer.addTable(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addSplitterDouble)
+	def addSplitterDouble(self, *args, **kwargs):
+		return self.mySizer.addSplitterDouble(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addSplitterQuad)
+	def addSplitterQuad(self, *args, **kwargs):
+		return self.mySizer.addSplitterQuad(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addSplitterPoly)
+	def addSplitterPoly(self, *args, **kwargs):
+		return self.mySizer.addSplitterPoly(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addNotebook)
+	def addNotebook(self, *args, **kwargs):
+		return self.mySizer.addNotebook(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addNotebookAui)
+	def addNotebookAui(self, *args, **kwargs):
+		return self.mySizer.addNotebookAui(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addSizerBox)
+	def addSizerBox(self, *args, **kwargs):
+		return self.mySizer.addSizerBox(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addSizerText)
+	def addSizerText(self, *args, **kwargs):
+		return self.mySizer.addSizerText(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addSizerGrid)
+	def addSizerGrid(self, *args, **kwargs):
+		return self.mySizer.addSizerGrid(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addSizerGridFlex)
+	def addSizerGridFlex(self, *args, **kwargs):
+		return self.mySizer.addSizerGridFlex(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addSizerGridBag)
+	def addSizerGridBag(self, *args, **kwargs):
+		return self.mySizer.addSizerGridBag(*args, **kwargs)
+
+	@MyUtilities.common.setDocstring(handle_Sizer.addSizerWrap)
+	def addSizerWrap(self, *args, **kwargs):
+		return self.mySizer.addSizerWrap(*args, **kwargs)
+
 class handle_Dialog(handle_Base):
 	"""A handle for working with a wxDialog widget.
 
@@ -20248,7 +20657,7 @@ class handle_Window(handle_Container_Base):
 		self.showWindow(*args, **kwargs)
 		event.Skip()
 
-	def hideWindow(self, event = None):
+	def hideWindow(self, event = None, modalId = None):
 		"""Hides the window from view, but does not close it.
 		Note: This window continues to run and take up memmory. Local variables are still active.
 
@@ -20264,10 +20673,12 @@ class handle_Window(handle_Container_Base):
 
 		if (self.visible):
 			if (isinstance(self.thing, wx.Dialog)):
-				if (event is None):
-					errorMessage = f"Must either use onHideWindow() or pass 'event' to hideWindow() to hide a custom dialog for {self.__repr__()}"
-					raise ValueError(errorMessage)
-				self.thing.EndModal(event.GetEventObject().GetId())
+				if (modalId is None):
+					if (event is None):
+						errorMessage = f"Must either use onHideWindow() or pass either 'event' or 'modalId' to hideWindow() to hide a custom dialog for {self.__repr__()}"
+						raise ValueError(errorMessage)
+					modalId = event.GetEventObject().GetId()
+				self.thing.EndModal(modalId)
 			else:
 				self.thing.Hide()
 			self.visible = False
@@ -21824,7 +22235,7 @@ class handle_Wizard(handle_Window):
 				self.mainPanel = self._makePanel(tabTraversal = tabTraversal)
 				self._finalNest(self.mainPanel)
 
-			with self._makeSizerBox() as rootSizer:
+			with self._makeSizerGridFlex(rows = 1000, columns = 1) as rootSizer:
 				self._finalNest(rootSizer)
 				self.mainSizer = rootSizer.addSizerBox(flex = 1)
 
@@ -21838,10 +22249,12 @@ class handle_Wizard(handle_Window):
 						self.button_previous = myWidget
 						myWidget.setFunction_click(self.onPreviousPage)
 
-					with buttonSizer.addButton("Finish", myId = wx.ID_OK) as myWidget:
+					with buttonSizer.addButton("Finish", myId = wx.ID_ANY) as myWidget:
 						self.button_finish = myWidget
+						myWidget.setFunction_click(self.onTriggerEvent, myFunctionKwargs = {"eventType": self.EVT_FINISHED, "okFunction": self.hideWindow, "okFunctionKwargs": {"modalId": wx.ID_OK}})
 
-					buttonSizer.addButton("Cancel", myId = wx.ID_CANCEL)
+					with buttonSizer.addButton("Cancel", myId = wx.ID_ANY) as myWidget:
+						myWidget.setFunction_click(self.onTriggerEvent, myFunctionKwargs = {"eventType": self.EVT_CANCEL, "okFunction": self.hideWindow, "okFunctionKwargs": {"modalId": wx.ID_CANCEL}})
 
 				if (panel):
 					self.mainPanel.thing.SetSizer(rootSizer.thing)
@@ -21897,7 +22310,7 @@ class handle_Wizard(handle_Window):
 		self.showPage(*args, **kwargs)
 		event.Skip()
 
-	def showPage(self, branch = None, node = None, default = None):
+	def showPage(self, branch = None, node = None, default = None, triggerEvent = True, direction = None):
 		"""Shows the page with the given node.
 
 		Example Input: showPage()
@@ -21918,19 +22331,25 @@ class handle_Wizard(handle_Window):
 
 		#####################
 
+		node = node or getNode(self.currentNode or self.pageNode)
+
+		if (triggerEvent):
+			event = self.triggerEvent(self.EVT_PAGE_CHANGING, returnEvent = True, fromNode = self.currentNode, toNode = node, direction = direction)
+			if (event.IsVetoed()):
+				return
+
 		self.mainSizer.hide()
 		self.choiceSizer.hide()
 
-		self.currentNode = node or getNode(self.currentNode or self.pageNode)
-
-		self.choiceSizer.hide()
+		self.currentNode = node
 		for myWidget in self.currentNode.handle.pageElements:
 			myWidget.show()
 
-		self.mainPanel.thing.Layout()
-
 		self.button_previous.setEnable(self.currentNode.parent.parent is not None)
 		self.button_finish.setEnable(not self.currentNode.children)
+
+		self.updateWindow()
+		self.triggerEvent(self.EVT_PAGE_CHANGED, node = node, direction = direction)
 
 	def onNextPage(self, event, *args, **kwargs):
 		"""A wxEvent version of nextPage()."""
@@ -21950,7 +22369,11 @@ class handle_Wizard(handle_Window):
 		Example Input: nextPage("lorem")
 		"""
 
-		return self.showPage(branch = branch)
+		event = self.triggerEvent(self.EVT_PAGE_NEXT, returnEvent = True, node = self.currentNode, branch = branch)
+		if (event.IsVetoed()):
+			return
+
+		return self.showPage(branch = branch, direction = True)
 
 	def onPreviousPage(self, event, *args, **kwargs):
 		"""A wxEvent version of previousPage()."""
@@ -21964,35 +22387,69 @@ class handle_Wizard(handle_Window):
 		Example Input: previousPage()
 		"""
 
-		node = self.currentNode.parent
-		# if (node is None):
-		# 	return
+		event = self.triggerEvent(self.EVT_PAGE_PREVIOUS, returnEvent = True, node = self.currentNode)
+		if (event.IsVetoed()):
+			return
 
-		return self.showPage(node = node)
+		return self.showPage(node = self.currentNode.parent, direction = False)
 
-	# def setFunction_pageChange(self, *args, **kwargs):
-	# 	return self.setFunction_postPageChange(*args, **kwargs)
+	def setFunction_pageChange(self, *args, **kwargs):
+		return self.setFunction_postPageChange(*args, **kwargs)
 
-	# def setFunction_prePrePageChange(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-	# 	self._betterBind(wx.adv.EVT_WIZARD_BEFORE_PAGE_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+	def setFunction_prePageChange(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(self.EVT_PAGE_CHANGING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
-	# def setFunction_prePageChange(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-	# 	self._betterBind(wx.adv.EVT_WIZARD_PAGE_CHANGING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+	def setFunction_postPageChange(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(self.EVT_PAGE_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
-	# def setFunction_postPageChange(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-	# 	self._betterBind(wx.adv.EVT_WIZARD_PAGE_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+	def setFunction_nextPage(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(self.EVT_PAGE_NEXT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
-	# def setFunction_pageShow(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-	# 	self._betterBind(wx.adv.EVT_WIZARD_PAGE_SHOWN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+	def setFunction_previousPage(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(self.EVT_PAGE_PREVIOUS, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
-	# def setFunction_cancel(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-	# 	self._betterBind(wx.adv.EVT_WIZARD_CANCEL, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+	def setFunction_cancel(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(self.EVT_CANCEL, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
-	# def setFunction_help(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-	# 	self._betterBind(wx.adv.EVT_WIZARD_HELP, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+	def setFunction_finish(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(self.EVT_FINISHED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
-	# def setFunction_finish(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-	# 	self._betterBind(wx.adv.EVT_WIZARD_FINISHED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+	#Events
+	class EVT_FINISHED(MyEvent):
+		def __init__(self, parent, **kwargs):
+			super().__init__(self, parent, canVeto = True)
+
+	class EVT_CANCEL(MyEvent):
+		def __init__(self, parent, **kwargs):
+			super().__init__(self, parent, canVeto = True)
+
+	class EVT_PAGE_CHANGING(MyEvent):
+		def __init__(self, parent, **kwargs):
+			super().__init__(self, parent, canVeto = True)
+
+			self.toNode = kwargs.pop("toNode", None)
+			self.fromNode = kwargs.pop("fromNode", None)
+			self.direction = kwargs.pop("direction", None)
+
+	class EVT_PAGE_CHANGED(MyEvent):
+		def __init__(self, parent, **kwargs):
+			super().__init__(self, parent, canVeto = False)
+
+			self.node = kwargs.pop("node", None)
+			self.direction = kwargs.pop("direction", None)
+
+	class EVT_PAGE_NEXT(MyEvent):
+		def __init__(self, parent, **kwargs):
+			super().__init__(self, parent, canVeto = True)
+
+			self.node = kwargs.pop("node", None)
+			self.branch = kwargs.pop("branch", None)
+
+	class EVT_PAGE_PREVIOUS(MyEvent):
+		def __init__(self, parent, **kwargs):
+			super().__init__(self, parent, canVeto = True)
+
+			self.node = kwargs.pop("node", None)
 
 class handle_NavigatorBase():
 	"""COntains functions for tab traversal"""
@@ -22004,9 +22461,9 @@ class handle_NavigatorBase():
 		self.tab_skipSet = set()
 		self.tab_direction = True
 
-	# def _postBuild(self, *args, **kwargs):
-	# 	self._betterBind(wx.EVT_NAVIGATION_KEY, self.thing, self._onTabTraversal_panel, mode = 2)
-	# 	return super()._postBuild(*args, **kwargs)
+	def _postBuild(self, *args, **kwargs):
+		self._betterBind(wx.EVT_NAVIGATION_KEY, self.thing, self._onTabTraversal_panel, mode = 2)
+		return super()._postBuild(*args, **kwargs)
 
 	def _onTabTraversal_panel(self, event):
 		"""Helps to skip widgets that are marked to be skipped during tab traversal."""
@@ -22138,6 +22595,41 @@ class handle_Panel(handle_NavigatorBase, handle_Container_Base):
 		"""Changes the function that runs when a menu item is selected."""
 
 		self._betterBind(wx.EVT_LEFT_DOWN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	def toggleShow(self, *args, **kwargs):
+		"""Overridden to use the panel instead of the objects nested in it."""
+		
+		return handle_Widget_Base.toggleShow(self, *args, **kwargs)
+
+	def setShow(self, *args, **kwargs):
+		"""Overridden to use the panel instead of the objects nested in it."""
+		
+		return handle_Widget_Base.setShow(self, *args, **kwargs)
+
+	def setHide(self, *args, **kwargs):
+		"""Overridden to use the panel instead of the objects nested in it."""
+		
+		return handle_Widget_Base.setHide(self, *args, **kwargs)
+
+	def show(self, *args, **kwargs):
+		"""Overridden to use the panel instead of the objects nested in it."""
+		
+		return handle_Widget_Base.show(self, *args, **kwargs)
+
+	def hide(self, *args, **kwargs):
+		"""Overridden to use the panel instead of the objects nested in it."""
+		
+		return handle_Widget_Base.hide(self, *args, **kwargs)
+
+	def checkShown(self, *args, **kwargs):
+		"""Overridden to use the panel instead of the objects nested in it."""
+		
+		return handle_Widget_Base.checkShown(self, *args, **kwargs)
+
+	def checkHidden(self, *args, **kwargs):
+		"""Overridden to use the panel instead of the objects nested in it."""
+
+		return handle_Widget_Base.checkHidden(self, *args, **kwargs)
 
 class handle_Splitter(handle_Container_Base):
 	"""A handle for working with a wxSplitter."""
@@ -23264,19 +23756,18 @@ class handle_Notebook_Aui(handle_Notebook_Simple):
 
 		warnings.warn(f"Add {self.type} to setFunction_rightClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
-class handle_Base_NotebookPage(handle_Sizer):
+class handle_Base_NotebookPage(handle_SizerProxy, handle_Container_Base):
 	"""A handle for working with a wxNotebook."""
 
 	def __init__(self):
 		"""Initializes defaults."""
 
 		#Initialize inherited classes
-		# handle_Container_Base.__init__(self)
-		handle_Sizer.__init__(self)
+		handle_SizerProxy.__init__(self)
+		handle_Container_Base.__init__(self)
 
 		self.thing = None
 		self.myPanel = None
-		self.mySizer = None
 		self.myManager = None
 		self.text = None
 		self.icon = None
@@ -23295,40 +23786,6 @@ class handle_Base_NotebookPage(handle_Sizer):
 			output += f"-- icon: {self.icon}\n"
 
 		return output
-
-	# def __enter__(self):
-	# 	"""Allows the user to use a with statement to build the GUI."""
-
-	# 	handle = self.mySizer.__enter__()
-
-	# 	return handle
-
-	# def __exit__(self, exc_type, exc_value, traceback):
-	# 	"""Allows the user to use a with statement to build the GUI."""
-		
-	# 	state = self.mySizer.__exit__(exc_type, exc_value, traceback)
-	# 	return state
-
-	# def __iter__(self):
-	# 	"""Returns an iterator object that provides the nested objects."""
-		
-	# 	iterator = self.mySizer.__iter__()
-	# 	return iterator
-
-	# def __getitem__(self, key):
-	# 	"""Allows the user to index the handle to get nested elements with labels."""
-
-	# 	return self.mySizer.__getitem__(key)
-
-	# def __setitem__(self, key, value):
-	# 	"""Allows the user to index the handle to get nested elements with labels."""
-
-	# 	self.mySizer.__setitem__(key, value)
-
-	# def __delitem__(self, key):
-	# 	"""Allows the user to index the handle to get nested elements with labels."""
-
-	# 	self.mySizer.__delitem__(key)
 
 	@contextlib.contextmanager
 	def _build(self, argument_catalogue, nestPanel = True, nestSizer = True, preBuild = True):
@@ -25429,4 +25886,3 @@ class User_Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensu
 		"""
 
 		return Utilities.makeDialogCustom(None, *args, **kwargs)
-
