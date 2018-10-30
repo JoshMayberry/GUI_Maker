@@ -3043,6 +3043,13 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		window = self.get(label, typeList = [handle_Window], subTypeList = ["dialog"])
 		return window
 
+	def getWizard(self, label = None):
+		if ((isinstance(label, handle_Window)) and (label.type.lower() == "wizard")):
+			return label
+
+		window = self.get(label, typeList = [handle_Window], subTypeList = ["wizard"])
+		return window
+
 	def getTable(self, label = None):
 		table = self.get(label, typeList = [handle_WidgetTable])
 		return table
@@ -3532,14 +3539,15 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 
 		return handle
 	
-	def _makeInputBox(self, text = None, maxLength = None, 
-		password = False, readOnly = False, tab = False, wrap = None, ipAddress = False,
+	def _makeInputBox(self, text = None, maxLength = None, wrap = None, 
 		autoComplete = None, caseSensitive = False, alwaysShow = False,
+		password = False, readOnly = False, tab = False, ipAddress = False,
+		onSelect_hide = False, onSelect_update = False, onKey_update = False,
 		
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 		enterFunction = None, enterFunctionArgs = None, enterFunctionKwargs = None, 
-		postEditFunction = None, postEditFunctionArgs = None, postEditFunctionKwargs = None, 
 		preEditFunction = None, preEditFunctionArgs = None, preEditFunctionKwargs = None, 
+		postEditFunction = None, postEditFunctionArgs = None, postEditFunctionKwargs = None, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
 		label = None, parent = None, handle = None, myId = None, tabSkip = False):
@@ -6311,6 +6319,15 @@ class handle_Base(Utilities, CommonEventFunctions):
 		self.thing.SetSize(newSize)
 
 	#Etc
+	@contextlib.contextmanager
+	def frozen(self):
+		try:
+			self.thing.Freeze()
+			yield
+
+		finally:
+			self.thing.Thaw()
+
 	def setFocus(self):
 		"""Sets the focus to this handle's wx object."""
 
@@ -9693,6 +9710,7 @@ class handle_WidgetInput(handle_Widget_Base):
 			text, ipAddress, maxLength = self._getArguments(argument_catalogue, ["text", "ipAddress", "maxLength"])
 			password, readOnly, tab, wrap = self._getArguments(argument_catalogue, ["password", "readOnly", "tab", "wrap"])
 			autoComplete, caseSensitive, alwaysShow = self._getArguments(argument_catalogue, ["autoComplete", "caseSensitive", "alwaysShow"])
+			onSelect_hide, onSelect_update, onKey_update = self._getArguments(argument_catalogue, ["onSelect_hide", "onSelect_update", "onKey_update"])
 
 			#Prepare style attributes
 			style = []
@@ -9724,7 +9742,9 @@ class handle_WidgetInput(handle_Widget_Base):
 			#Create the thing to put in the grid
 			if (autoComplete):
 				self.subType = "autoComplete"
-				self.thing = MyUtilities.wxPython.AutocompleteTextCtrl(self.parent, id = myId, value = text, style = style, caseSensitive = caseSensitive, alwaysShow = alwaysShow)
+				self.thing = MyUtilities.wxPython.AutocompleteTextCtrl(self.parent, id = myId, 
+					value = text, style = style, caseSensitive = caseSensitive, alwaysShow = alwaysShow, 
+					onSelect_hide = onSelect_hide, onSelect_update = onSelect_update, onKey_update = onKey_update)
 
 				#Set maximum length
 				if (maxLength is not None):
@@ -20955,7 +20975,7 @@ class handle_Window(handle_Container_Base):
 		"""
 
 		if (self.statusBar is None):
-			if (self.type.lower() == "dialog"):
+			if (self.type.lower() != "frame"):
 				if (self.mainPanel is not None):
 					self.statusBar = wx.StatusBar(self.mainPanel.thing)
 					rootSizer = self.mainPanel.thing.GetSizer()
@@ -22267,6 +22287,7 @@ class handle_Wizard(handle_Window):
 
 	def start(self):
 		self.reset()
+
 		with self.makeDialogCustom(myFrame = self) as myDialog:
 			pass
 
@@ -23110,23 +23131,6 @@ class handle_AuiManager(handle_Container_Base):
 		paneInfo.Right()
 		self.thing.Update()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 class handle_Base_Notebook(handle_Container_Base):
 	"""A handle for working with notebook-like objects"""
 
@@ -23164,26 +23168,27 @@ class handle_Notebook_Simple(handle_Base_Notebook):
 					errorMessage = "'tabSide' must be 'top', 'bottom', 'left', or 'right'"
 					raise KeyError(errorMessage)
 
+			style = [eval(flags, {'__builtins__': None, "wx": wx}, {})]
 			if (tabSide[0] == "t"):
-				flags += "|wx.NB_TOP"
+				style.append(wx.NB_TOP)
 			elif (tabSide[0] == "b"):
-				flags += "|wx.NB_BOTTOM"
+				style.append(wx.NB_BOTTOM)
 			elif (tabSide[0] == "l"):
-				flags += "|wx.NB_LEFT"
+				style.append(wx.NB_LEFT)
 			else:
-				flags += "|wx.NB_RIGHT"
+				style.append(wx.NB_RIGHT)
 
 			if (reduceFlicker):
-				flags += "|wx.CLIP_CHILDREN|wx.NB_NOPAGETHEME"
+				style.extend((wx.CLIP_CHILDREN, wx.NB_NOPAGETHEME))
 			if (fixedWidth):
-				flags += "|wx.NB_FIXEDWIDTH"
+				style.append(wx.NB_FIXEDWIDTH)
 			if (multiLine):
-				flags += "|wx.NB_MULTILINE"
+				style.append(wx.NB_MULTILINE)
 
 			myId = self._getId(argument_catalogue)
 
 			#Create notebook object
-			self.thing = wx.Notebook(self.parent.thing, id = myId, size = size, pos = position, style = eval(flags, {'__builtins__': None, "wx": wx}, {}))
+			self.thing = wx.Notebook(self.parent.thing, id = myId, size = size, pos = position, style = functools.reduce(operator.ior, style or (0,)))
 
 			#Bind Functions
 			self.parent._betterBind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.thing, self.onRefresh)
@@ -23260,7 +23265,7 @@ class handle_Notebook_Simple(handle_Base_Notebook):
 		insert = None, default = False, icon_path = None, icon_internal = False,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
-		label = None, parent = None, handle = None, tabSkip = False):
+		label = None, parent = None, handle = None, tabSkip = False, nestPanel = True, nestSizer = True):
 		"""Adds a page to the notebook.
 		Lists can be given to add multiple pages. They are added in order from left to right.
 		If only a 'pageLabel' is a list, they will all have the same 'text'.
@@ -23305,7 +23310,7 @@ class handle_Notebook_Simple(handle_Base_Notebook):
 				#Get the object
 				handle = handle_NotebookPage_Simple()
 				handle.type = "notebookPage"
-				handle._build({**kwargs, **locals(), "parent": self})
+				handle._build({**kwargs, **locals(), "parent": self}, nestPanel = nestPanel, nestSizer = nestSizer)
 
 				#Determine if there is an icon on the tab
 				if (handle.icon is not None):
@@ -23505,7 +23510,8 @@ class handle_Notebook_Simple(handle_Base_Notebook):
 		"""
 
 		sourcePage = self.getPage(pageLabel)
-		newPage = self.addPage(*args, panel = sourcePage.myPanel, sizer = sourcePage.mySizer, **kwargs)
+		newPage = self.addPage(*args, panel = sourcePage.myPanel, sizer = sourcePage.mySizer, nestPanel = False, nestSizer = False, **kwargs)
+		# newPage = self.addPage(*args, panel = sourcePage.myPanel, sizer = sourcePage.mySizer, **kwargs)
 
 		sourcePage.hasClone = True
 		newPage.hasClone = True
@@ -23788,7 +23794,7 @@ class handle_Base_NotebookPage(handle_SizerProxy, handle_Container_Base):
 		return output
 
 	@contextlib.contextmanager
-	def _build(self, argument_catalogue, nestPanel = True, nestSizer = True, preBuild = True):
+	def _build(self, argument_catalogue, nestPanel = True, nestSizer = True, preBuild = True, useRootParent = False):
 		"""Adds a page to the notebook.
 		Lists can be given to add multiple pages. They are added in order from left to right.
 		If only a 'pageLabel' is a list, they will all have the same 'text'.
@@ -23816,7 +23822,10 @@ class handle_Base_NotebookPage(handle_SizerProxy, handle_Container_Base):
 
 			#Setup Panel
 			if (isinstance(panel, dict)):
-				panel["parent"] = self.myWindow.mainPanel
+				if (useRootParent):
+					panel["parent"] = self.myWindow.mainPanel
+				else:
+					panel["parent"] = self.parent
 				self.myPanel = self._readBuildInstructions_panel(self, 0, panel)
 			else:
 				self.myPanel = panel
@@ -23870,7 +23879,7 @@ class handle_Base_NotebookPage(handle_SizerProxy, handle_Container_Base):
 
 	def changePage(self, *args, **kwargs):
 		
-		returnself.parent.changePage(self, *args, **kwargs)
+		return self.parent.changePage(self, *args, **kwargs)
 
 	def getIndex(self, *args, **kwargs):
 		"""Returns the page index for a page with the given label in the given notebook.
@@ -23920,7 +23929,7 @@ class handle_NotebookPage_Simple(handle_Base_NotebookPage):
 
 		return output
 
-	def _build(self, argument_catalogue):
+	def _build(self, argument_catalogue, **kwargs):
 		"""Adds a page to the notebook.
 		Lists can be given to add multiple pages. They are added in order from left to right.
 		If only a 'pageLabel' is a list, they will all have the same 'text'.
@@ -23943,7 +23952,7 @@ class handle_NotebookPage_Simple(handle_Base_NotebookPage):
 		Example Input: _build(0, "Lorem", select = True)
 		"""
 
-		with super()._build(argument_catalogue):
+		with super()._build(argument_catalogue, **kwargs):
 			#Format Icon
 			icon_path, icon_internal = self._getArguments(argument_catalogue, ["icon_path", "icon_internal"])
 			if (icon_path is not None):
@@ -24065,7 +24074,7 @@ class handle_WizardPage(handle_NavigatorBase, handle_Base_NotebookPage):
 		Example Input: _build(0, "Lorem", select = True)
 		"""
 
-		with super()._build(argument_catalogue, nestPanel = False, nestSizer = False):
+		with super()._build(argument_catalogue, nestPanel = False, nestSizer = False, useRootParent = True):
 			self.thing = self.myPanel.thing
 			
 			with self._makeSizerBox() as rootSizer:
