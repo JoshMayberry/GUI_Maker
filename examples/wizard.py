@@ -18,7 +18,7 @@ def onShow(event):
 	event.Skip()
 
 def onWizard_pageChange(event):
-	print("Wizard Page Changed", event.GetPage().parent.__repr__())
+	print("Wizard Page Changed", event.node.handle.__repr__())
 
 	event.Skip()
 
@@ -27,8 +27,16 @@ def onWizard_cancel(event):
 
 	event.Skip()
 
+flag = False
 def onWizard_finish(event):
+	global flag
 	print("Wizard Finished")
+
+	if (not flag):
+		print("Try Again")
+		flag = True
+		event.Veto()
+		return
 
 	event.Skip()
 
@@ -44,21 +52,45 @@ def buildWindow():
 		myWizard.setFunction_pageChange(onWizard_pageChange)
 		myWizard.setFunction_cancel(onWizard_cancel)
 		myWizard.setFunction_finish(onWizard_finish)
-		
-		with myWizard.addPage() as myWizardPage:
-			myWizardPage.addText(text = "lorem")
+		# myWizard.setWindowSize((500, 300))
 
-		with myWizard.addPage(label = 2) as myWizardPage:
-			myWizardPage.addText(text = "ipsum")
+		with myWizard.addPage(label = "main", default = True) as myWizardPage:
+			myWizardPage.addText(text = "Which Way?")
 
-		with myWizard.addPage() as myWizardPage:
-			myWizardPage.addText(text = "dolor")
+			with myWizardPage.addPage(text = "North", label = "north") as firstChoice:
+				firstChoice.addText(text = "You find a river")
 
-		with myWizard.addPage() as myWizardPage:
-			myWizardPage.addText(text = "sit")
+				with firstChoice.addPage(text = "Make Camp", default = True) as secondChoice:
+					secondChoice.addText(text = "Good night")
 
-		with myWizard.addPage() as myWizardPage:
-			myWizardPage.addText(text = "amet")
+				with firstChoice.addPage(text = "Go Fishing") as secondChoice:
+					secondChoice.addText(text = "Fun!")
+
+					with secondChoice.addPage(text = "Make Camp") as thirdChoice:
+						thirdChoice.addText(text = "Good night")
+
+			with myWizardPage.addPage(text = "East", label = "east", default = True) as firstChoice:
+				firstChoice.addText(text = "You come to a dead end")
+
+			with myWizardPage.addPage(text = "South", label = "south") as firstChoice:
+				firstChoice.addText(text = "You find a town")
+
+				with firstChoice.addPage(text = "Sleep", default = True) as secondChoice:
+					secondChoice.addText(text = "Good night")
+
+				with firstChoice.addPage(text = "Eat") as secondChoice:
+					secondChoice.addText(text = "Yum!")
+
+					with secondChoice.addPage(text = "Sleep") as thirdChoice:
+						thirdChoice.addText(text = "Good night")
+
+		with myWizard.addPage(label = "secret") as myWizardPage:
+			myWizardPage.addText(text = "Secret Room")
+
+		# import anytree
+		# print(anytree.RenderTree(myWizard.pageNode))
+
+		# sys.exit()
 
 #Run Program
 if __name__ == '__main__':
