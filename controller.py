@@ -123,6 +123,8 @@ threads_max = 50 #Crashes around 600
 threadCatalogue = {} #Used to keep track of labeled threads
 threadCatalogue_lock = threading.RLock()
 
+NULL = object()
+
 #Get all event names
 #See: https://www.blog.pythonlibrary.org/2011/07/05/wxpython-get-the-event-name-instead-of-an-integer/
 eventCatalogue = {}
@@ -630,7 +632,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 			"special+11": 203, "special+12": 204, "special+13": 205, "special+14": 206, "special+15": 207,
 			"special+16": 208, "special+17": 209, "special+18": 210, "special+19": 211, "special+20": 212}
 
-	def get(self, itemLabel = None, includeUnnamed = True, checkNested = True, typeList = None, subTypeList = None, returnExists = False):
+	def get(self, itemLabel = None, default = NULL, *, includeUnnamed = True, checkNested = True, typeList = None, subTypeList = None, returnExists = False):
 		"""Searches the label catalogue for the requested object.
 
 		itemLabel (any) - What the object is labled as in the catalogue
@@ -719,18 +721,20 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 				answer = self
 			else:
 				if (itemLabel.GetEventObject() is None):
-					errorMessage = f"There is no object associated with the event {itemLabel}"
-					raise SyntaxError(errorMessage)
-
-				for item in self[:]:
-					if (itemLabel.GetEventObject() == item.thing):
-						answer = item
-						break
+					if (default is NULL):
+						errorMessage = f"There is no object associated with the event {itemLabel}"
+						raise SyntaxError(errorMessage)
+					answer = None
 				else:
-					if (checkNested):
-						answer = nestCheck(self[:], itemLabel)
+					for item in self[:]:
+						if (itemLabel.GetEventObject() == item.thing):
+							answer = item
+							break
 					else:
-						answer = None
+						if (checkNested):
+							answer = nestCheck(self[:], itemLabel)
+						else:
+							answer = None
 
 		#Account for indexing
 		elif (isinstance(itemLabel, slice)):
@@ -801,6 +805,9 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 					answer = answer[0]
 
 			return answer
+
+		elif (default is not NULL):
+			return default
 
 		if (isinstance(itemLabel, wx.Event)):
 			errorMessage = f"There is no item associated with the event {itemLabel} in the label catalogue for {self.__repr__()}"
@@ -3540,9 +3547,9 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		return handle
 	
 	def _makeInputBox(self, text = None, maxLength = None, wrap = None, 
-		autoComplete = None, caseSensitive = False, alwaysShow = False,
-		password = False, readOnly = False, tab = False, ipAddress = False,
-		onSelect_hide = False, onSelect_update = False, onKey_update = False,
+		autoComplete = None, caseSensitive = False, alwaysShow = False, 
+		password = False, readOnly = False, tab = False, ipAddress = False, formatter = None, 
+		onSelect_hide = False, onSelect_update = False, onKey_update = False, verifier = None, 
 		
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 		enterFunction = None, enterFunctionArgs = None, enterFunctionKwargs = None, 
@@ -8307,8 +8314,9 @@ class handle_WidgetList(handle_Widget_Base):
 
 		return value
 
-	def getText(self, event = None):
-		return self.thing.GetValue()
+	def getText(self, event = None, fallback_lastSelection = False, group = None):
+		# return self.thing.GetValue()
+		return self.getValue(event = event, fallback_lastSelection = fallback_lastSelection, group = group)
 
 	def getChecked(self, event = None):
 		value = []
@@ -8496,10 +8504,12 @@ class handle_WidgetList(handle_Widget_Base):
 
 			self.thing.Clear()
 			self.thing.AppendItems(newValue) #(list) - What the choice options will now be now
+			self.setChoices(newValue)
 
 		elif (self.type.lower() == "listfull"):
 			objectList = self._formatList(newValue, filterNone = filterNone)
 			self.thing.SetObjects(objectList)
+			self.setChoices(objectList)
 
 		elif (self.type.lower() == "listtree"):
 			if (not isinstance(newValue, dict)):
@@ -9707,8 +9717,8 @@ class handle_WidgetInput(handle_Widget_Base):
 			"""Builds a wx text control or ip address control object."""
 			nonlocal self, argument_catalogue
 
-			text, ipAddress, maxLength = self._getArguments(argument_catalogue, ["text", "ipAddress", "maxLength"])
-			password, readOnly, tab, wrap = self._getArguments(argument_catalogue, ["password", "readOnly", "tab", "wrap"])
+			text, ipAddress, maxLength, verifier = self._getArguments(argument_catalogue, ["text", "ipAddress", "maxLength", "verifier"])
+			password, readOnly, tab, wrap, formatter = self._getArguments(argument_catalogue, ["password", "readOnly", "tab", "wrap", "formatter"])
 			autoComplete, caseSensitive, alwaysShow = self._getArguments(argument_catalogue, ["autoComplete", "caseSensitive", "alwaysShow"])
 			onSelect_hide, onSelect_update, onKey_update = self._getArguments(argument_catalogue, ["onSelect_hide", "onSelect_update", "onKey_update"])
 
@@ -9742,8 +9752,8 @@ class handle_WidgetInput(handle_Widget_Base):
 			#Create the thing to put in the grid
 			if (autoComplete):
 				self.subType = "autoComplete"
-				self.thing = MyUtilities.wxPython.AutocompleteTextCtrl(self.parent, id = myId, 
-					value = text, style = style, caseSensitive = caseSensitive, alwaysShow = alwaysShow, 
+				self.thing = MyUtilities.wxPython.AutocompleteTextCtrl(self.parent, id = myId, verifier = verifier,
+					value = text, style = style, caseSensitive = caseSensitive, alwaysShow = alwaysShow, formatter = formatter, 
 					onSelect_hide = onSelect_hide, onSelect_update = onSelect_update, onKey_update = onKey_update)
 
 				#Set maximum length
