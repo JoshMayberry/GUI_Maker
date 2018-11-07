@@ -54,6 +54,7 @@ import wx.lib.agw.aui
 import wx.lib.newevent
 import wx.lib.wordwrap
 import wx.lib.splitter
+import wx.lib.agw.flatmenu
 import wx.lib.agw.floatspin
 import wx.lib.scrolledpanel
 import wx.lib.mixins.listctrl
@@ -100,6 +101,7 @@ else:
 	# pillow
 	# pypubsub
 	# objectlistview
+	# anytree
 
 #Maybe Required Modules?
 	# numpy
@@ -4047,7 +4049,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 
 		return handle
 	
-	def _makeProgressBar(self, myInitial = 0, myMax = 100, vertical = False,
+	def _makeProgressBar(self, myInitial = 0, myMax = 100, *, vertical = False,
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
 		label = None, parent = None, handle = None, myId = None, tabSkip = False):
@@ -4090,8 +4092,31 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		handle._build(locals())
 
 		return handle
+
+	def _makeFlatMenu(self, text = None, *, smallIcons = True, 
+		spaceSize = None, canCustomize = False, 
+
+		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None,
+
+		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
+		label = None, parent = None, handle = None, myId = None, tabSkip = False):
+		"""Adds a tool bar to the next cell on the grid.
+		Menu items can be added to this.
+
+		label (str)     - What this is called in the idCatalogue
+		detachable (bool) - If True: The menu can be undocked
+
+		Example Input: _makeToolBar()
+		Example Input: _makeToolBar(label = "first")
+		"""
+
+		handle = handle_Menu()
+		handle.type = "FlatMenu"
+		handle._build(locals())
+
+		return handle
 	
-	def _makePickerColor(self, initial = None, addInputBox = False, colorText = False,
+	def _makePickerColor(self, initial = None, *, addInputBox = False, colorText = False,
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
@@ -5828,7 +5853,7 @@ class handle_Base(Utilities, CommonEventFunctions):
 				handle.mySizerItem = self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
 
 			elif (isinstance(handle, handle_Menu)):
-				if (handle.type.lower() == "toolbar"):
+				if (handle.type.lower() in ("toolbar", "flatmenu")):
 					handle.mySizerItem = self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
 				else:
 					warnings.warn(f"Add {handle.type} as a handle type for handle_Menu nesting in a handle_Window for nest() in {self.__repr__()}", Warning, stacklevel = 2)
@@ -5872,7 +5897,8 @@ class handle_Base(Utilities, CommonEventFunctions):
 
 			elif (isinstance(handle, handle_MenuItem)):
 				if (handle.type.lower() == "menuitem"):
-					self.thing.Append(handle.thing)
+					if (handle.shown):
+						self.thing.Append(handle.thing)
 				elif (handle.type.lower() == "toolbaritem"):
 					pass
 				else:
@@ -11361,6 +11387,26 @@ class handle_Menu(handle_Container_Base):
 			if (len(self.text) == 0):
 				self.text = " "
 
+		def _build_flatmenu():
+			"""Builds a wx flat menu control object."""
+			nonlocal self, argument_catalogue
+		
+			#Unpack arguments
+			text, smallIcons, spaceSize, canCustomize = self._getArguments(argument_catalogue, ["text", "smallIcons", "spaceSize", "canCustomize"])
+
+			style = [wx.lib.agw.flatmenu.FM_OPT_IS_LCD, wx.lib.agw.flatmenu.FM_OPT_SHOW_TOOLBAR]
+
+			if (canCustomize):
+				style.append(wx.lib.agw.flatmenu.FM_OPT_SHOW_CUSTOMIZE)
+
+			myId = self._getId(argument_catalogue)
+			self.thing = wx.lib.agw.flatmenu.FlatMenuBar(self.parent.thing, id = myId, 
+				iconSize = (32, 16)[smallIcons], 
+				spacer = spaceSize or wx.lib.agw.flatmenu.SPACER,
+				options = functools.reduce(operator.ior, style or (0,)))
+
+			self.text = text or " "
+
 		def _build_toolbar():
 			"""Builds a wx toolbar control object."""
 			nonlocal self, argument_catalogue
@@ -11370,34 +11416,34 @@ class handle_Menu(handle_Container_Base):
 			vertical_text, myFunction = self._getArguments(argument_catalogue, ["vertical_text", "myFunction"])
 
 			if (vertical):
-				style = "wx.TB_VERTICAL"
+				style = [wx.TB_VERTICAL]
 			else:
-				style = "wx.TB_HORIZONTAL"
+				style = [wx.TB_HORIZONTAL]
 
 			if (detachable):
-				style += "|wx.TB_DOCKABLE"
+				style.append(wx.TB_DOCKABLE)
 
 			if (flat):
-				style += "|wx.TB_FLAT"
+				style.append(wx.TB_FLAT)
 			if (not align):
-				style += "|wx.TB_NOALIGN"
+				style.append(wx.TB_NOALIGN)
 			if (top is None):
-				style += "|wx.TB_RIGHT"
+				style.append(wx.TB_RIGHT)
 			elif (not top):
-				style += "|wx.TB_BOTTOM"
+				style.append(wx.TB_BOTTOM)
 
 			if (not showIcon):
-				style += "|wx.TB_NOICONS"
+				style.append(wx.TB_NOICONS)
 			if (not showDivider):
-				style += "|wx.TB_NODIVIDER"
+				style.append(wx.TB_NODIVIDER)
 			if (not showToolTip):
-				style += "|wx.TB_NO_TOOLTIPS"
+				style.append(wx.TB_NO_TOOLTIPS)
 			if (showText):
-				style += "|wx.TB_TEXT"
+				style.append(wx.TB_TEXT)
 				if (vertical_text):
-					style += "|wx.TB_HORZ_LAYOUT"
+					style.append(wx.TB_HORZ_LAYOUT)
 			
-			self.thing = wx.ToolBar(self.parent.thing, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+			self.thing = wx.ToolBar(self.parent.thing, style = functools.reduce(operator.ior, style or (0,)))
 			self.thing.Realize()
 
 			#Bind the function(s)
@@ -11411,6 +11457,8 @@ class handle_Menu(handle_Container_Base):
 
 		if (self.type.lower() == "menu"):
 			_build_menu()
+		elif (self.type.lower() == "flatmenu"):
+			_build_flatmenu()
 		elif (self.type.lower() == "toolbar"):
 			_build_toolbar()
 		else:
@@ -11564,26 +11612,49 @@ class handle_Menu(handle_Container_Base):
 		"""
 
 		if (self.type.lower() == "toolbar"):
-			if (label is None):
-				label = self[:]
-			elif (not isinstance(label, (list, tuple, range))):
-				label = [label]
+			def applyShow(myWidget):
+				nonlocal self
 
-			for item in label:
-				with self[item] as myWidget:
-					myId = myWidget.thing.GetId()
+				# self.controller._hiddenToolbar.thing.RemoveTool(myWidget.thing.GetId())
 
-					if (state):
-						if (not myWidget.checkShown()):
-							self.thing.AddTool(myWidget.thing)
-							self.thing.Realize()
-							myWidget.shown = True
-					else:
-						if (myWidget.checkShown()):
-							self.thing.RemoveTool(myId)
-							myWidget.shown = False
+				self.thing.AddTool(myWidget.thing)
+				self.thing.Realize()
+
+			def applyHide(myWidget):
+				nonlocal self
+
+				self.thing.RemoveTool(myWidget.thing.GetId())
+
+				#The tool does not disappear once removed from the tool bar, so it will be temporarily stored on a hidden tool bar
+				# print ("@1", self.controller._hiddenToolbar.thing.AddTool(myWidget.thing))
+				# self.controller._hiddenToolbar.thing.Realize()
+
+		elif (self.type.lower() == "menu"):
+			def applyShow(myWidget):
+				nonlocal self
+
+				self.thing.Append(myWidget.thing)
+
+			def applyHide(myWidget):
+				nonlocal self
+
+				self.thing.Remove(myWidget.thing)
 		else:
 			warnings.warn(f"Add {self.type} to setShow() for {self.__repr__()}", Warning, stacklevel = 2)
+			return
+
+		################################
+
+		for item in self.ensure_container(label, returnForNone = lambda: self[:]):
+			with self[item] as myWidget:
+				if (state):
+					if (not myWidget.checkShown()):
+						applyShow(myWidget)
+						myWidget.shown = True
+				else:
+					if (myWidget.checkShown()):
+						applyHide(myWidget)
+						myWidget.shown = False
 
 	def checkShown(self, label = None):
 		"""Checks if an item is shown.
@@ -11674,6 +11745,8 @@ class handle_Menu(handle_Container_Base):
 		handle = handle_MenuItem()
 		if (self.type.lower() == "menu"):
 			handle.type = "MenuItem"
+		elif (self.type.lower() == "flatmenu"):
+			handle.type = "FlatMenuItem"
 		elif (self.type.lower() == "toolbar"):
 			handle.type = "ToolBarItem"
 		else:
@@ -12258,19 +12331,23 @@ class handle_MenuItem(handle_Widget_Base):
 					myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
 					buildSelf._betterBind(wx.EVT_MENU, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
-			#Determine visibility
-			if (hidden):
-				if (isinstance(buildSelf, handle_Sizer)):
-					buildSelf._addFinalFunction(buildSelf.thing.ShowItems, False)
-				else:
-					self.thing.Hide()
+		def _build_flatmenuItem():
+			"""Builds a wx flat menu item control object."""
+			nonlocal self, argument_catalogue
+
+			#Unpack arguments
+			buildSelf, text, hidden = self._getArguments(argument_catalogue, ["self", "text", "hidden"])
+			myId = self._getArguments(argument_catalogue, ["myId"])
+
+			self.thing = wx.lib.agw.flatmenu
+
 
 		def _build_toolbarItem():
 			"""Builds a wx tool control object."""
 			nonlocal self, argument_catalogue
 
 			if (self.subHandle is not None):
-				widgetLabel = self._getArguments(argument_catalogue, ["widgetLabel"])
+				widgetLabel, hidden = self._getArguments(argument_catalogue, ["widgetLabel", "hidden"])
 				myFunction, myFunctionArgs, myFunctionKwargs = self.subHandle
 				self.subHandle = myFunction(*myFunctionArgs, label = widgetLabel, **myFunctionKwargs)
 				self.subType = self.subHandle.type
@@ -12353,6 +12430,8 @@ class handle_MenuItem(handle_Widget_Base):
 
 		if (self.type.lower() == "menuitem"):
 			_build_menuItem()
+		elif (self.type.lower() == "flatmenuitem"):
+			_build_flatmenuItem()
 		elif (self.type.lower() == "toolbaritem"):
 			_build_toolbarItem()
 		else:
@@ -12492,7 +12571,7 @@ class handle_MenuItem(handle_Widget_Base):
 		if (self.type.lower() == "menuitem"):
 			handle_Widget_Base.setEnable(self, state = state)
 
-		elif (self.type.lower() == "toolbaritem"):
+		elif (self.type.lower() in ("flatmenuitem", "toolbaritem")):
 			self.parent.setEnable(self.label, state)
 
 		else:
@@ -12507,7 +12586,7 @@ class handle_MenuItem(handle_Widget_Base):
 		if (self.type.lower() == "menuitem"):
 			state = handle_Widget_Base.checkEnabled(self)
 
-		elif (self.type.lower() == "toolbaritem"):
+		elif (self.type.lower() in ("flatmenuitem", "toolbaritem")):
 			state = self.parent.checkEnabled(self.label, state)
 
 		else:
@@ -12525,11 +12604,7 @@ class handle_MenuItem(handle_Widget_Base):
 		Example Input: setShow(False)
 		"""
 
-		if (self.type.lower() == "toolbaritem"):
-			self.parent.setShow(self.label, state)
-
-		else:
-			warnings.warn(f"Add {self.type} to setShow() for {self.__repr__()}", Warning, stacklevel = 2)
+		self.parent.setShow(self.label, state)
 
 	def checkShown(self):
 		"""Checks if an item is shown.
@@ -12537,12 +12612,7 @@ class handle_MenuItem(handle_Widget_Base):
 		Example Input: checkShown()
 		"""
 
-		if (self.type.lower() == "toolbaritem"):
-			state = self.shown
-
-		else:
-			warnings.warn(f"Add {self.type} to checkShown() for {self.__repr__()}", Warning, stacklevel = 2)
-			state = None
+		state = self.shown
 
 		return state
 
@@ -21498,7 +21568,7 @@ class handle_Window(handle_Container_Base):
 		Example Input: refresh()
 		"""
 
-		if (len(self.refreshFunction) == 0):
+		if (not self.refreshFunction):
 			warnings.warn(f"The refresh function for {self.__repr__()} has not been set yet\nUse setRefresh() during window creation first to set the refresh function", Warning, stacklevel = 2)
 			return
 
