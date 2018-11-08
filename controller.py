@@ -23,6 +23,7 @@ __version__ = "4.3.0"
 import os
 import ast
 import sys
+import enum
 import time
 import math
 import copy
@@ -181,6 +182,84 @@ def build(*args, **kwargs):
 
 	return Controller(*args, **kwargs)
 
+#Enumerations
+class Types(enum.IntEnum):
+	empty = enum.auto()
+	line = enum.auto()
+
+	box = enum.auto()
+	grid = enum.auto()
+	flex = enum.auto()
+	wrap = enum.auto()
+	bag = enum.auto()
+
+	text = enum.auto()
+	html = enum.auto()
+	hyperlink = enum.auto()
+
+	drop = enum.auto()
+	view = enum.auto()
+	tree = enum.auto()
+
+	slider = enum.auto()
+	search = enum.auto()
+	spinner = enum.auto()
+	progressbar = enum.auto()
+
+	button = enum.auto()
+	checklist = enum.auto()
+	list = enum.auto()
+	help = enum.auto()
+	check = enum.auto()
+	radio = enum.auto()
+	image = enum.auto()
+	toggle = enum.auto()
+	radiobox = enum.auto()
+
+	file = enum.auto()
+	filewindow = enum.auto()
+	date = enum.auto()
+	datewindow = enum.auto()
+	time = enum.auto()
+	color = enum.auto()
+	font = enum.auto()
+
+	menu = enum.auto()
+	toolbar = enum.auto()
+	flatmenu = enum.auto()
+
+	menuitem = enum.auto()
+	toolbaritem = enum.auto()
+	flatmenuitem = enum.auto()
+
+	popup = enum.auto()
+	popup_widget = enum.auto()
+
+	canvas = enum.auto()
+	table = enum.auto()
+
+	busy = enum.auto()
+	print = enum.auto()
+	choice = enum.auto()
+	scroll = enum.auto()
+	custom = enum.auto()
+	message = enum.auto()
+	process = enum.auto()
+	printsetup = enum.auto()
+	printpreview = enum.auto()
+
+	frame = enum.auto()
+	dialog = enum.auto()
+	panel = enum.auto()
+	wizard = enum.auto()
+	wizardpage = enum.auto()
+	notebook = enum.auto()
+	notebookpage = enum.auto()
+
+	quad = enum.auto()
+	poly = enum.auto()
+	double = enum.auto()
+
 #Iterators
 class _Iterator(object):
 	"""Used by handle objects to iterate over their nested objects."""
@@ -301,6 +380,8 @@ class MyEvent(wx.PyCommandEvent):
 			return binder
 
 #Decorators
+wrap_skipEvent = MyUtilities.wxPython.wrap_skipEvent
+
 def wrap_showError(makeDialog = True, fileName = "error_log.log"):
 	def decorator(function):
 		@functools.wraps(function)
@@ -685,7 +766,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 				for item in self.ensure_container(handleList):
 					for itemType in self.ensure_container(typeList):
 						if (isinstance(item, itemType)):
-							if ((subTypeList is not None) and (item.type.lower() not in subTypeList)):
+							if ((subTypeList is not None) and (item.type not in subTypeList)):
 								continue
 							answer.append(item)
 							break
@@ -1416,7 +1497,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 			if ((event is not None) and (event.GetKeyCode() != self.keyOptions["cl"])):
 				return
 
-			hllDll = ctypes.WinDLL ("User32.dll")
+			hllDll = ctypes.WinDLL("User32.dll")
 			VK_CAPITAL = 0x14
 			state = hllDll.GetKeyState(VK_CAPITAL)
 
@@ -2830,16 +2911,6 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 
 		return arguments
 
-	def _checkHandleType(self, typeNeeded, function):
-		#Ensure correct format
-		if (not isinstance(typeNeeded, (list, tuple, range))):
-			typeNeeded = [typeNeeded]
-
-		#Error check
-		if (self.type.lower() not in [str(item).lower() for item in typeNeeded]):
-			errorMessage = f"Cannot use type {self.type} with the function {function.__name__}"
-			raise TypeError(errorMessage)
-
 	def _getArgument_event(self, arguments, args, kwargs):
 		"""Returns the event for a function where the event could be in a given argument, args, or kwargs
 
@@ -3035,28 +3106,21 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 
 	def getWindow(self, label = None, frameOnly = True):
 		if (isinstance(label, handle_Window)):
-			if (frameOnly and (label.type.lower() == "frame")):
+			if (frameOnly and (label.type is Types.frame)):
 				return label
 
 		if (frameOnly):
-			window = self.get(label, typeList = [handle_Window], subTypeList = ["frame"])
+			window = self.get(label, typeList = [handle_Window], subTypeList = Types.frame)
 		else:
 			window = self.get(label, typeList = [handle_Window])
 
 		return window
 
 	def getDialog(self, label = None):
-		if ((isinstance(label, handle_Window)) and (label.type.lower() == "dialog")):
+		if ((isinstance(label, handle_Window)) and (label.type is labelTypes.dialog)):
 			return label
 
-		window = self.get(label, typeList = [handle_Window], subTypeList = ["dialog"])
-		return window
-
-	def getWizard(self, label = None):
-		if ((isinstance(label, handle_Window)) and (label.type.lower() == "wizard")):
-			return label
-
-		window = self.get(label, typeList = [handle_Window], subTypeList = ["wizard"])
+		window = self.get(label, typeList = [handle_Window], subTypeList = Types.dialog)
 		return window
 
 	def getTable(self, label = None):
@@ -3142,7 +3206,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetText()
-		handle.type = "Text"
+		handle.type = Types.text
 		handle._build(locals())
 
 		return handle
@@ -3167,11 +3231,10 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetText()
-		handle.type = "Hyperlink"
+		handle.type = Types.hyperlink
 		handle._build(locals())
 
 		return handle
-
 
 	def _makeHtml(self, text = "", can_scroll = True, can_select = True, position = None, size = None,
 
@@ -3194,7 +3257,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetText()
-		handle.type = "Html"
+		handle.type = Types.html
 		handle._build(locals())
 
 		return handle
@@ -3214,7 +3277,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetText()
-		handle.type = "Empty"
+		handle.type = Types.empty
 		handle._build(locals())
 
 		return handle
@@ -3236,7 +3299,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Widget_Base()
-		handle.type = "Line"
+		handle.type = Types.line
 		handle._build(locals())
 
 		return handle
@@ -3270,7 +3333,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetList()
-		handle.type = "ListDrop"
+		handle.type = Types.drop
 		handle._build(locals())
 
 		return handle
@@ -3413,7 +3476,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetList()
-		handle.type = "ListFull"
+		handle.type = Types.view
 		handle._build(locals())
 
 		return handle
@@ -3517,7 +3580,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetList()
-		handle.type = "ListTree"
+		handle.type = Types.tree
 		handle._build(locals())
 
 		return handle
@@ -3543,7 +3606,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetInput()
-		handle.type = "Slider"
+		handle.type = Types.slider
 		handle._build(locals())
 
 		return handle
@@ -3601,7 +3664,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetInput()
-		handle.type = "InputBox"
+		handle.type = Types.box
 		handle._build(locals())
 
 		return handle
@@ -3664,7 +3727,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetInput()
-		handle.type = "InputSearch"
+		handle.type = Types.search
 		handle._build(locals())
 
 		return handle
@@ -3709,7 +3772,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetInput()
-		handle.type = "InputSpinner"
+		handle.type = Types.spinner
 		handle._build(locals())
 
 		return handle
@@ -3738,7 +3801,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetButton()
-		handle.type = "Button"
+		handle.type = Types.button
 		handle._build(locals())
 
 		return handle
@@ -3765,7 +3828,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetButton()
-		handle.type = "ButtonToggle"
+		handle.type = Types.toggle
 		handle._build(locals())
 
 		return handle
@@ -3796,7 +3859,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetButton()
-		handle.type = "ButtonList"
+		handle.type = Types.list
 		handle._build(locals())
 
 		return handle
@@ -3824,7 +3887,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetButton()
-		handle.type = "ButtonCheck"
+		handle.type = Types.check
 		handle._build(locals())
 
 		return handle
@@ -3850,7 +3913,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetButton()
-		handle.type = "CheckList"
+		handle.type = Types.checklist
 		handle._build(locals())
 
 		return handle
@@ -3878,7 +3941,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetButton()
-		handle.type = "ButtonRadio"
+		handle.type = Types.radio
 		handle._build(locals())
 
 		return handle
@@ -3909,7 +3972,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetButton()
-		handle.type = "ButtonRadioBox"
+		handle.type = Types.radiobox
 		handle._build(locals())
 
 		return handle
@@ -3935,7 +3998,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetButton()
-		handle.type = "ButtonHelp"
+		handle.type = Types.help
 		handle._build(locals())
 
 		return handle
@@ -3968,7 +4031,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetButton()
-		handle.type = "ButtonImage"
+		handle.type = Types.image
 		handle._build(locals())
 
 		return handle
@@ -4044,7 +4107,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetImage()
-		handle.type = "Image"
+		handle.type = Types.image
 		handle._build(locals())
 
 		return handle
@@ -4064,7 +4127,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Widget_Base()
-		handle.type = "ProgressBar"
+		handle.type = Types.progressbar
 		handle._build(locals())
 
 		return handle
@@ -4088,7 +4151,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Menu()
-		handle.type = "ToolBar"
+		handle.type = Types.toolbar
 		handle._build(locals())
 
 		return handle
@@ -4111,7 +4174,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Menu()
-		handle.type = "FlatMenu"
+		handle.type = Types.flatmenu
 		handle._build(locals())
 
 		return handle
@@ -4135,7 +4198,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetPicker()
-		handle.type = "PickerColor"
+		handle.type = Types.color
 		handle._build(locals())
 
 		return handle
@@ -4161,7 +4224,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetPicker()
-		handle.type = "PickerFont"
+		handle.type = Types.font
 		handle._build(locals())
 
 		return handle
@@ -4202,7 +4265,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetPicker()
-		handle.type = "PickerFile"
+		handle.type = Types.file
 		handle._build(locals())
 
 		return handle
@@ -4237,7 +4300,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetPicker()
-		handle.type = "PickerFileWindow"
+		handle.type = Types.filewindow
 		handle._build(locals())
 
 		return handle
@@ -4266,7 +4329,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetPicker()
-		handle.type = "PickerTime"
+		handle.type = Types.time
 		handle._build(locals())
 
 		return handle
@@ -4295,7 +4358,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetPicker()
-		handle.type = "PickerDate"
+		handle.type = Types.date
 		handle._build(locals())
 
 		return handle
@@ -4339,7 +4402,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetPicker()
-		handle.type = "PickerDateWindow"
+		handle.type = Types.datewindow
 		handle._build(locals())
 
 		return handle
@@ -4369,7 +4432,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetCanvas()
-		handle.type = "Canvas"
+		handle.type = Types.canvas
 		handle._build(locals())
 
 		return handle
@@ -4502,7 +4565,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_WidgetTable()
-		handle.type = "Table"
+		handle.type = Types.table
 		handle._build(locals())
 
 		return handle
@@ -4532,7 +4595,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Menu()
-		handle.type = "Menu"
+		handle.type = Types.menu
 		handle._build(locals())
 
 		return handle
@@ -4572,7 +4635,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Panel()
-		handle.type = "Panel"
+		handle.type = Types.panel
 		handle._build(locals())
 
 		return handle
@@ -4602,7 +4665,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Sizer()
-		handle.type = "Grid"
+		handle.type = Types.grid
 		handle._build(locals())
 		return handle
 
@@ -4634,7 +4697,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Sizer()
-		handle.type = "Flex"
+		handle.type = Types.flex
 		handle._build(locals())
 
 		return handle
@@ -4668,7 +4731,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Sizer()
-		handle.type = "Bag"
+		handle.type = Types.bag
 		handle._build(locals())
 
 		return handle
@@ -4691,7 +4754,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Sizer()
-		handle.type = "Box"
+		handle.type = Types.box
 		handle._build(locals())
 
 		return handle
@@ -4716,7 +4779,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Sizer()
-		handle.type = "Text"
+		handle.type = Types.text
 		handle._build(locals())
 
 		return handle
@@ -4742,7 +4805,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Sizer()
-		handle.type = "Wrap"
+		handle.type = Types.wrap
 		handle._build(locals())
 
 		return handle
@@ -4784,7 +4847,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Splitter()
-		handle.type = "Double"
+		handle.type = Types.double
 		handle._build(locals())
 
 		return handle
@@ -4811,7 +4874,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Splitter()
-		handle.type = "Quad"
+		handle.type = Types.quad
 		handle._build(locals())
 
 		return handle
@@ -4853,7 +4916,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Splitter()
-		handle.type = "Poly"
+		handle.type = Types.poly
 		handle._build(locals())
 
 		return handle
@@ -4899,7 +4962,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Notebook_Simple()
-		handle.type = "Notebook"
+		handle.type = Types.notebook
 		handle._build(locals())
 
 		return handle
@@ -4945,7 +5008,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Notebook_Aui()
-		handle.type = "AuiNotebook"
+		handle.type = Types.auinotebook
 		handle._build(locals())
 
 		return handle
@@ -4978,7 +5041,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Dialog()
-		handle.type = "message"
+		handle.type = Types.message
 		handle._build(locals())
 		return handle
 
@@ -5032,7 +5095,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Dialog()
-		handle.type = "scroll"
+		handle.type = Types.scroll
 		handle._build(locals())
 		return handle
 
@@ -5075,7 +5138,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Dialog()
-		handle.type = "busy"
+		handle.type = Types.busy
 		handle._build(locals())
 		return handle
 
@@ -5110,7 +5173,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Dialog()
-		handle.type = "choice"
+		handle.type = Types.choice
 		handle._build(locals())
 		return handle
 
@@ -5147,7 +5210,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Dialog()
-		handle.type = "inputBox"
+		handle.type = Types.box
 		handle._build(locals())
 		return handle
 
@@ -5185,7 +5248,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Dialog()
-		handle.type = "file"
+		handle.type = Types.file
 		handle._build(locals())
 		return handle
 
@@ -5218,7 +5281,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Dialog()
-		handle.type = "color"
+		handle.type = Types.color
 		handle._build(locals())
 		return handle
 
@@ -5263,7 +5326,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Dialog()
-		handle.type = "printSetup"
+		handle.type = Types.printsetup
 		handle._build(locals())
 		return handle
 
@@ -5308,7 +5371,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Dialog()
-		handle.type = "print"
+		handle.type = Types.print
 		handle._build(locals())
 		return handle
 
@@ -5330,7 +5393,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		"""
 
 		handle = handle_Dialog()
-		handle.type = "printPreview"
+		handle.type = Types.printpreview
 		handle._build(locals())
 		return handle
 
@@ -5361,7 +5424,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 			myFrame = self
 
 		handle = handle_Dialog()
-		handle.type = "custom"
+		handle.type = Types.custom
 		handle._build(locals())
 		return handle
 
@@ -5697,7 +5760,7 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 			self.parentSizer = buildSelf
 		elif (isinstance(buildSelf, (handle_Window, Controller, handle_MenuPopup))):
 			self.parentSizer = None
-		elif (isinstance(buildSelf, handle_Menu) and (buildSelf.type.lower() != "toolbar")):
+		elif (isinstance(buildSelf, handle_Menu) and (buildSelf.type is not Types.toolbar)):
 			self.parentSizer = None
 		else:
 			self.parentSizer = buildSelf.parentSizer
@@ -5853,7 +5916,7 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 				handle.mySizerItem = self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
 
 			elif (isinstance(handle, handle_Menu)):
-				if (handle.type.lower() in ("toolbar", "flatmenu")):
+				if (handle.type in (Types.toolbar, Types.flatmenu)):
 					handle.mySizerItem = self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
 				else:
 					warnings.warn(f"Add {handle.type} as a handle type for handle_Menu nesting in a handle_Window for nest() in {self.__repr__()}", Warning, stacklevel = 2)
@@ -5874,7 +5937,7 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 		
 		elif (isinstance(self, handle_Window)):
 			if (isinstance(handle, handle_Menu)):
-				if (handle.type.lower() == "menu"):
+				if (handle.type is Types.menu):
 					#Main Menu
 					if (self.menuBar is None):
 						self.addMenuBar()
@@ -5888,7 +5951,7 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 
 		elif (isinstance(self, handle_Menu)):
 			if (isinstance(handle, handle_Menu)):
-				if (handle.type.lower() == "menu"):
+				if (handle.type is Types.menu):
 					#Sub Menu
 					self.thing.Append(wx.ID_ANY, handle.text, handle.thing)
 				else:
@@ -5896,10 +5959,10 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 					return
 
 			elif (isinstance(handle, handle_MenuItem)):
-				if (handle.type.lower() == "menuitem"):
+				if (handle.type is Types.menuitem):
 					if (handle.shown):
 						self.thing.Append(handle.thing)
-				elif (handle.type.lower() == "toolbaritem"):
+				elif (handle.type is Types.toolbaritem):
 					pass
 				else:
 					warnings.warn(f"Add {handle.type} as a handle type for handle_Menu nesting in a handle_Menu for nest() in {self.__repr__()}", Warning, stacklevel = 2)
@@ -5911,7 +5974,7 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 
 		elif (isinstance(self, handle_MenuItem)):
 			if (isinstance(handle, handle_Widget_Base)):
-				if (self.type.lower() == "toolbaritem"):
+				if (self.type is Types.toolbaritem):
 					self.thing = self.parent.thing.AddControl(handle.thing)
 				else:
 					warnings.warn(f"Add {handle.type} as a self type for handle_Widget_Base nesting in a handle_MenuItem for nest() in {self.__repr__()}", Warning, stacklevel = 2)
@@ -5922,7 +5985,7 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 
 		elif (isinstance(self, handle_MenuPopup)):
 			if (isinstance(handle, handle_MenuPopup)):
-				if (handle.type.lower() == "menu"):
+				if (handle.type is Types.menu):
 					#Sub Menu
 					self.contents.append(handle)
 					handle.myMenu = self
@@ -5942,9 +6005,9 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 				return
 					
 		elif (isinstance(self, handle_WidgetInput)):
-			if (self.type.lower() == "inputsearch"):
+			if (self.type is Types.search):
 				if (isinstance(handle, handle_Menu)):
-					if (handle.type.lower() == "menu"):
+					if (handle.type is Types.menu):
 						#Sub Menu
 						if (handle.label is not None):
 							self.thing.SetMenu(handle.thing)
@@ -6273,8 +6336,8 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 
 		data = {}
 		data["type"] = self.type
-		data["self"] = type(self).__name__
-		data["thing"] = type(self.thing).__name__
+		data["self"] = self.__class__.__name__
+		data["thing"] = self.thing.__class__.__name__
 
 		return data
 
@@ -6524,7 +6587,7 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 		if (n > 0):
 			return self.nestedParent.getSizerRow(n = n - 1)
 
-		if (self.nestedParent.type.lower() == "wrap"):
+		if (self.nestedParent.type is Types.wrap):
 			return #TO DO: Calculate what the position is
 
 		if (self.nestedParent.rows is None):
@@ -6555,7 +6618,7 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 		if (n > 0):
 			return self.nestedParent.getSizerColumn(n = n - 1)
 
-		if (self.nestedParent.type.lower() == "wrap"):
+		if (self.nestedParent.type is Types.wrap):
 			return #TO DO: Calculate what the position is
 
 		if (self.nestedParent.columns is None):
@@ -6864,55 +6927,55 @@ class handle_Container_Base(handle_Base):
 
 	#Change State
 	##Enable / Disable
+	@wrap_skipEvent()
 	def onToggleEnable(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of toggleEnable."""
 
 		self.toggleEnable(*args, event = event, **kwargs)
-		event.Skip()
 
 	def toggleEnable(self, label = None, *args, window = False, **kwargs):
 		"""Overload for toggleEnable in handle_Widget_Base."""
 
 		self._overloadHelp("toggleEnable", label, args, kwargs, window = window)
 
+	@wrap_skipEvent()
 	def onSetEnable(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of setEnable."""
 
 		self.setEnable(*args, event = event, **kwargs)
-		event.Skip()
 
 	def setEnable(self, label = None, *args, window = False, **kwargs):
 		"""Overload for setEnable in handle_Widget_Base."""
 
 		self._overloadHelp("setEnable", label, args, kwargs, window = window)
 
+	@wrap_skipEvent()
 	def onSetDisable(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of setDisable."""
 
 		self.setDisable(*args, event = event, **kwargs)
-		event.Skip()
 
 	def setDisable(self, label = None, *args, window = False, **kwargs):
 		"""Overload for setDisable in handle_Widget_Base."""
 
 		self._overloadHelp("setDisable", label, args, kwargs, window = window)
 
+	@wrap_skipEvent()
 	def onEnable(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of enable."""
 
 		self.enable(*args, event = event, **kwargs)
-		event.Skip()
 
 	def enable(self, label = None, *args, window = False, **kwargs):
 		"""Overload for enable in handle_Widget_Base."""
 
 		self._overloadHelp("enable", label, args, kwargs, window = window)
 
+	@wrap_skipEvent()
 	def onDisable(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of disable."""
 
 		self.disable(*args, event = event, **kwargs)
-		event.Skip()
 
 	def disable(self, label = None, *args, window = False, **kwargs):
 		"""Overload for disable in handle_Widget_Base."""
@@ -6932,55 +6995,55 @@ class handle_Container_Base(handle_Base):
 		return answer
 
 	##Show / Hide
+	@wrap_skipEvent()
 	def onToggleShow(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of toggleShow."""
 
 		self.toggleShow(*args, event = event, **kwargs)
-		event.Skip()
 
 	def toggleShow(self, label = None, *args, window = False, **kwargs):
 		"""Overload for toggleShow in handle_Widget_Base."""
 
 		self._overloadHelp("toggleShow", label, args, kwargs, window = window)
 
+	@wrap_skipEvent()
 	def onSetShow(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of setShow."""
 
 		self.setShow(*args, event = event, **kwargs)
-		event.Skip()
 
 	def setShow(self, label = None, *args, window = False, **kwargs):
 		"""Overload for setShow in handle_Widget_Base."""
 
 		self._overloadHelp("setShow", label, args, kwargs, window = window)
 
+	@wrap_skipEvent()
 	def onSetHide(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of setHide."""
 
 		self.setHide(*args, event = event, **kwargs)
-		event.Skip()
 
 	def setHide(self, label = None, *args, window = False, **kwargs):
 		"""Overload for setHide in handle_Widget_Base."""
 
 		self._overloadHelp("setHide", label, args, kwargs, window = window)
 
+	@wrap_skipEvent()
 	def onShow(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of show."""
 
 		self.show(*args, event = event, **kwargs)
-		event.Skip()
 
 	def show(self, label = None, *args, window = False, **kwargs):
 		"""Overload for show in handle_Widget_Base."""
 
 		self._overloadHelp("show", label, args, kwargs, window = window)
 
+	@wrap_skipEvent()
 	def onHide(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of hide."""
 
 		self.hide(*args, event = event, **kwargs)
-		event.Skip()
 
 	def hide(self, label = None, *args, window = False, **kwargs):
 		"""Overload for hide in handle_Widget_Base."""
@@ -7000,22 +7063,22 @@ class handle_Container_Base(handle_Base):
 		return answer
 
 	##Modified
+	@wrap_skipEvent()
 	def onModify(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of modify."""
 
 		self.modify(*args, event = event, **kwargs)
-		event.Skip()
 
 	def modify(self, label = None, *args, window = False, **kwargs):
 		"""Overload for modify in handle_Widget_Base."""
 
 		self._overloadHelp("modify", label, args, kwargs, window = window)
 
+	@wrap_skipEvent()
 	def onSetModified(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of setModified."""
 
 		self.setModified(*args, event = event, **kwargs)
-		event.Skip()
 
 	def setModified(self, label = None, *args, window = False, **kwargs):
 		"""Overload for setModified in handle_Widget_Base."""
@@ -7029,22 +7092,22 @@ class handle_Container_Base(handle_Base):
 		return answer
 
 	##Read Only
+	@wrap_skipEvent()
 	def onReadOnly(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of readOnly."""
 
 		self.readOnly(*args, event = event, **kwargs)
-		event.Skip()
 
 	def readOnly(self, label = None, *args, window = False, **kwargs):
 		"""Overload for readOnly in handle_Widget_Base."""
 
 		self._overloadHelp("readOnly", label, args, kwargs, window = window)
 
+	@wrap_skipEvent()
 	def onSetReadOnly(self, event, *args, **kwargs):
 		"""A wx.CommandEvent version of setReadOnly."""
 
 		self.setReadOnly(*args, event = event, **kwargs)
-		event.Skip()
 
 	def setReadOnly(self, label = None, *args, window = False, **kwargs):
 		"""Overload for setReadOnly in handle_Widget_Base."""
@@ -7085,7 +7148,7 @@ class handle_Widget_Base(handle_Base):
 	def __len__(self):
 		"""Returns what the contextual length is for the object associated with this handle."""
 
-		if (self.type.lower() == "progressbar"):
+		if (self.type is Types.progressbar):
 			value = self.thing.GetRange()
 
 		else:
@@ -7136,9 +7199,9 @@ class handle_Widget_Base(handle_Base):
 
 		self._preBuild(argument_catalogue)
 
-		if (self.type.lower() == "line"):
+		if (self.type is Types.line):
 			_build_line()
-		elif (self.type.lower() == "progressbar"):
+		elif (self.type is Types.progressbar):
 			_build_progressBar()
 		else:
 			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -7149,7 +7212,7 @@ class handle_Widget_Base(handle_Base):
 	def getValue(self, event = None):
 		"""Returns what the contextual value is for the object associated with this handle."""
 
-		if (self.type.lower() == "progressbar"):
+		if (self.type is Types.progressbar):
 			value = self.thing.GetValue() #(int) - Where the progress bar currently is
 
 		else:
@@ -7172,7 +7235,7 @@ class handle_Widget_Base(handle_Base):
 	def getAll(self, event = None):
 		"""Returns all the contextual values for the object associated with this handle."""
 
-		if (self.type.lower() == "progressbar"):
+		if (self.type is Types.progressbar):
 			value = self.thing.GetRange()
 
 		else:
@@ -7185,7 +7248,7 @@ class handle_Widget_Base(handle_Base):
 	def setValue(self, newValue, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
-		if (self.type.lower() == "progressbar"):
+		if (self.type is Types.progressbar):
 			if (not isinstance(newValue, int)):
 				newValue = int(newValue)
 
@@ -7202,7 +7265,7 @@ class handle_Widget_Base(handle_Base):
 	def setReadOnly(self, state = True, event = None):
 		"""Sets the contextual readOnly for the object associated with this handle to what the user supplies."""
 
-		if (self.type.lower() == "line"):
+		if (self.type is Types.line):
 			pass
 			
 		else:
@@ -7242,7 +7305,7 @@ class handle_Widget_Base(handle_Base):
 		"""
 
 		handle = handle_MenuPopup()
-		handle.type = "MenuPopup_widget"
+		handle.type = Types.popup_widget
 		parent = self
 		text = None
 		handle._build(locals())
@@ -7347,7 +7410,7 @@ class handle_Widget_Base(handle_Base):
 
 		self.thing.Show(state)
 
-		if (hasattr(self, "nestedSizer") and (self.nestedSizer.type.lower() == "flex")):
+		if (hasattr(self, "nestedSizer") and (self.nestedSizer.type is Types.flex)):
 			with self.nestedSizer as mySizer:
 				index = self.getSizerIndex()
 				row, column = self.getSizerCoordinates()
@@ -7375,7 +7438,7 @@ class handle_Widget_Base(handle_Base):
 						mySizer.thing.RemoveGrowableCol(column)
 
 				#Account for textbox sizers
-				if ((mySizer.substitute is not None) and (mySizer.substitute.type.lower() == "text")):
+				if ((mySizer.substitute is not None) and (mySizer.substitute.type is Types.text)):
 					text = mySizer.substitute.thing.GetStaticBox()
 					if (not any(item.IsShown() for item in mySizer.thing.GetChildren())):
 						if (text.IsShown()):
@@ -7501,9 +7564,9 @@ class handle_Widget_Base(handle_Base):
 		if (isinstance(self, (handle_MenuItem, handle_MenuPopupItem))):     
 			#Do not add empty tool tips
 			if (len(text) != 0):
-				if (self.type.lower() == "menuitem"):
+				if (self.type is Types.menuitem):
 					self.thing.SetHelp(text)
-				elif (self.type.lower() == "toolbaritem"):
+				elif (self.type is Types.toolbaritem):
 					self.thing.SetShortHelp(text)
 					self.thing.SetLongHelp(text)
 		else:
@@ -7635,10 +7698,10 @@ class handle_WidgetText(handle_Widget_Base):
 	def __len__(self):
 		"""Returns what the contextual length is for the object associated with this handle."""
 
-		if (self.type.lower() == "text"):
+		if (self.type is Types.text):
 			value = len(self.getValue()) #(int) - How long the text is
 
-		elif (self.type.lower() == "hyperlink"):
+		elif (self.type is Types.hyperlink):
 			value = len(self.getValue()) #(int) - How long the url link is
 
 		else:
@@ -7784,13 +7847,13 @@ class handle_WidgetText(handle_Widget_Base):
 
 		self._preBuild(argument_catalogue)
 
-		if (self.type.lower() == "text"):
+		if (self.type is Types.text):
 			_build_text()
-		elif (self.type.lower() == "html"):
+		elif (self.type is Types.html):
 			_build_html()
-		elif (self.type.lower() == "hyperlink"):
+		elif (self.type is Types.hyperlink):
 			_build_hyperlink()
-		elif (self.type.lower() == "empty"):
+		elif (self.type is Types.empty):
 			_build_empty()
 		else:
 			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -7801,13 +7864,13 @@ class handle_WidgetText(handle_Widget_Base):
 	def getValue(self, event = None):
 		"""Returns what the contextual value is for the object associated with this handle."""
 
-		if (self.type.lower() == "text"):
+		if (self.type is Types.text):
 			value = self.thing.GetLabel() #(str) - What the text says
 
-		elif (self.type.lower() == "html"):
+		elif (self.type is Types.html):
 			value = self.thing.ToText() #(str) - What the internal html is
 
-		elif (self.type.lower() == "hyperlink"):
+		elif (self.type is Types.hyperlink):
 			value = self.thing.GetURL() #(str) - What the link is
 
 		else:
@@ -7820,16 +7883,16 @@ class handle_WidgetText(handle_Widget_Base):
 	def setValue(self, newValue, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
-		if (self.type.lower() == "text"):
+		if (self.type is Types.text):
 			if (not isinstance(newValue, str)):
 				newValue = f"{newValue}"
 
 			self.thing.SetLabel(newValue) #(str) - What the static text will now say
 
-		elif (self.type.lower() == "html"):
+		elif (self.type is Types.html):
 			self.thing.SetPage(newValue or "")
 
-		elif (self.type.lower() == "hyperlink"):
+		elif (self.type is Types.hyperlink):
 			if (not isinstance(newValue, str)):
 				newValue = f"{newValue}"
 
@@ -7841,7 +7904,7 @@ class handle_WidgetText(handle_Widget_Base):
 	def setReadOnly(self, state = True):
 		"""Sets the contextual readOnly for the object associated with this handle to what the user supplies."""
 
-		if (self.type.lower() == "text"):
+		if (self.type is Types.text):
 			pass
 			
 		else:
@@ -7860,7 +7923,7 @@ class handle_WidgetText(handle_Widget_Base):
 			self.thing.Wrap(wrap)
 
 	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "hyperlink"):
+		if (self.type is Types.hyperlink):
 			self._betterBind(wx.adv.EVT_HYPERLINK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -7901,10 +7964,10 @@ class handle_WidgetList(handle_Widget_Base):
 			- If False: Returns how many columns the object has
 		"""
 
-		if (self.type.lower() == "listdrop"):
+		if (self.type is Types.drop):
 			value = self.thing.GetCount() #(int) - How many items are in the drop list
 
-		elif (self.type.lower() == "listfull"):
+		elif (self.type is Types.view):
 			if (returnRows):
 				value = self.thing.GetItemCount()
 			else:
@@ -8285,11 +8348,11 @@ class handle_WidgetList(handle_Widget_Base):
 
 		self._preBuild(argument_catalogue)
 
-		if (self.type.lower() == "listdrop"):
+		if (self.type is Types.drop):
 			_build_listDrop()
-		elif (self.type.lower() == "listfull"):
+		elif (self.type is Types.view):
 			_build_listFull()
-		elif (self.type.lower() == "listtree"):
+		elif (self.type is Types.tree):
 			_build_listTree()
 		else:
 			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -8306,11 +8369,11 @@ class handle_WidgetList(handle_Widget_Base):
 			- If None: A dictionary containing both groups and items selected is returned
 		"""
 
-		if (self.type.lower() == "listdrop"):
+		if (self.type is Types.drop):
 			index = self.thing.GetSelection()
 			value = self.choices[index] #(any) - What was selected in the drop list
 
-		elif (self.type.lower() == "listfull"):
+		elif (self.type is Types.view):
 			if (group is None):
 				value = {"group": [item.key for item in self.thing.GetSelectedGroups()], "row": self.thing.GetSelectedObjects(), "latest": None}
 			elif (group):
@@ -8321,7 +8384,7 @@ class handle_WidgetList(handle_Widget_Base):
 			if (fallback_lastSelection and ((not value) or (isinstance(value, dict) and (not value["group"]) and (not value["row"])))):
 				value = self.getLastSelected(group = group)
 
-		elif (self.type.lower() == "listtree"):
+		elif (self.type is Types.tree):
 			if (self.subType.lower() == "single"):
 				selection = self.thing.GetSelection()
 				if (selection.IsOk()):
@@ -8354,10 +8417,10 @@ class handle_WidgetList(handle_Widget_Base):
 	def getIndex(self, event = None):
 		"""Returns what the contextual index is for the object associated with this handle."""
 
-		if (self.type.lower() == "listdrop"):
+		if (self.type is Types.drop):
 			value = self.thing.GetSelection() #(int) - The index number of what is selected in the drop list    
 
-		elif (self.type.lower() == "listfull"):
+		elif (self.type is Types.view):
 			value = []
 			columnCount = self.columns
 
@@ -8381,13 +8444,13 @@ class handle_WidgetList(handle_Widget_Base):
 	def getAll(self, event = None, group = None):
 		"""Returns all the contextual values for the object associated with this handle."""
 
-		if (self.type.lower() == "listdrop"):
+		if (self.type is Types.drop):
 			value = []
 			n = self.thing.GetCount()
 			for i in range(n):
 				value.append(self.thing.GetString(i)) #(list) - What is in the drop list as strings
 
-		elif (self.type.lower() == "listfull"):
+		elif (self.type is Types.view):
 			if (group is None):
 				value = {"group": [item.key for item in self.thing.GetGroups()], "row": self.thing.GetObjects()}
 			elif (group):
@@ -8395,7 +8458,7 @@ class handle_WidgetList(handle_Widget_Base):
 			else:
 				value = self.thing.GetObjects()
 
-		elif (self.type.lower() == "listtree"):
+		elif (self.type is Types.tree):
 			value = {}
 			root = self.thing.GetRootItem()
 
@@ -8428,7 +8491,7 @@ class handle_WidgetList(handle_Widget_Base):
 	# 	Column algorithm from: wx.lib.mixins.listctrl.TextEditMixin
 	# 	"""
 
-	# 	if (self.type.lower() == "listfull"):
+	# 	if (self.type is Types.view):
 	# 		x, y = self.getMousePosition()
 	# 		x_offset = self.thing.GetScrollPos(wx.HORIZONTAL)
 	# 		row, flags = self.thing.HitTest((x,y))
@@ -8518,7 +8581,7 @@ class handle_WidgetList(handle_Widget_Base):
 	def setValue(self, newValue = None, filterNone = False, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
-		if (self.type.lower() == "listdrop"):
+		if (self.type is Types.drop):
 			newValue = self.ensure_container(newValue, convertNone = False)
 
 			if (filterNone is not None):
@@ -8532,12 +8595,12 @@ class handle_WidgetList(handle_Widget_Base):
 			self.thing.AppendItems(newValue) #(list) - What the choice options will now be now
 			self.setChoices(newValue)
 
-		elif (self.type.lower() == "listfull"):
+		elif (self.type is Types.view):
 			objectList = self._formatList(newValue, filterNone = filterNone)
 			self.thing.SetObjects(objectList)
 			self.setChoices(objectList)
 
-		elif (self.type.lower() == "listtree"):
+		elif (self.type is Types.tree):
 			if (not isinstance(newValue, dict)):
 				errorMessage = f"'newValue' must be a dict, not a {type(newValue)} in setValue() for {self.__repr__()}"
 				raise KeyError(errorMessage)
@@ -8560,7 +8623,7 @@ class handle_WidgetList(handle_Widget_Base):
 		None will deselect all items.
 		"""
 
-		if (self.type.lower() == "listdrop"):
+		if (self.type is Types.drop):
 			if (newValue is not None):
 				if (isinstance(newValue, str)):
 					newValue = self.thing.FindString(newValue)
@@ -8572,7 +8635,7 @@ class handle_WidgetList(handle_Widget_Base):
 				newValue = 0
 			self.thing.SetSelection(newValue) #(int) - What the choice options will now be
 
-		elif (self.type.lower() == "listfull"):
+		elif (self.type is Types.view):
 			if (newValue is None):
 				self.thing.UnselectAll()
 				return
@@ -8629,7 +8692,7 @@ class handle_WidgetList(handle_Widget_Base):
 
 	def setText(self, text = None, triggerEvent = True):
 
-		if ((self.type.lower() == "listdrop") and (self.subtype.lower != "autocomplete")):
+		if ((self.type is Types.drop) and (self.subtype.lower != "autocomplete")):
 			return self.setSelection(text, triggerEvent = triggerEvent)
 
 		if (triggerEvent):
@@ -8671,7 +8734,7 @@ class handle_WidgetList(handle_Widget_Base):
 		"""Sets the contextual column for this handle."""
 
 		#Create columns
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			if (column is None):
 				column = len(self.columnCatalogue)
 
@@ -8781,7 +8844,7 @@ class handle_WidgetList(handle_Widget_Base):
 			warnings.warn(f"Add {self.type} to setColumns() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def refreshColumns(self):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			self.thing.SetColumns([ObjectListView.DataColumnDefn(**kwargs) for column, kwargs in sorted(self.columnCatalogue.items())])
 		else:
 			warnings.warn(f"Add {self.type} to setColumns() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -9005,7 +9068,7 @@ class handle_WidgetList(handle_Widget_Base):
 	def appendValue(self, newValue, where = -1, filterNone = None):
 		"""Appends the given value to the current contextual value for this handle."""
 
-		if (self.type.lower() == "listtree"):
+		if (self.type is Types.tree):
 			if (not isinstance(where, wx.TreeCtrl)):
 				#Find the root
 				pass
@@ -9027,7 +9090,7 @@ class handle_WidgetList(handle_Widget_Base):
 					if (newValue is not None):
 						branch = self.thing.AppendItem(where, str(newValue))
 
-		elif (self.type.lower() == "listfull"):
+		elif (self.type is Types.view):
 			objectList = self._formatList(newValue, filterNone = filterNone)
 			self.thing.AddObjects(objectList)
 
@@ -9097,19 +9160,19 @@ class handle_WidgetList(handle_Widget_Base):
 
 	#Change Settings
 	def setFunction_preClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listtree"):
+		if (self.type is Types.tree):
 			self._betterBind(wx.EVT_TREE_SEL_CHANGING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_preClick() for {self.__repr__()}", Warning, stacklevel = 2)
 			
 	def setFunction_postClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listdrop"):
+		if (self.type is Types.drop):
 			self._betterBind(wx.EVT_CHOICE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		elif (self.type.lower() == "listfull"):
+		elif (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_SELECTION_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 			self._betterBind(ObjectListView.EVT_DATA_SELECTION_CHANGED, self.thing, self._onSelectRow, rebind = True, mode = 2)
 
-		elif (self.type.lower() == "listtree"):
+		elif (self.type is Types.tree):
 			self._betterBind(wx.EVT_TREE_SEL_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_postClick() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -9118,25 +9181,25 @@ class handle_WidgetList(handle_Widget_Base):
 		self.setFunction_postClick(myFunction = myFunction, myFunctionArgs = myFunctionArgs, myFunctionKwargs = myFunctionKwargs)
 			
 	def setFunction_groupClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_GROUP_SELECTED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 			self._betterBind(ObjectListView.EVT_DATA_GROUP_SELECTED, self.thing, self._onSelectGroup, rebind = True, mode = 2)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_groupClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_preEdit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_CELL_EDIT_STARTING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		elif (self.type.lower() == "listtree"):
+		elif (self.type is Types.tree):
 			self._betterBind(wx.EVT_TREE_BEGIN_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_preEdit() for {self.__repr__()}", Warning, stacklevel = 2)
 			
 	def setFunction_postEdit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_CELL_EDIT_FINISHING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 			# self._betterBind(ObjectListView.EVT_DATA_CELL_EDIT_FINISHED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		elif (self.type.lower() == "listtree"):
+		elif (self.type is Types.tree):
 			self._betterBind(wx.EVT_TREE_END_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_postEdit() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -9145,7 +9208,7 @@ class handle_WidgetList(handle_Widget_Base):
 		self.setFunction_postEdit(myFunction = myFunction, myFunctionArgs = myFunctionArgs, myFunctionKwargs = myFunctionKwargs)
 
 	def setFunction_preDrag(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			if (not self.dragable):
 				warnings.warn(f"'drag' was not enabled for {self.__repr__()} upon creation", Warning, stacklevel = 2)
 			else:
@@ -9156,7 +9219,7 @@ class handle_WidgetList(handle_Widget_Base):
 			warnings.warn(f"Add {self.type} to setFunction_preDrag() for {self.__repr__()}", Warning, stacklevel = 2)
 			
 	def setFunction_postDrag(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			if (not self.dragable):
 				warnings.warn(f"'drag' was not enabled for {self.__repr__()} upon creation", Warning, stacklevel = 2)
 			else:
@@ -9168,7 +9231,7 @@ class handle_WidgetList(handle_Widget_Base):
 			warnings.warn(f"Add {self.type} to setFunction_postDrag() for {self.__repr__()}", Warning, stacklevel = 2)
 			
 	def setFunction_preDrop(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			if (self.myDropTarget is None):
 				warnings.warn(f"'drop' was not enabled for {self.__repr__()} upon creation", Warning, stacklevel = 2)
 			else:
@@ -9179,7 +9242,7 @@ class handle_WidgetList(handle_Widget_Base):
 			warnings.warn(f"Add {self.type} to setFunction_preDrop() for {self.__repr__()}", Warning, stacklevel = 2)
 			
 	def setFunction_postDrop(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			if (self.myDropTarget is None):
 				warnings.warn(f"'drop' was not enabled for {self.__repr__()} upon creation", Warning, stacklevel = 2)
 			else:
@@ -9191,7 +9254,7 @@ class handle_WidgetList(handle_Widget_Base):
 			warnings.warn(f"Add {self.type} to setFunction_postDrop() for {self.__repr__()}", Warning, stacklevel = 2)
 			
 	def setFunction_dragOver(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			if (self.myDropTarget is None):
 				warnings.warn(f"'drop' was not enabled for {self.__repr__()} upon creation", Warning, stacklevel = 2)
 			else:
@@ -9203,175 +9266,175 @@ class handle_WidgetList(handle_Widget_Base):
 			warnings.warn(f"Add {self.type} to setFunction_dragOver() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_preCollapse(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_COLLAPSING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		elif (self.type.lower() == "listtree"):
+		elif (self.type is Types.tree):
 			self._betterBind(wx.EVT_TREE_ITEM_COLLAPSING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_preCollapse() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_postCollapse(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_COLLAPSED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		elif (self.type.lower() == "listtree"):
+		elif (self.type is Types.tree):
 			self._betterBind(wx.EVT_TREE_ITEM_COLLAPSED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_postCollapse() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_preExpand(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_EXPANDING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		elif (self.type.lower() == "listtree"):
+		elif (self.type is Types.tree):
 			self._betterBind(wx.EVT_TREE_ITEM_EXPANDING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_preExpand() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_postExpand(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_EXPANDED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		elif (self.type.lower() == "listtree"):
+		elif (self.type is Types.tree):
 			self._betterBind(wx.EVT_TREE_ITEM_EXPANDED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_postExpand() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_rightClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listtree"):
+		if (self.type is Types.tree):
 			self._betterBind(wx.EVT_TREE_ITEM_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		elif (self.type.lower() == "listfull"):
+		elif (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_CELL_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_rightClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_middleClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listtree"):
+		if (self.type is Types.tree):
 			self._betterBind(wx.EVT_TREE_ITEM_MIDDLE_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_middleClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_doubleClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listtree"):
+		if (self.type is Types.tree):
 			self._betterBind(wx.EVT_TREE_ITEM_ACTIVATED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		elif (self.type.lower() == "listfull"):
+		elif (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_CELL_ACTIVATED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_middleClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_clickLabel(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_COLUMN_HEADER_LEFT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_labelClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_rightClickLabel(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_COLUMN_HEADER_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_rightClickLabel() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_keyDown(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listtree"):
+		if (self.type is Types.tree):
 			self._betterBind(wx.EVT_TREE_KEY_DOWN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_keyDown() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_copy(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_COPY, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_postEdit() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_preCopy(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_COPYING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_preCopy() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_postCopy(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_COPIED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_postCopy() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_paste(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_PASTE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_paste() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_prePaste(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_PASTING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_prePaste() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_toolTip(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listtree"):
+		if (self.type is Types.tree):
 			self._betterBind(wx.EVT_TREE_ITEM_GETTOOLTIP, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_toolTip() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_itemMenu(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listtree"):
+		if (self.type is Types.tree):
 			self._betterBind(wx.EVT_TREE_ITEM_MENU, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_itemMenu() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_sort(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_COLUMN_SORTED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_sort() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_reorder(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_COLUMN_REORDER, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_reorder() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_groupCreate(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_GROUP_CREATING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_groupCreate() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_undo(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_UNDO, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_undo() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_undoTrack(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_UNDO_TRACK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_undoTrack() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_canUndo(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_UNDO_FIRST, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_canUndo() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_cantUndo(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_UNDO_EMPTY, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_cantUndo() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_redo(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_REDO, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_redo() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_canRedo(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_REDO_FIRST, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_canRedo() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_cantRedo(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_REDO_EMPTY, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_cantRedo() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -9379,7 +9442,7 @@ class handle_WidgetList(handle_Widget_Base):
 	def setReadOnly(self, state = True):
 		"""Sets the contextual readOnly for the object associated with this handle to what the user supplies."""
 
-		if (self.type.lower() == "listdrop"):
+		if (self.type is Types.drop):
 			self.setDisable(state)
 		else:
 			warnings.warn(f"Add {self.type} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -9402,7 +9465,7 @@ class handle_WidgetList(handle_Widget_Base):
 		Example Input: setItemColor(slice(None, None, 2))
 		"""
 
-		if (self.type.lower() == "listfull"):
+		if (self.type is Types.view):
 			if (color is None):
 				colorHandle = None
 			else:
@@ -9667,22 +9730,22 @@ class handle_WidgetInput(handle_Widget_Base):
 			- If False: Returns the min of the object range
 		"""
 
-		if (self.type.lower() == "inputbox"):
+		if (self.type is Types.box):
 			value = len(self.getValue())
 
-		elif (self.type.lower() == "inputspinner"):
+		elif (self.type is Types.spinner):
 			if (returnMax):
 				value = self.thing.GetMax()
 			else:
 				value = self.thing.GetMin()
 
-		elif (self.type.lower() == "slider"):
+		elif (self.type is Types.slider):
 			if (returnMax):
 				value = self.thing.GetMax()
 			else:
 				value = self.thing.GetMin()
 
-		elif (self.type.lower() == "inputsearch"):
+		elif (self.type is Types.search):
 			value = len(self.getValue())
 
 		else:
@@ -9977,13 +10040,13 @@ class handle_WidgetInput(handle_Widget_Base):
 
 		self._preBuild(argument_catalogue)
 
-		if (self.type.lower() == "inputbox"):
+		if (self.type is Types.box):
 			_build_inputBox()
-		elif (self.type.lower() == "inputspinner"):
+		elif (self.type is Types.spinner):
 			_build_inputSpinner()
-		elif (self.type.lower() == "slider"):
+		elif (self.type is Types.slider):
 			_build_slider()
-		elif (self.type.lower() == "inputsearch"):
+		elif (self.type is Types.search):
 			_build_inputSearch()
 		else:
 			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -9994,16 +10057,16 @@ class handle_WidgetInput(handle_Widget_Base):
 	def getValue(self, event = None):
 		"""Returns what the contextual value is for the object associated with this handle."""
 
-		if (self.type.lower() == "inputbox"):
+		if (self.type is Types.box):
 			value = self.thing.GetValue() #(str) - What the text currently says
 
-		elif (self.type.lower() == "inputspinner"):
+		elif (self.type is Types.spinner):
 			value = self.thing.GetValue() #(str) - What is in the spin box
 
-		elif (self.type.lower() == "slider"):
+		elif (self.type is Types.slider):
 			value = self.thing.GetValue() #(str) - What is in the spin box
 
-		elif (self.type.lower() == "inputsearch"):
+		elif (self.type is Types.search):
 			value = self.thing.GetValue() #(str) - What is in the search box
 
 		else:
@@ -10019,12 +10082,12 @@ class handle_WidgetInput(handle_Widget_Base):
 	def setValue(self, newValue = None, event = None, **kwargs):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
-		if (self.type.lower() == "inputbox"):
+		if (self.type is Types.box):
 			if (newValue is None):
 				newValue = "" #Filter None as blank text
 			self.thing.SetValue(newValue) #(str) - What will be shown in the input box
 
-		elif (self.type.lower() == "inputspinner"):
+		elif (self.type is Types.spinner):
 			if (isinstance(newValue, str)):
 				if ("_base16" in self.subType):
 					newValue = hex(int(newValue, 16))
@@ -10033,10 +10096,10 @@ class handle_WidgetInput(handle_Widget_Base):
 
 			self.thing.SetValue(newValue) #(int / float) - What will be shown in the input box
 
-		elif (self.type.lower() == "slider"):
+		elif (self.type is Types.slider):
 			self.thing.SetValue(newValue) #(int / float) - Where the slider position will be
 
-		elif (self.type.lower() == "inputsearch"):
+		elif (self.type is Types.search):
 			if (newValue is None):
 				newValue = "" #Filter None as blank text
 			self.thing.SetValue(newValue) #(str) - What will be shown in the search box
@@ -10046,15 +10109,15 @@ class handle_WidgetInput(handle_Widget_Base):
 
 	#Change Settings
 	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "inputbox"):
+		if (self.type is Types.box):
 			self._betterBind(wx.EVT_TEXT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 			self._betterBind(wx.EVT_TEXT_ENTER, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
-		elif (self.type.lower() == "inputspinner"):
+		elif (self.type is Types.spinner):
 			self._betterBind(wx.EVT_TEXT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 			# self._betterBind(wx.EVT_SPINCTRL, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
-		elif (self.type.lower() == "inputsearch"):
+		elif (self.type is Types.search):
 			self._betterBind(wx.EVT_TEXT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 			self._betterBind(wx.EVT_TEXT_ENTER, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
@@ -10062,10 +10125,10 @@ class handle_WidgetInput(handle_Widget_Base):
 			warnings.warn(f"Add {self.type} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_enter(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "inputbox"):
+		if (self.type is Types.box):
 			self.keyBind("enter", myFunction, myFunctionArgs, myFunctionKwargs)
 
-		elif (self.type.lower() == "inputsearch"):
+		elif (self.type is Types.search):
 			self.keyBind("enter", myFunction, myFunctionArgs, myFunctionKwargs)
 			# self._betterBind(wx.EVT_TEXT_ENTER, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
@@ -10073,41 +10136,41 @@ class handle_WidgetInput(handle_Widget_Base):
 			warnings.warn(f"Add {self.type} to setFunction_enter() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_preEdit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "inputbox"):
+		if (self.type is Types.box):
 			self._betterBind(wx.EVT_SET_FOCUS, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_preEdit() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_postEdit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "inputbox"):
+		if (self.type is Types.box):
 			self._betterBind(wx.EVT_KILL_FOCUS, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
-		elif (self.type.lower() == "inputspinner"):
+		elif (self.type is Types.spinner):
 			self._betterBind(wx.EVT_KILL_FOCUS, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
 			if (not ((self.exclude is None) or (isinstance(self.exclude, (list, tuple, range)) and (len(self.exclude) == 0)))):
 				self._betterBind(wx.EVT_KILL_FOCUS, self.thing, self._onCheckValue_exclude, rebind = True)
 
-		elif (self.type.lower() == "slider"):
+		elif (self.type is Types.slider):
 			self._betterBind(wx.EVT_SCROLL_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_postEdit() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_search(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "inputsearch"):
+		if (self.type is Types.search):
 			self._betterBind(wx.EVT_SEARCHCTRL_SEARCH_BTN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_search() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_cancel(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "inputsearch"):
+		if (self.type is Types.search):
 			self._betterBind(wx.EVT_SEARCHCTRL_CANCEL_BTN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_cancel() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_menuSelect(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type.lower() == "inputsearch"):
+		if (self.type is Types.search):
 			self._betterBind(wx.EVT_MENU, self.myMenu.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_menuSelect() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -10115,10 +10178,10 @@ class handle_WidgetInput(handle_Widget_Base):
 	def setMin(self, newValue):
 		"""Sets the contextual minimum for the object associated with this handle to what the user supplies."""
 
-		if (self.type.lower() == "inputspinner"):
+		if (self.type is Types.spinner):
 			self.thing.SetMin(newValue) #(int / float) - What the min value will be for the the input box
 
-		elif (self.type.lower() == "slider"):
+		elif (self.type is Types.slider):
 			self.thing.SetMin(newValue) #(int / float) - What the min slider position will be
 
 		else:
@@ -10127,10 +10190,10 @@ class handle_WidgetInput(handle_Widget_Base):
 	def setMax(self, newValue):
 		"""Sets the contextual maximum for the object associated with this handle to what the user supplies."""
 
-		if (self.type.lower() == "inputspinner"):
+		if (self.type is Types.spinner):
 			self.thing.SetMax(newValue) #(int / float) - What the max value will be for the the input box
 
-		elif (self.type.lower() == "slider"):
+		elif (self.type is Types.slider):
 			self.thing.SetMax(newValue) #(int / float) - What the max slider position will be
 
 		else:
@@ -10139,10 +10202,10 @@ class handle_WidgetInput(handle_Widget_Base):
 	def setReadOnly(self, state = True):
 		"""Sets the contextual readOnly for the object associated with this handle to what the user supplies."""
 
-		if (self.type.lower() == "inputbox"):
+		if (self.type is Types.box):
 			self.thing.SetEditable(not state)
 
-		elif (self.type.lower() == "inputspinner"):
+		elif (self.type is Types.spinner):
 			self.thing.Enable(not state)
 
 		else:
@@ -10162,7 +10225,7 @@ class handle_WidgetInput(handle_Widget_Base):
 	def _onCheckValue_exclude(self, event):
 		"""Checks the current value to make sure the text is valid."""
 
-		if (self.type.lower() == "inputspinner"):
+		if (self.type is Types.spinner):
 			if (self.exclude is not None):
 				#Error Check
 				if (not isinstance(self.exclude, (list, tuple, range))):
@@ -10193,7 +10256,7 @@ class handle_WidgetInput(handle_Widget_Base):
 	def _onSearch_replaceText(self, event):
 		"""Replaces the text in the input box with that of the popup menu."""
 
-		if (self.type.lower() == "inputsearch"):
+		if (self.type is Types.search):
 			value = self.myMenu.getText(event)
 			self.setValue(value)
 		else:
@@ -10213,25 +10276,25 @@ class handle_WidgetButton(handle_Widget_Base):
 	def __len__(self):
 		"""Returns what the contextual length is for the object associated with this handle."""
 
-		if (self.type.lower() == "buttoncheck"):
+		if (self.type is Types.check):
 			value = len(self.thing.GetLabel()) #(int) - The length of the text by the check box
 
-		elif (self.type.lower() == "buttonradio"):
+		elif (self.type is Types.radio):
 			value = len(self.thing.GetLabel()) #(int) - The length of the text by the radio button
 
-		elif (self.type.lower() == "buttontoggle"):
+		elif (self.type is Types.toggle):
 			value = len(self.thing.GetLabel()) #(int) - The length of the text in the toggle button
 
-		elif (self.type.lower() == "buttonradiobox"):
+		elif (self.type is Types.radiobox):
 			value = self.thing.GetCount() #(int) - How many items are in the check list
 
-		elif (self.type.lower() == "checklist"):
+		elif (self.type is Types.checklist):
 			value = self.thing.GetCount() #(int) - How many items are in the check list
 
-		elif (self.type.lower() == "button"):
+		elif (self.type is Types.button):
 			value = len(self.getValue()) #(int) - The length of the text in the button
 
-		elif (self.type.lower() == "buttonimage"):
+		elif (self.type is Types.image):
 			value = len(self.getValue()) #(int) - The length of the text in the image button
 
 		else:
@@ -10497,23 +10560,23 @@ class handle_WidgetButton(handle_Widget_Base):
 		self._preBuild(argument_catalogue)
 
 		
-		if (self.type.lower() == "button"):
+		if (self.type is Types.button):
 			_build_button()
-		elif (self.type.lower() == "buttoncheck"):
+		elif (self.type is Types.check):
 			_build_buttonCheck()
-		elif (self.type.lower() == "buttonradio"):
+		elif (self.type is Types.radio):
 			_build_buttonRadio()
-		elif (self.type.lower() == "buttontoggle"):
+		elif (self.type is Types.toggle):
 			_build_buttonToggle()
-		elif (self.type.lower() == "buttonradiobox"):
+		elif (self.type is Types.radiobox):
 			_build_buttonRadioBox()
-		elif (self.type.lower() == "checklist"):
+		elif (self.type is Types.checklist):
 			_build_checkList()
-		elif (self.type.lower() == "buttonimage"):
+		elif (self.type is Types.image):
 			_build_buttonImage()
-		elif (self.type.lower() == "buttonlist"):
+		elif (self.type is Types.list):
 			_build_buttonList()
-		elif (self.type.lower() == "buttonhelp"):
+		elif (self.type is Types.help):
 			_build_buttonHelp()
 		else:
 			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -10524,32 +10587,32 @@ class handle_WidgetButton(handle_Widget_Base):
 	def getValue(self, event = None):
 		"""Returns what the contextual value is for the object associated with this handle."""
 
-		if (self.type.lower() == "buttoncheck"):
+		if (self.type is Types.check):
 			value = self.thing.GetValue() #(bool) - True: Checked; False: Un-Checked
 
-		elif (self.type.lower() == "buttonlist"):
+		elif (self.type is Types.list):
 			value = self.thing.GetLabel() #(str) - What the button says
 
-		elif (self.type.lower() == "buttonradio"):
+		elif (self.type is Types.radio):
 			value = self.thing.GetValue() #(bool) - True: Selected; False: Un-Selected
 
-		elif (self.type.lower() == "buttontoggle"):
+		elif (self.type is Types.toggle):
 			value = self.thing.GetValue() #(bool) - True: Selected; False: Un-Selected
 
-		elif (self.type.lower() == "buttonradiobox"):
+		elif (self.type is Types.radiobox):
 			index = self.thing.GetSelection()
 			if (index != -1):
 				value = self.thing.GetString(index) #(str) - What the selected item's text says
 			else:
 				value = None
 
-		elif (self.type.lower() == "checklist"):
+		elif (self.type is Types.checklist):
 			value = self.thing.GetCheckedStrings() #(list) - What is selected in the check list as strings
 
-		elif (self.type.lower() == "button"):
+		elif (self.type is Types.button):
 			value = self.thing.GetLabel() #(str) - What the button says
 
-		elif (self.type.lower() == "buttonimage"):
+		elif (self.type is Types.image):
 			if (self.toggle):
 				value = self.thing.GetToggle() #(bool) - True: Selected; False: Un-Selected
 			else:
@@ -10564,10 +10627,10 @@ class handle_WidgetButton(handle_Widget_Base):
 	def getIndex(self, event = None):
 		"""Returns what the contextual index is for the object associated with this handle."""
 
-		if (self.type.lower() == "buttonradiobox"):
+		if (self.type is Types.radiobox):
 			value = self.thing.GetSelection() #(int) - Which button is selected by index
 
-		elif (self.type.lower() == "checklist"):
+		elif (self.type is Types.checklist):
 			value = self.thing.GetCheckedItems() #(list) - Which checkboxes are selected as integers
 
 		else:
@@ -10579,13 +10642,13 @@ class handle_WidgetButton(handle_Widget_Base):
 	def getAll(self, event = None):
 		"""Returns all the contextual values for the object associated with this handle."""
 
-		if (self.type.lower() == "buttonradiobox"):
+		if (self.type is Types.radiobox):
 			value = []
 			n = self.thing.GetCount()
 			for i in range(n):
 				value.append(thing.GetString(i)) #(list) - What is in the radio box as strings
 
-		elif (self.type.lower() == "checklist"):
+		elif (self.type is Types.checklist):
 			value = []
 			n = self.thing.GetCount()
 			for i in range(n):
@@ -10601,19 +10664,19 @@ class handle_WidgetButton(handle_Widget_Base):
 	def setValue(self, newValue, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
-		if (self.type.lower() == "buttoncheck"):
+		if (self.type is Types.check):
 			self.thing.SetValue(bool(newValue)) #(bool) - True: checked; False: un-checked
 
-		elif (self.type.lower() == "buttonlist"):
+		elif (self.type is Types.list):
 			self.thing.SetLabel(newValue) #(str) - What the button will say on it
 
-		elif (self.type.lower() == "buttonradio"):
+		elif (self.type is Types.radio):
 			self.thing.SetValue(bool(newValue)) #(bool) - True: selected; False: un-selected
 
-		elif (self.type.lower() == "buttontoggle"):
+		elif (self.type is Types.toggle):
 			self.thing.SetValue(bool(newValue)) #(bool) - True: selected; False: un-selected
 
-		elif (self.type.lower() == "buttonradiobox"):
+		elif (self.type is Types.radiobox):
 			if (isinstance(newValue, str)):
 				# if (not newValue.isdigit()):
 				newValue = self.thing.FindString(newValue)
@@ -10624,7 +10687,7 @@ class handle_WidgetButton(handle_Widget_Base):
 
 			self.thing.SetSelection(int(newValue)) #(int / str) - Which radio button to select
 
-		elif (self.type.lower() == "checklist"):
+		elif (self.type is Types.checklist):
 			if (not isinstance(newValue, dict)):
 				errorMessage = "Must give a dictionary of {which item (int): state (bool)}"# or {item label (str): state (bool)}"
 				raise ValueError(errorMessage)
@@ -10635,10 +10698,10 @@ class handle_WidgetButton(handle_Widget_Base):
 				
 				self.thing.Check(index, state) #(bool) - True: selected; False: un-selected
 		
-		elif (self.type.lower() == "button"):
+		elif (self.type is Types.button):
 			self.thing.SetLabel(newValue) #(str) - What the button will say on it
 
-		elif ((self.type.lower() == "buttonimage") and (self.toggle)):
+		elif ((self.type is Types.image) and (self.toggle)):
 			self.thing.SetToggle(bool(newValue)) #(bool) - True: selected; False: un-selected
 
 		else:
@@ -10647,12 +10710,12 @@ class handle_WidgetButton(handle_Widget_Base):
 	def setSelection(self, newValue = None, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
-		if (self.type.lower() == "buttonradiobox"):
+		if (self.type is Types.radiobox):
 			if (newValue is None):
 				newValue = 0
 			self.setValue(newValue, event)
 
-		elif (self.type.lower() == "buttonlist"):
+		elif (self.type is Types.list):
 			try:
 				if (isinstance(newValue, bool)):
 					newValue = int(newValue)
@@ -10675,29 +10738,29 @@ class handle_WidgetButton(handle_Widget_Base):
 	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the widget is clicked."""
 		
-		if (self.type.lower() == "buttoncheck"):
+		if (self.type is Types.check):
 			self._betterBind(wx.EVT_CHECKBOX, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		
-		elif (self.type.lower() == "buttonradio"):
+		elif (self.type is Types.radio):
 			self._betterBind(wx.EVT_RADIOBUTTON, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
-		elif (self.type.lower() == "buttonradiobox"):
+		elif (self.type is Types.radiobox):
 			self._betterBind(wx.EVT_RADIOBOX, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		
-		elif (self.type.lower() == "button"):
+		elif (self.type is Types.button):
 			self._betterBind(wx.EVT_BUTTON, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		
-		elif (self.type.lower() == "buttonlist"):
+		elif (self.type is Types.list):
 			self._betterBind(wx.EVT_BUTTON, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 			self._betterBind(wx.EVT_BUTTON, self.thing, self._onToggleText, rebind = True)
 		
-		elif (self.type.lower() == "buttonimage"):
+		elif (self.type is Types.image):
 			self._betterBind(wx.EVT_BUTTON, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		
-		elif (self.type.lower() == "buttontoggle"):
+		elif (self.type is Types.toggle):
 			self._betterBind(wx.EVT_TOGGLEBUTTON, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		
-		elif (self.type.lower() == "checklist"):
+		elif (self.type is Types.checklist):
 			self._betterBind(wx.EVT_CHECKLISTBOX, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
 		else:
@@ -10706,7 +10769,7 @@ class handle_WidgetButton(handle_Widget_Base):
 	def setReadOnly(self, state = True, event = None):
 		"""Sets the contextual readOnly for the object associated with this handle to what the user supplies."""
 
-		if (self.type.lower() == "buttoncheck"):
+		if (self.type is Types.check):
 			self.thing.SetReadOnly(state)
 
 		else:
@@ -10715,7 +10778,7 @@ class handle_WidgetButton(handle_Widget_Base):
 	def _onToggleText(self, event):
 		"""Changes the value displayed on the button when the user presses it."""
 
-		if (self.type.lower() == "buttonlist"):
+		if (self.type is Types.list):
 			value = self.getValue()
 			if (value in self.textList):
 				index = self.textList.index(value)
@@ -10745,10 +10808,10 @@ class handle_WidgetPicker(handle_Widget_Base):
 	def __len__(self):
 		"""Returns what the contextual length is for the object associated with this handle."""
 
-		if (self.type.lower() == "pickerfile"):
+		if (self.type is Types.file):
 			value = len(self.getValue()) #(int) - How long the file path selected is
 
-		elif (self.type.lower() == "pickerfilewindow"):
+		elif (self.type is Types.filewindow):
 			value = len(self.getValue()) #(int) - How long the file path selected is
 
 		else:
@@ -11101,19 +11164,19 @@ class handle_WidgetPicker(handle_Widget_Base):
 
 		self._preBuild(argument_catalogue)
 
-		if (self.type.lower() == "pickerfile"):
+		if (self.type is Types.file):
 			_build_pickerFile()
-		elif (self.type.lower() == "pickerfilewindow"):
+		elif (self.type is Types.filewindow):
 			_build_pickerFileWindow()
-		elif (self.type.lower() == "pickerdate"):
+		elif (self.type is Types.date):
 			_build_pickerDate()
-		elif (self.type.lower() == "pickerdatewindow"):
+		elif (self.type is Types.datewindow):
 			_build_pickerDateWindow()
-		elif (self.type.lower() == "pickertime"):
+		elif (self.type is Types.time):
 			_build_pickerTime()
-		elif (self.type.lower() == "pickercolor"):
+		elif (self.type is Types.color):
 			_build_pickerColor()
-		elif (self.type.lower() == "pickerfont"):
+		elif (self.type is Types.font):
 			_build_pickerFont()
 		else:
 			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -11124,31 +11187,31 @@ class handle_WidgetPicker(handle_Widget_Base):
 	def getValue(self, event = None):
 		"""Returns what the contextual value is for the object associated with this handle."""
 
-		if (self.type.lower() == "pickerfile"):
+		if (self.type is Types.file):
 			value = self.thing.GetPath() #(str) - What is in the attached file picker
 
-		elif (self.type.lower() == "pickerfilewindow"):
+		elif (self.type is Types.filewindow):
 			value = self.thing.GetPath() #(str) - What is in the attached file picker
 		
-		elif (self.type.lower() == "pickerdate"):
+		elif (self.type is Types.date):
 			value = self.thing.GetValue() #(str) - What date is selected in the date picker
 			if (value is not None):
 				value = f"{value.GetMonth()}/{value.GetDay()}/{value.GetYear()}"
 
-		elif (self.type.lower() == "pickerdatewindow"):
+		elif (self.type is Types.datewindow):
 			value = self.thing.GetDate() #(str) - What date is selected in the date picker
 			if (value is not None):
 				value = f"{value.GetMonth()}/{value.GetDay()}/{value.GetYear()}"
 
-		elif (self.type.lower() == "pickertime"):
+		elif (self.type is Types.time):
 			value = self.thing.GetTime() #(str) - What date is selected in the date picker
 			if (value is not None):
 				value = f"{value[0]}:{value[1]}:{value[2]}"
 
-		elif (self.type.lower() == "pickercolor"):
+		elif (self.type is Types.color):
 			value = self.thing.GetColour()
 
-		elif (self.type.lower() == "pickerfont"):
+		elif (self.type is Types.font):
 			value = self.thing.GetSelectedFont()
 
 		else:
@@ -11161,10 +11224,10 @@ class handle_WidgetPicker(handle_Widget_Base):
 	def setValue(self, newValue, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
-		if ((self.type.lower() == "pickerfile") or (self.type.lower() == "pickerfilewindow")):
+		if ((self.type is Types.file) or (self.type is Types.filewindow)):
 			self.thing.SetPath(newValue) #(str) - What will be shown in the input box
 		
-		elif ((self.type.lower() == "pickerdate") or (self.type.lower() == "pickerdatewindow")):
+		elif ((self.type is Types.date) or (self.type is Types.datewindow)):
 			#Format value
 			try:
 				if (newValue is not None):
@@ -11179,7 +11242,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 
 			self.thing.SetValue(newValue) #(str) - What date will be selected as 'mm/dd/yyyy'
 
-		elif (self.type.lower() == "pickertime"):
+		elif (self.type is Types.time):
 			#Format value
 			try:
 				if (newValue is not None):
@@ -11215,22 +11278,22 @@ class handle_WidgetPicker(handle_Widget_Base):
 	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the widget is changed/clicked on."""
 		
-		if (self.type.lower() == "pickerfile"):
+		if (self.type is Types.file):
 			if (self.thing.GetClassName() == "wxDirPickerCtrl"):
 				self._betterBind(wx.EVT_DIRPICKER_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 			else:
 				self._betterBind(wx.EVT_FILEPICKER_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		elif (self.type.lower() == "pickerfilewindow"):
+		elif (self.type is Types.filewindow):
 			self._betterBind(wx.EVT_TREE_SEL_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		elif (self.type.lower() == "pickertime"):
+		elif (self.type is Types.time):
 			self._betterBind(wx.adv.EVT_TIME_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		elif (self.type.lower() == "pickerdate"):
+		elif (self.type is Types.date):
 			self._betterBind(wx.adv.EVT_DATE_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		elif (self.type.lower() == "pickerdatewindow"):
+		elif (self.type is Types.datewindow):
 			self._betterBind(wx.adv.EVT_CALENDAR_SEL_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		elif (self.type.lower() == "pickercolor"):
+		elif (self.type is Types.color):
 			self._betterBind(wx.EVT_COLOURPICKER_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		elif (self.type.lower() == "pickerfont"):
+		elif (self.type is Types.font):
 			self._betterBind(wx.EVT_FONTPICKER_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -11238,7 +11301,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 	def setFunction_editLabel(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when a label is modified."""
 		
-		if (self.type.lower() == "pickerfilewindow"):
+		if (self.type is Types.filewindow):
 			self._betterBind(wx.EVT_TREE_END_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_editLabel() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -11246,7 +11309,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 	def setFunction_rightClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the right mouse button is clicked in the widget."""
 		
-		if (self.type.lower() == "pickerfilewindow"):
+		if (self.type is Types.filewindow):
 			self._betterBind(wx.EVT_TREE_ITEM_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_rightClick() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -11254,7 +11317,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 	def setFunction_editDay(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the day is modified."""
 		
-		if (self.type.lower() == "pickerdatewindow"):
+		if (self.type is Types.datewindow):
 			self._betterBind(wx.adv.EVT_CALENDAR_DAY, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_editDay() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -11262,7 +11325,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 	def setFunction_editMonth(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the month is modified."""
 		
-		if (self.type.lower() == "pickerdatewindow"):
+		if (self.type is Types.datewindow):
 			self._betterBind(wx.adv.EVT_CALENDAR_MONTH, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_editMonth() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -11270,7 +11333,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 	def setFunction_editYear(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the year is modified."""
 		
-		if (self.type.lower() == "pickerdatewindow"):
+		if (self.type is Types.datewindow):
 			self._betterBind(wx.adv.EVT_CALENDAR_YEAR, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_editYear() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -11292,7 +11355,7 @@ class handle_WidgetImage(handle_Widget_Base):
 			- If False: Returns how many columns the object has
 		"""
 
-		if (self.type.lower() == "image"):
+		if (self.type is Types.image):
 			image = self.getValue()
 			if (returnRows):
 				value = image.GetWidth()
@@ -11326,7 +11389,7 @@ class handle_WidgetImage(handle_Widget_Base):
 
 		self._preBuild(argument_catalogue)
 
-		if (self.type.lower() == "image"):
+		if (self.type is Types.image):
 			_build_image()
 		else:
 			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -11337,7 +11400,7 @@ class handle_WidgetImage(handle_Widget_Base):
 	def getValue(self, event = None):
 		"""Returns what the contextual value is for the object associated with this handle."""
 
-		if (self.type.lower() == "image"):
+		if (self.type is Types.image):
 			value = self.thing.GetBitmap() #(bitmap) - The image that is currently being shown
 
 		else:
@@ -11350,7 +11413,7 @@ class handle_WidgetImage(handle_Widget_Base):
 	def setValue(self, newValue, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
-		if (self.type.lower() == "image"):
+		if (self.type is Types.image):
 			image = self._getImage(newValue)
 			self.thing.SetBitmap(image) #(wxBitmap) - What the image will be now
 
@@ -11455,11 +11518,11 @@ class handle_Menu(handle_Container_Base):
 
 		self._preBuild(argument_catalogue)
 
-		if (self.type.lower() == "menu"):
+		if (self.type is Types.menu):
 			_build_menu()
-		elif (self.type.lower() == "flatmenu"):
+		elif (self.type is Types.flatmenu):
 			_build_flatmenu()
-		elif (self.type.lower() == "toolbar"):
+		elif (self.type is Types.toolbar):
 			_build_toolbar()
 		else:
 			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -11470,7 +11533,7 @@ class handle_Menu(handle_Container_Base):
 	def getValue(self, event = None):
 		"""Returns what the contextual value is for the object associated with this handle."""
 
-		if (self.type.lower() == "menu"):
+		if (self.type is Types.menu):
 			#Get menu item
 			if (event is None):
 				errorMessage = "Pass the event parameter to getValue() when working with menu items"
@@ -11494,7 +11557,7 @@ class handle_Menu(handle_Container_Base):
 	def getText(self, event = None):
 		"""Returns what the contextual text is for the object associated with this handle."""
 
-		if (self.type.lower() == "menu"):
+		if (self.type is Types.menu):
 			#Get menu item
 			if (event is None):
 				errorMessage = "Pass the event parameter to getValue() when working with menu items"
@@ -11516,7 +11579,7 @@ class handle_Menu(handle_Container_Base):
 	def setValue(self, newValue, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
-		if (self.type.lower() == "menu"):
+		if (self.type is Types.menu):
 			#Get menu item
 			if (event is None):
 				errorMessage = "Pass the event parameter to getValue() when working with menu items"
@@ -11539,9 +11602,9 @@ class handle_Menu(handle_Container_Base):
 	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the widget is changed/clicked on."""
 		
-		if (self.type.lower() == "menu"):
+		if (self.type is Types.menu):
 			self._betterBind(wx.EVT_MENU, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		elif (self.type.lower() == "toolbar"):
+		elif (self.type is Types.toolbar):
 			self._betterBind(wx.EVT_TOOL_RCLICKED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -11555,13 +11618,13 @@ class handle_Menu(handle_Container_Base):
 		Example Input: setEnable(False)
 		"""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			def applyEnable(myWidget):
 				nonlocal self, state
 
 				self.thing.EnableTool(myWidget.thing.GetId(), state)
 
-		elif (self.type.lower() == "menu"):
+		elif (self.type is Types.menu):
 			def applyEnable(myWidget):
 				nonlocal self, state
 
@@ -11589,7 +11652,7 @@ class handle_Menu(handle_Container_Base):
 		Example Input: checkEnabled()
 		"""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			if (label is None):
 				label = self[:]
 			elif (not isinstance(label, (list, tuple, range))):
@@ -11620,7 +11683,7 @@ class handle_Menu(handle_Container_Base):
 		Example Input: setShow(False)
 		"""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			def applyShow(myWidget):
 				nonlocal self
 
@@ -11638,7 +11701,7 @@ class handle_Menu(handle_Container_Base):
 				# print ("@1", self.controller._hiddenToolbar.thing.AddTool(myWidget.thing))
 				# self.controller._hiddenToolbar.thing.Realize()
 
-		elif (self.type.lower() == "menu"):
+		elif (self.type is Types.menu):
 			def applyShow(myWidget):
 				nonlocal self
 
@@ -11671,7 +11734,7 @@ class handle_Menu(handle_Container_Base):
 		Example Input: checkShown()
 		"""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			if (label is None):
 				label = self[:]
 			elif (not isinstance(label, (list, tuple, range))):
@@ -11752,12 +11815,12 @@ class handle_Menu(handle_Container_Base):
 		"""
 
 		handle = handle_MenuItem()
-		if (self.type.lower() == "menu"):
-			handle.type = "MenuItem"
-		elif (self.type.lower() == "flatmenu"):
-			handle.type = "FlatMenuItem"
-		elif (self.type.lower() == "toolbar"):
-			handle.type = "ToolBarItem"
+		if (self.type is Types.menu):
+			handle.type = Types.menuitem
+		elif (self.type is Types.flatmenu):
+			handle.type = Types.flatmenuitem
+		elif (self.type is Types.toolbar):
+			handle.type = Types.toolbaritem
 		else:
 			warnings.warn(f"Add {self.type} to addItem() for {self.__repr__()}", Warning, stacklevel = 2)
 			return
@@ -11783,7 +11846,7 @@ class handle_Menu(handle_Container_Base):
 		Example Input: addStretchableSpace()
 		"""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = self.addItem(*args, text = None, stretchable = True, **kwargs)
 		else:
 			warnings.warn(f"Add {self.type} to addStretchableSpace() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -11806,10 +11869,10 @@ class handle_Menu(handle_Container_Base):
 		"""
 
 		handle = handle_Menu()
-		if (self.type.lower() == "menu"):
-			handle.type = "Menu"
-		elif (self.type.lower() == "toolbar"):
-			handle.type = "ToolBar"
+		if (self.type is Types.menu):
+			handle.type = Types.menu
+		elif (self.type is Types.toolbar):
+			handle.type = Types.toolbar
 		else:
 			warnings.warn(f"Add {self.type} to addSub() for {self.__repr__()}", Warning, stacklevel = 2)
 			return
@@ -11823,9 +11886,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a text widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makeText, args, kwargs]
 			handle._build(locals())
 		else:
@@ -11838,9 +11901,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a text widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makeHtml, args, kwargs]
 			handle._build(locals())
 		else:
@@ -11858,9 +11921,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a hyperlink widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makeHyperlink, args, kwargs]
 			handle._build(locals())
 		else:
@@ -11873,9 +11936,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a line widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makeLine, args, kwargs]
 			handle._build(locals())
 		else:
@@ -11888,9 +11951,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a drop list widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makeListDrop, args, kwargs]
 			handle._build(locals())
 		else:
@@ -11903,9 +11966,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a full list widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makeListFull, args, kwargs]
 			handle._build(locals())
 		else:
@@ -11918,9 +11981,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a full list widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makeListTree, args, kwargs]
 			handle._build(locals())
 		else:
@@ -11933,9 +11996,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds an input slider widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makeInputSlider, args, kwargs]
 			handle._build(locals())
 		else:
@@ -11948,9 +12011,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds an input box widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makeInputBox, args, kwargs]
 			handle._build(locals())
 		else:
@@ -11963,9 +12026,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a search box widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makeInputSearch, args, kwargs]
 			handle._build(locals())
 		else:
@@ -11978,9 +12041,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds an input spinner widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makeInputSpinner, args, kwargs]
 			handle._build(locals())
 		else:
@@ -11993,9 +12056,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a button widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makeButton, args, kwargs]
 			handle._build(locals())
 		else:
@@ -12008,9 +12071,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a button widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makeButtonList, args, kwargs]
 			handle._build(locals())
 		else:
@@ -12023,9 +12086,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a toggle button widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makeButtonToggle, args, kwargs]
 			handle._build(locals())
 		else:
@@ -12038,9 +12101,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a check button widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makeButtonCheck, args, kwargs]
 			handle._build(locals())
 		else:
@@ -12053,9 +12116,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a check list widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makeButtonCheckList, args, kwargs]
 			handle._build(locals())
 		else:
@@ -12068,9 +12131,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a radio button widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makeButtonRadio, args, kwargs]
 			handle._build(locals())
 		else:
@@ -12083,9 +12146,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a radio button box widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makeButtonRadioBox, args, kwargs]
 			handle._build(locals())
 		else:
@@ -12098,9 +12161,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds an image button widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makeButtonImage, args, kwargs]
 			handle._build(locals())
 		else:
@@ -12113,9 +12176,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds an image widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makeImage, args, kwargs]
 			handle._build(locals())
 		else:
@@ -12128,9 +12191,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a progress bar widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makeProgressBar, args, kwargs]
 			handle._build(locals())
 		else:
@@ -12143,9 +12206,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a color picker widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makePickerColor, args, kwargs]
 			handle._build(locals())
 		else:
@@ -12158,9 +12221,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a font picker widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makePickerFont, args, kwargs]
 			handle._build(locals())
 		else:
@@ -12173,9 +12236,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a file picker widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makePickerFile, args, kwargs]
 			handle._build(locals())
 		else:
@@ -12188,9 +12251,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a file window picker widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makePickerFileWindow, args, kwargs]
 			handle._build(locals())
 		else:
@@ -12203,9 +12266,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a time picker widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makePickerTime, args, kwargs]
 			handle._build(locals())
 		else:
@@ -12218,9 +12281,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a date picker widget to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makePickerDate, args, kwargs]
 			handle._build(locals())
 		else:
@@ -12233,9 +12296,9 @@ class handle_Menu(handle_Container_Base):
 		label = None, widgetLabel = None, parent = None, handle = None, myId = None, tabSkip = False, flex = 0, flags = "c1", **kwargs):
 		"""Adds a text date window picker to the tool bar."""
 
-		if (self.type.lower() == "toolbar"):
+		if (self.type is Types.toolbar):
 			handle = handle_MenuItem()
-			handle.type = "ToolBarItem"
+			handle.type = Types.toolbaritem
 			handle.subHandle = [handle._makePickerDateWindow, args, kwargs]
 			handle._build(locals())
 		else:
@@ -12260,7 +12323,7 @@ class handle_MenuItem(handle_Widget_Base):
 	def __len__(self):
 		"""Returns what the contextual length is for the object associated with this handle."""
 
-		if (self.type.lower() == "menuitem"):
+		if (self.type is Types.menuitem):
 			value = len(self.thing.GetLabel()) #(int) - How long the text inside the menu item is
 
 		else:
@@ -12437,11 +12500,11 @@ class handle_MenuItem(handle_Widget_Base):
 
 		self._preBuild(argument_catalogue)
 
-		if (self.type.lower() == "menuitem"):
+		if (self.type is Types.menuitem):
 			_build_menuItem()
-		elif (self.type.lower() == "flatmenuitem"):
+		elif (self.type is Types.flatmenuitem):
 			_build_flatmenuItem()
-		elif (self.type.lower() == "toolbaritem"):
+		elif (self.type is Types.toolbaritem):
 			_build_toolbarItem()
 		else:
 			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -12451,13 +12514,13 @@ class handle_MenuItem(handle_Widget_Base):
 	def getValue(self, event = None):
 		"""Returns what the contextual value is for the object associated with this handle."""
 
-		if (self.type.lower() == "menuitem"):
+		if (self.type is Types.menuitem):
 			if (self.thing.IsCheckable()):
 				value = self.thing.IsChecked() #(bool) - True: Selected; False: Un-Selected
 			else:
 				value = self.thing.GetText() #(str) - What the selected item says
 				
-		elif ((self.type.lower() == "toolbaritem") and (self.subHandle is not None)):
+		elif ((self.type is Types.toolbaritem) and (self.subHandle is not None)):
 			value = self.subHandle.getValue(event = event)
 			
 		else:
@@ -12469,14 +12532,14 @@ class handle_MenuItem(handle_Widget_Base):
 	def getIndex(self, event = None):
 		"""Returns what the contextual index is for the object associated with this handle."""
 
-		if (self.type.lower() == "menuitem"):
+		if (self.type is Types.menuitem):
 			if (event is not None):
 				value = event.GetId()
 			else:
 				errorMessage = "Pass the event parameter to getIndex() when working with menu items"
 				raise SyntaxError(errorMessage)
 				
-		elif ((self.type.lower() == "toolbaritem") and (self.subHandle is not None)):
+		elif ((self.type is Types.toolbaritem) and (self.subHandle is not None)):
 			value = self.subHandle.setValue(event = event)
 
 		else:
@@ -12489,7 +12552,7 @@ class handle_MenuItem(handle_Widget_Base):
 	def setValue(self, newValue, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
-		if (self.type.lower() == "menuitem"):
+		if (self.type is Types.menuitem):
 			if ((self.thing.GetKind() == wx.ITEM_CHECK) or (self.thing.GetKind() == wx.ITEM_RADIO)):
 				if (isinstance(newValue, str)):
 					newValue = ast.literal_eval(re.sub("^['\"]|['\"]$", "", newValue))
@@ -12498,7 +12561,7 @@ class handle_MenuItem(handle_Widget_Base):
 				errorMessage = f"Only a menu 'Check Box' or 'Radio Button' can be set to a different value for setValue() for {self.__repr__()}"
 				raise SyntaxError(errorMessage)
 
-		elif ((self.type.lower() == "toolbaritem") and (self.subHandle is not None)):
+		elif ((self.type is Types.toolbaritem) and (self.subHandle is not None)):
 			self.subHandle.setValue(newValue, event = event)
 
 		else:
@@ -12508,10 +12571,10 @@ class handle_MenuItem(handle_Widget_Base):
 	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, **kwargs):
 		"""Changes the function that runs when a menu item is selected."""
 
-		if (self.type.lower() == "menuitem"):
+		if (self.type is Types.menuitem):
 			self.parent._betterBind(wx.EVT_MENU, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		
-		elif (self.type.lower() == "toolbaritem"):
+		elif (self.type is Types.toolbaritem):
 			if (self.subHandle is not None):
 				self.subHandle.setFunction_click(myFunction = myFunction, myFunctionArgs = myFunctionArgs, myFunctionKwargs = myFunctionKwargs, **kwargs)
 			else:
@@ -12523,7 +12586,7 @@ class handle_MenuItem(handle_Widget_Base):
 	def setFunction_enter(self, *args, **kwargs):
 		"""Override function for subHandle."""
 
-		if ((self.type.lower() == "toolbaritem") and (self.subHandle is not None)):
+		if ((self.type is Types.toolbaritem) and (self.subHandle is not None)):
 			self.subHandle.setFunction_enter(*args, **kwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_enter() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -12531,7 +12594,7 @@ class handle_MenuItem(handle_Widget_Base):
 	def setFunction_preEdit(self, *args, **kwargs):
 		"""Override function for subHandle."""
 
-		if ((self.type.lower() == "toolbaritem") and (self.subHandle is not None)):
+		if ((self.type is Types.toolbaritem) and (self.subHandle is not None)):
 			self.subHandle.setFunction_preEdit(*args, **kwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_preEdit() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -12539,7 +12602,7 @@ class handle_MenuItem(handle_Widget_Base):
 	def setFunction_postEdit(self, *args, **kwargs):
 		"""Override function for subHandle."""
 
-		if ((self.type.lower() == "toolbaritem") and (self.subHandle is not None)):
+		if ((self.type is Types.toolbaritem) and (self.subHandle is not None)):
 			self.subHandle.setFunction_postEdit(*args, **kwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_postEdit() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -12547,7 +12610,7 @@ class handle_MenuItem(handle_Widget_Base):
 	def setFunction_search(self, *args, **kwargs):
 		"""Override function for subHandle."""
 
-		if ((self.type.lower() == "toolbaritem") and (self.subHandle is not None)):
+		if ((self.type is Types.toolbaritem) and (self.subHandle is not None)):
 			self.subHandle.setFunction_search(*args, **kwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_search() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -12555,7 +12618,7 @@ class handle_MenuItem(handle_Widget_Base):
 	def setFunction_cancel(self, *args, **kwargs):
 		"""Override function for subHandle."""
 
-		if ((self.type.lower() == "toolbaritem") and (self.subHandle is not None)):
+		if ((self.type is Types.toolbaritem) and (self.subHandle is not None)):
 			self.subHandle.setFunction_cancel(*args, **kwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_cancel() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -12563,7 +12626,7 @@ class handle_MenuItem(handle_Widget_Base):
 	def setFunction_menuSelect(self, *args, **kwargs):
 		"""Override function for subHandle."""
 
-		if ((self.type.lower() == "toolbaritem") and (self.subHandle is not None)):
+		if ((self.type is Types.toolbaritem) and (self.subHandle is not None)):
 			self.subHandle.setFunction_menuSelect(*args, **kwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_menuSelect() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -12577,10 +12640,10 @@ class handle_MenuItem(handle_Widget_Base):
 		Example Input: setEnable(False)
 		"""
 
-		if (self.type.lower() == "menuitem"):
+		if (self.type is Types.menuitem):
 			handle_Widget_Base.setEnable(self, state = state)
 
-		elif (self.type.lower() in ("flatmenuitem", "toolbaritem")):
+		elif (self.type in (Types.flatmenuitem, Types.toolbaritem)):
 			self.parent.setEnable(state = state, label = self.label)
 
 		else:
@@ -12592,10 +12655,10 @@ class handle_MenuItem(handle_Widget_Base):
 		Example Input: checkEnabled()
 		"""
 
-		if (self.type.lower() == "menuitem"):
+		if (self.type is Types.menuitem):
 			state = handle_Widget_Base.checkEnabled(self)
 
-		elif (self.type.lower() in ("flatmenuitem", "toolbaritem")):
+		elif (self.type in (Types.flatmenuitem, Types.toolbaritem)):
 			state = self.parent.checkEnabled(self.label, state)
 
 		else:
@@ -12674,9 +12737,9 @@ class handle_MenuPopup(handle_Container_Base):
 
 		self._preBuild(argument_catalogue)
 
-		if (self.type.lower() == "menupopup"):
+		if (self.type is Types.popup):
 			_build_menuPopup()
-		elif (self.type.lower() == "menupopup_widget"):
+		elif (self.type is Types.popup_widget):
 			_build_menuPopup()
 		else:
 			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -12764,7 +12827,7 @@ class handle_MenuPopup(handle_Container_Base):
 
 		#Create the menu item
 		handle = handle_MenuPopupItem()
-		handle.type = "MenuPopupItem"
+		handle.type = Types.popupitem
 		handle._build(locals())
 
 		self.nest(handle)
@@ -12811,7 +12874,7 @@ class handle_MenuPopup(handle_Container_Base):
 
 		#Build sub menu
 		handle = handle_MenuPopup()
-		handle.type = "MenuPopup"
+		handle.type = Types.popup
 		handle._build(locals())
 
 		# handle.icon = None
@@ -13079,7 +13142,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 
 		self._preBuild(argument_catalogue)
 
-		if (self.type.lower() == "canvas"):
+		if (self.type is Types.canvas):
 			_build_canvas()
 		else:
 			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -13089,7 +13152,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 	def setFunction_init(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the object is first created."""
 
-		if (self.type.lower() == "canvas"):
+		if (self.type is Types.canvas):
 			self.parent._betterBind(wx.EVT_INIT_DIALOG, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_init() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -14406,7 +14469,7 @@ class handle_WidgetTable(handle_Widget_Base):
 			- If False: Returns how many columns the object has
 		"""
 
-		if (self.type.lower() == "table"):
+		if (self.type is Types.table):
 			if (returnRows):
 				value = self.thing.GetNumberRows()
 			else:
@@ -14633,7 +14696,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 		self._preBuild(argument_catalogue)
 
-		if (self.type.lower() == "table"):
+		if (self.type is Types.table):
 			_build_table()
 		else:
 			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -14644,7 +14707,7 @@ class handle_WidgetTable(handle_Widget_Base):
 	def getValue(self, row = None, column = None, event = None):
 		"""Returns what the contextual value is for the object associated with this handle."""
 
-		if (self.type.lower() == "table"):
+		if (self.type is Types.table):
 			if ((row is None) or (column is None)):
 				value = []
 				selection = self.getTableCurrentCell(event = event)
@@ -14661,7 +14724,7 @@ class handle_WidgetTable(handle_Widget_Base):
 	def getAll(self):
 		"""Returns all the contextual values for the object associated with this handle."""
 
-		if (self.type.lower() == "table"):
+		if (self.type is Types.table):
 			value = []
 			for _row in range(self.thing.GetNumberRows()):
 				row = []
@@ -17346,8 +17409,8 @@ class handle_Sizer(handle_Container_Base):
 			errorMessage = "Must define sizer type before building"
 			raise SyntaxError(errorMessage)
 
-		sizerType = self.type.lower()
-		if (sizerType not in ["grid", "flex", "bag", "box", "text", "wrap"]):
+		sizerType = self.type
+		if (sizerType not in (Types.grid, Types.flex, Types.bag, Types.box, Types.text, Types.wrap)):
 			errorMessage = f"There is no 'type' {self.type}. The value should be be 'Grid', 'Flex', 'Bag', 'Box', 'Text', or 'Wrap'"
 			raise KeyError(errorMessage)
 
@@ -17374,7 +17437,7 @@ class handle_Sizer(handle_Container_Base):
 		myId = self._getId(argument_catalogue)
 		
 		#Create Sizer
-		if (sizerType == "grid"):
+		if (sizerType is Types.grid):
 			rows, columns, rowGap, colGap = self._getArguments(argument_catalogue, ["rows", "columns", "rowGap", "colGap"])
 			self.thing = wx.GridSizer(rows, columns, rowGap, colGap)
 
@@ -17388,13 +17451,13 @@ class handle_Sizer(handle_Container_Base):
 			else:
 				direction = wx.HORIZONTAL
 
-			if (sizerType == "box"):
+			if (sizerType is Types.box):
 				self.thing = wx.BoxSizer(direction)
 
-			elif (sizerType == "text"):
+			elif (sizerType is Types.text):
 				self.thing = wx.StaticBoxSizer(wx.StaticBox(self.parent.thing, myId, text), direction)
 
-			elif (sizerType == "wrap"):
+			elif (sizerType is Types.wrap):
 				extendLast = self._getArguments(argument_catalogue, "extendLast")
 				if (extendLast):
 					flags = "wx.EXTEND_LAST_ON_EACH_LINE"
@@ -17405,10 +17468,10 @@ class handle_Sizer(handle_Container_Base):
 
 			else:
 				rows, columns, rowGap, colGap = self._getArguments(argument_catalogue, ["rows", "columns", "rowGap", "colGap"])
-				if (sizerType == "flex"):
+				if (sizerType is Types.flex):
 					self.thing = wx.FlexGridSizer(rows, columns, rowGap, colGap)
 
-				elif (sizerType == "bag"):
+				elif (sizerType is Types.bag):
 					self.thing = wx.GridBagSizer(rowGap, colGap)
 
 					emptySpace = self._getArguments(argument_catalogue, "emptySpace")
@@ -17428,11 +17491,11 @@ class handle_Sizer(handle_Container_Base):
 				self.thing.SetFlexibleDirection(direction)
 
 		#Remember variables
-		if (sizerType not in ["box", "text", "wrap"]):
+		if (sizerType not in (Types.box, Types.text, Types.wrap)):
 			self.rows = rows
 			self.columns = columns
 
-		elif (sizerType != "wrap"):
+		elif (sizerType is not Types.wrap):
 			if (vertical):
 				self.columns = 1
 				self.rows = -1
@@ -17446,7 +17509,7 @@ class handle_Sizer(handle_Container_Base):
 				argument_catalogue[key] = value
 
 		#Account for nesting in a text sizer
-		if (sizerType != "text"):
+		if (sizerType is not Types.text):
 			if (text is not None):
 				self.substitute = self._makeSizerText(text = text)
 		#Post Build
@@ -17476,8 +17539,6 @@ class handle_Sizer(handle_Container_Base):
 		Example Input: growFlexColumn(0)
 		"""
 
-		self._checkHandleType("Flex", self.growFlexColumn)
-
 		if (growOnEmpty is not None):
 			if (growOnEmpty):
 				self.growFlexColumn_notEmpty[column] = proportion
@@ -17502,8 +17563,6 @@ class handle_Sizer(handle_Container_Base):
 		Example Input: growFlexRow(1)
 		"""
 
-		self._checkHandleType("Flex", self.growFlexRow)
-
 		if (growOnEmpty is not None):
 			if (not growOnEmpty):
 				self.growFlexRow_notEmpty[row] = proportion
@@ -17524,8 +17583,6 @@ class handle_Sizer(handle_Container_Base):
 		Example Input: growFlexColumnAll()
 		"""
 
-		self._checkHandleType("Flex", self.growFlexColumnAll)
-	
 		for column in range(self.thing.GetCols()):
 			self.growFlexColumn(column, *args, **kwargs)
 
@@ -17535,8 +17592,6 @@ class handle_Sizer(handle_Container_Base):
 		Example Input: growFlexRowAll()
 		"""
 
-		self._checkHandleType("Flex", self.growFlexRowAll)
-		
 		for row in range(self.thing.GetRows()):
 			self.growFlexRow(row, *args, **kwargs)
 
@@ -18225,7 +18280,7 @@ class handle_Sizer(handle_Container_Base):
 		"""
 
 		handle = handle_Splitter()
-		handle.type = "Double"
+		handle.type = Types.double
 		handle._build(locals())
 
 		return handle.getSizers()
@@ -18252,7 +18307,7 @@ class handle_Sizer(handle_Container_Base):
 		"""
 
 		handle = handle_Splitter()
-		handle.type = "Quad"
+		handle.type = Types.quad
 		handle._build(locals())
 
 		return handle.getSizers()
@@ -18294,7 +18349,7 @@ class handle_Sizer(handle_Container_Base):
 		"""
 
 		handle = handle_Splitter()
-		handle.type = "Poly"
+		handle.type = Types.poly
 		handle._build(locals())
 
 		return handle.getSizers()
@@ -18340,7 +18395,7 @@ class handle_Sizer(handle_Container_Base):
 		"""
 
 		handle = handle_Notebook_Simple()
-		handle.type = "Notebook"
+		handle.type = Types.notebook
 		handle._build(locals())
 
 		self.nest(handle, flex = flex)#, flags = flags)
@@ -18388,7 +18443,7 @@ class handle_Sizer(handle_Container_Base):
 		"""
 
 		handle = handle_Notebook_Aui()
-		handle.type = "AuiNotebook"
+		handle.type = Types.auinotebook
 		handle._build(locals())
 
 		self.nest(handle, flex = flex)#, flags = flags)
@@ -18769,7 +18824,7 @@ class handle_Dialog(handle_Base):
 		handle_Dialog.show(self)
 
 		#Hiding a sub-busy window too quickly can cause the parent busy window to go behind everything
-		if (self.type.lower() in ["busy"]):
+		if (self.type is Types.busy):
 			self.timeEntered = time.perf_counter()
 
 			if (self.freeze):
@@ -18793,7 +18848,7 @@ class handle_Dialog(handle_Base):
 
 		state = handle_Base.__exit__(self, exc_type, exc_value, traceback)
 
-		if (self.type.lower() in ["busy"]): #, "printpreview"]):
+		if (self.type is Types.busy):
 			difference = time.perf_counter() - self.timeEntered
 			if (difference < 0.05):
 				#Wait for a maximum of 0.05 seconds
@@ -19249,35 +19304,35 @@ class handle_Dialog(handle_Base):
 		argument_catalogue["enabled"] = True
 		self._preBuild(argument_catalogue)
 
-		if (self.type.lower() == "message"):
+		if (self.type is Types.message):
 			_build_message()
-		elif (self.type.lower() == "process"):
+		elif (self.type is Types.process):
 			_build_process()
-		elif (self.type.lower() == "scroll"):
+		elif (self.type is Types.scroll):
 			_build_scroll()
-		elif (self.type.lower() == "inputbox"):
+		elif (self.type is Types.box):
 			_build_inputBox()
-		elif (self.type.lower() == "custom"):
+		elif (self.type is Types.custom):
 			_build_custom()
-		elif (self.type.lower() == "busy"):
+		elif (self.type is Types.busy):
 			_build_busy()
-		elif (self.type.lower() == "color"):
+		elif (self.type is Types.color):
 			_build_color()
-		elif (self.type.lower() == "file"):
+		elif (self.type is Types.file):
 			_build_file()
-		elif (self.type.lower() == "font"):
+		elif (self.type is Types.font):
 			_build_font()
-		elif (self.type.lower() == "image"):
+		elif (self.type is Types.image):
 			_build_image()
-		elif (self.type.lower() == "list"):
+		elif (self.type is Types.list):
 			_build_list()
-		elif (self.type.lower() == "choice"):
+		elif (self.type is Types.choice):
 			_build_choice()
-		elif (self.type.lower() == "print"):
+		elif (self.type is Types.print):
 			_build_print()
-		elif (self.type.lower() == "printsetup"):
+		elif (self.type is Types.printsetup):
 			_build_pageSetup()
-		elif (self.type.lower() == "printpreview"):
+		elif (self.type is Types.printpreview):
 			_build_printPreview()
 		else:
 			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -19298,7 +19353,7 @@ class handle_Dialog(handle_Base):
 			return
 
 		if (not wx.IsMainThread()):
-			if (self.type.lower() == "busy"):
+			if (self.type is Types.busy):
 				self.inMainThread = False
 			else:
 				errorMessage = f"The {self.type} dialogue box {self.__repr__()} must be shown in the main thread, not a background thread"
@@ -19315,23 +19370,23 @@ class handle_Dialog(handle_Base):
 						catalogue[function]["pause"] = True
 
 		#Show dialogue
-		if (self.type.lower() == "message"):
+		if (self.type is Types.message):
 			self.answer = self.thing.ShowModal()
 			self.hide()
 
-		elif (self.type.lower() == "inputbox"):
+		elif (self.type is Types.box):
 			self.answer = self.thing.ShowModal()
 			self.hide()
 
-		elif (self.type.lower() == "choice"):
+		elif (self.type is Types.choice):
 			self.answer = self.thing.ShowModal()
 			self.hide()
 
-		elif (self.type.lower() == "scroll"):
+		elif (self.type is Types.scroll):
 			self.answer = self.thing.ShowModal()
 			self.hide()
 
-		elif (self.type.lower() == "custom"):
+		elif (self.type is Types.custom):
 			self.myFrame.myDialog = self
 
 			self.myFrame.runMyFunction(self.myFrame.preShowFunction, self.myFrame.preShowFunctionArgs, self.myFrame.preShowFunctionKwargs, includeEvent = True)
@@ -19341,7 +19396,7 @@ class handle_Dialog(handle_Base):
 			self.answer = self.myFrame.thing.ShowModal()
 			self.hide()
 
-		elif (self.type.lower() == "busy"):
+		elif (self.type is Types.busy):
 			#Hiding a sub-busy window in a thread can cause the parent busy window to go behind everything 
 			#if the top window is not the parent during creation
 			oldTopLevel = None
@@ -19375,23 +19430,23 @@ class handle_Dialog(handle_Base):
 			if (oldTopLevel is not None):
 				wx.GetApp().SetTopWindow(oldTopLevel)
 
-		elif (self.type.lower() == "file"):
+		elif (self.type is Types.file):
 			self.answer = self.thing.ShowModal()
 			self.hide()
 
-		elif (self.type.lower() == "color"):
+		elif (self.type is Types.color):
 			self.answer = self.thing.ShowModal()
 			self.hide()
 
-		elif (self.type.lower() == "print"):
+		elif (self.type is Types.print):
 			self.answer = self.thing.ShowModal()
 			self.hide()
 
-		elif (self.type.lower() == "printsetup"):
+		elif (self.type is Types.printsetup):
 			self.answer = self.thing.ShowModal()
 			self.hide()
 
-		elif (self.type.lower() == "printpreview"):
+		elif (self.type is Types.printpreview):
 			pass
 
 		else:
@@ -19400,7 +19455,7 @@ class handle_Dialog(handle_Base):
 	def hide(self):
 		"""Hides the dialog box for this handle."""
 
-		if (self.type.lower() == "busy"):
+		if (self.type is Types.busy):
 			if (self.subType.lower() == "simple"):
 				del self.thing
 			else:
@@ -19418,20 +19473,20 @@ class handle_Dialog(handle_Base):
 			# if (self.blockAll):
 			# 	self.windowDisabler = None
 
-		elif (self.type.lower() == "printpreview"):
+		elif (self.type is Types.printpreview):
 			self.thing = None
 
-		elif (self.type.lower() == "message"):
+		elif (self.type is Types.message):
 			self.thing.Destroy()
 			self.thing = None
 
-		elif (self.type.lower() == "inputbox"):
+		elif (self.type is Types.box):
 			self.data = self.thing.GetValue()
 
 			self.thing.Destroy()
 			self.thing = None
 
-		elif (self.type.lower() == "choice"):
+		elif (self.type is Types.choice):
 			if ((self.subType is not None) and (self.subType.lower() == "single")):
 				self.data = self.thing.GetSelection()
 			else:
@@ -19440,11 +19495,11 @@ class handle_Dialog(handle_Base):
 			self.thing.Destroy()
 			self.thing = None
 
-		elif (self.type.lower() == "scroll"):
+		elif (self.type is Types.scroll):
 			self.thing.Destroy()
 			self.thing = None
 
-		elif (self.type.lower() == "custom"):
+		elif (self.type is Types.custom):
 			if ((self.answer == wx.ID_CANCEL) and (len(self.myFrame.cancelFunction) != 0)):
 				self.myFrame.runMyFunction(self.myFrame.cancelFunction, self.myFrame.cancelFunctionArgs, self.myFrame.cancelFunctionKwargs, includeEvent = True)
 
@@ -19455,7 +19510,7 @@ class handle_Dialog(handle_Base):
 			self.thing = None
 			self.myFrame.myDialog = None
 
-		elif (self.type.lower() == "file"):
+		elif (self.type is Types.file):
 			if ((self.subType is not None) and ("single" in self.subType.lower())):
 				self.data = self.thing.GetPath()
 			else:
@@ -19464,18 +19519,18 @@ class handle_Dialog(handle_Base):
 			self.thing.Destroy()
 			self.thing = None
 
-		elif (self.type.lower() == "color"):
+		elif (self.type is Types.color):
 			self.data = self.thing.GetColourData()
 
 			self.thing.Destroy()
 			self.thing = None
 
-		elif (self.type.lower() == "print"):
+		elif (self.type is Types.print):
 			self.data = self._decodePrintSettings(self.thing.GetPrintDialogData())
 			self.thing.Destroy()
 			self.thing = None
 
-		elif (self.type.lower() == "printsetup"):
+		elif (self.type is Types.printsetup):
 			self.data = self._decodePrintSettings(self.thing.GetPageSetupData())
 			self.thing.Destroy()
 			self.thing = None
@@ -19520,7 +19575,7 @@ class handle_Dialog(handle_Base):
 	def getValue(self, event = None):
 		"""Returns what the contextual value is for the object associated with this handle."""
 
-		if (self.type.lower() == "choice"):
+		if (self.type is Types.choice):
 			if (self.data is None):
 				value = None
 			elif ((self.subType is not None) and (self.subType.lower() == "single")):
@@ -19528,10 +19583,10 @@ class handle_Dialog(handle_Base):
 			else:
 				value = [self.choices[i] for i in self.data]
 
-		elif (self.type.lower() == "inputbox"):
+		elif (self.type is Types.box):
 			value = self.data
 
-		elif (self.type.lower() == "custom"):
+		elif (self.type is Types.custom):
 			if (self.valueLabel is None):
 				if (self.valueLabel is None):
 					errorMessage = f"In order to use getValue() for {self.__repr__()} 'valueLabel' cannot be None\nEither provide it in makeDialogCustom() for {self.__repr__()} or use setValueLabel() for {self.myFrame.__repr__()}"
@@ -19543,10 +19598,10 @@ class handle_Dialog(handle_Base):
 
 			value = self.myFrame.getValue(self.valueLabel)
 
-		elif (self.type.lower() == "file"):
+		elif (self.type is Types.file):
 			value = self.data
 
-		elif (self.type.lower() == "busy"):
+		elif (self.type is Types.busy):
 			if (self.subType.lower() == "progress"):
 				value = self.thing.GetValue()
 				if (value == wx.NOT_FOUND):
@@ -19554,17 +19609,17 @@ class handle_Dialog(handle_Base):
 			else:
 				value = None
 
-		elif (self.type.lower() == "color"):
+		elif (self.type is Types.color):
 			color = self.data.GetColour().Get()
 			value = (color.Red(), color.Green(), color.Blue(), color.Alpha())
 
-		elif (self.type.lower() == "print"):
+		elif (self.type is Types.print):
 			value = {"content": self.content, **self.data} 
 
-		elif (self.type.lower() == "printsetup"):
+		elif (self.type is Types.printsetup):
 			value = {**self.data} 
 
-		elif (self.type.lower() == "printPreview"):
+		elif (self.type is Types.printPreview):
 			value = self.content
 
 		else:
@@ -19576,7 +19631,7 @@ class handle_Dialog(handle_Base):
 	def getIndex(self, event = None):
 		"""Returns what the contextual value is for the object associated with this handle."""
 
-		if (self.type.lower() == "choice"):
+		if (self.type is Types.choice):
 			value = self.data
 
 		else:
@@ -19588,7 +19643,7 @@ class handle_Dialog(handle_Base):
 	def getText(self, event = None):
 		"""Returns what the contextual text is for the object associated with this handle."""
 
-		if (self.type.lower() == "busy"):
+		if (self.type is Types.busy):
 			if (self.subType.lower() == "progress"):
 				value = self.thing.GetMessage()
 			else:
@@ -19602,7 +19657,7 @@ class handle_Dialog(handle_Base):
 	def getDefaultText(self, event = None):
 		"""Returns what the contextual default text is for the object associated with this handle."""
 
-		if (self.type.lower() == "busy"):
+		if (self.type is Types.busy):
 			if (self.subType.lower() == "progress"):
 				value = self.text
 			else:
@@ -19616,7 +19671,7 @@ class handle_Dialog(handle_Base):
 	def getMax(self, event = None):
 		"""Returns what the contextual maximum is for the object associated with this handle."""
 
-		if (self.type.lower() == "busy"):
+		if (self.type is Types.busy):
 			if (self.subType.lower() == "progress"):
 				value = self.thing.GetRange()
 				if (value == wx.NOT_FOUND):
@@ -19640,7 +19695,7 @@ class handle_Dialog(handle_Base):
 	def isCancel(self):
 		"""Returns if the closed dialog box answer was 'cancel'."""
 
-		if ((self.type.lower() == "busy") and (self.subType.lower() == "progress")):
+		if ((self.type is Types.busy) and (self.subType.lower() == "progress")):
 			return self.thing.WasCancelled()
 
 		if (self.answer == wx.ID_CANCEL):
@@ -19678,14 +19733,14 @@ class handle_Dialog(handle_Base):
 	def isSkip(self):
 		"""Returns if the closed dialog box answer was 'skip'."""
 
-		if ((self.type.lower() == "busy") and (self.subType.lower() == "progress")):
+		if ((self.type is Types.busy) and (self.subType.lower() == "progress")):
 			return self.thing.WasSkipped()
 		return False
 
 	def isAbort(self):
 		"""Returns if the closed dialog box answer was 'abort'."""
 
-		if ((self.type.lower() == "busy") and (self.subType.lower() == "progress")):
+		if ((self.type is Types.busy) and (self.subType.lower() == "progress")):
 			return self.thing.WasCancelled()
 		return False
 
@@ -19717,13 +19772,13 @@ class handle_Dialog(handle_Base):
 	def setValue(self, value = None, text = "", oneShot = False, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
-		if (self.type.lower() == "print"):
+		if (self.type is Types.print):
 			self.content = value
 		
-		elif (self.type.lower() == "printpreview"):
+		elif (self.type is Types.printpreview):
 			self.content = value
 		
-		elif (self.type.lower() == "busy"):
+		elif (self.type is Types.busy):
 			if (self.subType.lower() == "progress"):
 				text = self._formatText(text)
 				self.progress = value
@@ -19741,7 +19796,7 @@ class handle_Dialog(handle_Base):
 	def setText(self, text = "", oneShot = False, event = None):
 		"""Sets the contextual text for the object associated with this handle to what the user supplies."""
 
-		if (self.type.lower() == "busy"):
+		if (self.type is Types.busy):
 			if (self.subType.lower() == "progress"):
 				text = self._formatText(text)
 
@@ -19767,7 +19822,7 @@ class handle_Dialog(handle_Base):
 	def setMax(self, value, event = None):
 		"""Sets the contextual max for the object associated with this handle to what the user supplies."""
 
-		if (self.type.lower() == "busy"):
+		if (self.type is Types.busy):
 			if (self.subType.lower() == "progress"):
 				self.threadSafe(self.thing.SetRange, value)
 		else:
@@ -19776,7 +19831,7 @@ class handle_Dialog(handle_Base):
 	def setTitle(self, text = None, event = None):
 		"""Sets the title."""
 
-		if (self.type.lower() == "print"):
+		if (self.type is Types.print):
 			if (text is None):
 				text = "GUI_Maker Page"
 			self.title = text
@@ -19786,7 +19841,7 @@ class handle_Dialog(handle_Base):
 	def setSize(self, size = None, event = None):
 		"""Sets the size."""
 
-		if (self.type.lower() == "print"):
+		if (self.type is Types.print):
 			self.size = size
 		else:
 			warnings.warn(f"Add {self.type} to setSize() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -19795,7 +19850,7 @@ class handle_Dialog(handle_Base):
 	def resume(self, size = None, event = None):
 		"""Undoes the abort."""
 
-		if (self.type.lower() == "busy"):
+		if (self.type is Types.busy):
 			self.threadSafe(self.thing.Resume)
 		else:
 			warnings.warn(f"Add {self.type} to resume() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -19812,10 +19867,10 @@ class handle_Dialog(handle_Base):
 		Example Input: send(raw = True)
 		"""
 
-		if (self.type.lower() == "print"):
+		if (self.type is Types.print):
 			self.print(self.content, printData = self.data[None], title = self.title, raw = raw, printOverride = printOverride, popup = False)
 
-		elif (self.type.lower() == "printpreview"):
+		elif (self.type is Types.printpreview):
 			printout = _MyPrintout(self, document = self.content, title = self.title, raw = raw)
 
 			enablePrint = True
@@ -20448,9 +20503,9 @@ class handle_Window(handle_Container_Base):
 
 		self._preBuild(argument_catalogue)
 
-		if (self.type.lower() == "frame"):
+		if (self.type is Types.frame):
 			_build_frame()
-		elif (self.type.lower() == "dialog"):
+		elif (self.type is Types.dialog):
 			_build_dialog()
 		else:
 			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -20478,9 +20533,7 @@ class handle_Window(handle_Container_Base):
 	def getValueLabel(self, event = None):
 		"""Returns what the contextual value label is for the object associated with this handle."""
 
-		if (self.type.lower() == "dialog"):
-			value = self.valueLabel
-		elif (self.type.lower() == "wizard"):
+		if (self.type is Types.dialog):
 			value = self.valueLabel
 		else:
 			warnings.warn(f"Add {self.type} to getValueLabel() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -20491,7 +20544,7 @@ class handle_Window(handle_Container_Base):
 	def setValueLabel(self, newValue, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
-		if (self.type.lower() == "dialog"):
+		if (self.type is Types.dialog):
 			self.valueLabel = newValue
 		else:
 			warnings.warn(f"Add {self.type} to setValueLabel() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -21027,7 +21080,7 @@ class handle_Window(handle_Container_Base):
 
 		handle = handle_MenuPopup()
 		text = None
-		handle.type = "MenuPopup"
+		handle.type = Types.popup
 		handle._build(locals())
 		self._finalNest(handle)
 		return handle
@@ -21064,7 +21117,7 @@ class handle_Window(handle_Container_Base):
 		"""
 
 		if (self.statusBar is None):
-			if (self.type.lower() != "frame"):
+			if (self.type is not Types.frame):
 				if (self.mainPanel is not None):
 					self.statusBar = wx.StatusBar(self.mainPanel.thing)
 					rootSizer = self.mainPanel.thing.GetSizer()
@@ -22402,7 +22455,7 @@ class handle_Wizard(handle_Window):
 		"""
 
 		handle = handle_WizardPage(self)
-		handle.type = "wizardPage"
+		handle.type = Types.wizardpage
 		with handle._build({**locals(), "parent": self, "parentNode": parentNode or self.pageNode}): pass
 		handle.pageElements.add(handle.myPanel)
 		self.mainSizer.nest(handle.myPanel, flex = flex, flags = flags, selected = selected)
@@ -22694,7 +22747,7 @@ class handle_Panel(handle_NavigatorBase, handle_Container_Base):
 
 		self._preBuild(argument_catalogue)
 
-		if (self.type.lower() == "panel"):
+		if (self.type is Types.panel):
 			_build_normal()
 		else:
 			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -22911,11 +22964,11 @@ class handle_Splitter(handle_Container_Base):
 
 		self._preBuild(argument_catalogue)
 
-		if (self.type.lower() == "double"):
+		if (self.type is Types.double):
 			_build_double()
-		elif (self.type.lower() == "quad"):
+		elif (self.type is Types.quad):
 			_build_quad()
-		elif (self.type.lower() == "poly"):
+		elif (self.type is Types.poly):
 			_build_poly()
 		else:
 			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -22925,11 +22978,11 @@ class handle_Splitter(handle_Container_Base):
 	def setFunction_init(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the object is first created."""
 
-		if (self.type.lower() == "double"):
+		if (self.type is Types.double):
 			self.parent._betterBind(wx.EVT_INIT_DIALOG, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		elif (self.type.lower() == "quad"):
+		elif (self.type is Types.quad):
 			self.parent._betterBind(wx.EVT_INIT_DIALOG, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		elif (self.type.lower() == "poly"):
+		elif (self.type is Types.poly):
 			self.parent._betterBind(wx.EVT_INIT_DIALOG, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_init() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -22937,7 +22990,7 @@ class handle_Splitter(handle_Container_Base):
 	def setFunction_preMoveSash(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the object is first created."""
 
-		if (self.type.lower() == "double"):
+		if (self.type is Types.double):
 			self.parent._betterBind(wx.EVT_SPLITTER_SASH_POS_CHANGING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_preMoveSash() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -22945,7 +22998,7 @@ class handle_Splitter(handle_Container_Base):
 	def setFunction_postMoveSash(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the object is first created."""
 
-		if (self.type.lower() == "double"):
+		if (self.type is Types.double):
 			self.parent._betterBind(wx.EVT_SPLITTER_SASH_POS_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_preMoveSash() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -22958,7 +23011,7 @@ class handle_Splitter(handle_Container_Base):
 	def getSashPosition(self):
 		"""Returns the current sash position."""
 		
-		if (self.type.lower() == "double"):
+		if (self.type is Types.double):
 			value = self.thing.GetSashPosition()
 		else:
 			warnings.warn(f"Add {self.type} to getSashPosition() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -22969,7 +23022,7 @@ class handle_Splitter(handle_Container_Base):
 	def setSashPosition(self, newValue):
 		"""Changes the position of the sash marker."""
 		
-		if (self.type.lower() == "double"):
+		if (self.type is Types.double):
 			if (isinstance(newValue, str)):
 				newValue = ast.literal_eval(re.sub("^['\"]|['\"]$", "", newValue))
 
@@ -23078,7 +23131,7 @@ class handle_AuiManager(handle_Container_Base):
 		if (handle is None):
 			#Get the object
 			handle = handle_NotebookPage_Aui()
-			handle.type = "auiPage"
+			handle.type = Types.auipage
 
 			with handle._build({**locals(), "parent": self.myWindow, "myManager": self}): pass
 
@@ -23398,7 +23451,7 @@ class handle_Notebook_Simple(handle_Base_Notebook):
 
 				#Get the object
 				handle = handle_NotebookPage_Simple()
-				handle.type = "notebookPage"
+				handle.type = Types.notebookpage
 				handle._build({**kwargs, **locals(), "parent": self}, nestPanel = nestPanel, nestSizer = nestSizer)
 
 				#Determine if there is an icon on the tab
@@ -24641,7 +24694,7 @@ class Controller(Utilities, CommonEventFunctions):
 		"""
 
 		handle = handle_Window(self)
-		handle.type = "Frame"
+		handle.type = Types.frame
 		handle._build(locals())
 		self._finalNest(handle)
 
@@ -24707,7 +24760,7 @@ class Controller(Utilities, CommonEventFunctions):
 		"""
 
 		handle = handle_Window(self)
-		handle.type = "Dialog"
+		handle.type = Types.dialog
 		handle._build(locals())
 		self._finalNest(handle)
 
@@ -24728,7 +24781,7 @@ class Controller(Utilities, CommonEventFunctions):
 		"""
 
 		handle = handle_Wizard(self)
-		handle.type = "Wizard"
+		handle.type = Types.wizard
 		handle._build(locals())
 		self._finalNest(handle)
 
