@@ -681,15 +681,9 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 
 			if ((handleList is not None) and (typeList is not None)):
 				answer = []
-				if (not isinstance(handleList, (list, tuple, range))):
-					handleList = [handleList]
-				if (not isinstance(typeList, (list, tuple))):
-					typeList = [typeList]
-				if ((subTypeList is not None) and (not isinstance(subTypeList, (list, tuple)))):
-					subTypeList = [subTypeList]
 
-				for item in handleList:
-					for itemType in typeList:
+				for item in self.ensure_container(handleList):
+					for itemType in self.ensure_container(typeList):
 						if (isinstance(item, itemType)):
 							if ((subTypeList is not None) and (item.type.lower() not in subTypeList)):
 								continue
@@ -703,18 +697,24 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 				answer = handleList
 			return answer
 
+		#####################################################
+
 		#Ensure correct format
+		if (subTypeList is not None):
+			subTypeList = self.ensure_container(subTypeList) or None
+
 		if (typeList is not None):
-			if (not isinstance(typeList, (list, tuple, range))):
-				typeList = (typeList)
-			if (len(typeList) == 0):
-				typeList = None
-			elif (len(typeList) == 1):
-				typeList = typeList[0]
+			typeList = self.ensure_container(typeList) or None
 
 		#Account for retrieving all nested
 		if (itemLabel is None):
 			itemLabel = slice(None, None, None)
+
+		#Account for passing in a handle
+		if (isinstance(itemLabel, handle_Base)):
+			itemLabel = itemLabel.label
+			if (itemLabel is None):
+				raise NotImplementedError()
 
 		#Account for passing in a wxEvent
 		if (isinstance(itemLabel, wx.Event)):
@@ -5460,7 +5460,7 @@ class CommonEventFunctions():
 		pass
 
 #Handles
-class handle_Dummy():
+class handle_Dummy(MyUtilities.common.ELEMENT):
 	"""A handle that will accept all functions and just let the program continue without throwing an error."""
 
 	def __repr__(self):
@@ -5515,7 +5515,7 @@ class handle_Dummy():
 	def items(self, *args, includeUnnamed = False, **kwargs):
 		return {}.items(*args, **kwargs)
 
-class handle_Base(Utilities, CommonEventFunctions):
+class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 	"""The base handler for all GUI handlers.
 	Meant to be inherited.
 	"""
@@ -11546,7 +11546,7 @@ class handle_Menu(handle_Container_Base):
 		else:
 			warnings.warn(f"Add {self.type} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
 
-	def setEnable(self, label = None, state = True):
+	def setEnable(self, state = True, *, label = None):
 		"""Enables or disables an item based on the given input.
 
 		state (bool) - If it is enabled or not
@@ -11556,23 +11556,32 @@ class handle_Menu(handle_Container_Base):
 		"""
 
 		if (self.type.lower() == "toolbar"):
-			if (label is None):
-				label = self[:]
-			elif (not isinstance(label, (list, tuple, range))):
-				label = [label]
+			def applyEnable(myWidget):
+				nonlocal self, state
 
-			for item in label:
-				with self[item] as myWidget:
-					#Account for no wx.App.MainLoop yet
-					if ((wx.EventLoop.GetActive() is None) and (not self.controller.finishing)):
-						#Queue the current state to apply later; setting the enable twice before wx.App.MainLoop starts will cause the code to freeze
-						self.myWindow._addFinalFunction(self.setEnable, myFunctionKwargs = {"label": myWidget, "state": state}, label = (myWidget, self.setEnable))
-						continue
+				self.thing.EnableTool(myWidget.thing.GetId(), state)
 
-					myId = myWidget.thing.GetId()
-					self.thing.EnableTool(myId, state) 
+		elif (self.type.lower() == "menu"):
+			def applyEnable(myWidget):
+				nonlocal self, state
+
+				myWidget.setEnable(state = state)
+
 		else:
 			warnings.warn(f"Add {self.type} to setEnable() for {self.__repr__()}", Warning, stacklevel = 2)
+
+		for myWidget in self.ensure_container(label, returnForNone = lambda: self[:], convertNone = False):
+			
+			if (not isinstance(myWidget, handle_Base)):
+				myWidget = self[myWidget]
+
+			#Account for no wx.App.MainLoop yet
+			if ((wx.EventLoop.GetActive() is None) and (not self.controller.finishing)):
+				#Queue the current state to apply later; setting the enable twice before wx.App.MainLoop starts will cause the code to freeze
+				self.myWindow._addFinalFunction(self.setEnable, myFunctionKwargs = {"label": myWidget, "state": state}, label = (myWidget, self.setEnable))
+				continue
+
+			applyEnable(myWidget)
 
 	def checkEnabled(self, label = None):
 		"""Checks if an item is enabled.
@@ -11645,7 +11654,7 @@ class handle_Menu(handle_Container_Base):
 
 		################################
 
-		for item in self.ensure_container(label, returnForNone = lambda: self[:]):
+		for item in self.ensure_container(label, returnForNone = lambda: self[:], convertNone = False):
 			with self[item] as myWidget:
 				if (state):
 					if (not myWidget.checkShown()):
@@ -12572,7 +12581,7 @@ class handle_MenuItem(handle_Widget_Base):
 			handle_Widget_Base.setEnable(self, state = state)
 
 		elif (self.type.lower() in ("flatmenuitem", "toolbaritem")):
-			self.parent.setEnable(self.label, state)
+			self.parent.setEnable(state = state, label = self.label)
 
 		else:
 			warnings.warn(f"Add {self.type} to setEnable() for {self.__repr__()}", Warning, stacklevel = 2)
