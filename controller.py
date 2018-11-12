@@ -6020,7 +6020,7 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 					warnings.warn(f"Add {handle.__class__} as a handle type for handle_Menu nesting in a handle_WidgetInput for nest() in {self.__repr__()}", Warning, stacklevel = 2)
 					return
 			else:
-				warnings.warn(f"Add {self.type} as a handle type for handle_WidgetInput in nest() in {self.__repr__()}", Warning, stacklevel = 2)
+				warnings.warn(f"Add {self.type.name} as a handle type for handle_WidgetInput in nest() in {self.__repr__()}", Warning, stacklevel = 2)
 				return
 		else:
 			warnings.warn(f"Add {self.__class__} as self to nest() in {self.__repr__()}", Warning, stacklevel = 2)
@@ -7152,7 +7152,7 @@ class handle_Widget_Base(handle_Base):
 			value = self.thing.GetRange()
 
 		else:
-			warnings.warn(f"Add {self.type} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = 0
 
 		return value
@@ -7204,7 +7204,7 @@ class handle_Widget_Base(handle_Base):
 		elif (self.type is Types.progressbar):
 			_build_progressBar()
 		else:
-			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self._postBuild(argument_catalogue)
 
@@ -7216,7 +7216,7 @@ class handle_Widget_Base(handle_Base):
 			value = self.thing.GetValue() #(int) - Where the progress bar currently is
 
 		else:
-			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 4)
+			warnings.warn(f"Add {self.type.name} to getValue() for {self.__repr__()}", Warning, stacklevel = 4)
 			value = None
 
 		return value
@@ -7227,7 +7227,7 @@ class handle_Widget_Base(handle_Base):
 		if (False):
 			pass
 		else:
-			warnings.warn(f"Add {self.type} to getIndex() for {self.__repr__()}", Warning, stacklevel = 4)
+			warnings.warn(f"Add {self.type.name} to getIndex() for {self.__repr__()}", Warning, stacklevel = 4)
 			value = None
 
 		return value
@@ -7239,7 +7239,7 @@ class handle_Widget_Base(handle_Base):
 			value = self.thing.GetRange()
 
 		else:
-			warnings.warn(f"Add {self.type} to getAll() for {self.__repr__()}", Warning, stacklevel = 4)
+			warnings.warn(f"Add {self.type.name} to getAll() for {self.__repr__()}", Warning, stacklevel = 4)
 			value = None
 
 		return value
@@ -7255,12 +7255,12 @@ class handle_Widget_Base(handle_Base):
 			self.thing.SetValue(newValue)
 
 		else:
-			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 4)
+			warnings.warn(f"Add {self.type.name} to setValue() for {self.__repr__()}", Warning, stacklevel = 4)
 
 	def setSelection(self, newValue, event = None):
 		"""Sets the contextual selection for the object associated with this handle to what the user supplies."""
 
-		warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 4)
+		warnings.warn(f"Add {self.type.name} to setSelection() for {self.__repr__()}", Warning, stacklevel = 4)
 
 	def setReadOnly(self, state = True, event = None):
 		"""Sets the contextual readOnly for the object associated with this handle to what the user supplies."""
@@ -7269,7 +7269,7 @@ class handle_Widget_Base(handle_Base):
 			pass
 			
 		else:
-			warnings.warn(f"Add {self.type} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 4)
+			warnings.warn(f"Add {self.type.name} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 4)
 
 	def setFunction_rightClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		self._betterBind(wx.EVT_RIGHT_DOWN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
@@ -7705,7 +7705,7 @@ class handle_WidgetText(handle_Widget_Base):
 			value = len(self.getValue()) #(int) - How long the url link is
 
 		else:
-			warnings.warn(f"Add {self.type} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = 0
 
 		return value
@@ -7856,7 +7856,7 @@ class handle_WidgetText(handle_Widget_Base):
 		elif (self.type is Types.empty):
 			_build_empty()
 		else:
-			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self._postBuild(argument_catalogue)
 
@@ -7874,7 +7874,7 @@ class handle_WidgetText(handle_Widget_Base):
 			value = self.thing.GetURL() #(str) - What the link is
 
 		else:
-			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -7899,7 +7899,7 @@ class handle_WidgetText(handle_Widget_Base):
 			self.thing.SetURL(newValue) #(str) - What the hyperlink will now connect to
 
 		else:
-			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setReadOnly(self, state = True):
 		"""Sets the contextual readOnly for the object associated with this handle to what the user supplies."""
@@ -7908,7 +7908,7 @@ class handle_WidgetText(handle_Widget_Base):
 			pass
 			
 		else:
-			warnings.warn(f"Add {self.type} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Change Settings
 	def wrapText(self, wrap = 1):
@@ -7926,7 +7926,7 @@ class handle_WidgetText(handle_Widget_Base):
 		if (self.type is Types.hyperlink):
 			self._betterBind(wx.adv.EVT_HYPERLINK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
 
 class handle_WidgetList(handle_Widget_Base):
 	"""A handle for working with list widgets."""
@@ -7974,7 +7974,7 @@ class handle_WidgetList(handle_Widget_Base):
 				value = len(self.columnCatalogue)
 
 		else:
-			warnings.warn(f"Add {self.type} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = 0
 
 		return value
@@ -8355,7 +8355,7 @@ class handle_WidgetList(handle_Widget_Base):
 		elif (self.type is Types.tree):
 			_build_listTree()
 		else:
-			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self._postBuild(argument_catalogue)
 
@@ -8398,7 +8398,7 @@ class handle_WidgetList(handle_Widget_Base):
 						value.append(self.thing.GetItemText(selection))
 
 		else:
-			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -8436,7 +8436,7 @@ class handle_WidgetList(handle_Widget_Base):
 					value.append(subValue)
 
 		else:
-			warnings.warn(f"Add {self.type} to getIndex() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to getIndex() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -8476,7 +8476,7 @@ class handle_WidgetList(handle_Widget_Base):
 				value = value[rootText]
 
 		else:
-			warnings.warn(f"Add {self.type} to getAll() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to getAll() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -8502,7 +8502,7 @@ class handle_WidgetList(handle_Widget_Base):
 	# 		column = bisect.bisect(widthList, x + x_offset) - 1
 
 	# 	else:
-	# 		warnings.warn(f"Add {self.type} to getColumn() for {self.__repr__()}", Warning, stacklevel = 2)
+	# 		warnings.warn(f"Add {self.type.name} to getColumn() for {self.__repr__()}", Warning, stacklevel = 2)
 	# 		column = None
 
 	# 	return column
@@ -8616,7 +8616,7 @@ class handle_WidgetList(handle_Widget_Base):
 				self.appendValue(branches, rootThing)
 
 		else:
-			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setSelection(self, newValue, event = None, deselectOthers = True, ensureVisible = True, group = False, triggerEvent = True):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies.
@@ -8685,7 +8685,7 @@ class handle_WidgetList(handle_Widget_Base):
 					else:
 						self._onSelectRow()
 		else:
-			warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setChoices(self, choices = None):
 		self.choices = choices or ()
@@ -8841,13 +8841,13 @@ class handle_WidgetList(handle_Widget_Base):
 				self.refreshColumns()
 				self.refresh()
 		else:
-			warnings.warn(f"Add {self.type} to setColumns() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setColumns() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def refreshColumns(self):
 		if (self.type is Types.view):
 			self.thing.SetColumns([ObjectListView.DataColumnDefn(**kwargs) for column, kwargs in sorted(self.columnCatalogue.items())])
 		else:
-			warnings.warn(f"Add {self.type} to setColumns() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setColumns() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def refresh(self):
 		self.thing.RepopulateList()
@@ -9095,7 +9095,7 @@ class handle_WidgetList(handle_Widget_Base):
 			self.thing.AddObjects(objectList)
 
 		else:
-			warnings.warn(f"Add {self.type} to appendValue() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to appendValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def removeValue(self, value):
 		objectList = self._formatList(value)
@@ -9163,7 +9163,7 @@ class handle_WidgetList(handle_Widget_Base):
 		if (self.type is Types.tree):
 			self._betterBind(wx.EVT_TREE_SEL_CHANGING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_preClick() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_preClick() for {self.__repr__()}", Warning, stacklevel = 2)
 			
 	def setFunction_postClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.drop):
@@ -9175,7 +9175,7 @@ class handle_WidgetList(handle_Widget_Base):
 		elif (self.type is Types.tree):
 			self._betterBind(wx.EVT_TREE_SEL_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_postClick() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_postClick() for {self.__repr__()}", Warning, stacklevel = 2)
 			
 	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		self.setFunction_postClick(myFunction = myFunction, myFunctionArgs = myFunctionArgs, myFunctionKwargs = myFunctionKwargs)
@@ -9185,7 +9185,7 @@ class handle_WidgetList(handle_Widget_Base):
 			self._betterBind(ObjectListView.EVT_DATA_GROUP_SELECTED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 			self._betterBind(ObjectListView.EVT_DATA_GROUP_SELECTED, self.thing, self._onSelectGroup, rebind = True, mode = 2)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_groupClick() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_groupClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_preEdit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
@@ -9193,7 +9193,7 @@ class handle_WidgetList(handle_Widget_Base):
 		elif (self.type is Types.tree):
 			self._betterBind(wx.EVT_TREE_BEGIN_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_preEdit() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_preEdit() for {self.__repr__()}", Warning, stacklevel = 2)
 			
 	def setFunction_postEdit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
@@ -9202,7 +9202,7 @@ class handle_WidgetList(handle_Widget_Base):
 		elif (self.type is Types.tree):
 			self._betterBind(wx.EVT_TREE_END_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_postEdit() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_postEdit() for {self.__repr__()}", Warning, stacklevel = 2)
 			
 	def setFunction_edit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		self.setFunction_postEdit(myFunction = myFunction, myFunctionArgs = myFunctionArgs, myFunctionKwargs = myFunctionKwargs)
@@ -9216,7 +9216,7 @@ class handle_WidgetList(handle_Widget_Base):
 				self.preDragFunctionArgs = myFunctionArgs
 				self.preDragFunctionKwargs = myFunctionKwargs
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_preDrag() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_preDrag() for {self.__repr__()}", Warning, stacklevel = 2)
 			
 	def setFunction_postDrag(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
@@ -9228,7 +9228,7 @@ class handle_WidgetList(handle_Widget_Base):
 				self.postDragFunctionArgs = myFunctionArgs
 				self.postDragFunctionKwargs = myFunctionKwargs
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_postDrag() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_postDrag() for {self.__repr__()}", Warning, stacklevel = 2)
 			
 	def setFunction_preDrop(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
@@ -9239,7 +9239,7 @@ class handle_WidgetList(handle_Widget_Base):
 				self.myDropTarget.preDropFunctionArgs = myFunctionArgs
 				self.myDropTarget.preDropFunctionKwargs = myFunctionKwargs
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_preDrop() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_preDrop() for {self.__repr__()}", Warning, stacklevel = 2)
 			
 	def setFunction_postDrop(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
@@ -9251,7 +9251,7 @@ class handle_WidgetList(handle_Widget_Base):
 				self.myDropTarget.postDropFunctionArgs = myFunctionArgs
 				self.myDropTarget.postDropFunctionKwargs = myFunctionKwargs
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_postDrop() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_postDrop() for {self.__repr__()}", Warning, stacklevel = 2)
 			
 	def setFunction_dragOver(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
@@ -9263,7 +9263,7 @@ class handle_WidgetList(handle_Widget_Base):
 				self.myDropTarget.dragOverFunctionArgs = myFunctionArgs
 				self.myDropTarget.dragOverFunctionKwargs = myFunctionKwargs
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_dragOver() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_dragOver() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_preCollapse(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
@@ -9271,7 +9271,7 @@ class handle_WidgetList(handle_Widget_Base):
 		elif (self.type is Types.tree):
 			self._betterBind(wx.EVT_TREE_ITEM_COLLAPSING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_preCollapse() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_preCollapse() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_postCollapse(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
@@ -9279,7 +9279,7 @@ class handle_WidgetList(handle_Widget_Base):
 		elif (self.type is Types.tree):
 			self._betterBind(wx.EVT_TREE_ITEM_COLLAPSED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_postCollapse() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_postCollapse() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_preExpand(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
@@ -9287,7 +9287,7 @@ class handle_WidgetList(handle_Widget_Base):
 		elif (self.type is Types.tree):
 			self._betterBind(wx.EVT_TREE_ITEM_EXPANDING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_preExpand() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_preExpand() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_postExpand(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
@@ -9295,7 +9295,7 @@ class handle_WidgetList(handle_Widget_Base):
 		elif (self.type is Types.tree):
 			self._betterBind(wx.EVT_TREE_ITEM_EXPANDED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_postExpand() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_postExpand() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_rightClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.tree):
@@ -9303,13 +9303,13 @@ class handle_WidgetList(handle_Widget_Base):
 		elif (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_CELL_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_rightClick() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_rightClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_middleClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.tree):
 			self._betterBind(wx.EVT_TREE_ITEM_MIDDLE_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_middleClick() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_middleClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_doubleClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.tree):
@@ -9317,127 +9317,127 @@ class handle_WidgetList(handle_Widget_Base):
 		elif (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_CELL_ACTIVATED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_middleClick() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_middleClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_clickLabel(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_COLUMN_HEADER_LEFT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_labelClick() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_labelClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_rightClickLabel(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_COLUMN_HEADER_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_rightClickLabel() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_rightClickLabel() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_keyDown(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.tree):
 			self._betterBind(wx.EVT_TREE_KEY_DOWN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_keyDown() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_keyDown() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_copy(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_COPY, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_postEdit() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_postEdit() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_preCopy(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_COPYING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_preCopy() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_preCopy() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_postCopy(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_COPIED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_postCopy() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_postCopy() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_paste(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_PASTE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_paste() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_paste() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_prePaste(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_PASTING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_prePaste() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_prePaste() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_toolTip(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.tree):
 			self._betterBind(wx.EVT_TREE_ITEM_GETTOOLTIP, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_toolTip() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_toolTip() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_itemMenu(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.tree):
 			self._betterBind(wx.EVT_TREE_ITEM_MENU, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_itemMenu() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_itemMenu() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_sort(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_COLUMN_SORTED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_sort() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_sort() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_reorder(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_COLUMN_REORDER, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_reorder() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_reorder() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_groupCreate(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_GROUP_CREATING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_groupCreate() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_groupCreate() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_undo(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_UNDO, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_undo() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_undo() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_undoTrack(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_UNDO_TRACK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_undoTrack() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_undoTrack() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_canUndo(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_UNDO_FIRST, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_canUndo() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_canUndo() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_cantUndo(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_UNDO_EMPTY, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_cantUndo() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_cantUndo() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_redo(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_REDO, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_redo() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_redo() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_canRedo(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_REDO_FIRST, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_canRedo() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_canRedo() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_cantRedo(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
 			self._betterBind(ObjectListView.EVT_DATA_REDO_EMPTY, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_cantRedo() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_cantRedo() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setReadOnly(self, state = True):
 		"""Sets the contextual readOnly for the object associated with this handle to what the user supplies."""
@@ -9445,7 +9445,7 @@ class handle_WidgetList(handle_Widget_Base):
 		if (self.type is Types.drop):
 			self.setDisable(state)
 		else:
-			warnings.warn(f"Add {self.type} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setItemColor(self, row = None, column = None, color = "white"):
 		"""Sets the contextual row color for the object associated with this handle to what the user supplies.
@@ -9482,7 +9482,7 @@ class handle_WidgetList(handle_Widget_Base):
 				else:
 					self.thing.SetBackgroundColour(colorHandle)
 		else:
-			warnings.warn(f"Add {self.type} to setItemColor() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setItemColor() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Event functions
 	def _onDragList_beginDragAway(self, event, label = None,
@@ -9749,7 +9749,7 @@ class handle_WidgetInput(handle_Widget_Base):
 			value = len(self.getValue())
 
 		else:
-			warnings.warn(f"Add {self.type} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = 0
 
 		return value
@@ -10049,7 +10049,7 @@ class handle_WidgetInput(handle_Widget_Base):
 		elif (self.type is Types.search):
 			_build_inputSearch()
 		else:
-			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self._postBuild(argument_catalogue)
 
@@ -10070,7 +10070,7 @@ class handle_WidgetInput(handle_Widget_Base):
 			value = self.thing.GetValue() #(str) - What is in the search box
 
 		else:
-			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -10085,7 +10085,7 @@ class handle_WidgetInput(handle_Widget_Base):
 		if (self.type is Types.box):
 			if (newValue is None):
 				newValue = "" #Filter None as blank text
-			self.thing.SetValue(newValue) #(str) - What will be shown in the input box
+			self.thing.SetValue(f"{newValue}") #(str) - What will be shown in the input box
 
 		elif (self.type is Types.spinner):
 			if (isinstance(newValue, str)):
@@ -10102,10 +10102,10 @@ class handle_WidgetInput(handle_Widget_Base):
 		elif (self.type is Types.search):
 			if (newValue is None):
 				newValue = "" #Filter None as blank text
-			self.thing.SetValue(newValue) #(str) - What will be shown in the search box
+			self.thing.SetValue(f"{newValue}") #(str) - What will be shown in the search box
 
 		else:
-			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Change Settings
 	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
@@ -10122,7 +10122,7 @@ class handle_WidgetInput(handle_Widget_Base):
 			self._betterBind(wx.EVT_TEXT_ENTER, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_enter(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.box):
@@ -10133,13 +10133,13 @@ class handle_WidgetInput(handle_Widget_Base):
 			# self._betterBind(wx.EVT_TEXT_ENTER, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_enter() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_enter() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_preEdit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.box):
 			self._betterBind(wx.EVT_SET_FOCUS, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_preEdit() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_preEdit() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_postEdit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.box):
@@ -10155,25 +10155,25 @@ class handle_WidgetInput(handle_Widget_Base):
 			self._betterBind(wx.EVT_SCROLL_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_postEdit() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_postEdit() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_search(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.search):
 			self._betterBind(wx.EVT_SEARCHCTRL_SEARCH_BTN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_search() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_search() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_cancel(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.search):
 			self._betterBind(wx.EVT_SEARCHCTRL_CANCEL_BTN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_cancel() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_cancel() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_menuSelect(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.search):
 			self._betterBind(wx.EVT_MENU, self.myMenu.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_menuSelect() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_menuSelect() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setMin(self, newValue):
 		"""Sets the contextual minimum for the object associated with this handle to what the user supplies."""
@@ -10185,7 +10185,7 @@ class handle_WidgetInput(handle_Widget_Base):
 			self.thing.SetMin(newValue) #(int / float) - What the min slider position will be
 
 		else:
-			warnings.warn(f"Add {self.type} to setMin() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setMin() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setMax(self, newValue):
 		"""Sets the contextual maximum for the object associated with this handle to what the user supplies."""
@@ -10197,7 +10197,7 @@ class handle_WidgetInput(handle_Widget_Base):
 			self.thing.SetMax(newValue) #(int / float) - What the max slider position will be
 
 		else:
-			warnings.warn(f"Add {self.type} to setMax() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setMax() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setReadOnly(self, state = True):
 		"""Sets the contextual readOnly for the object associated with this handle to what the user supplies."""
@@ -10209,7 +10209,7 @@ class handle_WidgetInput(handle_Widget_Base):
 			self.thing.Enable(not state)
 
 		else:
-			warnings.warn(f"Add {self.type} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setChoices(self, choices = None):
 		self.choices = choices or ()
@@ -10249,7 +10249,7 @@ class handle_WidgetInput(handle_Widget_Base):
 				#Remember current value
 				self.previousValue = value
 		else:
-			warnings.warn(f"Add {self.type} to _onCheckValue_exclude() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to _onCheckValue_exclude() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		event.Skip()
 
@@ -10260,7 +10260,7 @@ class handle_WidgetInput(handle_Widget_Base):
 			value = self.myMenu.getText(event)
 			self.setValue(value)
 		else:
-			warnings.warn(f"Add {self.type} to _onSearch_replaceText() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to _onSearch_replaceText() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		event.Skip()
 
@@ -10298,7 +10298,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			value = len(self.getValue()) #(int) - The length of the text in the image button
 
 		else:
-			warnings.warn(f"Add {self.type} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = 0
 
 		return value
@@ -10579,7 +10579,7 @@ class handle_WidgetButton(handle_Widget_Base):
 		elif (self.type is Types.help):
 			_build_buttonHelp()
 		else:
-			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self._postBuild(argument_catalogue)
 
@@ -10619,7 +10619,7 @@ class handle_WidgetButton(handle_Widget_Base):
 				value = None
 
 		else:
-			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 3)
+			warnings.warn(f"Add {self.type.name} to getValue() for {self.__repr__()}", Warning, stacklevel = 3)
 			value = None
 
 		return value
@@ -10634,7 +10634,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			value = self.thing.GetCheckedItems() #(list) - Which checkboxes are selected as integers
 
 		else:
-			warnings.warn(f"Add {self.type} to getIndex() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to getIndex() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -10655,7 +10655,7 @@ class handle_WidgetButton(handle_Widget_Base):
 				value.append(thing.GetString(i)) #(list) - What is in the full list as strings
 
 		else:
-			warnings.warn(f"Add {self.type} to getAll() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to getAll() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -10705,7 +10705,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			self.thing.SetToggle(bool(newValue)) #(bool) - True: selected; False: un-selected
 
 		else:
-			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setSelection(self, newValue = None, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
@@ -10732,7 +10732,7 @@ class handle_WidgetButton(handle_Widget_Base):
 
 			self.setValue(newValue, event)
 		else:
-			warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Change Settings
 	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
@@ -10764,7 +10764,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			self._betterBind(wx.EVT_CHECKLISTBOX, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setReadOnly(self, state = True, event = None):
 		"""Sets the contextual readOnly for the object associated with this handle to what the user supplies."""
@@ -10773,7 +10773,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			self.thing.SetReadOnly(state)
 
 		else:
-			warnings.warn(f"Add {self.type} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def _onToggleText(self, event):
 		"""Changes the value displayed on the button when the user presses it."""
@@ -10792,7 +10792,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			self.setValue(newValue)				
 
 		else:
-			warnings.warn(f"Add {self.type} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		event.Skip()
 
@@ -10815,7 +10815,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			value = len(self.getValue()) #(int) - How long the file path selected is
 
 		else:
-			warnings.warn(f"Add {self.type} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = 0
 
 		return value
@@ -11179,7 +11179,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 		elif (self.type is Types.font):
 			_build_pickerFont()
 		else:
-			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self._postBuild(argument_catalogue)
 
@@ -11215,7 +11215,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			value = self.thing.GetSelectedFont()
 
 		else:
-			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -11271,7 +11271,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			self.thing.SetTime(hour, minute, second) #(str) - What time will be selected as 'hour:minute:second'
 
 		else:
-			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 
 	#Change Settings
@@ -11296,7 +11296,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 		elif (self.type is Types.font):
 			self._betterBind(wx.EVT_FONTPICKER_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_editLabel(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when a label is modified."""
@@ -11304,7 +11304,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 		if (self.type is Types.filewindow):
 			self._betterBind(wx.EVT_TREE_END_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_editLabel() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_editLabel() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_rightClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the right mouse button is clicked in the widget."""
@@ -11312,7 +11312,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 		if (self.type is Types.filewindow):
 			self._betterBind(wx.EVT_TREE_ITEM_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_rightClick() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_rightClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_editDay(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the day is modified."""
@@ -11320,7 +11320,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 		if (self.type is Types.datewindow):
 			self._betterBind(wx.adv.EVT_CALENDAR_DAY, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_editDay() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_editDay() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_editMonth(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the month is modified."""
@@ -11328,7 +11328,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 		if (self.type is Types.datewindow):
 			self._betterBind(wx.adv.EVT_CALENDAR_MONTH, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_editMonth() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_editMonth() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_editYear(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the year is modified."""
@@ -11336,7 +11336,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 		if (self.type is Types.datewindow):
 			self._betterBind(wx.adv.EVT_CALENDAR_YEAR, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_editYear() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_editYear() for {self.__repr__()}", Warning, stacklevel = 2)
 
 class handle_WidgetImage(handle_Widget_Base):
 	"""A handle for working with image widgets."""
@@ -11363,7 +11363,7 @@ class handle_WidgetImage(handle_Widget_Base):
 				value = image.GetHeight()
 
 		else:
-			warnings.warn(f"Add {self.type} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = 0
 
 		return value
@@ -11392,7 +11392,7 @@ class handle_WidgetImage(handle_Widget_Base):
 		if (self.type is Types.image):
 			_build_image()
 		else:
-			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self._postBuild(argument_catalogue)
 
@@ -11404,7 +11404,7 @@ class handle_WidgetImage(handle_Widget_Base):
 			value = self.thing.GetBitmap() #(bitmap) - The image that is currently being shown
 
 		else:
-			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -11418,7 +11418,7 @@ class handle_WidgetImage(handle_Widget_Base):
 			self.thing.SetBitmap(image) #(wxBitmap) - What the image will be now
 
 		else:
-			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 class handle_Menu(handle_Container_Base):
 	"""A handle for working with menus."""
@@ -11525,7 +11525,7 @@ class handle_Menu(handle_Container_Base):
 		elif (self.type is Types.toolbar):
 			_build_toolbar()
 		else:
-			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self._postBuild(argument_catalogue)
 
@@ -11549,7 +11549,7 @@ class handle_Menu(handle_Container_Base):
 				value = item.GetLabel() #(str) - What the selected item says
 
 		else:
-			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -11570,7 +11570,7 @@ class handle_Menu(handle_Container_Base):
 			value = item.GetLabel() #(str) - What the selected item says
 
 		else:
-			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -11596,7 +11596,7 @@ class handle_Menu(handle_Container_Base):
 				raise SyntaxError(errorMessage)
 
 		else:
-			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Change Settings
 	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
@@ -11607,7 +11607,7 @@ class handle_Menu(handle_Container_Base):
 		elif (self.type is Types.toolbar):
 			self._betterBind(wx.EVT_TOOL_RCLICKED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setEnable(self, state = True, *, label = None):
 		"""Enables or disables an item based on the given input.
@@ -11631,7 +11631,7 @@ class handle_Menu(handle_Container_Base):
 				myWidget.setEnable(state = state)
 
 		else:
-			warnings.warn(f"Add {self.type} to setEnable() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setEnable() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		for myWidget in self.ensure_container(label, returnForNone = lambda: self[:], convertNone = False):
 			
@@ -11669,7 +11669,7 @@ class handle_Menu(handle_Container_Base):
 					myId = myWidget.thing.GetId()
 					answer.append(self.thing.GetToolEnabled(myId, state))
 		else:
-			warnings.warn(f"Add {self.type} to checkEnabled() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to checkEnabled() for {self.__repr__()}", Warning, stacklevel = 2)
 			answer = None
 
 		return answer
@@ -11712,7 +11712,7 @@ class handle_Menu(handle_Container_Base):
 
 				self.thing.Remove(myWidget.thing)
 		else:
-			warnings.warn(f"Add {self.type} to setShow() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setShow() for {self.__repr__()}", Warning, stacklevel = 2)
 			return
 
 		################################
@@ -11748,7 +11748,7 @@ class handle_Menu(handle_Container_Base):
 			if (len(state) == 1):
 				state = state[0]
 		else:
-			warnings.warn(f"Add {self.type} to checkShown() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to checkShown() for {self.__repr__()}", Warning, stacklevel = 2)
 			state = None
 
 		return state
@@ -11822,7 +11822,7 @@ class handle_Menu(handle_Container_Base):
 		elif (self.type is Types.toolbar):
 			handle.type = Types.toolbaritem
 		else:
-			warnings.warn(f"Add {self.type} to addItem() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addItem() for {self.__repr__()}", Warning, stacklevel = 2)
 			return
 
 		handle._build(locals())
@@ -11849,7 +11849,7 @@ class handle_Menu(handle_Container_Base):
 		if (self.type is Types.toolbar):
 			handle = self.addItem(*args, text = None, stretchable = True, **kwargs)
 		else:
-			warnings.warn(f"Add {self.type} to addStretchableSpace() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addStretchableSpace() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -11874,7 +11874,7 @@ class handle_Menu(handle_Container_Base):
 		elif (self.type is Types.toolbar):
 			handle.type = Types.toolbar
 		else:
-			warnings.warn(f"Add {self.type} to addSub() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addSub() for {self.__repr__()}", Warning, stacklevel = 2)
 			return
 
 		detachable = False
@@ -11892,7 +11892,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makeText, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addText() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addText() for {self.__repr__()}", Warning, stacklevel = 2)
 			return
 
 		return handle
@@ -11907,7 +11907,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makeHtml, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addHtml() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addHtml() for {self.__repr__()}", Warning, stacklevel = 2)
 			return
 
 		return handle
@@ -11927,7 +11927,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makeHyperlink, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addHyperlink() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addHyperlink() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -11942,7 +11942,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makeLine, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addLine() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addLine() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -11957,7 +11957,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makeListDrop, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addListDrop() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addListDrop() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -11972,7 +11972,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makeListFull, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addListFull() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addListFull() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -11987,7 +11987,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makeListTree, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addListTree() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addListTree() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -12002,7 +12002,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makeInputSlider, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addInputSlider() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addInputSlider() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -12017,7 +12017,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makeInputBox, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addInputBox() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addInputBox() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -12032,7 +12032,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makeInputSearch, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addInputSearch() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addInputSearch() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -12047,7 +12047,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makeInputSpinner, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addInputSpinner() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addInputSpinner() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -12062,7 +12062,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makeButton, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addButton() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addButton() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -12077,7 +12077,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makeButtonList, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addButtonList() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addButtonList() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -12092,7 +12092,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makeButtonToggle, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addButtonToggle() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addButtonToggle() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -12107,7 +12107,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makeButtonCheck, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addButtonCheck() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addButtonCheck() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -12122,7 +12122,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makeButtonCheckList, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addButtonCheckList() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addButtonCheckList() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -12137,7 +12137,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makeButtonRadio, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addButtonRadio() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addButtonRadio() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -12152,7 +12152,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makeButtonRadioBox, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addButtonRadioBox() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addButtonRadioBox() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -12167,7 +12167,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makeButtonImage, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addButtonImage() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addButtonImage() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -12182,7 +12182,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makeImage, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addImage() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addImage() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -12197,7 +12197,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makeProgressBar, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addProgressBar() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addProgressBar() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -12212,7 +12212,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makePickerColor, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addPickerColor() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addPickerColor() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -12227,7 +12227,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makePickerFont, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addPickerFont() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addPickerFont() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -12242,7 +12242,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makePickerFile, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addPickerFile() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addPickerFile() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -12257,7 +12257,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makePickerFileWindow, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addPickerFileWindow() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addPickerFileWindow() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -12272,7 +12272,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makePickerTime, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addPickerTime() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addPickerTime() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -12287,7 +12287,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makePickerDate, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addPickerDate() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addPickerDate() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -12302,7 +12302,7 @@ class handle_Menu(handle_Container_Base):
 			handle.subHandle = [handle._makePickerDateWindow, args, kwargs]
 			handle._build(locals())
 		else:
-			warnings.warn(f"Add {self.type} to addPickerDateWindow() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to addPickerDateWindow() for {self.__repr__()}", Warning, stacklevel = 2)
 			handle = None
 
 		return handle
@@ -12327,7 +12327,7 @@ class handle_MenuItem(handle_Widget_Base):
 			value = len(self.thing.GetLabel()) #(int) - How long the text inside the menu item is
 
 		else:
-			warnings.warn(f"Add {self.type} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = 0
 
 		return value
@@ -12507,7 +12507,7 @@ class handle_MenuItem(handle_Widget_Base):
 		elif (self.type is Types.toolbaritem):
 			_build_toolbarItem()
 		else:
-			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self._postBuild(argument_catalogue)
 
@@ -12524,7 +12524,7 @@ class handle_MenuItem(handle_Widget_Base):
 			value = self.subHandle.getValue(event = event)
 			
 		else:
-			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -12543,7 +12543,7 @@ class handle_MenuItem(handle_Widget_Base):
 			value = self.subHandle.setValue(event = event)
 
 		else:
-			warnings.warn(f"Add {self.type} to getIndex() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to getIndex() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -12565,7 +12565,7 @@ class handle_MenuItem(handle_Widget_Base):
 			self.subHandle.setValue(newValue, event = event)
 
 		else:
-			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Change Settings
 	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, **kwargs):
@@ -12581,7 +12581,7 @@ class handle_MenuItem(handle_Widget_Base):
 				self.parent._betterBind(wx.EVT_MENU, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_enter() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_enter() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_enter(self, *args, **kwargs):
 		"""Override function for subHandle."""
@@ -12589,7 +12589,7 @@ class handle_MenuItem(handle_Widget_Base):
 		if ((self.type is Types.toolbaritem) and (self.subHandle is not None)):
 			self.subHandle.setFunction_enter(*args, **kwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_enter() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_enter() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_preEdit(self, *args, **kwargs):
 		"""Override function for subHandle."""
@@ -12597,7 +12597,7 @@ class handle_MenuItem(handle_Widget_Base):
 		if ((self.type is Types.toolbaritem) and (self.subHandle is not None)):
 			self.subHandle.setFunction_preEdit(*args, **kwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_preEdit() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_preEdit() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_postEdit(self, *args, **kwargs):
 		"""Override function for subHandle."""
@@ -12605,7 +12605,7 @@ class handle_MenuItem(handle_Widget_Base):
 		if ((self.type is Types.toolbaritem) and (self.subHandle is not None)):
 			self.subHandle.setFunction_postEdit(*args, **kwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_postEdit() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_postEdit() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_search(self, *args, **kwargs):
 		"""Override function for subHandle."""
@@ -12613,7 +12613,7 @@ class handle_MenuItem(handle_Widget_Base):
 		if ((self.type is Types.toolbaritem) and (self.subHandle is not None)):
 			self.subHandle.setFunction_search(*args, **kwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_search() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_search() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_cancel(self, *args, **kwargs):
 		"""Override function for subHandle."""
@@ -12621,7 +12621,7 @@ class handle_MenuItem(handle_Widget_Base):
 		if ((self.type is Types.toolbaritem) and (self.subHandle is not None)):
 			self.subHandle.setFunction_cancel(*args, **kwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_cancel() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_cancel() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_menuSelect(self, *args, **kwargs):
 		"""Override function for subHandle."""
@@ -12629,7 +12629,7 @@ class handle_MenuItem(handle_Widget_Base):
 		if ((self.type is Types.toolbaritem) and (self.subHandle is not None)):
 			self.subHandle.setFunction_menuSelect(*args, **kwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_menuSelect() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_menuSelect() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setEnable(self, state = True):
 		"""Enables or disables an item based on the given input.
@@ -12647,7 +12647,7 @@ class handle_MenuItem(handle_Widget_Base):
 			self.parent.setEnable(state = state, label = self.label)
 
 		else:
-			warnings.warn(f"Add {self.type} to setEnable() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setEnable() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def checkEnabled(self):
 		"""Checks if an item is enabled.
@@ -12662,7 +12662,7 @@ class handle_MenuItem(handle_Widget_Base):
 			state = self.parent.checkEnabled(self.label, state)
 
 		else:
-			warnings.warn(f"Add {self.type} to checkEnabled() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to checkEnabled() for {self.__repr__()}", Warning, stacklevel = 2)
 			state = None
 
 		return state
@@ -12742,7 +12742,7 @@ class handle_MenuPopup(handle_Container_Base):
 		elif (self.type is Types.popup_widget):
 			_build_menuPopup()
 		else:
-			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self._postBuild(argument_catalogue)
 
@@ -13145,7 +13145,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		if (self.type is Types.canvas):
 			_build_canvas()
 		else:
-			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self._postBuild(argument_catalogue)
 
@@ -13155,7 +13155,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		if (self.type is Types.canvas):
 			self.parent._betterBind(wx.EVT_INIT_DIALOG, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_init() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_init() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def _onPaint(self, event):
 		"""Needed so that the GUI can draw on the panel."""
@@ -14476,7 +14476,7 @@ class handle_WidgetTable(handle_Widget_Base):
 				value = self.thing.GetNumberCols()
 
 		else:
-			warnings.warn(f"Add {self.type} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = 0
 
 		return value
@@ -14699,7 +14699,7 @@ class handle_WidgetTable(handle_Widget_Base):
 		if (self.type is Types.table):
 			_build_table()
 		else:
-			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self._postBuild(argument_catalogue)
 
@@ -14716,7 +14716,7 @@ class handle_WidgetTable(handle_Widget_Base):
 			else:
 				value = self.getTableCellValue(row, column) #(str) - What is in the requested cell
 		else:
-			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -14733,7 +14733,7 @@ class handle_WidgetTable(handle_Widget_Base):
 				value.append(row)
 
 		else:
-			warnings.warn(f"Add {self.type} to getAll() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to getAll() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -19335,7 +19335,7 @@ class handle_Dialog(handle_Base):
 		elif (self.type is Types.printpreview):
 			_build_printPreview()
 		else:
-			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self._postBuild(argument_catalogue)
 
@@ -19450,7 +19450,7 @@ class handle_Dialog(handle_Base):
 			pass
 
 		else:
-			warnings.warn(f"Add {self.type} to show() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to show() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def hide(self):
 		"""Hides the dialog box for this handle."""
@@ -19536,7 +19536,7 @@ class handle_Dialog(handle_Base):
 			self.thing = None
 
 		else:
-			warnings.warn(f"Add {self.type} to hide() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to hide() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		#Unpause background functions
 		for variable, handleDict in self.controller.backgroundFunction_pauseOnDialog.items():
@@ -19623,7 +19623,7 @@ class handle_Dialog(handle_Base):
 			value = self.content
 
 		else:
-			warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -19635,7 +19635,7 @@ class handle_Dialog(handle_Base):
 			value = self.data
 
 		else:
-			warnings.warn(f"Add {self.type} to getIndex() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to getIndex() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -19649,7 +19649,7 @@ class handle_Dialog(handle_Base):
 			else:
 				value = None
 		else:
-			warnings.warn(f"Add {self.type} to getText() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to getText() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -19663,7 +19663,7 @@ class handle_Dialog(handle_Base):
 			else:
 				value = None
 		else:
-			warnings.warn(f"Add {self.type} to getText() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to getText() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -19680,7 +19680,7 @@ class handle_Dialog(handle_Base):
 				value = None
 
 		else:
-			warnings.warn(f"Add {self.type} to getMax() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to getMax() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -19791,7 +19791,7 @@ class handle_Dialog(handle_Base):
 				if (oneShot):
 					self.oneShot = text
 		else:
-			warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 	
 	def setText(self, text = "", oneShot = False, event = None):
 		"""Sets the contextual text for the object associated with this handle to what the user supplies."""
@@ -19809,7 +19809,7 @@ class handle_Dialog(handle_Base):
 				if (oneShot):
 					self.oneShot = text
 		else:
-			warnings.warn(f"Add {self.type} to setText() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setText() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setDefaultText(self, text = "", apply = True, event = None):
 		"""Sets the contextual default text for the object associated with this handle to what the user supplies."""
@@ -19826,7 +19826,7 @@ class handle_Dialog(handle_Base):
 			if (self.subType.lower() == "progress"):
 				self.threadSafe(self.thing.SetRange, value)
 		else:
-			warnings.warn(f"Add {self.type} to setMax() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setMax() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setTitle(self, text = None, event = None):
 		"""Sets the title."""
@@ -19836,7 +19836,7 @@ class handle_Dialog(handle_Base):
 				text = "GUI_Maker Page"
 			self.title = text
 		else:
-			warnings.warn(f"Add {self.type} to setTitle() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setTitle() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setSize(self, size = None, event = None):
 		"""Sets the size."""
@@ -19844,7 +19844,7 @@ class handle_Dialog(handle_Base):
 		if (self.type is Types.print):
 			self.size = size
 		else:
-			warnings.warn(f"Add {self.type} to setSize() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setSize() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Etc
 	def resume(self, size = None, event = None):
@@ -19853,7 +19853,7 @@ class handle_Dialog(handle_Base):
 		if (self.type is Types.busy):
 			self.threadSafe(self.thing.Resume)
 		else:
-			warnings.warn(f"Add {self.type} to resume() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to resume() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def send(self, raw = False, printOverride = {}, event = None):
 		"""Returns what the contextual valueDoes the contextual send command for the object associated with this handle.
@@ -19903,7 +19903,7 @@ class handle_Dialog(handle_Base):
 			# self.runMyFunction(self.postShowFunction, self.postShowFunctionArgs, self.postShowFunctionKwargs, includeEvent = True)
 
 		else:
-			warnings.warn(f"Add {self.type} to send() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to send() for {self.__repr__()}", Warning, stacklevel = 2)
 
 class _MyPrinter(wx.Printer):
 	catalogue_printBin = {wx.PRINTBIN_DEFAULT: "default", wx.PRINTBIN_ONLYONE: "one", wx.PRINTBIN_LOWER: "lower",
@@ -20508,7 +20508,7 @@ class handle_Window(handle_Container_Base):
 		elif (self.type is Types.dialog):
 			_build_dialog()
 		else:
-			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self._postBuild(argument_catalogue)
 
@@ -20533,10 +20533,10 @@ class handle_Window(handle_Container_Base):
 	def getValueLabel(self, event = None):
 		"""Returns what the contextual value label is for the object associated with this handle."""
 
-		if (self.type is Types.dialog):
+		if (self.type in (Types.dialog, Types.wizard)):
 			value = self.valueLabel
 		else:
-			warnings.warn(f"Add {self.type} to getValueLabel() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to getValueLabel() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -20544,10 +20544,10 @@ class handle_Window(handle_Container_Base):
 	def setValueLabel(self, newValue, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
-		if (self.type is Types.dialog):
+		if (self.type in (Types.dialog, Types.wizard)):
 			self.valueLabel = newValue
 		else:
-			warnings.warn(f"Add {self.type} to setValueLabel() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setValueLabel() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Event Functions
 	def setFunction_init(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
@@ -22750,7 +22750,7 @@ class handle_Panel(handle_NavigatorBase, handle_Container_Base):
 		if (self.type is Types.panel):
 			_build_normal()
 		else:
-			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self._postBuild(argument_catalogue)
 
@@ -22971,7 +22971,7 @@ class handle_Splitter(handle_Container_Base):
 		elif (self.type is Types.poly):
 			_build_poly()
 		else:
-			warnings.warn(f"Add {self.type} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		self._postBuild(argument_catalogue)
 
@@ -22985,7 +22985,7 @@ class handle_Splitter(handle_Container_Base):
 		elif (self.type is Types.poly):
 			self.parent._betterBind(wx.EVT_INIT_DIALOG, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_init() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_init() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_preMoveSash(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the object is first created."""
@@ -22993,7 +22993,7 @@ class handle_Splitter(handle_Container_Base):
 		if (self.type is Types.double):
 			self.parent._betterBind(wx.EVT_SPLITTER_SASH_POS_CHANGING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_preMoveSash() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_preMoveSash() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_postMoveSash(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the object is first created."""
@@ -23001,7 +23001,7 @@ class handle_Splitter(handle_Container_Base):
 		if (self.type is Types.double):
 			self.parent._betterBind(wx.EVT_SPLITTER_SASH_POS_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
-			warnings.warn(f"Add {self.type} to setFunction_preMoveSash() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_preMoveSash() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def getSizers(self):
 		"""Returns the internal sizer list."""
@@ -23014,7 +23014,7 @@ class handle_Splitter(handle_Container_Base):
 		if (self.type is Types.double):
 			value = self.thing.GetSashPosition()
 		else:
-			warnings.warn(f"Add {self.type} to getSashPosition() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to getSashPosition() for {self.__repr__()}", Warning, stacklevel = 2)
 			value = None
 
 		return value
@@ -23029,7 +23029,7 @@ class handle_Splitter(handle_Container_Base):
 			if (newValue is not None):
 				self.thing.SetSashPosition(newValue)
 		else:
-			warnings.warn(f"Add {self.type} to setSashPosition() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setSashPosition() for {self.__repr__()}", Warning, stacklevel = 2)
 
 class handle_AuiManager(handle_Container_Base):
 	"""The manager for dockable windows.
@@ -23877,32 +23877,32 @@ class handle_Notebook_Aui(handle_Notebook_Simple):
 	def setSelection(self, newValue, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
-		warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
+		warnings.warn(f"Add {self.type.name} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def getValue(self, event = None):
 		"""Gets the contextual value for the object associated with this handle to what the user supplies."""
 
-		warnings.warn(f"Add {self.type} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
+		warnings.warn(f"Add {self.type.name} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	#Change Settings
 	def setFunction_init(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the object is first created."""
 
-		warnings.warn(f"Add {self.type} to setFunction_init() for {self.__repr__()}", Warning, stacklevel = 2)
+		warnings.warn(f"Add {self.type.name} to setFunction_init() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_prePageChange(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the page begins to change."""
 
-		warnings.warn(f"Add {self.type} to setFunction_prePageChange() for {self.__repr__()}", Warning, stacklevel = 2)
+		warnings.warn(f"Add {self.type.name} to setFunction_prePageChange() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_postPageChange(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		"""Changes the function that runs when the page has finished changing."""
 
-		warnings.warn(f"Add {self.type} to setFunction_postPageChange() for {self.__repr__()}", Warning, stacklevel = 2)
+		warnings.warn(f"Add {self.type.name} to setFunction_postPageChange() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_rightClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 
-		warnings.warn(f"Add {self.type} to setFunction_rightClick() for {self.__repr__()}", Warning, stacklevel = 2)
+		warnings.warn(f"Add {self.type.name} to setFunction_rightClick() for {self.__repr__()}", Warning, stacklevel = 2)
 
 class handle_Base_NotebookPage(handle_SizerProxy, handle_Container_Base):
 	"""A handle for working with a wxNotebook."""
@@ -24257,7 +24257,7 @@ class handle_WizardPage(handle_NavigatorBase, handle_Base_NotebookPage):
 # 		Example Input: getValue()
 # 		"""
 
-# 		warnings.warn(f"Add {self.type} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
+# 		warnings.warn(f"Add {self.type.name} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 # 	##Setters
 # 	def setValue(self, newValue = "", event = None):
@@ -24268,7 +24268,7 @@ class handle_WizardPage(handle_NavigatorBase, handle_Base_NotebookPage):
 # 		Example Input: notebookSetPageText("Ipsum")
 # 		"""
 
-# 		warnings.warn(f"Add {self.type} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+# 		warnings.warn(f"Add {self.type.name} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
 # class _MyWizardPage(wx.adv.WizardPage):
 # 	def __init__(self, parent, nextPage = None, previousPage = None, autoNext = True, autoPrevious = True, bitmap = wx.NullBitmap):
