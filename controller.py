@@ -722,6 +722,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 			- If slice: objects will be returned from between the given spots 
 			- If wxEvent: Will get the object that triggered the event
 			- If None: Will return all that would be in an unbound slice
+			- If Types enumeration: Will return an object of that type
 
 		Example Input: get()
 		Example Input: get(0)
@@ -732,9 +733,11 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		Example Input: get(event)
 		Example Input: get(event, returnExists = True)
 		Example Input: get(slice(None, None, None), checkNested = False)
+
+		Example Use: GUI_Maker.Types.view in frameSettings.myFrame
 		"""
 
-		def nestCheck(itemList, itemLabel):
+		def nestCheck(itemList, itemLabel, compareType = False):
 			"""Makes sure everything is nested."""
 
 			if (isinstance(itemLabel, handle_Base)):
@@ -747,11 +750,14 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 				if (isinstance(key, wx.Event)):
 					if (key.GetEventObject() == item.thing):
 						return item
+				elif (compareType):
+					if (key is item.type):
+						return item
 				else:
 					if (key == item.label):
 						return item
 				
-				answer = nestCheck(item[:], key)
+				answer = nestCheck(item[:], key, compareType = compareType)
 				if (answer is not None):
 					return answer
 			return answer
@@ -858,6 +864,11 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 			if (returnExists):
 				return answer is not None
 			return answer
+
+		#Account for passing in a Types enumeration
+		elif (isinstance(itemLabel, Types)):
+			answer = nestCheck(self[:], itemLabel, compareType = True)
+			answer = checkType(answer)
 
 		elif (itemLabel in self.unnamedList):
 			answer = checkType(itemLabel)
@@ -8360,7 +8371,7 @@ class handle_WidgetList(handle_Widget_Base):
 		self._postBuild(argument_catalogue)
 
 	#Getters
-	def getValue(self, event = None, fallback_lastSelection = False, group = None):
+	def getValue(self, event = None, fallback_lastSelection = False, group = False):
 		"""Returns what the contextual value is for the object associated with this handle.
 
 		group (bool) - Determines what is returned
@@ -8403,7 +8414,7 @@ class handle_WidgetList(handle_Widget_Base):
 
 		return value
 
-	def getText(self, event = None, fallback_lastSelection = False, group = None):
+	def getText(self, event = None, fallback_lastSelection = False, group = False):
 		# return self.thing.GetValue()
 		return self.getValue(event = event, fallback_lastSelection = fallback_lastSelection, group = group)
 
@@ -8441,7 +8452,7 @@ class handle_WidgetList(handle_Widget_Base):
 
 		return value
 
-	def getAll(self, event = None, group = None):
+	def getAll(self, event = None, group = False):
 		"""Returns all the contextual values for the object associated with this handle."""
 
 		if (self.type is Types.drop):
@@ -8481,6 +8492,14 @@ class handle_WidgetList(handle_Widget_Base):
 
 		return value
 
+	def yieldAll(self, event = None, group = False):
+		if (self.type is not Types.view):
+			warnings.warn(f"Add {self.type.name} to yieldAll() for {self.__repr__()}", Warning, stacklevel = 2)
+			return
+
+		for item in self.thing.modelObjects:
+			yield item
+
 	def getColumn(self, label):
 		for index, column in self.thing.GetColumns().items():
 			if (column.valueGetter == label):
@@ -8513,7 +8532,7 @@ class handle_WidgetList(handle_Widget_Base):
 			return []
 		return [*self.lastSelection[self.lastSelection["latest"]]]
 
-	def getLastSelected(self, event = None, group = None):
+	def getLastSelected(self, event = None, group = False):
 		#Return copy, not origonal
 		if (group is None):
 			return {**self.lastSelection}
@@ -8522,7 +8541,8 @@ class handle_WidgetList(handle_Widget_Base):
 		else:
 			return [*self.lastSelection["row"]]
 
-	def setLastSelected(self, newValue, group = None, event = None):
+	#Setters
+	def setLastSelected(self, newValue, group = False, event = None):
 		if (group is None):
 			if ((newValue is None) or (not isinstance(newValue, dict))):
 				self.lastSelection = {"group": [], "row": [], "latest": None}
@@ -8554,7 +8574,6 @@ class handle_WidgetList(handle_Widget_Base):
 					self.lastSelection["row"] = [newValue]
 				self.lastSelection["latest"] = "row"
 
-	#Setters
 	def _formatList(self, newValue, filterNone = False):
 		if (isinstance(newValue, (range, types.GeneratorType))):
 			newValue = list(newValue)
@@ -8618,7 +8637,7 @@ class handle_WidgetList(handle_Widget_Base):
 		else:
 			warnings.warn(f"Add {self.type.name} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
-	def setSelection(self, newValue, event = None, deselectOthers = True, ensureVisible = True, group = False, triggerEvent = True):
+	def setSelection(self, newValue = None, event = None, deselectOthers = True, ensureVisible = True, group = False, triggerEvent = True):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies.
 		None will deselect all items.
 		"""
@@ -8640,10 +8659,7 @@ class handle_WidgetList(handle_Widget_Base):
 				self.thing.UnselectAll()
 				return
 
-			if (isinstance(newValue, (range, types.GeneratorType))):
-				newValue = list(newValue)
-			elif (not isinstance(newValue, (list, tuple, dict))):
-				newValue = [newValue]
+			newValue = self.ensure_container(newValue)
 
 			if (any((not hasattr(item, '__dict__') for item in newValue))):
 				### TO DO ### Make this check each item indiviually instead of assuming all are the same type
@@ -8960,6 +8976,9 @@ class handle_WidgetList(handle_Widget_Base):
 		column = self.thing.GetGroupByColumn()
 		if (column is not None):
 			return column.title
+
+	def getColumnOrder(self, column = None):
+		return {key: value.valueGetter for key, value in self.thing.GetColumnPosition(column = column).items()}
 
 	def sortBy(self, label = None, ascending = True):
 		if (label is None):
@@ -9385,11 +9404,26 @@ class handle_WidgetList(handle_Widget_Base):
 		else:
 			warnings.warn(f"Add {self.type.name} to setFunction_sort() for {self.__repr__()}", Warning, stacklevel = 2)
 
-	def setFunction_reorder(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+	def setFunction_reorder(self, *args, **kwargs):
+		return self.setFunction_postReorder(*args, **kwargs)
+
+	def setFunction_preReorder(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_COLUMN_REORDER, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+			self._betterBind(ObjectListView.EVT_DATA_REORDERING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_reorder() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Add {self.type.name} to setFunction_preReorder() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_postReorder(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type is Types.view):
+			self._betterBind(ObjectListView.EVT_DATA_REORDERED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+		else:
+			warnings.warn(f"Add {self.type.name} to setFunction_postReorder() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_reorderCancel(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		if (self.type is Types.view):
+			self._betterBind(ObjectListView.EVT_DATA_REORDER_CANCEL, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+		else:
+			warnings.warn(f"Add {self.type.name} to setFunction_reorderCancel() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setFunction_groupCreate(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.view):
@@ -23541,7 +23575,7 @@ class handle_Notebook_Simple(handle_Base_Notebook):
 		
 		print("--", pageLabel)
 		print("--", [item.label for item in self])
-		jhkhjjk
+		raise NotImplementedError(f"The page {pageLabel} does not exist")
 
 	def getPageIndex(self, pageLabel = None):
 		"""Returns the page index for a page with the given label in the given notebook.
