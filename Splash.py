@@ -1,248 +1,375 @@
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 
 import os
 import sys
+import time
+import threading
+
 import operator
 import functools
-import subprocess
+import contextlib
 
 import wx
-import wx.lib.agw.advancedsplash
+import Utilities as MyUtilities
+# import pubsub.pub
+# from forks.pypubsub.src.pubsub import pub as pubsub_pub #Use my own fork
 
-import Utilities.debugging
+_splashThread = None
 
-#Use: https://stackoverflow.com/questions/24247772/wxpython-custom-splashscreen-with-progress-gauge
+@contextlib.contextmanager
+def makeSplash_cm(*args, **kwargs):
+	"""A context manager version of makeSplash().
+	Yields a handle that can be used to set up the splash screen.
+	On exit, the splash screen will be shown.
 
-class SplashScreen():
-	"""Shows a splash screen before running your code.
-	This shows the user things are happening while your program loads.
-	Modified code from: https://wiki.wxpython.org/SplashScreen%20While%20Loading
-	_________________________________________________________________________
+	Example Use:
+		with makeSplash_cm() as mySplash:
+			mySplash.setTimeout(1500)
+			mySplash.setImage("resources/splashScreen.bmp")
+	"""
+	global _splashThread
 
-	EAMPLE USAGE
-	from modules.GUI_Maker.Splash import SplashScreen
-	splashScreen = SplashScreen()
-	splashScreen.setTimeout(1500)
-	imagePath = "resources/valeoSplashScreen.bmp"
-	splashScreen.setImage(imagePath)
-	splashScreen.finish()
+	_splashThread = SplashThread(*args, **kwargs)
+
+	yield _splashThread
+
+	_splashThread.start()
+
+def makeSplash(*args, waitDelay = 100, **kwargs):
+	"""Creates a splash screen, then shows it."""
+
+	with makeSplash_cm(*args, **kwargs):
+		pass
+
+	#Wait for splash screen to appear
+	while ((_splashThread.splashHandle is None) or (not _splashThread.splashHandle.IsShown())):
+		time.sleep(waitDelay / 1000)
+
+	return _splashThread
+
+def hideSplash(*args, myApp = None, **kwargs):
+	"""Hides the splash screen created by makeSplash()."""
+	global _splashThread
+
+	_splashThread.hide(*args, **kwargs)
+
+	if (myApp is not None):
+		myApp.MainLoop()
+
+class StatusText(wx.StaticText, MyUtilities.common.EnsureFunctions):
+	"""A wxStaticText object used to display the program's status."""
+
+	def __init__(self, parent, *, default = None, font = None, 
+		align = "center", pulse = False, style = 0):
+		"""
+		default (str) - What the status text will say when set to None
+		font (wxFont) - What font to use
+		align (str) - How to align the text in the sizer #Not implemented yet
+		pulse (bool) - Determines if three periods appear cycle from 0 to 3 after the text at a rate of 250ms #Not implemented yet
+
+		Example Input: StatusText(self)
+		"""
+
+		self.parent = parent
+
+		self.default = self.ensure_default(default, default = "Loading...")
+		self.font = self.ensure_default(font, default = lambda: wx.Font(24, wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0, ""))
+
+		super().__init__(parent, id = wx.ID_ANY, label = self.default, style = style)
+
+		self.SetFont(self.font)
+
+	@MyUtilities.common.makeProperty()
+	class status():
+		"""What the status text says."""
+
+		def getter(self):
+			return self.GetLabel()
+
+		def setter(self, value):
+			"""If None: Will show the default status text.
+
+			Example Use: status = "Lorem Ipsum"
+			Example Use: status = None
+			"""
+
+			if (value is None):
+				wx.CallAfter(self.SetLabel, self.default)
+			else:
+				wx.CallAfter(self.SetLabel, value)
+
+class SplashImage(wx.StaticBitmap):
+	"""A wxStaticBitmap used as the splash screen's image."""
+
+	def __init__(self, parent, *, filePath = None, 
+		mask = True, maskColor = "black", style = 0, **imageKwargs):
+		"""
+		filePath (str) - A path to the image to show
+		scale (tuple) - The scale to use for the image
+			- If None: Will not scale the image
+
+		mask (str) - A path to the mask to use for the image
+			- If None: No mask will be applied
+			- If True: Will use 'image' as the mask file
+
+		maskColor (wxColor) - What color to use for the mask
+
+		Example Input: SplashImage(self)
+		"""
+
+		self.bitmap = MyUtilities.wxPython._getImage(filePath, mask = mask, maskColor = maskColor, **imageKwargs,
+			returnForNone = lambda: MyUtilities.wxPython._getImage("error", internal = True, scale = (300, 300)))
+
+		super().__init__(parent, id = wx.ID_ANY, bitmap = self.bitmap, style = style)
+
+class SplashProgress(wx.Gauge):
+	"""A wxGauge used to display the program's progress."""
+
+	def __init__(self, parent, *, initial = 0, maximum = 100, vertical = False, style = 0):
+		"""
+		initial (int) - Where to start the progress bar at
+		maximum (int) - What the maximum progress value is
+		vertical (bool) - Determines if the progress bar is displayed vertically or horizontally
+
+		Example Input: SplashProgress(self)
+		"""
+
+		super().__init__(parent, id = wx.ID_ANY, range = maximum or 100, style = style | (wx.GA_HORIZONTAL, wx.GA_VERTICAL)[vertical])
+
+		self.progress = initial
+
+	@MyUtilities.common.makeProperty()
+	class progressMax():
+		"""The maximum position of the progress bar."""
+
+		def getter(self):
+			return self.GetRange()
+
+		def setter(self, value):
+			wx.CallAfter(self.SetRange, value)
+
+	@MyUtilities.common.makeProperty()
+	class progress():
+		"""The position of the progress bar."""
+
+		def getter(self):
+			return self.GetValue()
+
+		def setter(self, value):
+			"""If None: Will make the progress bar pulse.
+
+			Example Use: progress = 10
+			Example Use: progress = None
+			"""
+
+			if (value is None):
+				wx.CallAfter(self.Pulse)
+				return
+
+			maximum = self.progressMax
+			if (value > maximum):
+				value = maximum
+			wx.CallAfter(self.SetValue, value)
+
+class SplashScreen(wx.Frame, MyUtilities.wxPython.DrawFunctions):
+	"""A wxFrame object that is used as a splash screen.
+		Use: wx.lib.agw.advancedsplash.py
 	"""
 
-	def __init__(self, parent = None, exeOnly = True):
-		"""Defines internal variables and defaults.
+	def __init__(self, image = None, *, image_scale = None, image_mask = True, image_maskColor = "black",
+		status_default = None, status_font = None, status_pulse = False, status_align = "center",
+		progress_initial = 0, progress_max = None, progress_vertical = False,
 
-		exeOnly (bool) - Determiens what types of applications will launch the splash screen
-			- If True: Only a .exe will show the splash screen
-			- If False: Both a .exe and a .py will show the splash screen
-			- If None: Any file type will show the splash screen
+		size = None, position = None, resizeable = False, timeout = None):
+		"""
+		
+
+		timeout (int) - How long to wait before hiding the splash screen
+			- If None: Will not auto-hide the splash screen
+
+		size (tuple) - The starting size for the window
+			- If None: Will use the image size
+
+		position (tuple) - Where the window should be located
+			- If None: Will center on the monitor
+
+		resizeable (bool) - Determines if the window can be resized
 
 		Example Input: SplashScreen()
-		Example Input: SplashScreen(myFrame)
+		Example Input: SplashScreen(size = (400, 400))
+		Example Input: SplashScreen("resources/splashScreen.bmp")
+		Example Input: SplashScreen("resources/splashScreen.bmp", timeout = 1500)
 		"""
 
-		#Default Variables for both apps
-		self.showSplash = True
-		self.splashApp = False
+		#Create Frame
+		style = [wx.FRAME_NO_TASKBAR|wx.FRAME_SHAPED|wx.STAY_ON_TOP]
 
-		#Account for main app
-		if (len(sys.argv) == 1):
-			#Account for splash screen not showing for development stages
-			if (not sys.argv[0].endswith(".exe")):
-				if(exeOnly != None):
-					if (exeOnly):
-						return None
-					else:
-						if (not sys.argv[0].endswith(".py")):
-							return None
+		if (resizeable):
+			style.append(wx.RESIZE_BORDER)
+		
+		wx.Frame.__init__(self, None, id = wx.ID_ANY, pos = position or wx.DefaultPosition, style = functools.reduce(operator.ior, style or (0,))) 
 
-			#Internal Variables
-			self.App = wx.App() #This must run before the wxArtProvider
-			self.parent = parent
-			self.fileName = sys.argv[0]
-			self.splashApp = True #Only runs splash screen functions for the splash app, not the main app
+		#Populate Window
+		self.thing_panel = wx.Panel(self, id = wx.ID_ANY)
+		
+		self.thing_text = StatusText(self.thing_panel, default = status_default, font = status_font, pulse = status_pulse, align = status_align)
+		self.thing_image = SplashImage(self.thing_panel, filePath = image, scale = image_scale, mask = image_mask, maskColor = image_maskColor)
+		self.thing_progressBar = SplashProgress(self.thing_panel, initial = progress_initial, maximum = progress_max, vertical = progress_vertical)
 
-			#Default Variables for splash screen only
-			self.image = Utilities.debugging.getImage("error", internal = True)
-			self.timeout = 5000 #ms
-			self.centerScreen = True
-			self.shadow = None
+		mainSizer = wx.FlexGridSizer(3, 1, 0, 0)
+		mainSizer.AddGrowableCol(0, 1)
+		mainSizer.AddGrowableRow(0, 1)
 
-	def setImage(self, imagePath, internal = False, alpha = False):
-		"""Changes the splash screen image.
+		mainSizer.Add(self.thing_image, 		0, wx.ALL|wx.EXPAND, 0)
+		mainSizer.Add(self.thing_text, 			1, wx.ALL|wx.EXPAND, 5)
+		mainSizer.Add(self.thing_progressBar, 	0, wx.ALL|wx.EXPAND, 0)
 
-		imagePath (str) - Where the image is on the computer. Can be a PIL image. If None, it will be a blank image
-		internal (bool) - If True: 'imagePath' is the name of an icon as a string.
-		alpha (bool)    - If True: The image will preserve any alpha chanels
+		self.thing_panel.SetSizer(mainSizer)
+		mainSizer.Fit(self)
 
-		Example Input: setImage("example.bmp", 0)
-		Example Input: setImage("error", 0, internal = True)
-		Example Input: setImage("example.bmp", 0, alpha = True)
+		#Final Settings
+		if (position is None):
+			self.CenterOnScreen()
+
+		#Bind events
+		self.Bind(wx.EVT_CLOSE, lambda event: self.Destroy())
+
+		if wx.Platform == "__WXGTK__":
+			self.Bind(wx.EVT_WINDOW_CREATE, self.SetSplashShape)
+		else:
+			self.SetSplashShape()
+
+	def SetSplashShape(self, event = None):
+		"""Modified code from: wx.lib.agw.advancedsplash.SetSplashShape."""
+
+		region = wx.Region(self.thing_progressBar.GetRect())
+		region.Union(self.thing_text.GetRect())
+		region.Union(self.thing_image.bitmap)
+		region.Offset(1, 1)
+
+		self.SetShape(region)
+
+		if (event is not None):
+			event.Skip()
+
+class SplashThread(threading.Thread):
+	def __init__(self, image = None, *, threadName = "Splash", **splashKwargs):
+		"""A thread used to show a splash screen on.
+
+		Example Input: SplashThread()
+		Example Input: SplashThread(name = None)
 		"""
 
-		if (len(sys.argv) == 1):
-			if (self.splashApp):
-				self.image = Utilities.debugging.getImage(imagePath, internal = internal, alpha = alpha)
+		threading.Thread.__init__(self, name = threadName, daemon = True)
 
-	def setTimeout(self, timeout):
-		"""Changes the duration of the splash screen.
+		self.image = image
+		self.splashHandle = None
+		self.splashKwargs = splashKwargs
 
-		timeout (int) - How long to show the splash screen in milliseconds
-			- If None: The splash screen will disappear after clicking on it
+	def run(self):
+		"""Runs the thread and then closes it."""
 
-		Example Input: setTimeout(9000)
-		Example Input: setTimeout(None)
+		print("@run.1")
+		self.app = wx.App(False)
+
+		print("@run.2")
+		self.splashHandle = SplashScreen(image = self.image, **self.splashKwargs)
+
+		print("@run.3")
+		self.splashHandle.Show()
+
+		wx.DisableAsserts() #Allows a thread that is not this thread to exit the program (https://stackoverflow.com/questions/49304429/wxpython-main-thread-other-than-0-leads-to-wxwidgets-debug-alert-on-exit/49305518#49305518)
+
+		print("@run.4")
+		self.app.MainLoop()
+
+		print("@run.5")
+		time.sleep(1)
+
+		print("@run.6")
+
+	def hide(self, *, waitForClose = False, waitDelay = 100):
+		"""Hides the splash screen.
+
+		TO DO: This currently takes a long time (sometimes) to close the app in this thread.
+			Find out why and fix it.
+
+		waitForClose (bool) - Determines if the program should wait for the splash screen to hide before continuing
+		waitDelay (int) - How long to wait between checks for if the splash screen has closed yet
+
+		Example Input: hide()
+		Example Input: hide(waitForClose = True)
+		Example Input: hide(waitForClose = True, waitDelay = 10)
 		"""
 
-		if (len(sys.argv) == 1):
-			if (self.splashApp):
-				self.timeout = timeout
+		if (self.splashHandle is None):
+			print("Splash screen is already hidden")
+			return
 
-	def disableSplashScreen(self, disable = True):
-		"""Disables the splash screen.
+		self.splashHandle.Hide()
+		self.splashHandle.Close()
+		self.splashHandle = None
 
-		disable (bool) - Determines if the splash screen is shown or not.
-			- If True: The splash screen will not appear
-			- If False: The splash screen will appear
+		# if (not waitForClose):
+		# 	return
 
-		Example: disableSplashScreen()
-		Example: disableSplashScreen(False)
-		"""
+		# while self.is_alive():
+		# 	print("@hide")
+		# 	time.sleep(waitDelay / 1000)
 
-		if (len(sys.argv) == 1):
-			if (self.splashApp):
-				self.showSplash = not disable
+	@MyUtilities.common.makeProperty()
+	class progressMax():
+		def getter(self):
+			return self.splashHandle.thing_progressBar.progressMax
 
-	def enableSplashScreen(self, enable = True):
-		"""Enables the splash screen.
+		def setter(self, value):
+			self.splashHandle.thing_progressBar.progressMax = value
 
-		enable (bool) - Determines if the splash screen is shown or not.
-			- If True: The splash screen will appear
-			- If False: The splash screen will not appear
 
-		Example: enableSplashScreen()
-		Example: enableSplashScreen(False)
-		"""
+	@MyUtilities.common.makeProperty()
+	class progress():
+		def getter(self):
+			return self.splashHandle.thing_progressBar.progress
 
-		if (len(sys.argv) == 1):
-			if (self.splashApp):
-				self.showSplash = enable
+		def setter(self, value):
+			self.splashHandle.thing_progressBar.progress = value
 
-	def toggleSplashScreen(self):
-		"""Enables the splash screen if it is disabled and disables it if it is enabled.
 
-		Example: toggleSplashScreen()
-		"""
+	@MyUtilities.common.makeProperty()
+	class status():
+		def getter(self):
+			return self.splashHandle.thing_text.status
 
-		if (len(sys.argv) == 1):
-			if (self.splashApp):
-				self.showSplash = not self.showSplash
+		def setter(self, value):
+			self.splashHandle.thing_text.status = value
 
-	def setCenter(self, centerScreen = True):
-		"""Changes where the splash screen appears.
+if __name__ == '__main__':
+	#Create Splash Screen
+	splash = makeSplash(image = "examples/resources/splashScreen.bmp", image_maskColor = (0, 177, 64))
+	# splash = makeSplash(image = "H:/Python/Material_Tracker/resources/splashScreen.png")
 
-		centerScreen (bool) - Determines if the splash screen is cenetred and if so on what
-			- If True: It will be cenetred on the screen
-			- If False: It will be centered on the parent
-			- If None: It will not be centered
+	splash.progressMax = 20
+	
+	#Simulate long tasks
+	for i in range(8):
+		time.sleep(0.25)
+		splash.progress = i
 
-		Example Input: setCenter()
-		Example Input: setCenter(False)
-		Example Input: setCenter(None)
-		"""
+	splash.status = "Creating Window"
 
-		if (len(sys.argv) == 1):
-			if (self.splashApp):
-				self.centerScreen = centerScreen
+	#Create main app
+	app = wx.App(False)
+	frame = wx.Frame(None, wx.ID_ANY, "Lorem Ipsum")
 
-	def setShadow(self, shadow = (0, 0, 0)):
-		"""If the image has no transparency, this casts a shadow of one color.
+	time.sleep(2)
 
-		shadow (tuple) - The shadow color as (r, g, b)
-			- If None: No shadow will appear
+	#Simulate more long tasks
+	for i in range(20):
+		splash.status = f"Doing thing {i + 1}"
 
-		Example Input: setShadow()
-		Example Input: setShadow((255, 255, 255))
-		Example Input: setShadow(None)
-		"""
+		time.sleep(0.25)
+		splash.progress += 1
 
-		if (len(sys.argv) == 1):
-			if (self.splashApp):
-
-				#Ensure correct format
-				if ((type(shadow) == tuple) or (type(shadow) == list)):
-					shadow = wx.Colour(shadow[0], shadow[1], shadow[2])
-
-				self.shadow = shadow
-
-	def finish(self):
-		"""Run this when you are finished building the splash screen.
-
-		Example Input: finish()
-		"""
-
-		#Launch the splash screen and the main program as two separate applications
-		if (self.showSplash and len(sys.argv) == 1):
-			if (self.splashApp):
-				#Build splash screen
-				if (self.timeout != None):
-					flags = [wx.lib.agw.advancedsplash.AS_TIMEOUT]
-				else:
-					flags = [wx.lib.agw.advancedsplash.AS_NOTIMEOUT]
-
-				if (self.centerScreen != None):
-					if (self.centerScreen):
-						flags.append(wx.lib.agw.advancedsplash.AS_CENTER_ON_SCREEN)
-					else:
-						flags.append(wx.lib.agw.advancedsplash.AS_CENTER_ON_PARENT)
-				else:
-					flags.append(wx.lib.agw.advancedsplash.AS_NO_CENTER)
-
-				if (self.shadow != None):
-					flags.append(wx.lib.agw.advancedsplash.AS_SHADOW_BITMAP)
-				else:
-					self.shadow = wx.NullColour
-
-				myFrame = wx.lib.agw.advancedsplash.AdvancedSplash(self.parent, bitmap = self.image, timeout = self.timeout, agwStyle = functools.reduce(operator.ior, flags or (0,)), shadowcolour = self.shadow)
-
-				#Launch program again as a separate application
-				if (self.fileName.endswith(".py")):
-					command = ["py", os.path.basename(self.fileName), "NO_SPLASH"]
-				else:
-					command = [os.path.basename(self.fileName), "NO_SPLASH"]
-				subprocess.Popen(command)
-
-				#Run the splash screen
-				self.App.MainLoop()
-				sys.exit()
-
-if __name__ == "__main__":
-	print("Building Splash Screen...")
-	splashScreen = SplashScreen()
-	print("Finishing Splash Screen...")
-	splashScreen.finish()
-
-	print("Simulating Imports...")
-	import time
-	time.sleep(1.3) # Simulate 1.3s of time spent importing libraries and source files
-
-	class MyApp(wx.App):
-		def OnInit(self):
-			print("Simulating Building GUI...")
-			time.sleep(6) # Simulate 6s of time spent initializing wx components
-			print("GUI Finished")
-
-			#Ensure only one instance runs
-			self.name = "SingleApp-%s" % wx.GetUserId()
-			self.instance = wx.SingleInstanceChecker(self.name)
-
-			if self.instance.IsAnotherRunning():
-				wx.MessageBox("Cannot run multiple instances of this program", "Runtime Error")
-				return False
-
-			#Create App
-			self.Frame = wx.Frame(None, -1, "Application Frame")
-			self.Frame.Show()
-			return True
-
-	App = MyApp(0)
-	App.MainLoop()
+	#Show main app now
+	frame.Show()
+	hideSplash(myApp = app)

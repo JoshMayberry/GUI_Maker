@@ -524,12 +524,11 @@ class _MyThread(threading.Thread):
 	The thread will then close itself automatically.
 	"""
 
-	def __init__(self, parent, threadID = None, name = None, counter = None, daemon = None, label = None, stopFunction = None):
+	def __init__(self, parent, threadID = None, name = None, daemon = None, label = None, stopFunction = None):
 		"""Setup the thread.
 
 		threadID (int) -
 		name (str)     - The thread name. By default, a unique name is constructed of the form "Thread-N" where N is a small decimal number.
-		counter (int)  - 
 		daemon (bool)  - Sets whether the thread is daemonic. If None (the default), the daemonic property is inherited from the current thread.
 		label (str) - A name for the thread
 			- If name already exists: Will stop the existing thread and replace it with this one
@@ -643,7 +642,7 @@ class _MyThread(threading.Thread):
 			self.stopFunction()
 
 #Global Inheritance Classes
-class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure, MyUtilities.wxPython.Converters, MyUtilities.wxPython.AttributeGetters):
+class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFunctions, MyUtilities.wxPython.Converters, MyUtilities.wxPython.AttributeGetters):
 	"""Contains common functions needed for various other functions.
 	This is here for convenience in programming.
 	"""
@@ -18675,7 +18674,7 @@ class handle_Dialog(handle_Base):
 				errorMessage = f"The {self.type} dialogue box {self.__repr__()} must be shown in the main thread, not a background thread"
 				raise SyntaxError(errorMessage)
 				# warnings.warn(errorMessage, Warning, stacklevel = 2)
-				return
+				# return
 
 		#Pause background functions
 		for variable, handleDict in self.controller.backgroundFunction_pauseOnDialog.items():
@@ -19629,6 +19628,8 @@ class handle_Window(handle_Container_Base):
 				style.append(wx.CAPTION)
 			else:
 				title = ""
+
+			#wx.FRAME_EX_CONTEXTHELP
 
 			#Make the frame
 			size, position, smallerThanScreen = self._getArguments(argument_catalogue, ["size", "position", "smallerThanScreen"])
@@ -24816,7 +24817,7 @@ class Controller(Utilities, CommonEventFunctions):
 # pubsub.core.callables.CallArgsInfo = _mp_CallArgsInfo
 
 #User Things
-class User_Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure, MyUtilities.wxPython.Converters, MyUtilities.wxPython.AttributeGetters):
+class User_Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFunctions, MyUtilities.wxPython.Converters, MyUtilities.wxPython.AttributeGetters):
 	def __init__(self, catalogue_variable = None, label_variable = None, **kwargs):
 		if (catalogue_variable is None):
 			self._dataCatalogue = {}
