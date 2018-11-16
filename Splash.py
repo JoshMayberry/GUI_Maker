@@ -1,57 +1,28 @@
 __version__ = "2.0.0"
 
-import os
-import sys
 import time
-import threading
+import atexit
 
 import operator
 import functools
-import contextlib
 
 import wx
 import Utilities as MyUtilities
-# import pubsub.pub
-from forks.pypubsub.src.pubsub import pub as pubsub_pub #Use my own fork
 
-_splashThread = None
+splashList = set()
 
-@contextlib.contextmanager
-def makeSplash_cm(*args, **kwargs):
-	"""A context manager version of makeSplash().
-	Yields a handle that can be used to set up the splash screen.
-	On exit, the splash screen will be shown.
-
-	Example Use:
-		with makeSplash_cm() as mySplash:
-			mySplash.setTimeout(1500)
-			mySplash.setImage("resources/splashScreen.bmp")
-	"""
-	global _splashThread
-
-	_splashThread = SplashThread(*args, **kwargs)
-
-	yield _splashThread
-
-	_splashThread.start()
-
-def makeSplash(*args, waitDelay = 100, **kwargs):
+def makeSplash(*args, **kwargs):
 	"""Creates a splash screen, then shows it."""
 
-	with makeSplash_cm(*args, **kwargs):
-		pass
+	return SplashProcess(*args, **kwargs)
 
-	#Wait for splash screen to appear
-	while ((_splashThread.splashHandle is None) or (not _splashThread.splashHandle.IsShown())):
-		time.sleep(waitDelay / 1000)
-
-	return _splashThread
-
+@atexit.register
 def hideSplash(*args, myApp = None, **kwargs):
 	"""Hides the splash screen created by makeSplash()."""
-	global _splashThread
+	global splashList
 
-	_splashThread.hide(*args, **kwargs)
+	for splash in tuple(splashList):
+		splash.hide(*args, **kwargs)
 
 	if (myApp is not None):
 		myApp.MainLoop()
@@ -78,11 +49,6 @@ class StatusText(wx.StaticText, MyUtilities.common.EnsureFunctions):
 		super().__init__(parent, id = wx.ID_ANY, label = self.default, style = style)
 
 		self.SetFont(self.font)
-
-		pubsub_pub.subscribe(self.setStatus, 'status')
-
-	def setStatus(self, value):
-		self.status = value
 
 	@MyUtilities.common.makeProperty()
 	class status():
@@ -122,8 +88,8 @@ class SplashImage(wx.StaticBitmap):
 		Example Input: SplashImage(self)
 		"""
 
-		self.bitmap = MyUtilities.wxPython._getImage(filePath, mask = mask, maskColor = maskColor, **imageKwargs,
-			returnForNone = lambda: MyUtilities.wxPython._getImage("error", internal = True, scale = (300, 300)))
+		self.bitmap = MyUtilities.wxPython.getImage(filePath, mask = mask, maskColor = maskColor, **imageKwargs,
+			returnForNone = lambda: MyUtilities.wxPython.getImage("error", internal = True, scale = (300, 300)))
 
 		super().__init__(parent, id = wx.ID_ANY, bitmap = self.bitmap, style = style)
 
@@ -142,15 +108,6 @@ class SplashProgress(wx.Gauge):
 		super().__init__(parent, id = wx.ID_ANY, range = maximum or 100, style = style | (wx.GA_HORIZONTAL, wx.GA_VERTICAL)[vertical])
 
 		self.progress = initial
-
-		pubsub_pub.subscribe(self.setProgress, 'progress')
-		pubsub_pub.subscribe(self.setProgressMax, 'progressMax')
-
-	def setProgress(self, value):
-		self.progress = value
-
-	def setProgressMax(self, value):
-		self.progressMax = value
 
 	@MyUtilities.common.makeProperty()
 	class progressMax():
@@ -266,100 +223,141 @@ class SplashScreen(wx.Frame, MyUtilities.wxPython.DrawFunctions):
 		if (event is not None):
 			event.Skip()
 
-class SplashThread(threading.Thread):
-	def __init__(self, image = None, *, threadName = "Splash", **splashKwargs):
-		"""A thread used to show a splash screen on.
+class SplashProcess():
+	def __init__(self, image = None, **splashKwargs):
+		"""A handle for interacting with the splash screen process
 
 		Example Input: SplashThread()
 		Example Input: SplashThread(name = None)
 		"""
+		global splashList
 
-		threading.Thread.__init__(self, name = threadName, daemon = True)
+		splashList.add(self)
 
 		self.image = image
-		self.splashHandle = None
 		self.splashKwargs = splashKwargs
 
-	def run(self):
-		"""Runs the thread and then closes it."""
+		self.processHandle = MyUtilities.multiProcess.Parent(event = 2, queue = True)
+		self.processChild = self.processHandle.spawn(myFunction = self.run)
+		self.begin()
 
-		self.app = wx.App(False)
+	def begin(self, waitForStart = True, waitTimeout = None):
+		"""Starts the splash screen process.
 
-		self.splashHandle = SplashScreen(image = self.image, **self.splashKwargs)
-		self.splashHandle.Show()
+		waitForStart (bool) - Determines if the program should wait for the splash screen to be created before continuing
 
-		wx.DisableAsserts() #Allows a thread that is not this thread to exit the program (https://stackoverflow.com/questions/49304429/wxpython-main-thread-other-than-0-leads-to-wxwidgets-debug-alert-on-exit/49305518#49305518)
+		Example Input: begin()
+		Example Input: begin(waitForStart = True)
+		Example Input: begin(waitForStart = True, waitDelay = 10)
+		"""
+
+		self.processChild.start()
+
+		if (waitForStart):
+			self.processChild.event[0].wait(timeout = waitTimeout)
+
+	def run(self, child):
+		"""The function to run for the splash screen process."""
+
+		self.app = self.MyApp(self)
+
+		child.splashHandle = SplashScreen(image = self.image, **self.splashKwargs)
+		child.event[0].set()
+		child.splashHandle.Show()
 
 		self.app.MainLoop()
 
-	def hide(self, *, waitForClose = False, waitDelay = 100):
+	def hide(self):
 		"""Hides the splash screen.
 
-		TO DO: This currently takes a long time (sometimes) to close the app in this thread.
-			Find out why and fix it.
-
-		waitForClose (bool) - Determines if the program should wait for the splash screen to hide before continuing
-		waitDelay (int) - How long to wait between checks for if the splash screen has closed yet
-
 		Example Input: hide()
-		Example Input: hide(waitForClose = True)
-		Example Input: hide(waitForClose = True, waitDelay = 10)
 		"""
 
-		if (self.splashHandle is None):
-			print("Splash screen is already hidden")
+		if (not hasattr(self, "processChild")):
 			return
 
-		self.splashHandle.Hide()
-		self.splashHandle.Close()
-		self.splashHandle = None
+		self.processChild.event[1].set()
+		self.processChild.join()
 
-		# if (not waitForClose):
-		# 	return
+		splashList.discard(self)
 
-		# while self.is_alive():
-		# 	print("@hide")
-		# 	time.sleep(waitDelay / 1000)
+	def setProgressMax(self, value):
+		self.processChild.append(("thing_progressBar", "progressMax", value))
 
-	@MyUtilities.common.makeProperty()
-	class progressMax():
-		def getter(self):
-			return self.splashHandle.thing_progressBar.progressMax
+	def setProgress(self, value):
+		self.processChild.append(("thing_progressBar", "progress", value))
 
-		def setter(self, value):
-			self.splashHandle.thing_progressBar.progressMax = value
+	def addProgress(self, value):
+		self.processChild.append((None, None, value))
 
+	def setStatus(self, value):
+		self.processChild.append(("thing_text", "status", value))
 
-	@MyUtilities.common.makeProperty()
-	class progress():
-		def getter(self):
-			return self.splashHandle.thing_progressBar.progress
+	class MyApp(wx.App):
+		def __init__(self, parent, redirect = False, filename = None, useBestVisual = False, clearSigInt = True):
+			"""Needed to make the GUI work."""
 
-		def setter(self, value):
-			self.splashHandle.thing_progressBar.progress = value
+			self.parent = parent
+			wx.App.__init__(self, redirect = redirect, filename = filename, useBestVisual = useBestVisual, clearSigInt = clearSigInt)
 
+		def MainLoop(self):
+			"""Modified code from: https://github.com/wxWidgets/wxPython/blob/master/samples/mainloop/mainloop.py"""
 
-	@MyUtilities.common.makeProperty()
-	class status():
-		def getter(self):
-			return self.splashHandle.thing_text.status
+			# wx.DisableAsserts() #Allows a thread that is not this thread to exit the program (https://stackoverflow.com/questions/49304429/wxpython-main-thread-other-than-0-leads-to-wxwidgets-debug-alert-on-exit/49305518#49305518)
 
-		def setter(self, value):
-			pubsub_pub.sendMessage("status", value = value)
+			processChild = self.parent.processChild
+			splashQueue = processChild.queue
+			if (splashQueue is None):
+				return super().MainLoop()
+
+			splashHandle = processChild.splashHandle
+			hideEvent = processChild.event[1]
+
+			import queue
+			eventLoop = wx.GUIEventLoop()
+			wx.EventLoop.SetActive(eventLoop)
+
+			while True:
+				#Hide event
+				if (hideEvent.is_set()):
+					splashHandle.Hide()
+					splashHandle.Close()
+					break
+
+				#Update GUI
+				try:
+					thing, variable, value = splashQueue.get_nowait() #doesn't block
+					
+					if (variable is None):
+						splashHandle.thing_progressBar.progress += 1
+					else:
+						setattr(getattr(splashHandle, thing), variable, value)
+
+				except queue.Empty: #raised when queue is empty
+					pass
+
+				#Handle events
+				while eventLoop.Pending():
+					eventLoop.Dispatch()
+
+				#Process idle events
+				time.sleep(0.01)
+				eventLoop.ProcessIdle()
+
 
 if __name__ == '__main__':
-	#Create Splash Screen
-	splash = makeSplash(image = "examples/resources/splashScreen.bmp", image_maskColor = (0, 177, 64))
-	# splash = makeSplash(image = "H:/Python/Material_Tracker/resources/splashScreen.png")
 
-	splash.progressMax = 20
+	# splash = makeSplash(image = "examples/resources/splashScreen.bmp", image_maskColor = (0, 177, 64))
+	splash = makeSplash(image = "H:/Python/Material_Tracker/resources/splashScreen.png", image_maskColor = (63, 63, 63))
+
+	splash.setProgressMax(20)
 	
 	#Simulate long tasks
 	for i in range(8):
 		time.sleep(0.25)
-		splash.progress = i
+		splash.setProgress(i)
 
-	splash.status = "Creating Window"
+	splash.setStatus("Creating Window")
 
 	#Create main app
 	app = wx.App(False)
@@ -369,10 +367,13 @@ if __name__ == '__main__':
 
 	#Simulate more long tasks
 	for i in range(20):
-		splash.status = f"Doing thing {i + 1}"
+		splash.setStatus(f"Doing thing {i + 1}")
 
 		time.sleep(0.25)
-		splash.progress += 1
+		splash.addProgress(1)
+
+
+	time.sleep(20)
 
 	#Show main app now
 	frame.Show()

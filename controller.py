@@ -2378,7 +2378,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 
 		if (useDC):
 			#Get the current font
-			font = self._getFont()
+			font = self.getFont()
 			dc = wx.WindowDC(self)
 			dc.SetFont(font)
 
@@ -5199,7 +5199,7 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 			elif (not isinstance(flags, list)):
 				flags = [flags]
 			flags.extend(handle.flags_modification)
-			flags, position, border = self._getItemMod(flags)
+			flags, position, border = self.getItemMod(flags)
 
 			if (isinstance(handle, handle_Base_NotebookPage)):
 				handle.mySizerItem = self.thing.Add(handle.mySizer.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
@@ -7063,7 +7063,7 @@ class handle_WidgetText(handle_Widget_Base):
 			#Create the thing to put in the grid
 			self.thing = wx.StaticText(self.parent.thing, id = myId, label = text, style = functools.reduce(operator.ior, style or (0,)))
 
-			# font = self._getFont(size = size, bold = bold, italic = italic, color = color, family = family)
+			# font = self.getFont(size = size, bold = bold, italic = italic, color = color, family = family)
 			# self.thing.SetFont(font)
 
 			# if (wrap is not None):
@@ -8240,13 +8240,13 @@ class handle_WidgetList(handle_Widget_Base):
 
 	def setColor(self, even = None, odd = None, selected = None, group = None):
 		if (even is not None):
-			self.thing.evenRowsBackColor = self._getColor(even)
+			self.thing.evenRowsBackColor = self.getColor(even)
 		if (odd is not None):
-			self.thing.oddRowsBackColor = self._getColor(odd)
+			self.thing.oddRowsBackColor = self.getColor(odd)
 		if (selected is not None):
-			self.selectionColor = self._getColor(selected)
+			self.selectionColor = self.getColor(selected)
 		if (group is not None):
-			self.thing.groupBackgroundColour = self._getColor(group)
+			self.thing.groupBackgroundColour = self.getColor(group)
 
 	def getSortColumn(self):
 		column = self.thing.GetSortColumn()
@@ -8784,7 +8784,7 @@ class handle_WidgetList(handle_Widget_Base):
 			if (color is None):
 				colorHandle = None
 			else:
-				colorHandle = self._getColor(color)
+				colorHandle = self.getColor(color)
 
 			if (row is not None):
 				if (column is not None):
@@ -9804,10 +9804,10 @@ class handle_WidgetButton(handle_Widget_Base):
 
 				if ((imagePath != "") and (imagePath is not None)):
 					if ((((internal is not None) and (not internal)) or ((internal is None) and (not internalDefault))) and (not os.path.exists(imagePath))):
-						return self._getImage("error", internal = True)
+						return self.getImage("error", internal = True)
 					elif (internal is not None):
-						return self._getImage(imagePath, internal)
-					return self._getImage(imagePath, internalDefault)
+						return self.getImage(imagePath, internal)
+					return self.getImage(imagePath, internalDefault)
 				else:
 					return None
 
@@ -9826,7 +9826,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			#Error Check
 			image = _imageCheck(idlePath, idle_internal, internal)
 			if (image is None):
-				image = self._getImage("error", internal = True)
+				image = self.getImage("error", internal = True)
 
 			#Remember values
 			self.toggle = toggle
@@ -10200,7 +10200,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			# if (initialFile is None):
 			#   initialFile = ""
 
-			wildcard = self._getWildcard(wildcard)
+			wildcard = self.getWildcard(wildcard)
 
 			#Create the thing to put in the grid
 			if (directoryOnly):
@@ -10460,7 +10460,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			else:
 				style = "0"
 
-			# font = self._getFont()
+			# font = self.getFont()
 			font = wx.NullFont
 
 			myId = self._getId(argument_catalogue)
@@ -10693,7 +10693,7 @@ class handle_WidgetImage(handle_Widget_Base):
 			imagePath, internal, size = self._getArguments(argument_catalogue, ["imagePath", "internal", "size"])
 
 			#Get correct image
-			image = self._getImage(imagePath, internal)
+			image = self.getImage(imagePath, internal)
 
 			myId = self._getId(argument_catalogue)
 		
@@ -10729,7 +10729,7 @@ class handle_WidgetImage(handle_Widget_Base):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
 		if (self.type is Types.image):
-			image = self._getImage(newValue)
+			image = self.getImage(newValue)
 			self.thing.SetBitmap(image) #(wxBitmap) - What the image will be now
 
 		else:
@@ -11680,7 +11680,7 @@ class handle_MenuItem(handle_Widget_Base):
 					#Determine icon
 					icon, internal = self._getArguments(argument_catalogue, ["icon", "internal"])
 					if (icon is not None):
-						image = self._getImage(icon, internal, scale = (16, 16))
+						image = self.getImage(icon, internal, scale = (16, 16))
 						# image = self._convertBitmapToImage(image)
 						# image = image.Scale(16, 16, wx.IMAGE_QUALITY_HIGH)
 						# image = self._convertImageToBitmap(image)
@@ -11759,14 +11759,14 @@ class handle_MenuItem(handle_Widget_Base):
 						warnings.warn(f"No icon provided for {self.__repr__()}", Warning, stacklevel = 5)
 						icon = "error"
 						internal = True
-					image = self._getImage(icon, internal, scale = scale)
+					image = self.getImage(icon, internal, scale = scale)
 
 					if (disabled_icon is None):
 						imageDisabled = wx.NullBitmap
 					else:
 						if (disabled_internal is None):
 							disabled_internal = internal
-						imageDisabled = self._getImage(disabled_icon, disabled_internal, scale = disabled_scale)
+						imageDisabled = self.getImage(disabled_icon, disabled_internal, scale = disabled_scale)
 
 					#Configure Settings
 					# if (toolTip is None):
@@ -12515,7 +12515,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		Example Input: save("example.png")
 		"""
 
-		image = self.getImage()
+		image = self.getCanvasImage()
 		image.SaveFile(fileName, fileType)
 
 	def _getDC(self):
@@ -12527,7 +12527,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 
 		return dc
 
-	def getImage(self):
+	def getCanvasImage(self):
 		"""Returns an image with the canvas on it."""
 
 		width, height = self.getSize()
@@ -12667,7 +12667,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 				self.runMyFunction(myFunctionEvaluated, myFunctionArgs, myFunctionKwargs)
 
 	#Drawing Functions
-	def _getPen(self, color, width = 1):
+	def getPen(self, color, width = 1):
 		"""Returns a pen or list of pens to the user.
 		Pens are used to draw shape outlines.
 
@@ -12675,9 +12675,9 @@ class handle_WidgetCanvas(handle_Widget_Base):
 					  - If a list of tuples is given: A brush for each color will be created
 		width (int)   - How thick the pen will be
 
-		Example Input: _getPen((255, 0, 0))
-		Example Input: _getPen((255, 0, 0), 3)
-		Example Input: _getPen([(255, 0, 0), (0, 255, 0)])
+		Example Input: getPen((255, 0, 0))
+		Example Input: getPen((255, 0, 0), 3)
+		Example Input: getPen([(255, 0, 0), (0, 255, 0)])
 		"""
 
 		#Account for brush lists
@@ -12706,7 +12706,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 
 		return pen
 
-	def _getBrush(self, color, style = "solid", image = None, internal = False):
+	def getBrush(self, color, style = "solid", image = None, internal = False):
 		"""Returns a pen or list of pens to the user.
 		Brushes are used to fill shapes
 
@@ -12718,18 +12718,18 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		image (str)    - If 'style' has "image" in it: This is the image that is used for the bitmap. Can be a PIL image
 		internal (str) - If True and 'style' has "image" in it: 'image' is an iternal image
 
-		Example Input: _getBrush((255, 0, 0))
-		Example Input: _getBrush([(255, 0, 0), (0, 255, 0)])
-		Example Input: _getBrush((255, 0, 0), style = "hatchCross)
-		Example Input: _getBrush([(255, 0, 0), (0, 255, 0)], ["hatchCross", "solid"])
-		Example Input: _getBrush(None)
-		Example Input: _getBrush([(255, 0, 0), None])
+		Example Input: getBrush((255, 0, 0))
+		Example Input: getBrush([(255, 0, 0), (0, 255, 0)])
+		Example Input: getBrush((255, 0, 0), style = "hatchCross)
+		Example Input: getBrush([(255, 0, 0), (0, 255, 0)], ["hatchCross", "solid"])
+		Example Input: getBrush(None)
+		Example Input: getBrush([(255, 0, 0), None])
 		"""
 
 		#Account for void color
 		if (color is None):
 			color = wx.Colour(0, 0, 0)
-			style, image = self._getBrushStyle("transparent", None)
+			style, image = self.getBrushStyle("transparent", None)
 			brush = wx.Brush(color, style)
 
 		else:
@@ -12763,15 +12763,15 @@ class handle_WidgetCanvas(handle_Widget_Base):
 					if (multiple[1]):
 						#Account for void color
 						if (color[i] is not None):
-							style, image = self._getBrushStyle(style[i], image)
+							style, image = self.getBrushStyle(style[i], image)
 						else:
-							style, image = self._getBrushStyle("transparent", None)
+							style, image = self.getBrushStyle("transparent", None)
 					else:
 						#Account for void color
 						if (color is not None):
-							style, image = self._getBrushStyle(style, image)
+							style, image = self.getBrushStyle(style, image)
 						else:
-							style, image = self._getBrushStyle("transparent", None)
+							style, image = self.getBrushStyle("transparent", None)
 
 					#Create bruh
 					brush = wx.Brush(color, style)
@@ -12790,10 +12790,10 @@ class handle_WidgetCanvas(handle_Widget_Base):
 				if (color is not None):
 					#Create brush
 					color = wx.Colour(color[0], color[1], color[2])
-					style, image = self._getBrushStyle(style, image)
+					style, image = self.getBrushStyle(style, image)
 				else:
 					color = wx.Colour(0, 0, 0)
-					style, image = self._getBrushStyle("transparent", None)
+					style, image = self.getBrushStyle("transparent", None)
 				brush = wx.Brush(color, style)
 
 				#Bind image if an image style was used
@@ -12802,7 +12802,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 
 		return brush
 
-	def _getBrushStyle(self, style, image = None, internal = False):
+	def getBrushStyle(self, style, image = None, internal = False):
 		"""Returns a brush style to the user.
 
 		style (str) - What style the shape fill will be. Only some of the letters are needed. The styles are:
@@ -12823,10 +12823,10 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		image (str)    - If 'style' has "image" in it: This is the image that is used for the bitmap. Can be a PIL image
 		internal (str) - If True and 'style' has "image" in it: 'image' is an iternal image
 
-		Example Input: _getBrushStyle("solid")
-		Example Input: _getBrushStyle("image", image)
-		Example Input: _getBrushStyle("image", "example.bmp")
-		Example Input: _getBrushStyle("image", "error", True)
+		Example Input: getBrushStyle("solid")
+		Example Input: getBrushStyle("image", image)
+		Example Input: getBrushStyle("image", "example.bmp")
+		Example Input: getBrushStyle("image", "error", True)
 		"""
 
 		#Ensure lower case
@@ -12851,7 +12851,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 			#Make sure an image was given
 			if (image is not None):
 				#Ensure correct image format
-				image = self._getImage(imagePath, internal)
+				image = self.getImage(imagePath, internal)
 
 				#Determine style
 				if ("t" in style):
@@ -12863,7 +12863,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 				else:
 					style = wx.BRUSHSTYLE_STIPPLE
 			else:
-				warnings.warn(f"Must supply an image path in _getBrushStyle() to use the style for {self.__repr__()}", Warning, stacklevel = 2)
+				warnings.warn(f"Must supply an image path in getBrushStyle() to use the style for {self.__repr__()}", Warning, stacklevel = 2)
 				style = wx.BRUSHSTYLE_TRANSPARENT
 
 		#Hatch
@@ -12890,7 +12890,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 			image = None
 
 		else:
-			warnings.warn(f"Unknown style {style} in _getBrushStyle() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Unknown style {style} in getBrushStyle() for {self.__repr__()}", Warning, stacklevel = 2)
 			style = wx.BRUSHSTYLE_TRANSPARENT
 			image = None
 
@@ -12995,7 +12995,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		def rotateFunction(dc):
 			nonlocal self, angle, center
 
-			image = self.getImage()
+			image = self.getCanvasImage()
 			image.Rotate(angle, center)
 			tempDC = wx.MemoryDC(image.ConvertToBitmap())
 			boundingBox = tempDC.GetBoundingBox()
@@ -13027,7 +13027,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		#Skip blank images
 		if (imagePath is not None):
 			#Get correct image
-			image = self._getImage(imagePath, internal, alpha = alpha, scale = scale, rotate = rotate)
+			image = self.getImage(imagePath, internal, alpha = alpha, scale = scale, rotate = rotate)
 
 			if (x is None):
 				x = 0
@@ -13112,10 +13112,10 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		else:
 			_text = text
 
-		font = self._getFont(size = size, bold = bold, italic = italic, color = color, family = family)
+		font = self.getFont(size = size, bold = bold, italic = italic, color = color, family = family)
 		self._queue("dc.SetFont", font)
 
-		pen = self._getPen(color)
+		pen = self.getPen(color)
 		self._queue("dc.SetPen", pen)
 
 		if (align is not None):
@@ -13224,7 +13224,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		"""
 
 		#Determine point color
-		pen = self._getPen(color)
+		pen = self.getPen(color)
 
 		#Draw the point
 		if (isinstance(x, (tuple, list))):
@@ -13255,7 +13255,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		"""
 
 		#Determine line color
-		pen = self._getPen(color, width)
+		pen = self.getPen(color, width)
 
 		#Draw the line
 		if (isinstance(x1, (tuple, list))):
@@ -13289,7 +13289,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		"""
 
 		#Determine spline color
-		pen = self._getPen(color)
+		pen = self.getPen(color)
 
 		#Draw the spline
 		if ((type(points) == list) or (type(points) == tuple)):
@@ -13351,8 +13351,8 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		"""
 
 		#Determine arc color
-		pen = self._getPen(outline)
-		brush = self._getBrush(fill, style)
+		pen = self.getPen(outline)
+		brush = self.getBrush(fill, style)
 
 		#Draw the arc
 		if ((type(x) == list) or (type(x) == tuple)):
@@ -13427,7 +13427,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		"""
 
 		#Determine check mark color
-		pen = self._getPen(color)
+		pen = self.getPen(color)
 
 		#Draw the line
 		if ((type(x) == list) or (type(x) == tuple)):
@@ -13507,8 +13507,8 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		"""
 
 		#Determine rectangle color
-		pen = self._getPen(outline, outlineWidth)
-		brush = self._getBrush(fill, style)
+		pen = self.getPen(outline, outlineWidth)
+		brush = self.getBrush(fill, style)
 
 		#Draw the rectangle
 		if ((type(x) == list) or (type(x) == tuple)):
@@ -13608,8 +13608,8 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		"""
 
 		#Determine point color
-		pen = self._getPen(outline, outlineWidth)
-		brush = self._getBrush(fill, style)
+		pen = self.getPen(outline, outlineWidth)
+		brush = self.getBrush(fill, style)
 
 		#Draw the polygon
 		if (type(points) == list):
@@ -13655,8 +13655,8 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		"""
 
 		#Determine circle color
-		pen = self._getPen(outline, outlineWidth)
-		brush = self._getBrush(fill, style)
+		pen = self.getPen(outline, outlineWidth)
+		brush = self.getBrush(fill, style)
 
 		#Draw the circle
 		if ((type(x) == list) or (type(x) == tuple)):
@@ -13728,8 +13728,8 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		"""
 
 		#Determine ellipse color
-		pen = self._getPen(outline, outlineWidth)
-		brush = self._getBrush(fill, style)
+		pen = self.getPen(outline, outlineWidth)
+		brush = self.getBrush(fill, style)
 
 		#Draw the ellipse
 		if ((type(x) == list) or (type(x) == tuple)):
@@ -15132,12 +15132,12 @@ class handle_WidgetTable(handle_Widget_Base):
 		if (color is None):
 			color = self.thing.GetDefaultCellBackgroundColour()
 		else:
-			color = self._getColor(color)
+			color = self.getColor(color)
 
 		if (textColor is None):
 			textColor = self.thing.GetDefaultCellTextColour()
 		else:
-			textColor = self._getColor(textColor)
+			textColor = self.getColor(textColor)
 
 		if ((row is None) and (column is None)):
 			for i in range(self.thing.GetNumberRows()):
@@ -15246,7 +15246,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 		self.thing.SetCellFont(row, column, font)
 
-		fixedFlags, position, border = self._getItemMod(flags)
+		fixedFlags, position, border = self.getItemMod(flags)
 	#########################################################
 
 	def hideTableRow(self, row):
@@ -18502,7 +18502,7 @@ class handle_Dialog(handle_Base):
 			if (initialFile is None):
 				initialFile = ""
 
-			wildcard = self._getWildcard(wildcard)
+			wildcard = self.getWildcard(wildcard)
 
 			#Create the thing to put in the grid
 			if (directoryOnly):
@@ -19207,7 +19207,7 @@ class handle_Dialog(handle_Base):
 			previewFrame = _MyPreviewFrame(self, preview, None, title = "Print Preview", 
 				pos = self.position or wx.DefaultPosition, size = self.size or wx.DefaultSize)
 
-			image = self._getImage("print", internal = True, returnIcon = True)
+			image = self.getImage("print", internal = True, returnIcon = True)
 			previewFrame.SetIcon(image)
 			previewFrame.Initialize()
 
@@ -19502,7 +19502,7 @@ class _MyPrintout(wx.Printout):
 				myCanvas._draw(dc, modifyUnits = False)
 
 		else:
-			image = self.parent._getImage(page)
+			image = self.parent.getImage(page)
 			dc.DrawBitmap(image, 0, 0)
 
 		return True
@@ -20751,7 +20751,7 @@ class handle_Window(handle_Container_Base):
 		"""
 
 		#Get the image
-		myIcon = self._getImage(icon, internal, returnIcon = True)
+		myIcon = self.getImage(icon, internal, returnIcon = True)
 		# image = self._convertBitmapToImage(image)
 		# image = image.Scale(16, 16, wx.IMAGE_QUALITY_HIGH)
 		# image = self._convertImageToBitmap(image)
@@ -22615,7 +22615,7 @@ class handle_Notebook_Simple(handle_Base_Notebook):
 			size, position = self._getArguments(argument_catalogue, ["size", "position"])
 
 			#Configure Flags            
-			flags, x, border = self._getItemMod(flags)
+			flags, x, border = self.getItemMod(flags)
 
 			if (tabSide is None):
 				tabSide = "top"
@@ -23415,7 +23415,7 @@ class handle_NotebookPage_Simple(handle_Base_NotebookPage):
 			#Format Icon
 			icon_path, icon_internal = self._getArguments(argument_catalogue, ["icon_path", "icon_internal"])
 			if (icon_path is not None):
-				self.icon = self._getImage(icon_path, icon_internal)#, returnIcon = True)
+				self.icon = self.getImage(icon_path, icon_internal)#, returnIcon = True)
 			else:
 				self.icon = None
 				self.iconIndex = None
@@ -23734,7 +23734,7 @@ class Controller(Utilities, CommonEventFunctions):
 
 	def __init__(self, debugging = False, best = False, oneInstance = False, 
 		allowBuildErrors = None, checkComplexity = True, startInThread = False, 
-		newMainLoop = None, printMakeVariables = False, logCMD = False):
+		newMainLoop = None, printMakeVariables = False, logCMD = False, splash = None):
 		"""Defines the internal variables needed to run.
 
 		debugging (bool) - Determiens if debugging information is given to the user
@@ -23759,6 +23759,9 @@ class Controller(Utilities, CommonEventFunctions):
 
 		newMainLoop (function) - A function to run instead of wx.App.MainLoop
 			- If None: Will run wx.App.MainLoop
+
+		splash (SplashProcess) - The splash screen handle
+			- If None: Will assume there is no splash screen
 
 		Example Input: Controller()
 		Example Input: Controller(debugging = True)
@@ -23786,6 +23789,7 @@ class Controller(Utilities, CommonEventFunctions):
 		self.printMakeVariables = printMakeVariables
 		self.windowDisabler = None
 		self.controller = self
+		self.splash = splash
 		self.queue_statusText = PriorityQueue(defaultPriority = 100)
 
 		self.exiting = False
@@ -24200,6 +24204,10 @@ class Controller(Utilities, CommonEventFunctions):
 			myFrame.updateWindow()
 
 		self.start_listenStatusText()
+		
+		if (self.splash is not None):
+			self.splash.hide()
+
 		self.finishing = False
 
 		#Start the GUI
