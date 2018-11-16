@@ -12,7 +12,7 @@ import contextlib
 import wx
 import Utilities as MyUtilities
 # import pubsub.pub
-# from forks.pypubsub.src.pubsub import pub as pubsub_pub #Use my own fork
+from forks.pypubsub.src.pubsub import pub as pubsub_pub #Use my own fork
 
 _splashThread = None
 
@@ -79,6 +79,11 @@ class StatusText(wx.StaticText, MyUtilities.common.EnsureFunctions):
 
 		self.SetFont(self.font)
 
+		pubsub_pub.subscribe(self.setStatus, 'status')
+
+	def setStatus(self, value):
+		self.status = value
+
 	@MyUtilities.common.makeProperty()
 	class status():
 		"""What the status text says."""
@@ -94,9 +99,9 @@ class StatusText(wx.StaticText, MyUtilities.common.EnsureFunctions):
 			"""
 
 			if (value is None):
-				wx.CallAfter(self.SetLabel, self.default)
+				self.SetLabel(self.default)
 			else:
-				wx.CallAfter(self.SetLabel, value)
+				self.SetLabel(value)
 
 class SplashImage(wx.StaticBitmap):
 	"""A wxStaticBitmap used as the splash screen's image."""
@@ -138,6 +143,15 @@ class SplashProgress(wx.Gauge):
 
 		self.progress = initial
 
+		pubsub_pub.subscribe(self.setProgress, 'progress')
+		pubsub_pub.subscribe(self.setProgressMax, 'progressMax')
+
+	def setProgress(self, value):
+		self.progress = value
+
+	def setProgressMax(self, value):
+		self.progressMax = value
+
 	@MyUtilities.common.makeProperty()
 	class progressMax():
 		"""The maximum position of the progress bar."""
@@ -146,7 +160,7 @@ class SplashProgress(wx.Gauge):
 			return self.GetRange()
 
 		def setter(self, value):
-			wx.CallAfter(self.SetRange, value)
+			self.SetRange(value)
 
 	@MyUtilities.common.makeProperty()
 	class progress():
@@ -163,13 +177,13 @@ class SplashProgress(wx.Gauge):
 			"""
 
 			if (value is None):
-				wx.CallAfter(self.Pulse)
+				self.Pulse()
 				return
 
 			maximum = self.progressMax
 			if (value > maximum):
 				value = maximum
-			wx.CallAfter(self.SetValue, value)
+			self.SetValue(value)
 
 class SplashScreen(wx.Frame, MyUtilities.wxPython.DrawFunctions):
 	"""A wxFrame object that is used as a splash screen.
@@ -221,7 +235,7 @@ class SplashScreen(wx.Frame, MyUtilities.wxPython.DrawFunctions):
 		mainSizer.AddGrowableRow(0, 1)
 
 		mainSizer.Add(self.thing_image, 		0, wx.ALL|wx.EXPAND, 0)
-		mainSizer.Add(self.thing_text, 			1, wx.ALL|wx.EXPAND, 5)
+		mainSizer.Add(self.thing_text, 			1, wx.ALL|wx.EXPAND, 0)
 		mainSizer.Add(self.thing_progressBar, 	0, wx.ALL|wx.EXPAND, 0)
 
 		self.thing_panel.SetSizer(mainSizer)
@@ -269,24 +283,14 @@ class SplashThread(threading.Thread):
 	def run(self):
 		"""Runs the thread and then closes it."""
 
-		print("@run.1")
 		self.app = wx.App(False)
 
-		print("@run.2")
 		self.splashHandle = SplashScreen(image = self.image, **self.splashKwargs)
-
-		print("@run.3")
 		self.splashHandle.Show()
 
 		wx.DisableAsserts() #Allows a thread that is not this thread to exit the program (https://stackoverflow.com/questions/49304429/wxpython-main-thread-other-than-0-leads-to-wxwidgets-debug-alert-on-exit/49305518#49305518)
 
-		print("@run.4")
 		self.app.MainLoop()
-
-		print("@run.5")
-		time.sleep(1)
-
-		print("@run.6")
 
 	def hide(self, *, waitForClose = False, waitDelay = 100):
 		"""Hides the splash screen.
@@ -341,7 +345,7 @@ class SplashThread(threading.Thread):
 			return self.splashHandle.thing_text.status
 
 		def setter(self, value):
-			self.splashHandle.thing_text.status = value
+			pubsub_pub.sendMessage("status", value = value)
 
 if __name__ == '__main__':
 	#Create Splash Screen
