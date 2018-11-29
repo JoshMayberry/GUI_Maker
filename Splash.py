@@ -1,532 +1,380 @@
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 
-import os
-import sys
-import subprocess
+import time
+import atexit
+
+import operator
+import functools
 
 import wx
-import wx.lib.agw.advancedsplash
+import Utilities as MyUtilities
 
-class Utitlities():
-	"""Utility functions for the splash screen."""
+splashList = set()
 
-	def convertImageToBitmap(self, imgImage):
-		"""Converts a wxImage image (wxPython) to a wxBitmap image (wxPython).
-		Adapted from: https://wiki.wxpython.org/WorkingWithImages
+def makeSplash(*args, **kwargs):
+	"""Creates a splash screen, then shows it."""
 
-		imgImage (object) - The wxBitmap image to convert
+	return SplashProcess(*args, **kwargs)
 
-		Example Input: convertImageToBitmap(image)
+@atexit.register
+def hideSplash(*args, myApp = None, **kwargs):
+	"""Hides the splash screen created by makeSplash()."""
+	global splashList
+
+	for splash in tuple(splashList):
+		splash.hide(*args, **kwargs)
+
+	if (myApp is not None):
+		myApp.MainLoop()
+
+class StatusText(wx.StaticText, MyUtilities.common.EnsureFunctions):
+	"""A wxStaticText object used to display the program's status."""
+
+	def __init__(self, parent, *, default = None, font = None, 
+		align = "center", pulse = False, style = 0):
+		"""
+		default (str) - What the status text will say when set to None
+		font (wxFont) - What font to use
+		align (str) - How to align the text in the sizer #Not implemented yet
+		pulse (bool) - Determines if three periods appear cycle from 0 to 3 after the text at a rate of 250ms #Not implemented yet
+
+		Example Input: StatusText(self)
 		"""
 
-		bmpImage = imgImage.ConvertToBitmap()
-		return bmpImage
+		self.parent = parent
 
-	def convertPilToImage(self, pilImage, alpha = False):
-		"""Converts a PIL image (pillow) to a wxImage image (wxPython).
-		Adapted from: https://wiki.wxpython.org/WorkingWithImages
+		self.default = self.ensure_default(default, default = "Loading...")
+		self.font = self.ensure_default(font, default = lambda: wx.Font(24, wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0, ""))
 
-		pilImage (object) - The PIL image to convert
-		alpha (bool)      - If True: The image will preserve any alpha chanels
+		super().__init__(parent, id = wx.ID_ANY, label = self.default, style = style)
 
-		Example Input: convertPilToImage(image)
-		Example Input: convertPilToImage(image, True)
-		"""
+		self.SetFont(self.font)
 
-		imgImage = wx.Image(pilImage.size[0], pilImage.size[1])
+	@MyUtilities.common.makeProperty()
+	class status():
+		"""What the status text says."""
 
-		hasAlpha = pilImage.mode[-1] == 'A'
-		if (hasAlpha and alpha):
-			pilImageCopyRGBA = pilImage.copy()
-			pilImageRgbData = pilImageCopyRGBA.convert("RGB").tobytes()
-			imgImage.SetData(pilImageRgbData)
-			imgImage.SetAlpha(pilImageCopyRGBA.tobytes()[3::4])
+		def getter(self):
+			return self.GetLabel()
 
-		else:
-			pilImage = pilImage.convert("RGB").tobytes()
-			imgImage.SetData(pilImage)
+		def setter(self, value):
+			"""If None: Will show the default status text.
 
-		return imgImage
-
-	def convertPilToBitmap(self, pilImage, alpha = False):
-			"""Converts a PIL image (pillow) to a wxBitmap image (wxPython).
-			Adapted from: https://wiki.wxpython.org/WorkingWithImages
-
-			pilImage (object) - The PIL image to convert
-			alpha (bool)      - If True: The image will preserve any alpha chanels
-
-			Example Input: convertPilToBitmap(image)
+			Example Use: status = "Lorem Ipsum"
+			Example Use: status = None
 			"""
 
-			imgImage = self.convertPilToImage(pilImage, alpha)
-			bmpImage = self.convertImageToBitmap(imgImage)
-			return bmpImage
+			if (value is None):
+				self.SetLabel(self.default)
+			else:
+				self.SetLabel(value)
 
-	def getImage(self, imagePath, internal = False, alpha = False):
-		"""Returns the image as specified by the user.
+class SplashImage(wx.StaticBitmap):
+	"""A wxStaticBitmap used as the splash screen's image."""
 
-		imagePath (str) - Where the image is on the computer. Can be a PIL image. If None, it will be a blank image
-			If 'internal' is on, it is the name of an icon as a string. Here is a list of the icon names:
-				"error"       - A red circle with an 'x' in it
-				"question"    - A white speach bubble with a '?' in it
-				"question2"   - A white speach bubble with a '?' in it. Looks different from "question"
-				"warning"     - A yellow yield sign with a '!' in it
-				"info"        - A white circle with an 'i' in it
-				"font"        - A times new roman 'A'
-				"arrowLeft"   - A white arrow pointing left
-				"arrowRight"  - A white arrow pointing right
-				"arrowUp"     - A white arrow pointing up
-				"arrowDown"   - A white arrow pointing down
-				"arrowCurve"  - A white arrow that moves left and then up
-				"home"        - A white house
-				"print"       - A printer
-				"open"        - "folderOpen" with a green arrow curiving up and then down inside it
-				"save"        - A blue floppy disk
-				"saveAs"      - "save" with a yellow spark in the top right corner
-				"delete"      - "markX" in a different style
-				"copy"        - Two "page" stacked on top of each other with a southeast offset
-				"cut"         - A pair of open scissors with red handles
-				"paste"       - A tan clipboard with a blank small version of "page2" overlapping with an offset to the right
-				"undo"        - A blue arrow that goes to the right and turns back to the left
-				"redo"        - A blue arrow that goes to the left and turns back to the right
-				"lightBulb"   - A yellow light bulb with a '!' in it
-				"folder"      - A blue folder
-				"folderNew"   - "folder" with a yellow spark in the top right corner
-				"folderOpen"  - An opened version of "folder"
-				"folderUp"    - "folderOpen" with a green arrow pointing up inside it
-				"page"        - A blue page with lines on it
-				"page2"       - "page" in a different style
-				"pageNew"     - "page" with a green '+' in the top left corner
-				"pageGear"    - "page" with a blue gear in the bottom right corner
-				"pageTorn"    - A grey square with a white border torn in half lengthwise
-				"markCheck"   - A black check mark
-				"markX"       - A black 'X'
-				"plus"        - ?
-				"minus"       - ?
-				"close"       - A black 'X'
-				"quit"        - A door opening to the left with a green arrow coming out of it to the right
-				"find"        - A magnifying glass
-				"findReplace" - "find" with a double sided arrow in the bottom left corner pointing left and right
-				"first"       - ?
-				"last"        - ?
-				"diskHard"    - ?
-				"diskFloppy"  - ?
-				"diskCd"      - ?
-				"book"        - A blue book with white pages
-				"addBookmark" - A green banner with a '+' by it
-				"delBookmark" - A red banner with a '-' by it
-				"sidePanel"   - A grey box with lines in with a white box to the left with arrows pointing left and right
-				"viewReport"  - A white box with lines in it with a grey box with lines in it on top
-				"viewList"    - A white box with squiggles in it with a grey box with dots in it to the left
-		internal (bool) - If True: 'imagePath' is the name of an icon as a string.
-		alpha (bool)    - If True: The image will preserve any alpha chanels
+	def __init__(self, parent, *, filePath = None, 
+		mask = True, maskColor = "black", style = 0, **imageKwargs):
+		"""
+		filePath (str) - A path to the image to show
+		scale (tuple) - The scale to use for the image
+			- If None: Will not scale the image
 
-		Example Input: getImage("example.bmp", 0)
-		Example Input: getImage(image, 0)
-		Example Input: getImage("error", 0, internal = True)
-		Example Input: getImage("example.bmp", 0, alpha = True)
+		mask (str) - A path to the mask to use for the image
+			- If None: No mask will be applied
+			- If True: Will use 'image' as the mask file
+
+		maskColor (wxColor) - What color to use for the mask
+
+		Example Input: SplashImage(self)
 		"""
 
-		#Determine if the image is a blank image
-		if (imagePath != None):
-			#Determine if the image is a PIL image
-			if (type(imagePath) != str):
-				image = self.convertPilToBitmap(imagePath, alpha)
-			else:
-				#Determine if the image is an internal image
-				if (internal):
-					if (imagePath == "error"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_ERROR)
-						
-					elif (imagePath == "question"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_QUESTION)
-						
-					elif (imagePath == "question2"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_HELP)
-						
-					elif (imagePath == "warning"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_WARNING)
-						
-					elif (imagePath == "info"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_INFORMATION)
-						
-					elif (imagePath == "font"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_HELP_SETTINGS)
-						
-					elif (imagePath == "arrowLeft"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_GO_BACK)
-						
-					elif (imagePath == "arrowRight"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_GO_FORWARD)
-						
-					elif (imagePath == "arrowUp"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_GO_UP)
-						
-					elif (imagePath == "arrowDown" ):
-						image = wx.ArtProvider.GetBitmap(wx.ART_GO_DOWN)
-						
-					elif (imagePath == "arrowCurve"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_GO_TO_PARENT)
-						
-					elif (imagePath == "home"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_GO_HOME)
-						
-					elif (imagePath == "print"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_PRINT)
-						
-					elif (imagePath == "open"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_FILE_OPEN)
-						
-					elif (imagePath == "save"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE)
-						
-					elif (imagePath == "saveAs"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE_AS)
-						
-					elif (imagePath == "delete"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_DELETE)
-						
-					elif (imagePath == "copy"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_COPY)
-						
-					elif (imagePath == "cut"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_CUT)
-						
-					elif (imagePath == "paste"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_PASTE)
-						
-					elif (imagePath == "undo"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_UNDO)
-						
-					elif (imagePath == "redo"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_REDO)
-						
-					elif (imagePath == "lightBulb"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_TIP)
-						
-					elif (imagePath == "folder"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_FOLDER)
-						
-					elif (imagePath == "newFolder"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_NEW_DIR)
-						
-					elif (imagePath == "folderOpen"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_FOLDER_OPEN)
-						
-					elif (imagePath == "folderUp"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_GO_DIR_UP)
-						
-					elif (imagePath == "page"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_NORMAL_FILE)
-						
-					elif (imagePath == "page2"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_HELP_PAGE)
-						
-					elif (imagePath == "pageNew"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_NEW)
-						
-					elif (imagePath == "pageGear"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_EXECUTABLE_FILE)
-						
-					elif (imagePath == "pageTorn"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_MISSING_IMAGE)
-						
-					elif (imagePath == "markCheck"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_TICK_MARK)
-						
-					elif (imagePath == "markX"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_CROSS_MARK)
-						
-					elif (imagePath == "plus"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_PLUS )
-						
-					elif (imagePath == "minus"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_MINUS )
-						
-					elif (imagePath == "close"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_CLOSE)
-						
-					elif (imagePath == "quit"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_QUIT)
-						
-					elif (imagePath == "find"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_FIND)
-						
-					elif (imagePath == "findReplace"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_FIND_AND_REPLACE)
-						
-					elif (imagePath == "first"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_GOTO_FIRST)
-						
-					elif (imagePath == "last"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_GOTO_LAST )
-						
-					elif (imagePath == "diskHard"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_HARDDISK)
-						
-					elif (imagePath == "diskFloppy"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_FLOPPY)
-						
-					elif (imagePath == "diskCd"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_CDROM)
-						
-					elif (imagePath == "book"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_HELP_BOOK)
-						
-					elif (imagePath == "addBookmark"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_ADD_BOOKMARK)
-						
-					elif (imagePath == "delBookmark"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_DEL_BOOKMARK)
-						
-					elif (imagePath == "sidePanel"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_HELP_SIDE_PANEL)
-						
-					elif (imagePath == "viewReport"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_REPORT_VIEW)
-						
-					elif (imagePath == "viewList"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_LIST_VIEW)
-						
-					else:
-						print("ERROR: The icon", imagePath, "cannot be found")
-				else:
-					try:
-						image = wx.Bitmap(imagePath)
-					except:
-						image = wx.Image(imagePath, wx.BITMAP_TYPE_BMP).ConvertToBitmap()
-		else:
-			image = wx.NullBitmap
+		self.bitmap = MyUtilities.wxPython.getImage(filePath, mask = mask, maskColor = maskColor, **imageKwargs,
+			returnForNone = lambda: MyUtilities.wxPython.getImage("error", internal = True, scale = (300, 300)))
 
-		return image
+		super().__init__(parent, id = wx.ID_ANY, bitmap = self.bitmap, style = style)
 
-class SplashScreen(Utitlities):
-	"""Shows a splash screen before running your code.
-	This shows the user things are happening while your program loads.
-	Modified code from: https://wiki.wxpython.org/SplashScreen%20While%20Loading
-	_________________________________________________________________________
+class SplashProgress(wx.Gauge):
+	"""A wxGauge used to display the program's progress."""
 
-	EAMPLE USAGE
-	from modules.GUI_Maker.Splash import SplashScreen
-	splashScreen = SplashScreen()
-	splashScreen.setTimeout(1500)
-	imagePath = "resources/valeoSplashScreen.bmp"
-	splashScreen.setImage(imagePath)
-	splashScreen.finish()
+	def __init__(self, parent, *, initial = 0, maximum = 100, vertical = False, style = 0):
+		"""
+		initial (int) - Where to start the progress bar at
+		maximum (int) - What the maximum progress value is
+		vertical (bool) - Determines if the progress bar is displayed vertically or horizontally
+
+		Example Input: SplashProgress(self)
+		"""
+
+		super().__init__(parent, id = wx.ID_ANY, range = maximum or 100, style = style | (wx.GA_HORIZONTAL, wx.GA_VERTICAL)[vertical])
+
+		self.progress = initial
+
+	@MyUtilities.common.makeProperty()
+	class progressMax():
+		"""The maximum position of the progress bar."""
+
+		def getter(self):
+			return self.GetRange()
+
+		def setter(self, value):
+			self.SetRange(value)
+
+	@MyUtilities.common.makeProperty()
+	class progress():
+		"""The position of the progress bar."""
+
+		def getter(self):
+			return self.GetValue()
+
+		def setter(self, value):
+			"""If None: Will make the progress bar pulse.
+
+			Example Use: progress = 10
+			Example Use: progress = None
+			"""
+
+			if (value is None):
+				self.Pulse()
+				return
+
+			maximum = self.progressMax
+			if (value > maximum):
+				value = maximum
+			self.SetValue(value)
+
+class SplashScreen(wx.Frame, MyUtilities.wxPython.DrawFunctions):
+	"""A wxFrame object that is used as a splash screen.
+		Use: wx.lib.agw.advancedsplash.py
 	"""
 
-	def __init__(self, parent = None, exeOnly = True):
-		"""Defines internal variables and defaults.
+	def __init__(self, image = None, *, image_scale = None, image_mask = True, image_maskColor = "black",
+		status_default = None, status_font = None, status_pulse = False, status_align = "center",
+		progress_initial = 0, progress_max = None, progress_vertical = False,
 
-		exeOnly (bool) - Determiens what types of applications will launch the splash screen
-			- If True: Only a .exe will show the splash screen
-			- If False: Both a .exe and a .py will show the splash screen
-			- If None: Any file type will show the splash screen
+		size = None, position = None, resizeable = False, timeout = None):
+		"""
+		
+
+		timeout (int) - How long to wait before hiding the splash screen
+			- If None: Will not auto-hide the splash screen
+
+		size (tuple) - The starting size for the window
+			- If None: Will use the image size
+
+		position (tuple) - Where the window should be located
+			- If None: Will center on the monitor
+
+		resizeable (bool) - Determines if the window can be resized
 
 		Example Input: SplashScreen()
-		Example Input: SplashScreen(myFrame)
+		Example Input: SplashScreen(size = (400, 400))
+		Example Input: SplashScreen("resources/splashScreen.bmp")
+		Example Input: SplashScreen("resources/splashScreen.bmp", timeout = 1500)
 		"""
 
-		#Default Variables for both apps
-		self.showSplash = True
-		self.splashApp = False
+		#Create Frame
+		style = [wx.FRAME_NO_TASKBAR|wx.FRAME_SHAPED|wx.STAY_ON_TOP]
 
-		#Account for main app
-		if (len(sys.argv) == 1):
-			#Account for splash screen not showing for development stages
-			if (not sys.argv[0].endswith(".exe")):
-				if(exeOnly != None):
-					if (exeOnly):
-						return None
-					else:
-						if (not sys.argv[0].endswith(".py")):
-							return None
+		if (resizeable):
+			style.append(wx.RESIZE_BORDER)
+		
+		wx.Frame.__init__(self, None, id = wx.ID_ANY, pos = position or wx.DefaultPosition, style = functools.reduce(operator.ior, style or (0,))) 
 
-			#Internal Variables
-			self.App = wx.App() #This must run before the wxArtProvider
-			self.parent = parent
-			self.fileName = sys.argv[0]
-			self.splashApp = True #Only runs splash screen functions for the splash app, not the main app
+		#Populate Window
+		self.thing_panel = wx.Panel(self, id = wx.ID_ANY)
+		
+		self.thing_text = StatusText(self.thing_panel, default = status_default, font = status_font, pulse = status_pulse, align = status_align)
+		self.thing_image = SplashImage(self.thing_panel, filePath = image, scale = image_scale, mask = image_mask, maskColor = image_maskColor)
+		self.thing_progressBar = SplashProgress(self.thing_panel, initial = progress_initial, maximum = progress_max, vertical = progress_vertical)
 
-			#Default Variables for splash screen only
-			self.image = self.getImage("error", internal = True)
-			self.timeout = 5000 #ms
-			self.centerScreen = True
-			self.shadow = None
+		mainSizer = wx.FlexGridSizer(3, 1, 0, 0)
+		mainSizer.AddGrowableCol(0, 1)
+		mainSizer.AddGrowableRow(0, 1)
 
-	def setImage(self, imagePath, internal = False, alpha = False):
-		"""Changes the splash screen image.
+		mainSizer.Add(self.thing_image, 		0, wx.ALL|wx.EXPAND, 0)
+		mainSizer.Add(self.thing_text, 			1, wx.ALL|wx.EXPAND, 0)
+		mainSizer.Add(self.thing_progressBar, 	0, wx.ALL|wx.EXPAND, 0)
 
-		imagePath (str) - Where the image is on the computer. Can be a PIL image. If None, it will be a blank image
-		internal (bool) - If True: 'imagePath' is the name of an icon as a string.
-		alpha (bool)    - If True: The image will preserve any alpha chanels
+		self.thing_panel.SetSizer(mainSizer)
+		mainSizer.Fit(self)
 
-		Example Input: getImage("example.bmp", 0)
-		Example Input: getImage("error", 0, internal = True)
-		Example Input: getImage("example.bmp", 0, alpha = True)
+		#Final Settings
+		if (position is None):
+			self.CenterOnScreen()
+
+		#Bind events
+		self.Bind(wx.EVT_CLOSE, lambda event: self.Destroy())
+
+		if wx.Platform == "__WXGTK__":
+			self.Bind(wx.EVT_WINDOW_CREATE, self.SetSplashShape)
+		else:
+			self.SetSplashShape()
+
+	def SetSplashShape(self, event = None):
+		"""Modified code from: wx.lib.agw.advancedsplash.SetSplashShape."""
+
+		region = wx.Region(self.thing_progressBar.GetRect())
+		region.Union(self.thing_text.GetRect())
+		region.Union(self.thing_image.bitmap)
+		region.Offset(1, 1)
+
+		self.SetShape(region)
+
+		if (event is not None):
+			event.Skip()
+
+class SplashProcess():
+	def __init__(self, image = None, **splashKwargs):
+		"""A handle for interacting with the splash screen process
+
+		Example Input: SplashThread()
+		Example Input: SplashThread(name = None)
+		"""
+		global splashList
+
+		splashList.add(self)
+
+		self.image = image
+		self.splashKwargs = splashKwargs
+
+		self.processHandle = MyUtilities.multiProcess.Parent(event = 2, queue = True)
+		self.processChild = self.processHandle.spawn(myFunction = self.run)
+		self.begin()
+
+	def begin(self, waitForStart = True, waitTimeout = None):
+		"""Starts the splash screen process.
+
+		waitForStart (bool) - Determines if the program should wait for the splash screen to be created before continuing
+
+		Example Input: begin()
+		Example Input: begin(waitForStart = True)
+		Example Input: begin(waitForStart = True, waitDelay = 10)
 		"""
 
-		if (len(sys.argv) == 1):
-			if (self.splashApp):
-				self.image = self.getImage(imagePath, internal = internal, alpha = alpha)
+		self.processChild.start()
 
-	def setTimeout(self, timeout):
-		"""Changes the duration of the splash screen.
+		if (waitForStart):
+			self.processChild.event[0].wait(timeout = waitTimeout)
 
-		timeout (int) - How long to show the splash screen in milliseconds
-			- If None: The splash screen will disappear after clicking on it
+	def run(self, child):
+		"""The function to run for the splash screen process."""
 
-		Example Input: setTimeout(9000)
-		Example Input: setTimeout(None)
+		self.app = self.MyApp(self)
+
+		child.splashHandle = SplashScreen(image = self.image, **self.splashKwargs)
+		child.event[0].set()
+		child.splashHandle.Show()
+
+		self.app.MainLoop()
+
+	def hide(self):
+		"""Hides the splash screen.
+
+		Example Input: hide()
 		"""
 
-		if (len(sys.argv) == 1):
-			if (self.splashApp):
-				self.timeout = timeout
+		if (not hasattr(self, "processChild")):
+			return
 
-	def disableSplashScreen(self, disable = True):
-		"""Disables the splash screen.
+		self.processChild.event[1].set()
+		self.processChild.join()
 
-		disable (bool) - Determines if the splash screen is shown or not.
-			- If True: The splash screen will not appear
-			- If False: The splash screen will appear
+		splashList.discard(self)
 
-		Example: disableSplashScreen()
-		Example: disableSplashScreen(False)
-		"""
+	def setProgressMax(self, value):
+		self.processChild.append(("thing_progressBar", "progressMax", value))
 
-		if (len(sys.argv) == 1):
-			if (self.splashApp):
-				self.showSplash = not disable
+	def setProgress(self, value):
+		self.processChild.append(("thing_progressBar", "progress", value))
 
-	def enableSplashScreen(self, enable = True):
-		"""Enables the splash screen.
+	def addProgress(self, value):
+		self.processChild.append((None, None, value))
 
-		enable (bool) - Determines if the splash screen is shown or not.
-			- If True: The splash screen will appear
-			- If False: The splash screen will not appear
-
-		Example: enableSplashScreen()
-		Example: enableSplashScreen(False)
-		"""
-
-		if (len(sys.argv) == 1):
-			if (self.splashApp):
-				self.showSplash = enable
-
-	def toggleSplashScreen(self):
-		"""Enables the splash screen if it is disabled and disables it if it is enabled.
-
-		Example: toggleSplashScreen()
-		"""
-
-		if (len(sys.argv) == 1):
-			if (self.splashApp):
-				self.showSplash = not self.showSplash
-
-	def setCenter(self, centerScreen = True):
-		"""Changes where the splash screen appears.
-
-		centerScreen (bool) - Determines if the splash screen is cenetred and if so on what
-			- If True: It will be cenetred on the screen
-			- If False: It will be centered on the parent
-			- If None: It will not be centered
-
-		Example Input: setCenter()
-		Example Input: setCenter(False)
-		Example Input: setCenter(None)
-		"""
-
-		if (len(sys.argv) == 1):
-			if (self.splashApp):
-				self.centerScreen = centerScreen
-
-	def setShadow(self, shadow = (0, 0, 0)):
-		"""If the image has no transparency, this casts a shadow of one color.
-
-		shadow (tuple) - The shadow color as (r, g, b)
-			- If None: No shadow will appear
-
-		Example Input: setShadow()
-		Example Input: setShadow((255, 255, 255))
-		Example Input: setShadow(None)
-		"""
-
-		if (len(sys.argv) == 1):
-			if (self.splashApp):
-
-				#Ensure correct format
-				if ((type(shadow) == tuple) or (type(shadow) == list)):
-					shadow = wx.Colour(shadow[0], shadow[1], shadow[2])
-
-				self.shadow = shadow
-
-	def finish(self):
-		"""Run this when you are finished building the splash screen.
-
-		Example Input: finish()
-		"""
-
-		#Launch the splash screen and the main program as two separate applications
-		if (self.showSplash and len(sys.argv) == 1):
-			if (self.splashApp):
-				#Build splash screen
-				if (self.timeout != None):
-					flags = "wx.lib.agw.advancedsplash.AS_TIMEOUT"
-				else:
-					flags = "wx.lib.agw.advancedsplash.AS_NOTIMEOUT"
-
-				if (self.centerScreen != None):
-					if (self.centerScreen):
-						flags += "|wx.lib.agw.advancedsplash.AS_CENTER_ON_SCREEN"
-					else:
-						flags += "|wx.lib.agw.advancedsplash.AS_CENTER_ON_PARENT"
-				else:
-					flags += "|wx.lib.agw.advancedsplash.AS_NO_CENTER"
-
-				if (self.shadow != None):
-					flags += "|wx.lib.agw.advancedsplash.AS_SHADOW_BITMAP"
-				else:
-					self.shadow = wx.NullColour
-
-				myFrame = wx.lib.agw.advancedsplash.AdvancedSplash(self.parent, bitmap = self.image, timeout = self.timeout, agwStyle = eval(flags), shadowcolour = self.shadow)
-
-				#Launch program again as a separate application
-				if (self.fileName.endswith(".py")):
-					command = ["py", os.path.basename(self.fileName), "NO_SPLASH"]
-				else:
-					command = [os.path.basename(self.fileName), "NO_SPLASH"]
-				subprocess.Popen(command)
-
-				#Run the splash screen
-				self.App.MainLoop()
-				sys.exit()
-
-if __name__ == "__main__":
-	splashScreen = SplashScreen()
-	splashScreen.finish()
-
-	# Simulate 1.3s of time spent importing libraries and source files
-	import time
-	time.sleep(1.3)
+	def setStatus(self, value):
+		self.processChild.append(("thing_text", "status", value))
 
 	class MyApp(wx.App):
-		def OnInit(self):
-			# Simulate 6s of time spent initializing wx components
-			time.sleep(6)
+		def __init__(self, parent, redirect = False, filename = None, useBestVisual = False, clearSigInt = True):
+			"""Needed to make the GUI work."""
 
-			#Ensure only one instance runs
-			self.name = "SingleApp-%s" % wx.GetUserId()
-			self.instance = wx.SingleInstanceChecker(self.name)
+			self.parent = parent
+			wx.App.__init__(self, redirect = redirect, filename = filename, useBestVisual = useBestVisual, clearSigInt = clearSigInt)
 
-			if self.instance.IsAnotherRunning():
-				wx.MessageBox("Cannot run multiple instances of this program", "Runtime Error")
-				return False
+		def MainLoop(self):
+			"""Modified code from: https://github.com/wxWidgets/wxPython/blob/master/samples/mainloop/mainloop.py"""
 
-			#Create App
-			self.Frame = wx.Frame(None, -1, "Application Frame")
-			self.Frame.Show()
-			return True
+			# wx.DisableAsserts() #Allows a thread that is not this thread to exit the program (https://stackoverflow.com/questions/49304429/wxpython-main-thread-other-than-0-leads-to-wxwidgets-debug-alert-on-exit/49305518#49305518)
 
-	App = MyApp(0)
-	App.MainLoop()
+			processChild = self.parent.processChild
+			splashQueue = processChild.queue
+			if (splashQueue is None):
+				return super().MainLoop()
+
+			splashHandle = processChild.splashHandle
+			hideEvent = processChild.event[1]
+
+			import queue
+			eventLoop = wx.GUIEventLoop()
+			wx.EventLoop.SetActive(eventLoop)
+
+			while True:
+				#Hide event
+				if (hideEvent.is_set()):
+					splashHandle.Hide()
+					splashHandle.Close()
+					break
+
+				#Update GUI
+				try:
+					thing, variable, value = splashQueue.get_nowait() #doesn't block
+					
+					if (variable is None):
+						splashHandle.thing_progressBar.progress += 1
+					else:
+						setattr(getattr(splashHandle, thing), variable, value)
+
+				except queue.Empty: #raised when queue is empty
+					pass
+
+				#Handle events
+				while eventLoop.Pending():
+					eventLoop.Dispatch()
+
+				#Process idle events
+				time.sleep(0.01)
+				eventLoop.ProcessIdle()
+
+
+if __name__ == '__main__':
+
+	# splash = makeSplash(image = "examples/resources/splashScreen.bmp", image_maskColor = (0, 177, 64))
+	splash = makeSplash(image = "H:/Python/Material_Tracker/resources/splashScreen.png", image_maskColor = (63, 63, 63))
+
+	splash.setProgressMax(20)
+	
+	#Simulate long tasks
+	for i in range(8):
+		time.sleep(0.25)
+		splash.setProgress(i)
+
+	splash.setStatus("Creating Window")
+
+	#Create main app
+	app = wx.App(False)
+	frame = wx.Frame(None, wx.ID_ANY, "Lorem Ipsum")
+
+	time.sleep(2)
+
+	#Simulate more long tasks
+	for i in range(20):
+		splash.setStatus(f"Doing thing {i + 1}")
+
+		time.sleep(0.25)
+		splash.addProgress(1)
+
+
+	time.sleep(20)
+
+	#Show main app now
+	frame.Show()
+	hideSplash(myApp = app)

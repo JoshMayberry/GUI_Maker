@@ -524,12 +524,11 @@ class _MyThread(threading.Thread):
 	The thread will then close itself automatically.
 	"""
 
-	def __init__(self, parent, threadID = None, name = None, counter = None, daemon = None, label = None, stopFunction = None):
+	def __init__(self, parent, threadID = None, name = None, daemon = None, label = None, stopFunction = None):
 		"""Setup the thread.
 
 		threadID (int) -
 		name (str)     - The thread name. By default, a unique name is constructed of the form "Thread-N" where N is a small decimal number.
-		counter (int)  - 
 		daemon (bool)  - Sets whether the thread is daemonic. If None (the default), the daemonic property is inherited from the current thread.
 		label (str) - A name for the thread
 			- If name already exists: Will stop the existing thread and replace it with this one
@@ -643,7 +642,7 @@ class _MyThread(threading.Thread):
 			self.stopFunction()
 
 #Global Inheritance Classes
-class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
+class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFunctions, MyUtilities.wxPython.Converters, MyUtilities.wxPython.AttributeGetters):
 	"""Contains common functions needed for various other functions.
 	This is here for convenience in programming.
 	"""
@@ -2020,724 +2019,6 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 		self.nestingOrder.append(handle)
 		handle.nestedParent = self
 
-	#Settings
-	def _getItemMod(self, flags = None, stretchable = True, border = 5):
-		"""Returns modable item attributes, stretchability, and border.
-
-		flags (list) - Which flag to add to the sizer
-			How the sizer item is aligned in its cell.
-			"ac" (str) - Align the item to the center
-			"av" (str) - Align the item to the vertical center only
-			"ah" (str) - Align the item to the horizontal center only
-			"at" (str) - Align the item to the top
-			"ab" (str) - Align the item to the bottom
-			"al" (str) - Align the item to the left
-			"ar" (str) - Align the item to the right
-
-			Which side(s) the border width applies to.
-			"ba" (str) - Border the item on all sides
-			"bt" (str) - Border the item to the top
-			"bb" (str) - Border the item to the bottom
-			"bl" (str) - Border the item to the left
-			"br" (str) - Border the item to the right
-
-			Whether the sizer item will expand or change shape.
-			"ex" (str) - Item expands to fill as much space as it can
-			"ea" (str) - Item expands, but maintain aspect ratio
-			"fx" (str) - Item will not change size when the window is resized
-			"fh" (str) - Item will still take up space, even if hidden
-
-			These are some common combinations of flags.
-			"c1" (str) - "ac", "ba", and "ex"
-			"c2" (str) - "ba" and "ex"
-			"c3" (str) - "ba" and "ea"
-			"c4" (str) - "al", "bl", "br"
-
-		stretchable (bool) - Whether or not the item will grow and shrink with respect to a parent sizer
-		border (int)       - The width of the item's border
-
-		Example Input: _getItemMod("ac")
-		Example Input: _getItemMod("ac", border = 10)
-		Example Input: _getItemMod("c1")
-		"""
-
-		#Determine the flag types
-		fixedFlags = ""
-		if (flags is not None):
-			#Ensure that 'flags' is a list
-			if (not isinstance(flags, list)):
-				flags = [flags]
-
-			#Evaluate each flag
-			for flag in flags:
-				flag = flag.lower()
-				##Typical combinations
-				if (flag[0] == "c"):
-					#Align to center, Border all sides, expand to fill space
-					if (flag[1] == "1"):
-						if (fixedFlags != ""):
-							fixedFlags += "|"
-						fixedFlags += "wx.ALIGN_CENTER|wx.ALL|wx.EXPAND"
-
-					#Border all sides, expand to fill space
-					elif (flag[1] == "2"):
-						if (fixedFlags != ""):
-							fixedFlags += "|"
-						fixedFlags += "wx.ALL|wx.EXPAND"
-
-					#Border all sides, expand to fill space while maintaining aspect ratio
-					elif (flag[1] == "3"):
-						if (fixedFlags != ""):
-							fixedFlags += "|"
-						fixedFlags += "wx.ALL|wx.SHAPED"
-
-					#Align to left, Border left and right side
-					elif (flag[1] == "4"):
-						if (fixedFlags != ""):
-							fixedFlags += "|"
-						fixedFlags += "wx.ALIGN_LEFT|wx.LEFT|wx.RIGHT"
-
-					#Unknown Action
-					else:
-						errorMessage = f"Unknown combination flag {flag}"
-						raise ValueError(errorMessage)
-
-				##Align the Item
-				elif (flag[0] == "a"):
-					#Center 
-					if (flag[1] == "c"):
-						if (fixedFlags != ""):
-							fixedFlags += "|"
-						fixedFlags += "wx.ALIGN_CENTER"
-
-					#Center Vertical
-					elif (flag[1] == "v"):
-						if (fixedFlags != ""):
-							fixedFlags += "|"
-						fixedFlags += "wx.ALIGN_CENTER_VERTICAL"
-
-					#Center Horizontal
-					elif (flag[1] == "h"):
-						fixedFlags += "wx.ALIGN_CENTER_HORIZONTAL"
-						
-					#Top
-					elif (flag[1] == "t"):
-						if (fixedFlags != ""):
-							fixedFlags += "|"
-						fixedFlags += "wx.ALIGN_TOP"
-						
-					#Bottom
-					elif (flag[1] == "b"):
-						if (fixedFlags != ""):
-							fixedFlags += "|"
-						fixedFlags += "wx.ALIGN_BOTTOM"
-						
-					#Left
-					elif (flag[1] == "l"):
-						if (fixedFlags != ""):
-							fixedFlags += "|"
-						fixedFlags += "wx.ALIGN_LEFT"
-						
-					#Right
-					elif (flag[1] == "r"):
-						if (fixedFlags != ""):
-							fixedFlags += "|"
-						fixedFlags += "wx.ALIGN_RIGHT"
-
-					#Unknown Action
-					else:
-						errorMessage = f"Unknown alignment flag {flag}"
-						raise ValueError(errorMessage)
-
-				##Border the Item
-				elif (flag[0] == "b"):
-					#All
-					if (flag[1] == "a"):
-						if (fixedFlags != ""):
-							fixedFlags += "|"
-						fixedFlags += "wx.ALL"
-						
-					#Top
-					elif (flag[1] == "t"):
-						if (fixedFlags != ""):
-							fixedFlags += "|"
-						fixedFlags += "wx.TOP"
-						
-					#Bottom
-					elif (flag[1] == "b"):
-						if (fixedFlags != ""):
-							fixedFlags += "|"
-						fixedFlags += "wx.BOTTOM"
-						
-					#Left
-					elif (flag[1] == "l"):
-						if (fixedFlags != ""):
-							fixedFlags += "|"
-						fixedFlags += "wx.LEFT"
-						
-					#Right
-					elif (flag[1] == "r"):
-						if (fixedFlags != ""):
-							fixedFlags += "|"
-						fixedFlags += "wx.RIGHT"
-
-					#Unknown Action
-					else:
-						errorMessage = f"Unknown border flag {flag}"
-						raise ValueError(errorMessage)
-
-				##Expand the Item
-				elif (flag[0] == "e"):
-					#Expand
-					if (flag[1] == "x"):
-						if (fixedFlags != ""):
-							fixedFlags += "|"
-						fixedFlags += "wx.EXPAND"
-						
-					#Expand with Aspect Ratio
-					elif (flag[1] == "a"):
-						if (fixedFlags != ""):
-							fixedFlags += "|"
-						fixedFlags += "wx.SHAPED"
-
-					#Unknown Action
-					else:
-						errorMessage = f"Unknown expand flag {flag}"
-						raise ValueError(errorMessage)
-
-				##Fixture the Item
-				elif (flag[0] == "f"):
-					#Fixed Size
-					if (flag[1] == "x"):
-						fixedFlags += "wx.FIXED_MINSIZE"
-						
-					#Fixed Space when hidden
-					elif (flag[1] == "h"):
-						fixedFlags += "wx.RESERVE_SPACE_EVEN_IF_HIDDEN"
-
-					#Unknown Action
-					else:
-						errorMessage = f"Unknown fixture flag {flag}"
-						raise ValueError(errorMessage)
-
-				##Unknown Action
-				else:
-					errorMessage = f"Unknown flag {flag}"
-					raise ValueError(errorMessage)
-		else:
-			fixedFlags = "0"
-
-		#Determine stretchability
-		if (stretchable):
-			position = 1
-		else:
-			position = 0
-
-		return fixedFlags, position, border
-
-	def _getImage(self, imagePath, internal = False, alpha = False, scale = None, returnIcon = False, rotate = None):
-		"""Returns the image as specified by the user.
-
-		imagePath (str) - Where the image is on the computer. Can be a PIL image. If None, it will be a blank image
-			If 'internal' is on, it is the name of an icon as a string. Here is a list of the icon names:
-				"error"       - A red circle with an 'x' in it
-				"question"    - A white speach bubble with a '?' in it
-				"question2"   - A white speach bubble with a '?' in it. Looks different from "question"
-				"warning"     - A yellow yield sign with a '!' in it
-				"info"        - A white circle with an 'i' in it
-				"font"        - A times new roman 'A'
-				"arrowLeft"   - A white arrow pointing left
-				"arrowRight"  - A white arrow pointing right
-				"arrowUp"     - A white arrow pointing up
-				"arrowDown"   - A white arrow pointing down
-				"arrowCurve"  - A white arrow that moves left and then up
-				"home"        - A white house
-				"print"       - A printer
-				"open"        - "folderOpen" with a green arrow curiving up and then down inside it
-				"save"        - A blue floppy disk
-				"saveAs"      - "save" with a yellow spark in the top right corner
-				"delete"      - "markX" in a different style
-				"copy"        - Two "page" stacked on top of each other with a southeast offset
-				"cut"         - A pair of open scissors with red handles
-				"paste"       - A tan clipboard with a blank small version of "page2" overlapping with an offset to the right
-				"undo"        - A blue arrow that goes to the right and turns back to the left
-				"redo"        - A blue arrow that goes to the left and turns back to the right
-				"lightBulb"   - A yellow light bulb with a '!' in it
-				"folder"      - A blue folder
-				"folderNew"   - "folder" with a yellow spark in the top right corner
-				"folderOpen"  - An opened version of "folder"
-				"folderUp"    - "folderOpen" with a green arrow pointing up inside it
-				"page"        - A blue page with lines on it
-				"page2"       - "page" in a different style
-				"pageNew"     - "page" with a green '+' in the top left corner
-				"pageGear"    - "page" with a blue gear in the bottom right corner
-				"pageTorn"    - A grey square with a white border torn in half lengthwise
-				"markCheck"   - A black check mark
-				"markX"       - A black 'X'
-				"plus"        - ?
-				"minus"       - ?
-				"close"       - A black 'X'
-				"quit"        - A door opening to the left with a green arrow coming out of it to the right
-				"find"        - A magnifying glass
-				"findReplace" - "find" with a double sided arrow in the bottom left corner pointing left and right
-				"first"       - ?
-				"last"        - ?
-				"diskHard"    - ?
-				"diskFloppy"  - ?
-				"diskCd"      - ?
-				"book"        - A blue book with white pages
-				"addBookmark" - A green banner with a '+' by it
-				"delBookmark" - A red banner with a '-' by it
-				"sidePanel"   - A grey box with lines in with a white box to the left with arrows pointing left and right
-				"viewReport"  - A white box with lines in it with a grey box with lines in it on top
-				"viewList"    - A white box with squiggles in it with a grey box with dots in it to the left
-		internal (bool) - If True: 'imagePath' is the name of an icon as a string.
-		alpha (bool)    - If True: The image will preserve any alpha chanels
-
-		Example Input: _getImage("example.bmp")
-		Example Input: _getImage(image)
-		Example Input: _getImage("error", internal = True)
-		Example Input: _getImage("example.bmp", alpha = True)
-		Example Input: _getImage(image, scale = 1.5)
-		Example Input: _getImage(image, scale = (32, 32))
-		Example Input: _getImage(image, rotate = 90)
-		"""
-
-		if ((imagePath is not None) and (imagePath != "")):
-			if (not isinstance(imagePath, str)):
-				if (PIL.Image.isImageType(imagePath)):
-					if (self is None):
-						util = Utilities()
-						image = util._convertPilToBitmap(imagePath, alpha)
-					else:
-						image = self._convertPilToBitmap(imagePath, alpha)
-				else:
-					errorMessage = f"Unknown file type {type(imagePath)} for _getImage() in {self.__repr__()}"
-					raise KeyError(errorMessage)
-			else:
-				if (internal):
-					if (imagePath == "error"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_ERROR)
-						
-					elif (imagePath == "question"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_QUESTION)
-						
-					elif (imagePath == "question2"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_HELP)
-						
-					elif (imagePath == "warning"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_WARNING)
-						
-					elif (imagePath == "info"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_INFORMATION)
-						
-					elif (imagePath == "font"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_HELP_SETTINGS)
-						
-					elif (imagePath == "arrowLeft"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_GO_BACK)
-						
-					elif (imagePath == "arrowRight"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_GO_FORWARD)
-						
-					elif (imagePath == "arrowUp"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_GO_UP)
-						
-					elif (imagePath == "arrowDown" ):
-						image = wx.ArtProvider.GetBitmap(wx.ART_GO_DOWN)
-						
-					elif (imagePath == "arrowCurve"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_GO_TO_PARENT)
-						
-					elif (imagePath == "home"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_GO_HOME)
-						
-					elif (imagePath == "print"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_PRINT)
-						
-					elif (imagePath == "open"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_FILE_OPEN)
-						
-					elif (imagePath == "save"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE)
-						
-					elif (imagePath == "saveAs"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE_AS)
-						
-					elif (imagePath == "delete"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_DELETE)
-						
-					elif (imagePath == "copy"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_COPY)
-						
-					elif (imagePath == "cut"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_CUT)
-						
-					elif (imagePath == "paste"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_PASTE)
-						
-					elif (imagePath == "undo"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_UNDO)
-						
-					elif (imagePath == "redo"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_REDO)
-						
-					elif (imagePath == "lightBulb"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_TIP)
-						
-					elif (imagePath == "folder"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_FOLDER)
-						
-					elif (imagePath == "folderNew"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_NEW_DIR)
-						
-					elif (imagePath == "folderOpen"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_FOLDER_OPEN)
-						
-					elif (imagePath == "folderUp"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_GO_DIR_UP)
-						
-					elif (imagePath == "page"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_NORMAL_FILE)
-						
-					elif (imagePath == "page2"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_HELP_PAGE)
-						
-					elif (imagePath == "pageNew"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_NEW)
-						
-					elif (imagePath == "pageGear"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_EXECUTABLE_FILE)
-						
-					elif (imagePath == "pageTorn"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_MISSING_IMAGE)
-						
-					elif (imagePath == "markCheck"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_TICK_MARK)
-						
-					elif (imagePath == "markX"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_CROSS_MARK)
-						
-					elif (imagePath == "plus"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_PLUS)
-						
-					elif (imagePath == "minus"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_MINUS)
-						
-					elif (imagePath == "close"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_CLOSE)
-						
-					elif (imagePath == "quit"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_QUIT)
-						
-					elif (imagePath == "find"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_FIND)
-						
-					elif (imagePath == "findReplace"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_FIND_AND_REPLACE)
-						
-					elif (imagePath == "first"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_GOTO_FIRST)
-						
-					elif (imagePath == "last"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_GOTO_LAST)
-						
-					elif (imagePath == "diskHard"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_HARDDISK)
-						
-					elif (imagePath == "diskFloppy"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_FLOPPY)
-						
-					elif (imagePath == "diskCd"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_CDROM)
-						
-					elif (imagePath == "book"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_HELP_BOOK)
-						
-					elif (imagePath == "addBookmark"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_ADD_BOOKMARK)
-						
-					elif (imagePath == "delBookmark"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_DEL_BOOKMARK)
-						
-					elif (imagePath == "sidePanel"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_HELP_SIDE_PANEL)
-						
-					elif (imagePath == "viewReport"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_REPORT_VIEW)
-						
-					elif (imagePath == "viewList"):
-						image = wx.ArtProvider.GetBitmap(wx.ART_LIST_VIEW)
-						
-					else:
-						errorMessage = f"The icon {imagePath} cannot be found"
-						raise KeyError(errorMessage)
-				else:
-					try:
-						image = wx.Bitmap(imagePath)
-					except:
-						image = wx.Image(imagePath, wx.BITMAP_TYPE_BMP).ConvertToBitmap()
-		else:
-			image = wx.NullBitmap
-
-		if ((scale is not None) or (rotate is not None)):
-			image = image.ConvertToImage()
-
-			if (scale is not None):
-				if (not isinstance(scale, (list, tuple))):
-					scale = [scale, scale]
-
-				if (isinstance(scale[0], float)):
-					scale[0] = math.ceil(image.GetWidth() * scale[0])
-				if (isinstance(scale[1], float)):
-					scale[1] = math.ceil(image.GetHeight() * scale[1])
-				image = image.Scale(*scale)
-
-			if (rotate is not None):
-				image.SetMaskColour(255, 255, 255)
-				if (isinstance(rotate, (list, tuple))):
-					rotate = rotate[0]
-					center = rotate[1]
-				else:
-					center = (image.GetWidth() / 2, image.GetHeight() / 2)
-
-				image = image.Rotate(math.radians(rotate), center)
-
-			image = wx.Bitmap(image)
-
-		if (returnIcon):
-			return wx.Icon(image)
-		return image
-
-	def _getColor(self, color):
-		"""Returns a wxColor object.
-
-		color (str) - What color to return
-			- If tuple: Will interperet as (Red, Green, Blue). Values can be integers from 0 to 255 or floats from 0.0 to 1.0
-
-		Example Input: _getColor("white")
-		Example Input: _getColor((255, 255, 0))
-		Example Input: _getColor((0.5, 0.5, 0.5))
-		Example Input: _getColor((255, 0.5, 0))
-		"""
-
-		if (not isinstance(color, (list, types.GeneratorType))):
-			color = [color]
-		
-		answer = []
-		for _color in color:
-			if (_color is None):
-				answer.append(wx.NullColour)
-			else:
-				if (isinstance(_color, str)):
-					if (_color[0].lower() == "w"):
-						_color = (255, 255, 255)
-					elif (_color[:3].lower() == "bla"):
-						_color = (0, 0, 0)
-					if (_color[0].lower() == "r"):
-						_color = (255, 0, 0)
-					if (_color[0].lower() == "g"):
-						_color = (0, 255, 0)
-					if (_color[:3].lower() == "blu"):
-						_color = (0, 0, 255)
-					else:
-						warnings.warn(f"Unknown color {_color} given to _getColor in {self.__repr__()}", Warning, stacklevel = 2)
-						return
-				elif (not isinstance(_color, (list, tuple, range))):
-						warnings.warn(f"'color' must be a tuple or string, not a {type(_color)}, for _getColor in {self.__repr__()}", Warning, stacklevel = 2)
-						return
-				elif (len(_color) != 3):
-						warnings.warn(f"'color' must have a length of three, not {len(_color)}, for _getColor in {self.__repr__()}", Warning, stacklevel = 2)
-						return
-
-				_color = list(_color)
-				for i, item in enumerate(_color):
-					if (isinstance(item, float)):
-						_color[i] = math.ceil(item * 255)
-
-				answer.append(wx.Colour(_color[0], _color[1], _color[2]))
-		
-		if (len(answer) == 1):
-			return answer[0]
-		return answer
-
-	def _getFont(self, size = None, bold = False, italic = False, color = None, family = None):
-		"""Returns a wxFont object.
-
-		size (int)    - The font size of the text  
-		bold (bool)   - Determines the boldness of the text
-			- If True: The font will be bold
-			- If False: The font will be normal
-			- If None: The font will be light
-		italic (bool) - Determines the italic state of the text
-			- If True: The font will be italicized
-			- If False: The font will not be italicized
-			- If None: The font will be slanted
-		color (str)   - The color of the text. Can be an RGB tuple (r, g, b) or hex value
-			- If None: Will use black
-		family (str)  - What font family it is.
-			~ "times new roman"
-
-		Example Input: _getFont()
-		Example Input: _getFont(size = 72, bold = True, color = "red")
-		"""
-
-		#Configure the font object
-		if (italic is not None):
-			if (italic):
-				italic = wx.ITALIC
-			else:
-				italic = wx.NORMAL
-		else:
-			italic = wx.SLANT
-
-		if (bold is not None):
-			if (bold):
-				bold = wx.BOLD
-			else:
-				bold = wx.NORMAL
-		else:
-			bold = wx.LIGHT
-
-		if (family == "TimesNewRoman"):
-			family = wx.ROMAN
-		else:
-			family = wx.DEFAULT
-
-		if (size is None):
-			size = wx.DEFAULT
-
-		font = wx.Font(size, family, italic, bold)
-
-		return font
-
-	def _getWildcard(self, wildcard = None):
-		"""Returns a formatted file picker wildcard.
-
-		Example Input: _getWildcard()
-		Example Input: _getWildcard(wildcard)
-		"""
-
-		if (wildcard is None):
-			answer = "All files (*.*)|*.*"
-
-		elif (isinstance(wildcard, dict)):
-			myList = []
-			for key, valueList in {key: value if (isinstance(value, (list, tuple, types.GeneratorType))) else [value] for key, value in wildcard.items()}.items():
-				fileTypes = "; ".join(f"*.{value}" if (value is not None) else "*.*" for value in valueList)
-				if (key is not None):
-					myList.append(f"{key} ({fileTypes})|{fileTypes}")
-				else:
-					if (fileTypes == "*.*"):
-						myList.append(f"All Files (*.*)|*.*")
-					else:
-						myList.append(f"{fileTypes}|{fileTypes}")
-			answer = '|'.join(myList)
-
-		elif (isinstance(wildcard, (list, tuple, types.GeneratorType))):
-			answer = '|'.join(f"*.{item}|*.{item}" if (item is not None) else "All files (*.*)|*.*" for item in wildcard)
-
-		else:
-			answer = wildcard
-
-		return answer
-
-	#Converters
-	def _convertImageToBitmap(self, imgImage):
-		"""Converts a wxImage image (wxPython) to a wxBitmap image (wxPython).
-		Adapted from: https://wiki.wxpython.org/WorkingWithImages
-
-		imgImage (object) - The wxBitmap image to convert
-
-		Example Input: _convertImageToBitmap(image)
-		"""
-
-		bmpImage = imgImage.ConvertToBitmap()
-		return bmpImage
-
-	def _convertBitmapToImage(self, bmpImage):
-		"""Converts a wxBitmap image (wxPython) to a wxImage image (wxPython).
-		Adapted from: https://wiki.wxpython.org/WorkingWithImages
-
-		bmpImage (object) - The wxBitmap image to convert
-
-		Example Input: _convertBitmapToImage(image)
-		"""
-
-		#Determine if a static bitmap was given
-		classType = bmpImage.GetClassName()
-		if (classType == "wxStaticBitmap"):
-			bmpImage = bmpImage.GetBitmap()
-
-		imgImage = bmpImage.ConvertToImage()
-		return imgImage
-
-	def _convertImageToPil(self, imgImage):
-		"""Converts a wxImage image (wxPython) to a PIL image (pillow).
-		Adapted from: https://wiki.wxpython.org/WorkingWithImages
-
-		imgImage (object) - The wxImage image to convert
-
-		Example Input: _convertImageToPil(image)
-		"""
-
-		pilImage = PIL.Image.new("RGB", (imgImage.GetWidth(), imgImage.GetHeight()))
-		pilImage.fromstring(imgImage.GetData())
-		return pilImage
-
-	def _convertBitmapToPil(self, bmpImage):
-		"""Converts a wxBitmap image (wxPython) to a PIL image (pillow).
-		Adapted from: https://wiki.wxpython.org/WorkingWithImages
-
-		bmpImage (object) - The wxBitmap image to convert
-
-		Example Input: _convertBitmapToPil(image)
-		"""
-
-		imgImage = self._convertBitmapToImage(bmpImage)
-		pilImage = self._convertImageToPil(imgImage)
-		return pilImage
-
-	def _convertPilToImage(self, pilImage, alpha = False):
-		"""Converts a PIL image (pillow) to a wxImage image (wxPython).
-		Adapted from: https://wiki.wxpython.org/WorkingWithImages
-
-		pilImage (object) - The PIL image to convert
-		alpha (bool)      - If True: The image will preserve any alpha chanels
-
-		Example Input: _convertPilToImage(image)
-		Example Input: _convertPilToImage(image, True)
-		"""
-
-		imgImage = wx.Image(pilImage.size[0], pilImage.size[1])
-
-		hasAlpha = pilImage.mode[-1] == 'A'
-		if (hasAlpha and alpha):
-			pilImageCopyRGBA = pilImage.copy()
-			pilImageRgbData = pilImageCopyRGBA.convert("RGB").tobytes()
-			imgImage.SetData(pilImageRgbData)
-			imgImage.SetAlpha(pilImageCopyRGBA.tobytes()[3::4])
-
-		else:
-			pilImage = pilImage.convert("RGB").tobytes()
-			imgImage.SetData(pilImage)
-
-		return imgImage
-
-	def _convertPilToBitmap(self, pilImage, alpha = False):
-		"""Converts a PIL image (pillow) to a wxBitmap image (wxPython).
-		Adapted from: https://wiki.wxpython.org/WorkingWithImages
-
-		pilImage (object) - The PIL image to convert
-		alpha (bool)      - If True: The image will preserve any alpha chanels
-
-		Example Input: _convertPilToBitmap(image)
-		"""
-
-		imgImage = self._convertPilToImage(pilImage, alpha)
-		bmpImage = self._convertImageToBitmap(imgImage)
-		return bmpImage
-
 	#Etc
 	def _logPrint(self, *args, fileName = "cmd_log.log", timestamp = True, **kwargs):
 		"""Overrides the print function to also log the information printed.
@@ -3097,7 +2378,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
 
 		if (useDC):
 			#Get the current font
-			font = self._getFont()
+			font = self.getFont()
 			dc = wx.WindowDC(self)
 			dc.SetFont(font)
 
@@ -5918,7 +5199,7 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 			elif (not isinstance(flags, list)):
 				flags = [flags]
 			flags.extend(handle.flags_modification)
-			flags, position, border = self._getItemMod(flags)
+			flags, position, border = self.getItemMod(flags)
 
 			if (isinstance(handle, handle_Base_NotebookPage)):
 				handle.mySizerItem = self.thing.Add(handle.mySizer.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
@@ -7782,7 +7063,7 @@ class handle_WidgetText(handle_Widget_Base):
 			#Create the thing to put in the grid
 			self.thing = wx.StaticText(self.parent.thing, id = myId, label = text, style = functools.reduce(operator.ior, style or (0,)))
 
-			# font = self._getFont(size = size, bold = bold, italic = italic, color = color, family = family)
+			# font = self.getFont(size = size, bold = bold, italic = italic, color = color, family = family)
 			# self.thing.SetFont(font)
 
 			# if (wrap is not None):
@@ -8959,13 +8240,13 @@ class handle_WidgetList(handle_Widget_Base):
 
 	def setColor(self, even = None, odd = None, selected = None, group = None):
 		if (even is not None):
-			self.thing.evenRowsBackColor = self._getColor(even)
+			self.thing.evenRowsBackColor = self.getColor(even)
 		if (odd is not None):
-			self.thing.oddRowsBackColor = self._getColor(odd)
+			self.thing.oddRowsBackColor = self.getColor(odd)
 		if (selected is not None):
-			self.selectionColor = self._getColor(selected)
+			self.selectionColor = self.getColor(selected)
 		if (group is not None):
-			self.thing.groupBackgroundColour = self._getColor(group)
+			self.thing.groupBackgroundColour = self.getColor(group)
 
 	def getSortColumn(self):
 		column = self.thing.GetSortColumn()
@@ -9503,7 +8784,7 @@ class handle_WidgetList(handle_Widget_Base):
 			if (color is None):
 				colorHandle = None
 			else:
-				colorHandle = self._getColor(color)
+				colorHandle = self.getColor(color)
 
 			if (row is not None):
 				if (column is not None):
@@ -10523,10 +9804,10 @@ class handle_WidgetButton(handle_Widget_Base):
 
 				if ((imagePath != "") and (imagePath is not None)):
 					if ((((internal is not None) and (not internal)) or ((internal is None) and (not internalDefault))) and (not os.path.exists(imagePath))):
-						return self._getImage("error", internal = True)
+						return self.getImage("error", internal = True)
 					elif (internal is not None):
-						return self._getImage(imagePath, internal)
-					return self._getImage(imagePath, internalDefault)
+						return self.getImage(imagePath, internal)
+					return self.getImage(imagePath, internalDefault)
 				else:
 					return None
 
@@ -10545,7 +9826,7 @@ class handle_WidgetButton(handle_Widget_Base):
 			#Error Check
 			image = _imageCheck(idlePath, idle_internal, internal)
 			if (image is None):
-				image = self._getImage("error", internal = True)
+				image = self.getImage("error", internal = True)
 
 			#Remember values
 			self.toggle = toggle
@@ -10919,7 +10200,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			# if (initialFile is None):
 			#   initialFile = ""
 
-			wildcard = self._getWildcard(wildcard)
+			wildcard = self.getWildcard(wildcard)
 
 			#Create the thing to put in the grid
 			if (directoryOnly):
@@ -11179,7 +10460,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			else:
 				style = "0"
 
-			# font = self._getFont()
+			# font = self.getFont()
 			font = wx.NullFont
 
 			myId = self._getId(argument_catalogue)
@@ -11412,7 +10693,7 @@ class handle_WidgetImage(handle_Widget_Base):
 			imagePath, internal, size = self._getArguments(argument_catalogue, ["imagePath", "internal", "size"])
 
 			#Get correct image
-			image = self._getImage(imagePath, internal)
+			image = self.getImage(imagePath, internal)
 
 			myId = self._getId(argument_catalogue)
 		
@@ -11448,7 +10729,7 @@ class handle_WidgetImage(handle_Widget_Base):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
 		if (self.type is Types.image):
-			image = self._getImage(newValue)
+			image = self.getImage(newValue)
 			self.thing.SetBitmap(image) #(wxBitmap) - What the image will be now
 
 		else:
@@ -12399,7 +11680,7 @@ class handle_MenuItem(handle_Widget_Base):
 					#Determine icon
 					icon, internal = self._getArguments(argument_catalogue, ["icon", "internal"])
 					if (icon is not None):
-						image = self._getImage(icon, internal, scale = (16, 16))
+						image = self.getImage(icon, internal, scale = (16, 16))
 						# image = self._convertBitmapToImage(image)
 						# image = image.Scale(16, 16, wx.IMAGE_QUALITY_HIGH)
 						# image = self._convertImageToBitmap(image)
@@ -12478,14 +11759,14 @@ class handle_MenuItem(handle_Widget_Base):
 						warnings.warn(f"No icon provided for {self.__repr__()}", Warning, stacklevel = 5)
 						icon = "error"
 						internal = True
-					image = self._getImage(icon, internal, scale = scale)
+					image = self.getImage(icon, internal, scale = scale)
 
 					if (disabled_icon is None):
 						imageDisabled = wx.NullBitmap
 					else:
 						if (disabled_internal is None):
 							disabled_internal = internal
-						imageDisabled = self._getImage(disabled_icon, disabled_internal, scale = disabled_scale)
+						imageDisabled = self.getImage(disabled_icon, disabled_internal, scale = disabled_scale)
 
 					#Configure Settings
 					# if (toolTip is None):
@@ -13234,7 +12515,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		Example Input: save("example.png")
 		"""
 
-		image = self.getImage()
+		image = self.getCanvasImage()
 		image.SaveFile(fileName, fileType)
 
 	def _getDC(self):
@@ -13246,7 +12527,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 
 		return dc
 
-	def getImage(self):
+	def getCanvasImage(self):
 		"""Returns an image with the canvas on it."""
 
 		width, height = self.getSize()
@@ -13386,7 +12667,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 				self.runMyFunction(myFunctionEvaluated, myFunctionArgs, myFunctionKwargs)
 
 	#Drawing Functions
-	def _getPen(self, color, width = 1):
+	def getPen(self, color, width = 1):
 		"""Returns a pen or list of pens to the user.
 		Pens are used to draw shape outlines.
 
@@ -13394,9 +12675,9 @@ class handle_WidgetCanvas(handle_Widget_Base):
 					  - If a list of tuples is given: A brush for each color will be created
 		width (int)   - How thick the pen will be
 
-		Example Input: _getPen((255, 0, 0))
-		Example Input: _getPen((255, 0, 0), 3)
-		Example Input: _getPen([(255, 0, 0), (0, 255, 0)])
+		Example Input: getPen((255, 0, 0))
+		Example Input: getPen((255, 0, 0), 3)
+		Example Input: getPen([(255, 0, 0), (0, 255, 0)])
 		"""
 
 		#Account for brush lists
@@ -13425,7 +12706,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 
 		return pen
 
-	def _getBrush(self, color, style = "solid", image = None, internal = False):
+	def getBrush(self, color, style = "solid", image = None, internal = False):
 		"""Returns a pen or list of pens to the user.
 		Brushes are used to fill shapes
 
@@ -13437,18 +12718,18 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		image (str)    - If 'style' has "image" in it: This is the image that is used for the bitmap. Can be a PIL image
 		internal (str) - If True and 'style' has "image" in it: 'image' is an iternal image
 
-		Example Input: _getBrush((255, 0, 0))
-		Example Input: _getBrush([(255, 0, 0), (0, 255, 0)])
-		Example Input: _getBrush((255, 0, 0), style = "hatchCross)
-		Example Input: _getBrush([(255, 0, 0), (0, 255, 0)], ["hatchCross", "solid"])
-		Example Input: _getBrush(None)
-		Example Input: _getBrush([(255, 0, 0), None])
+		Example Input: getBrush((255, 0, 0))
+		Example Input: getBrush([(255, 0, 0), (0, 255, 0)])
+		Example Input: getBrush((255, 0, 0), style = "hatchCross)
+		Example Input: getBrush([(255, 0, 0), (0, 255, 0)], ["hatchCross", "solid"])
+		Example Input: getBrush(None)
+		Example Input: getBrush([(255, 0, 0), None])
 		"""
 
 		#Account for void color
 		if (color is None):
 			color = wx.Colour(0, 0, 0)
-			style, image = self._getBrushStyle("transparent", None)
+			style, image = self.getBrushStyle("transparent", None)
 			brush = wx.Brush(color, style)
 
 		else:
@@ -13482,15 +12763,15 @@ class handle_WidgetCanvas(handle_Widget_Base):
 					if (multiple[1]):
 						#Account for void color
 						if (color[i] is not None):
-							style, image = self._getBrushStyle(style[i], image)
+							style, image = self.getBrushStyle(style[i], image)
 						else:
-							style, image = self._getBrushStyle("transparent", None)
+							style, image = self.getBrushStyle("transparent", None)
 					else:
 						#Account for void color
 						if (color is not None):
-							style, image = self._getBrushStyle(style, image)
+							style, image = self.getBrushStyle(style, image)
 						else:
-							style, image = self._getBrushStyle("transparent", None)
+							style, image = self.getBrushStyle("transparent", None)
 
 					#Create bruh
 					brush = wx.Brush(color, style)
@@ -13509,10 +12790,10 @@ class handle_WidgetCanvas(handle_Widget_Base):
 				if (color is not None):
 					#Create brush
 					color = wx.Colour(color[0], color[1], color[2])
-					style, image = self._getBrushStyle(style, image)
+					style, image = self.getBrushStyle(style, image)
 				else:
 					color = wx.Colour(0, 0, 0)
-					style, image = self._getBrushStyle("transparent", None)
+					style, image = self.getBrushStyle("transparent", None)
 				brush = wx.Brush(color, style)
 
 				#Bind image if an image style was used
@@ -13521,7 +12802,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 
 		return brush
 
-	def _getBrushStyle(self, style, image = None, internal = False):
+	def getBrushStyle(self, style, image = None, internal = False):
 		"""Returns a brush style to the user.
 
 		style (str) - What style the shape fill will be. Only some of the letters are needed. The styles are:
@@ -13542,10 +12823,10 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		image (str)    - If 'style' has "image" in it: This is the image that is used for the bitmap. Can be a PIL image
 		internal (str) - If True and 'style' has "image" in it: 'image' is an iternal image
 
-		Example Input: _getBrushStyle("solid")
-		Example Input: _getBrushStyle("image", image)
-		Example Input: _getBrushStyle("image", "example.bmp")
-		Example Input: _getBrushStyle("image", "error", True)
+		Example Input: getBrushStyle("solid")
+		Example Input: getBrushStyle("image", image)
+		Example Input: getBrushStyle("image", "example.bmp")
+		Example Input: getBrushStyle("image", "error", True)
 		"""
 
 		#Ensure lower case
@@ -13570,7 +12851,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 			#Make sure an image was given
 			if (image is not None):
 				#Ensure correct image format
-				image = self._getImage(imagePath, internal)
+				image = self.getImage(imagePath, internal)
 
 				#Determine style
 				if ("t" in style):
@@ -13582,7 +12863,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 				else:
 					style = wx.BRUSHSTYLE_STIPPLE
 			else:
-				warnings.warn(f"Must supply an image path in _getBrushStyle() to use the style for {self.__repr__()}", Warning, stacklevel = 2)
+				warnings.warn(f"Must supply an image path in getBrushStyle() to use the style for {self.__repr__()}", Warning, stacklevel = 2)
 				style = wx.BRUSHSTYLE_TRANSPARENT
 
 		#Hatch
@@ -13609,7 +12890,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 			image = None
 
 		else:
-			warnings.warn(f"Unknown style {style} in _getBrushStyle() for {self.__repr__()}", Warning, stacklevel = 2)
+			warnings.warn(f"Unknown style {style} in getBrushStyle() for {self.__repr__()}", Warning, stacklevel = 2)
 			style = wx.BRUSHSTYLE_TRANSPARENT
 			image = None
 
@@ -13714,7 +12995,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		def rotateFunction(dc):
 			nonlocal self, angle, center
 
-			image = self.getImage()
+			image = self.getCanvasImage()
 			image.Rotate(angle, center)
 			tempDC = wx.MemoryDC(image.ConvertToBitmap())
 			boundingBox = tempDC.GetBoundingBox()
@@ -13746,7 +13027,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		#Skip blank images
 		if (imagePath is not None):
 			#Get correct image
-			image = self._getImage(imagePath, internal, alpha = alpha, scale = scale, rotate = rotate)
+			image = self.getImage(imagePath, internal, alpha = alpha, scale = scale, rotate = rotate)
 
 			if (x is None):
 				x = 0
@@ -13831,10 +13112,10 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		else:
 			_text = text
 
-		font = self._getFont(size = size, bold = bold, italic = italic, color = color, family = family)
+		font = self.getFont(size = size, bold = bold, italic = italic, color = color, family = family)
 		self._queue("dc.SetFont", font)
 
-		pen = self._getPen(color)
+		pen = self.getPen(color)
 		self._queue("dc.SetPen", pen)
 
 		if (align is not None):
@@ -13943,7 +13224,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		"""
 
 		#Determine point color
-		pen = self._getPen(color)
+		pen = self.getPen(color)
 
 		#Draw the point
 		if (isinstance(x, (tuple, list))):
@@ -13974,7 +13255,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		"""
 
 		#Determine line color
-		pen = self._getPen(color, width)
+		pen = self.getPen(color, width)
 
 		#Draw the line
 		if (isinstance(x1, (tuple, list))):
@@ -14008,7 +13289,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		"""
 
 		#Determine spline color
-		pen = self._getPen(color)
+		pen = self.getPen(color)
 
 		#Draw the spline
 		if ((type(points) == list) or (type(points) == tuple)):
@@ -14070,8 +13351,8 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		"""
 
 		#Determine arc color
-		pen = self._getPen(outline)
-		brush = self._getBrush(fill, style)
+		pen = self.getPen(outline)
+		brush = self.getBrush(fill, style)
 
 		#Draw the arc
 		if ((type(x) == list) or (type(x) == tuple)):
@@ -14146,7 +13427,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		"""
 
 		#Determine check mark color
-		pen = self._getPen(color)
+		pen = self.getPen(color)
 
 		#Draw the line
 		if ((type(x) == list) or (type(x) == tuple)):
@@ -14226,8 +13507,8 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		"""
 
 		#Determine rectangle color
-		pen = self._getPen(outline, outlineWidth)
-		brush = self._getBrush(fill, style)
+		pen = self.getPen(outline, outlineWidth)
+		brush = self.getBrush(fill, style)
 
 		#Draw the rectangle
 		if ((type(x) == list) or (type(x) == tuple)):
@@ -14327,8 +13608,8 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		"""
 
 		#Determine point color
-		pen = self._getPen(outline, outlineWidth)
-		brush = self._getBrush(fill, style)
+		pen = self.getPen(outline, outlineWidth)
+		brush = self.getBrush(fill, style)
 
 		#Draw the polygon
 		if (type(points) == list):
@@ -14374,8 +13655,8 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		"""
 
 		#Determine circle color
-		pen = self._getPen(outline, outlineWidth)
-		brush = self._getBrush(fill, style)
+		pen = self.getPen(outline, outlineWidth)
+		brush = self.getBrush(fill, style)
 
 		#Draw the circle
 		if ((type(x) == list) or (type(x) == tuple)):
@@ -14447,8 +13728,8 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		"""
 
 		#Determine ellipse color
-		pen = self._getPen(outline, outlineWidth)
-		brush = self._getBrush(fill, style)
+		pen = self.getPen(outline, outlineWidth)
+		brush = self.getBrush(fill, style)
 
 		#Draw the ellipse
 		if ((type(x) == list) or (type(x) == tuple)):
@@ -15851,12 +15132,12 @@ class handle_WidgetTable(handle_Widget_Base):
 		if (color is None):
 			color = self.thing.GetDefaultCellBackgroundColour()
 		else:
-			color = self._getColor(color)
+			color = self.getColor(color)
 
 		if (textColor is None):
 			textColor = self.thing.GetDefaultCellTextColour()
 		else:
-			textColor = self._getColor(textColor)
+			textColor = self.getColor(textColor)
 
 		if ((row is None) and (column is None)):
 			for i in range(self.thing.GetNumberRows()):
@@ -15965,7 +15246,7 @@ class handle_WidgetTable(handle_Widget_Base):
 
 		self.thing.SetCellFont(row, column, font)
 
-		fixedFlags, position, border = self._getItemMod(flags)
+		fixedFlags, position, border = self.getItemMod(flags)
 	#########################################################
 
 	def hideTableRow(self, row):
@@ -19221,7 +18502,7 @@ class handle_Dialog(handle_Base):
 			if (initialFile is None):
 				initialFile = ""
 
-			wildcard = self._getWildcard(wildcard)
+			wildcard = self.getWildcard(wildcard)
 
 			#Create the thing to put in the grid
 			if (directoryOnly):
@@ -19393,7 +18674,7 @@ class handle_Dialog(handle_Base):
 				errorMessage = f"The {self.type} dialogue box {self.__repr__()} must be shown in the main thread, not a background thread"
 				raise SyntaxError(errorMessage)
 				# warnings.warn(errorMessage, Warning, stacklevel = 2)
-				return
+				# return
 
 		#Pause background functions
 		for variable, handleDict in self.controller.backgroundFunction_pauseOnDialog.items():
@@ -19926,7 +19207,7 @@ class handle_Dialog(handle_Base):
 			previewFrame = _MyPreviewFrame(self, preview, None, title = "Print Preview", 
 				pos = self.position or wx.DefaultPosition, size = self.size or wx.DefaultSize)
 
-			image = self._getImage("print", internal = True, returnIcon = True)
+			image = self.getImage("print", internal = True, returnIcon = True)
 			previewFrame.SetIcon(image)
 			previewFrame.Initialize()
 
@@ -20221,7 +19502,7 @@ class _MyPrintout(wx.Printout):
 				myCanvas._draw(dc, modifyUnits = False)
 
 		else:
-			image = self.parent._getImage(page)
+			image = self.parent.getImage(page)
 			dc.DrawBitmap(image, 0, 0)
 
 		return True
@@ -20347,6 +19628,8 @@ class handle_Window(handle_Container_Base):
 				style.append(wx.CAPTION)
 			else:
 				title = ""
+
+			#wx.FRAME_EX_CONTEXTHELP
 
 			#Make the frame
 			size, position, smallerThanScreen = self._getArguments(argument_catalogue, ["size", "position", "smallerThanScreen"])
@@ -21468,7 +20751,7 @@ class handle_Window(handle_Container_Base):
 		"""
 
 		#Get the image
-		myIcon = self._getImage(icon, internal, returnIcon = True)
+		myIcon = self.getImage(icon, internal, returnIcon = True)
 		# image = self._convertBitmapToImage(image)
 		# image = image.Scale(16, 16, wx.IMAGE_QUALITY_HIGH)
 		# image = self._convertImageToBitmap(image)
@@ -23332,7 +22615,7 @@ class handle_Notebook_Simple(handle_Base_Notebook):
 			size, position = self._getArguments(argument_catalogue, ["size", "position"])
 
 			#Configure Flags            
-			flags, x, border = self._getItemMod(flags)
+			flags, x, border = self.getItemMod(flags)
 
 			if (tabSide is None):
 				tabSide = "top"
@@ -24132,7 +23415,7 @@ class handle_NotebookPage_Simple(handle_Base_NotebookPage):
 			#Format Icon
 			icon_path, icon_internal = self._getArguments(argument_catalogue, ["icon_path", "icon_internal"])
 			if (icon_path is not None):
-				self.icon = self._getImage(icon_path, icon_internal)#, returnIcon = True)
+				self.icon = self.getImage(icon_path, icon_internal)#, returnIcon = True)
 			else:
 				self.icon = None
 				self.iconIndex = None
@@ -24451,7 +23734,7 @@ class Controller(Utilities, CommonEventFunctions):
 
 	def __init__(self, debugging = False, best = False, oneInstance = False, 
 		allowBuildErrors = None, checkComplexity = True, startInThread = False, 
-		newMainLoop = None, printMakeVariables = False, logCMD = False):
+		newMainLoop = None, printMakeVariables = False, logCMD = False, splash = None):
 		"""Defines the internal variables needed to run.
 
 		debugging (bool) - Determiens if debugging information is given to the user
@@ -24476,6 +23759,9 @@ class Controller(Utilities, CommonEventFunctions):
 
 		newMainLoop (function) - A function to run instead of wx.App.MainLoop
 			- If None: Will run wx.App.MainLoop
+
+		splash (SplashProcess) - The splash screen handle
+			- If None: Will assume there is no splash screen
 
 		Example Input: Controller()
 		Example Input: Controller(debugging = True)
@@ -24503,6 +23789,7 @@ class Controller(Utilities, CommonEventFunctions):
 		self.printMakeVariables = printMakeVariables
 		self.windowDisabler = None
 		self.controller = self
+		self.splash = splash
 		self.queue_statusText = PriorityQueue(defaultPriority = 100)
 
 		self.exiting = False
@@ -24917,6 +24204,10 @@ class Controller(Utilities, CommonEventFunctions):
 			myFrame.updateWindow()
 
 		self.start_listenStatusText()
+		
+		if (self.splash is not None):
+			self.splash.hide()
+
 		self.finishing = False
 
 		#Start the GUI
@@ -25534,7 +24825,7 @@ class Controller(Utilities, CommonEventFunctions):
 # pubsub.core.callables.CallArgsInfo = _mp_CallArgsInfo
 
 #User Things
-class User_Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensure):
+class User_Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFunctions, MyUtilities.wxPython.Converters, MyUtilities.wxPython.AttributeGetters):
 	def __init__(self, catalogue_variable = None, label_variable = None, **kwargs):
 		if (catalogue_variable is None):
 			self._dataCatalogue = {}
@@ -25917,56 +25208,6 @@ class User_Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensu
 			return sum(self.getNumber(item, depthMax = depthMax, _currentDepth = _currentDepth + 1) for item in itemList)
 		else:
 			return 1
-
-	def _getItemMod(self, *args, **kwargs):
-		"""Grants user access to Utilities._getItemMod().
-
-		Example Input: getItemMod("ac")
-		Example Input: getItemMod("ac", border = 10)
-		Example Input: getItemMod("c1")
-		"""
-
-		return Utilities._getItemMod(None, *args, **kwargs)
-
-	def getImage(self, *args, **kwargs):
-		"""Grants user access to Utilities._getImage().
-
-		Example Input: getImage("example.bmp", 0)
-		Example Input: getImage(image, 0)
-		Example Input: getImage("error", 0, internal = True)
-		Example Input: getImage("example.bmp", 0, alpha = True)
-		"""
-
-		return Utilities._getImage(None, *args, **kwargs)
-
-	def getColor(self, *args, **kwargs):
-		"""Grants user access to Utilities._getColor().
-
-		Example Input: getColor("white")
-		Example Input: getColor((255, 255, 0))
-		Example Input: getColor((0.5, 0.5, 0.5))
-		Example Input: getColor((255, 0.5, 0))
-		"""
-
-		return Utilities._getColor(None, *args, **kwargs)
-
-	def getFont(self, *args, **kwargs):
-		"""Grants user access to Utilities._getFont().
-
-		Example Input: getFont()
-		Example Input: getFont(size = 72, bold = True, color = "red")
-		"""
-
-		return Utilities._getFont(None, *args, **kwargs)
-
-	def getWildcard(self, *args, **kwargs):
-		"""Grants user access to Utilities._getWildcard().
-
-		Example Input: getWildcard()
-		Example Input: getWildcard(wildcard)
-		"""
-
-		return Utilities._getWildcard(None, *args, **kwargs)
 
 	def makeCanvas(self, *args, **kwargs):
 		"""Grants user access to Utilities._makeCanvas().
