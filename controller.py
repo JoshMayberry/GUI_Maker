@@ -125,21 +125,22 @@ topicManager = pubsub_pub.getDefaultTopicMgr()
 threads_max = 50 #Crashes around 600
 threadCatalogue = {} #Used to keep track of labeled threads
 threadCatalogue_lock = threading.RLock()
+listeningCatalogue_lock = threading.RLock()
 
 NULL = object()
 
 #Get all event names
 #See: https://www.blog.pythonlibrary.org/2011/07/05/wxpython-get-the-event-name-instead-of-an-integer/
-eventCatalogue = {}
-for module_name, module in sys.modules.items():
-	if (module_name.startswith("wx")):
-		if (module_name == "wx.core"):
-			module_name = "wx"
-		for name in dir(module):
-			if (name.startswith('EVT_')):
-				event = getattr(module, name)
-				if (isinstance(event, wx.PyEventBinder)):
-					eventCatalogue[event.typeId] = (name, f"{module_name}.{name}", eval(f"{module_name}.{name}"))
+# eventCatalogue = {}
+# for module_name, module in tuple(sys.modules.items()):
+# 	if (module_name.startswith("wx")):
+# 		if (module_name == "wx.core"):
+# 			module_name = "wx"
+# 		for name in dir(module):
+# 			if (name.startswith('EVT_')):
+# 				event = getattr(module, name)
+# 				if (isinstance(event, wx.PyEventBinder)):
+# 					eventCatalogue[event.typeId] = (name, f"{module_name}.{name}", eval(f"{module_name}.{name}"))
 
 #Debugging Functions
 def printCurrentTrace(printout = True, quitAfter = False):
@@ -1696,6 +1697,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		Example Input: listen(self.listenScanner, pauseOnDialog = True, not_pauseOnDialog = "modifyBarcode")
 		Example Input: listen(self.autoSave, trigger = True)
 		"""
+		global listeningCatalogue_lock
 
 		def listenFunction():
 			"""Listens for the myFunction to be true, then runs the resultFunction."""
@@ -1706,9 +1708,12 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 			catalogue = self.listeningCatalogue[myFunction]
 			#Account for other thread running this
 			while (catalogue["listening"] > 0):
-				catalogue["stop"] = True
+				with listeningCatalogue_lock:
+					catalogue["stop"] = True
 				time.sleep(100 / 1000)
-			catalogue["stop"] = False
+
+			with listeningCatalogue_lock:
+				catalogue["stop"] = False
 
 			catalogue["listening"] += 1
 			while True:
@@ -1719,7 +1724,8 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 						time.sleep(catalogue["delay"] / 1000)
 
 				if (catalogue["stop"]):
-					catalogue["stop"] = False
+					with listeningCatalogue_lock:
+						catalogue["stop"] = False
 					break
 
 				if ((catalogue["delay"] != 0) and (catalogue["delay"] is not None)):
@@ -1731,7 +1737,8 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 							break
 						if ((catalogue["delay"] != 0) and (catalogue["delay"] is not None)):
 							time.sleep(catalogue["delay"] / 1000)
-					catalogue["trigger"] = False
+					with listeningCatalogue_lock:
+						catalogue["trigger"] = False
 
 				answer = self.runMyFunction(myFunction, myFunctionArgs, myFunctionKwargs, includeError = includeError,
 					errorFunction = errorFunction, errorFunctionArgs = errorFunctionArgs, errorFunctionKwargs = errorFunctionKwargs)
@@ -1739,16 +1746,20 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 					self.runMyFunction(resultFunction, resultFunctionArgs, resultFunctionKwargs, includeError = includeError,
 						errorFunction = errorFunction, errorFunctionArgs = errorFunctionArgs, errorFunctionKwargs = errorFunctionKwargs)
 
-			self.listeningCatalogue[myFunction]["listening"] -= 1
+			with listeningCatalogue_lock:
+				catalogue["listening"] -= 1
 
 		#########################################################
 
-		if (myFunction not in self.listeningCatalogue):
-			self.listeningCatalogue[myFunction] = {"listening": 0, "stop": False, "pause": False, "trigger": None, "delay": None}
-		self.listeningCatalogue[myFunction]["delay"] = delay
+		with listeningCatalogue_lock:
+			if (myFunction not in self.listeningCatalogue):
+				self.listeningCatalogue[myFunction] = {"listening": 0, "stop": False, "pause": False, "trigger": None, "delay": None}
+			else:
+				self.listeningCatalogue[myFunction]["stop"] = True
+			self.listeningCatalogue[myFunction]["delay"] = delay
 
-		if (trigger):
-			self.listeningCatalogue[myFunction]["trigger"] = False
+			if (trigger):
+				self.listeningCatalogue[myFunction]["trigger"] = False
 
 		if (pauseOnDialog not in (None, False)):
 			if ("listeningCatalogue" not in self.controller.backgroundFunction_pauseOnDialog):
@@ -1773,9 +1784,35 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 
 		Example Input: delay_listen(self.checkAutoLogout)
 		"""
+		global listeningCatalogue_lock
 
-		if (myFunction in self.listeningCatalogue):
-			self.listeningCatalogue[myFunction]["delay"] = delay
+		with listeningCatalogue_lock:
+			if (myFunction in self.listeningCatalogue):
+				self.listeningCatalogue[myFunction]["delay"] = delay
+
+	def check_listen(self, myFunction, *, includePause = False, includeStop = True):
+		"""Checks if the given function is being listened to.
+
+		myFunction (function) - A function that checks certain conditions
+
+		Example Input: check_listen(self.checkAutoLogout)
+		"""
+		global listeningCatalogue_lock
+
+		with listeningCatalogue_lock:
+			if (myFunction not in self.listeningCatalogue):
+				return
+
+			if (not self.listeningCatalogue[myFunction]["listening"]):
+				return False
+
+			if (includeStop and self.listeningCatalogue[myFunction]["stop"]):
+				return False
+
+			if (includePause and self.listeningCatalogue[myFunction]["pause"]):
+				return False
+
+			return True
 
 	def stop_listen(self, myFunction):
 		"""Stops the listen routine.
@@ -1784,9 +1821,11 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 
 		Example Input: stop_listen(self.checkAutoLogout)
 		"""
+		global listeningCatalogue_lock
 
-		if (myFunction in self.listeningCatalogue):
-			self.listeningCatalogue[myFunction]["stop"] = True
+		with listeningCatalogue_lock:
+			if (myFunction in self.listeningCatalogue):
+				self.listeningCatalogue[myFunction]["stop"] = True
 
 	def pause_listen(self, myFunction, state = True):
 		"""Pauses the listen routine.
@@ -1797,9 +1836,11 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		Example Input: pause_listen(self.checkAutoLogout)
 		Example Input: pause_listen(self.checkAutoLogout, state = False)
 		"""
+		global listeningCatalogue_lock
 
-		if (myFunction in self.listeningCatalogue):
-			self.listeningCatalogue[myFunction]["pause"] = state
+		with listeningCatalogue_lock:
+			if (myFunction in self.listeningCatalogue):
+				self.listeningCatalogue[myFunction]["pause"] = state
 
 	def trigger_listen(self, myFunction, state = True):
 		"""Turns on/off the trigger for the listen routine.
@@ -1810,9 +1851,11 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		Example Input: pause_listen(self.checkAutoLogout)
 		Example Input: pause_listen(self.checkAutoLogout, state = False)
 		"""
+		global listeningCatalogue_lock
 
-		if (myFunction in self.listeningCatalogue):
-			self.listeningCatalogue[myFunction]["trigger"] = state
+		with listeningCatalogue_lock:
+			if (myFunction in self.listeningCatalogue):
+				self.listeningCatalogue[myFunction]["trigger"] = state
 
 	def unpause_listen(self, myFunction, state = True):
 		"""Unpauses the listen routine.
@@ -3597,7 +3640,9 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 
 		return handle
 	
-	def _makePickerTime(self, time = None,
+	def _makePickerTime(self, time = None, *, military = False, seconds = True, 
+		minimum = None, maximum = None, applyBounds = None, outOfBounds_color = "Yellow", 
+		addInputSpinner = True, wrap = True, arrowKeys = True, 
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
@@ -5201,7 +5246,7 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 			flags.extend(handle.flags_modification)
 			flags, position, border = self.getItemMod(flags)
 
-			if (isinstance(handle, handle_Base_NotebookPage)):
+			if (isinstance(handle, handle_Base_NotebookPage) or (isinstance(handle, handle_WidgetPicker) and (handle.type is Types.time))):
 				handle.mySizerItem = self.thing.Add(handle.mySizer.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
 
 			elif (isinstance(handle, (handle_Widget_Base, handle_Sizer, handle_Splitter, handle_Base_Notebook, handle_Panel))):
@@ -5211,11 +5256,11 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 				if (handle.type in (Types.toolbar, Types.flatmenu)):
 					handle.mySizerItem = self.thing.Add(handle.thing, int(flex), eval(flags, {'__builtins__': None, "wx": wx}, {}), border)
 				else:
-					warnings.warn(f"Add {handle.type} as a handle type for handle_Menu nesting in a handle_Window for nest() in {self.__repr__()}", Warning, stacklevel = 2)
-					return
+					errorMessage = f"Add {handle.type} as a handle type for handle_Menu nesting in a handle_Window for nest() in {self.__repr__()}"
+					raise SyntaxError(errorMessage)
 			else:
-				warnings.warn(f"Add {handle.__class__} as a handle for handle_Sizer to nest() in {self.__repr__()}", Warning, stacklevel = 2)
-				return
+				errorMessage = f"Add {handle.__class__} as a handle for handle_Sizer to nest() in {self.__repr__()}"
+				raise SyntaxError(errorMessage)
 			handle.nestedSizer = self
 		
 		elif (isinstance(self, handle_Panel)):
@@ -5224,8 +5269,8 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 				# self.thing.SetAutoLayout(True)
 				# handle.thing.Fit(self.thing)
 			else:
-				warnings.warn(f"Add {handle.__class__} as a handle for handle_Panel to nest() in {self.__repr__()}", Warning, stacklevel = 2)
-				return
+				errorMessage = f"Add {handle.__class__} as a handle for handle_Panel to nest() in {self.__repr__()}"
+				raise SyntaxError(errorMessage)
 		
 		elif (isinstance(self, handle_Window)):
 			if (isinstance(handle, handle_Menu)):
@@ -5235,11 +5280,11 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 						self.addMenuBar()
 					self.menuBar.Append(handle.thing, handle.text)
 				else:
-					warnings.warn(f"Add {handle.type} as a handle type for handle_Menu nesting in a handle_Window for nest() in {self.__repr__()}", Warning, stacklevel = 2)
-					return
+					errorMessage = f"Add {handle.type} as a handle type for handle_Menu nesting in a handle_Window for nest() in {self.__repr__()}"
+					raise SyntaxError(errorMessage)
 			else:
-				warnings.warn(f"Add {handle.__class__} as a handle for handle_Window in nest() in {self.__repr__()}", Warning, stacklevel = 2)
-				return
+				errorMessage = f"Add {handle.__class__} as a handle for handle_Window in nest() in {self.__repr__()}"
+				raise SyntaxError(errorMessage)
 
 		elif (isinstance(self, handle_Menu)):
 			if (isinstance(handle, handle_Menu)):
@@ -5247,8 +5292,8 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 					#Sub Menu
 					self.thing.Append(wx.ID_ANY, handle.text, handle.thing)
 				else:
-					warnings.warn(f"Add {handle.type} as a handle type for handle_Menu nesting in a handle_Menu for nest() in {self.__repr__()}", Warning, stacklevel = 2)
-					return
+					errorMessage = f"Add {handle.type} as a handle type for handle_Menu nesting in a handle_Menu for nest() in {self.__repr__()}"
+					raise SyntaxError(errorMessage)
 
 			elif (isinstance(handle, handle_MenuItem)):
 				if (handle.type is Types.menuitem):
@@ -5257,23 +5302,23 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 				elif (handle.type is Types.toolbaritem):
 					pass
 				else:
-					warnings.warn(f"Add {handle.type} as a handle type for handle_Menu nesting in a handle_Menu for nest() in {self.__repr__()}", Warning, stacklevel = 2)
-					return
+					errorMessage = f"Add {handle.type} as a handle type for handle_Menu nesting in a handle_Menu for nest() in {self.__repr__()}"
+					raise SyntaxError(errorMessage)
 
 			else:
-				warnings.warn(f"Add {handle.__class__} as a handle for handle_Menu in nest() in {self.__repr__()}", Warning, stacklevel = 2)
-				return
+				errorMessage = f"Add {handle.__class__} as a handle for handle_Menu in nest() in {self.__repr__()}"
+				raise SyntaxError(errorMessage)
 
 		elif (isinstance(self, handle_MenuItem)):
 			if (isinstance(handle, handle_Widget_Base)):
 				if (self.type is Types.toolbaritem):
 					self.thing = self.parent.thing.AddControl(handle.thing)
 				else:
-					warnings.warn(f"Add {handle.type} as a self type for handle_Widget_Base nesting in a handle_MenuItem for nest() in {self.__repr__()}", Warning, stacklevel = 2)
-					return
+					errorMessage = f"Add {handle.type} as a self type for handle_Widget_Base nesting in a handle_MenuItem for nest() in {self.__repr__()}"
+					raise SyntaxError(errorMessage)
 			else:
-				warnings.warn(f"Add {handle.__class__} as a handle for handle_MenuItem in nest() in {self.__repr__()}", Warning, stacklevel = 2)
-				return
+				errorMessage = f"Add {handle.__class__} as a handle for handle_MenuItem in nest() in {self.__repr__()}"
+				raise SyntaxError(errorMessage)
 
 		elif (isinstance(self, handle_MenuPopup)):
 			if (isinstance(handle, handle_MenuPopup)):
@@ -5282,8 +5327,8 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 					self.contents.append(handle)
 					handle.myMenu = self
 				else:
-					warnings.warn(f"Add {handle.type} as a handle type for handle_Menu nesting in a handle_MenuPopup for nest() in {self.__repr__()}", Warning, stacklevel = 2)
-					return
+					errorMessage = f"Add {handle.type} as a handle type for handle_Menu nesting in a handle_MenuPopup for nest() in {self.__repr__()}"
+					raise SyntaxError(errorMessage)
 			elif (isinstance(handle, handle_MenuPopupItem)):
 				self.contents.append(handle)
 				handle.myMenu = self
@@ -5293,8 +5338,8 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 				handle.myMenu = self
 
 			else:
-				warnings.warn(f"Add {handle.__class__} as a handle for handle_MenuPopup in nest() in {self.__repr__()}", Warning, stacklevel = 2)
-				return
+				errorMessage = f"Add {handle.__class__} as a handle for handle_MenuPopup in nest() in {self.__repr__()}"
+				raise SyntaxError(errorMessage)
 					
 		elif (isinstance(self, handle_WidgetInput)):
 			if (self.type is Types.search):
@@ -5306,17 +5351,17 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 						else:
 							self.thing.SetMenu(None)
 					else:
-						warnings.warn(f"Add {handle.type} as a handle type for handle_Menu nesting in a handle_WidgetInput for nest() in {self.__repr__()}", Warning, stacklevel = 2)
-						return
+						errorMessage = f"Add {handle.type} as a handle type for handle_Menu nesting in a handle_WidgetInput for nest() in {self.__repr__()}"
+						raise SyntaxError(errorMessage)
 				else:
-					warnings.warn(f"Add {handle.__class__} as a handle type for handle_Menu nesting in a handle_WidgetInput for nest() in {self.__repr__()}", Warning, stacklevel = 2)
-					return
+					errorMessage = f"Add {handle.__class__} as a handle type for handle_Menu nesting in a handle_WidgetInput for nest() in {self.__repr__()}"
+					raise SyntaxError(errorMessage)
 			else:
-				warnings.warn(f"Add {self.type.name} as a handle type for handle_WidgetInput in nest() in {self.__repr__()}", Warning, stacklevel = 2)
-				return
+				errorMessage = f"Add {self.type.name} as a handle type for handle_WidgetInput in nest() in {self.__repr__()}"
+				raise SyntaxError(errorMessage)
 		else:
-			warnings.warn(f"Add {self.__class__} as self to nest() in {self.__repr__()}", Warning, stacklevel = 2)
-			return
+			errorMessage = f"Add {self.__class__} as self to nest() in {self.__repr__()}"
+			raise SyntaxError(errorMessage)
 
 		#Select if needed
 		if (selected):
@@ -5660,7 +5705,7 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 		else:
 			return
 		if (wxObject is None):
-			jkhkhjjk
+			raise NotImplementedError()
 
 		handle = nestCheck(self[:], wxObject)
 		if ((handle is None) and (self.myWindow is not None)):
@@ -6888,6 +6933,21 @@ class handle_Widget_Base(handle_Base):
 
 			self.myWindow.toolTipCatalogue[label] = toolTip
 
+	def setToolTip(self, text = ""):
+		"""Changes what the tool tip says for this handle.
+
+		Example Input: setToolTip("Lorem Ipsum")
+		"""
+
+		if (self.type is Types.menuitem):
+			self.thing.SetHelp(text)
+
+		elif (self.type is Types.toolbaritem):
+			self.thing.SetShortHelp(text)
+			self.thing.SetLongHelp(text)
+		else:
+			self.thing.SetToolTipString(text)
+
 	def setToolTipAppearDelay(self, delay = 0, label = None):
 		"""Changes the appear delay for the tool tip.
 
@@ -7063,7 +7123,7 @@ class handle_WidgetText(handle_Widget_Base):
 			#Create the thing to put in the grid
 			self.thing = wx.StaticText(self.parent.thing, id = myId, label = text, style = functools.reduce(operator.ior, style or (0,)))
 
-			# font = self.getFont(size = size, bold = bold, italic = italic, color = color, family = family)
+			# font = self.getFont(size = size, bold = bold, italic = italic, family = family)
 			# self.thing.SetFont(font)
 
 			# if (wrap is not None):
@@ -7862,7 +7922,6 @@ class handle_WidgetList(handle_Widget_Base):
 			newValue = [newValue]
 
 		if (any((not hasattr(item, '__dict__') for item in newValue))):
-			jkhkhjhhjk
 			objectList = []
 			for catalogue in newValue:
 				if (hasattr(catalogue, '__dict__')):
@@ -9127,7 +9186,7 @@ class handle_WidgetInput(handle_Widget_Base):
 			onSelect_hide, onSelect_update, onKey_update = self._getArguments(argument_catalogue, ["onSelect_hide", "onSelect_update", "onKey_update"])
 
 			#Prepare style attributes
-			style = []
+			style = [wx.TE_RICH]
 			if (password):
 				style.append(wx.TE_PASSWORD)
 
@@ -9528,6 +9587,30 @@ class handle_WidgetInput(handle_Widget_Base):
 
 	def setChoices(self, choices = None):
 		self.choices = choices or ()
+
+	def setTextColor(self, color = None):
+		"""Changes the text color.
+
+		color (tuple) - What color to make the text
+			- If None: Will use the default color
+
+		Example Input: setTextColor()
+		Example Input: setTextColor((255, 0, 0))
+		"""
+
+		style = self.thing.GetDefaultStyle()
+		style.SetTextColour(self.getColor(color))
+
+		self.thing.SetStyle(0, len(self.thing.GetValue()), style)
+		self.thing.SetDefaultStyle(style)
+
+	def getTextColor(self):
+		"""Returns the current text color.
+
+		Example Input: getTextColor()
+		"""
+
+		return self.thing.GetDefaultStyle().GetTextColour().Get(includeAlpha = False)
 
 	def update_autoComplete(self, choices = None, event = None):
 		"""Updates the auto completer."""
@@ -10370,35 +10453,41 @@ class handle_WidgetPicker(handle_Widget_Base):
 			"""Builds a wx time picker control object."""
 			nonlocal self, argument_catalogue
 
-			time, myFunction = self._getArguments(argument_catalogue, ["time", "myFunction"])
-
-			#Set the currently selected time
-			if (time is not None):
-				try:
-					time = re.split(":", time) #Format: hour:minute:second
-					
-					if (len(time) == 2):
-						hour, minute = time
-						second = "0"
-
-					elif (len(time) == 3):
-						hour, minute, second = time
-
-					else:
-						raise SyntaxError
-
-					hour, minute, second = int(hour), int(minute), int(second)
-					time = wx.DateTime(1, 1, 2000, hour, minute, second)
-				except:
-					errorMessage = "Time must be formatted 'hh:mm:ss' or 'hh:mm'"
-					raise SyntaxError(errorMessage)
-			else:
-				time = wx.DateTime().SetToCurrent()
+			minimum, maximum, applyBounds, outOfBounds_color = self._getArguments(argument_catalogue, ["minimum", "maximum", "applyBounds", "outOfBounds_color"])
+			military, seconds, addInputSpinner = self._getArguments(argument_catalogue, ["military", "seconds", "addInputSpinner"])
 
 			myId = self._getId(argument_catalogue)
+			self.thing = wx.lib.masked.TimeCtrl(self.parent.thing, id = myId, fmt24hr = military, displaySeconds = seconds, min = minimum, max = maximum, limited = applyBounds, oob_color = outOfBounds_color)
 
-			#Create the thing to put in the grid
-			self.thing = wx.adv.TimePickerCtrl(self.parent.thing, id = myId, dt = time)
+			if (addInputSpinner):
+				#Create Spinner
+				wrap, arrowKeys = self._getArguments(argument_catalogue, ["wrap", "arrowKeys"])
+
+				style = [wx.SP_VERTICAL]
+				if (wrap):
+					style.append(wx.SP_WRAP)
+				if (arrowKeys):
+					style.append(wx.SP_ARROW_KEYS)
+
+				self.spinner = wx.SpinButton(self.parent.thing, id = wx.ID_ANY, style = functools.reduce(operator.ior, style or (0,)))
+				self.thing.BindSpinButton(self.spinner)
+
+				#Create Sizer
+				self.mySizer = self._makeSizerGridFlex(rows = 1, columns = 2)
+				self.mySizer.growFlexRowAll()
+				self.mySizer.growFlexColumn(0)
+
+				#Nest objects
+				self.mySizer.thing.Add(self.thing, proportion = 0, flag = wx.ALIGN_RIGHT | wx.EXPAND | wx.ALL, border = 0)
+				self.mySizer.thing.Add(self.spinner, proportion = 0, flag = wx.ALIGN_LEFT | wx.EXPAND | wx.LEFT, border = 5)
+				self.parent._finalNest(self.mySizer)
+
+			else:
+				self.spinner = None
+				self.mySizer = None
+
+			time, myFunction = self._getArguments(argument_catalogue, ["time", "myFunction"])
+			self.setValue(time)
 
 			#Bind the function(s)
 			if (myFunction is not None):
@@ -10499,7 +10588,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 		self._postBuild(argument_catalogue)
 
 	#Getters
-	def getValue(self, event = None):
+	def getValue(self, event = None, *, asString = False):
 		"""Returns what the contextual value is for the object associated with this handle."""
 
 		if (self.type is Types.file):
@@ -10511,17 +10600,23 @@ class handle_WidgetPicker(handle_Widget_Base):
 		elif (self.type is Types.date):
 			value = self.thing.GetValue() #(str) - What date is selected in the date picker
 			if (value is not None):
-				value = f"{value.GetMonth()}/{value.GetDay()}/{value.GetYear()}"
+				if (asString):
+					value = f"{value.GetMonth()}/{value.GetDay()}/{value.GetYear()}"
+				else:
+					value = (value.GetYear(), value.GetMonth(), value.GetDay())
 
 		elif (self.type is Types.datewindow):
 			value = self.thing.GetDate() #(str) - What date is selected in the date picker
 			if (value is not None):
-				value = f"{value.GetMonth()}/{value.GetDay()}/{value.GetYear()}"
+				if (asString):
+					value = f"{value.GetMonth()}/{value.GetDay()}/{value.GetYear()}"
+				else:
+					value = (value.GetYear(), value.GetMonth(), value.GetDay())
 
 		elif (self.type is Types.time):
-			value = self.thing.GetTime() #(str) - What date is selected in the date picker
-			if (value is not None):
-				value = f"{value[0]}:{value[1]}:{value[2]}"
+			value = self.thing.GetValue(as_wxDateTime = not asString) #(str) - What date is selected in the date picker
+			if ((not asString) and (value is not None)):
+				value = (value.GetHour(), value.GetMinute(), value.GetSecond())
 
 		elif (self.type is Types.color):
 			value = self.thing.GetColour()
@@ -10539,51 +10634,54 @@ class handle_WidgetPicker(handle_Widget_Base):
 	def setValue(self, newValue, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
+		if ((self.type is Types.date) or (self.type is Types.datewindow)):
+			def formatValue():
+				nonlocal newValue
+
+				if (newValue is None):
+					return wx.DateTime().SetToCurrent()
+
+				if (isinstance(newValue, str)):
+					try:
+						month, day, year = re.split("[\\\\/]", newValue) #Format: mm/dd/yyyy
+						month, day, year = int(month), int(day), int(year)
+						return wx.DateTime(day, month, year)
+					except:
+						errorMessage = f"Calandar dates must be formatted 'mm/dd/yy' for setValue() for {self.__repr__()}"
+						raise SyntaxError(errorMessage)
+
+				if (len(newValue) is not 3):
+					errorMessage = f"Calandar dates must be formatted (month (int), day (int), year (int)) for setValue() for {self.__repr__()}"
+					raise SyntaxError(errorMessage)
+
+				return wx.DateTime(*newValue)
+
+		elif (self.type is Types.time):
+			def formatValue():
+				nonlocal newValue
+
+				if (newValue is None):
+					return wx.DateTime().SetToCurrent()
+
+				if (isinstance(newValue, str)):
+					return newValue
+
+				if (len(newValue) not in (2, 3)):
+					errorMessage = f"Calandar dates must be formatted (hour (int), minute (int), second (int)) or (hour (int), minute (int)) for setValue() for {self.__repr__()}"
+					raise SyntaxError(errorMessage)
+
+				return ":".join(f"{item}" for item in newValue)
+
+			####################################################
+
 		if ((self.type is Types.file) or (self.type is Types.filewindow)):
 			self.thing.SetPath(newValue) #(str) - What will be shown in the input box
 		
 		elif ((self.type is Types.date) or (self.type is Types.datewindow)):
-			#Format value
-			try:
-				if (newValue is not None):
-					month, day, year = re.split("[\\\\/]", newValue) #Format: mm/dd/yyyy
-					month, day, year = int(month), int(day), int(year)
-					newValue = wx.DateTime(day, month, year)
-				else:
-					newValue = wx.DateTime().SetToCurrent()
-			except:
-				errorMessage = f"Calandar dates must be formatted 'mm/dd/yy' for setValue() for {self.__repr__()}"
-				raise SyntaxError(errorMessage)
-
-			self.thing.SetValue(newValue) #(str) - What date will be selected as 'mm/dd/yyyy'
+			self.thing.SetValue(formatValue()) #(str) - What date will be selected as 'mm/dd/yyyy'
 
 		elif (self.type is Types.time):
-			#Format value
-			try:
-				if (newValue is not None):
-					time = re.split(":", newValue) #Format: hour:minute:second
-			
-					if (len(time) == 2):
-						hour, minute = time
-						second = "0"
-
-					elif (len(time) == 3):
-						hour, minute, second = time
-
-					else:
-						errorMessage = f"Time must be formatted 'hh:mm:ss' or 'hh:mm' for setValue() for {self.__repr__()}"
-						raise SyntaxError(errorMessage)
-
-				else:
-					newValue = wx.DateTime().SetToCurrent()
-					hour, minute, second = newValue.GetHour(), newValue.GetMinute(), newValue.GetSecond()
-
-				hour, minute, second = int(hour), int(minute), int(second)
-			except:
-				errorMessage = f"Time must be formatted 'hh:mm:ss' or 'hh:mm' for setValue() for {self.__repr__()}"
-				raise SyntaxError(errorMessage)
-
-			self.thing.SetTime(hour, minute, second) #(str) - What time will be selected as 'hour:minute:second'
+			self.thing.SetValue(formatValue()) #(str) - What time will be selected as 'hour:minute:second'
 
 		else:
 			warnings.warn(f"Add {self.type.name} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -10601,7 +10699,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 		elif (self.type is Types.filewindow):
 			self._betterBind(wx.EVT_TREE_SEL_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		elif (self.type is Types.time):
-			self._betterBind(wx.adv.EVT_TIME_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			self._betterBind(wx.lib.masked.EVT_TIMEUPDATE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		elif (self.type is Types.date):
 			self._betterBind(wx.adv.EVT_DATE_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		elif (self.type is Types.datewindow):
@@ -11893,10 +11991,20 @@ class handle_MenuItem(handle_Widget_Base):
 			if (self.subHandle is not None):
 				self.subHandle.setFunction_click(myFunction = myFunction, myFunctionArgs = myFunctionArgs, myFunctionKwargs = myFunctionKwargs, **kwargs)
 			else:
-				self.parent._betterBind(wx.EVT_MENU, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		
+				self.parent._betterBind(wx.EVT_TOOL, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type.name} to setFunction_enter() for {self.__repr__()}", Warning, stacklevel = 2)
+	
+	def setFunction_rightClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, **kwargs):
+		"""Overridden to account for a subHandle."""
+
+		if (self.type is Types.toolbaritem):
+			if (self.subHandle is not None):
+				self.subHandle.setFunction_rightClick(myFunction = myFunction, myFunctionArgs = myFunctionArgs, myFunctionKwargs = myFunctionKwargs, **kwargs)
+			else:
+				self.parent._betterBind(wx.EVT_TOOL_RCLICKED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+		else:
+			super().setFunction_rightClick(myFunction = myFunction, myFunctionArgs = myFunctionArgs, myFunctionKwargs = myFunctionKwargs, **kwargs)
 
 	def setFunction_enter(self, *args, **kwargs):
 		"""Override function for subHandle."""
@@ -12002,6 +12110,21 @@ class handle_MenuItem(handle_Widget_Base):
 		state = self.shown
 
 		return state
+
+	def setImage(self, image = None, *, disabled = False, **imageKwargs):
+		"""Changes the image on the toolbar icon.
+
+		Example Input: setImage()
+		Example Input: setImage("resources/update_timer.ico")
+		"""
+
+		if (disabled):
+			self.thing.SetDisabledBitmap(self.getImage(image, **imageKwargs))
+		else:
+			self.thing.SetNormalBitmap(self.getImage(image, **imageKwargs))
+
+		self.parent.thing.Realize()
+		self.parent.thing.Refresh()
 
 class handle_MenuPopup(handle_Container_Base):
 	"""A handle for working with popup menus."""
@@ -13112,7 +13235,7 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		else:
 			_text = text
 
-		font = self.getFont(size = size, bold = bold, italic = italic, color = color, family = family)
+		font = self.getFont(size = size, bold = bold, italic = italic, family = family)
 		self._queue("dc.SetFont", font)
 
 		pen = self.getPen(color)
@@ -21740,12 +21863,12 @@ class handle_Wizard(handle_Window):
 				else:
 					self.thing.SetSizer(rootSizer.thing)
 
-	def reset(self):
+	def reset(self, branch = None):
 		self.currentNode = None
-		self.showPage()
+		self.showPage(branch = branch)
 
-	def start(self):
-		self.reset()
+	def start(self, branch = None):
+		self.reset(branch = branch)
 
 		with self.makeDialogCustom(myFrame = self) as myDialog:
 			pass
@@ -21872,6 +21995,12 @@ class handle_Wizard(handle_Window):
 			return
 
 		return self.showPage(node = self.currentNode.parent, direction = False)
+
+	@MyUtilities.common.makeProperty()
+	class currentPage():
+		def getter(self):
+			node = self.currentNode or self.pageNode.children[0]
+			return node.handle
 
 	def setFunction_pageChange(self, *args, **kwargs):
 		return self.setFunction_postPageChange(*args, **kwargs)
