@@ -6946,7 +6946,7 @@ class handle_Widget_Base(handle_Base):
 			self.thing.SetShortHelp(text)
 			self.thing.SetLongHelp(text)
 		else:
-			self.thing.SetToolTipString(text)
+			self.thing.SetToolTip(text)
 
 	def setToolTipAppearDelay(self, delay = 0, label = None):
 		"""Changes the appear delay for the tool tip.
@@ -7123,12 +7123,12 @@ class handle_WidgetText(handle_Widget_Base):
 			#Create the thing to put in the grid
 			self.thing = wx.StaticText(self.parent.thing, id = myId, label = text, style = functools.reduce(operator.ior, style or (0,)))
 
-			# font = self.getFont(size = size, bold = bold, italic = italic, family = family)
-			# self.thing.SetFont(font)
+			size, bold, italic, family, wrap = self._getArguments(argument_catalogue, ("size", "bold", "italic", "family", "wrap"))
+			font = self.getFont(size = size, bold = bold, italic = italic, family = family)
+			self.thing.SetFont(font)
 
-			# if (wrap is not None):
-			#   if (wrap > 0):
-			#       self.wrapText(wrap)
+			if (wrap):
+				self.wrapText(wrap)
 
 		def _build_html():
 			"""Builds a blank wx html object.
@@ -7240,6 +7240,7 @@ class handle_WidgetText(handle_Widget_Base):
 				newValue = f"{newValue}"
 
 			self.thing.SetLabel(newValue) #(str) - What the static text will now say
+			self.thing.SendSizeEventToParent() #Update alignment
 
 		elif (self.type is Types.html):
 			self.thing.SetPage(newValue or "")
@@ -9453,13 +9454,17 @@ class handle_WidgetInput(handle_Widget_Base):
 		return self.getValue(*args, **kwargs)
 
 	#Setters
-	def setValue(self, newValue = None, event = None, **kwargs):
+	def setValue(self, newValue = None, event = None, default = None, triggerPopup = True, **kwargs):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
 		if (self.type is Types.box):
 			if (newValue is None):
 				newValue = "" #Filter None as blank text
-			self.thing.SetValue(f"{newValue}") #(str) - What will be shown in the input box
+
+			if (self.subType == "autoComplete"):
+				self.thing.SetValue(f"{newValue}", default = default, triggerPopup = triggerPopup) #(str) - What will be shown in the input box
+			else:
+				self.thing.SetValue(f"{newValue}") #(str) - What will be shown in the input box
 
 		elif (self.type is Types.spinner):
 			if (isinstance(newValue, str)):
@@ -20535,7 +20540,7 @@ class handle_Window(handle_Container_Base):
 		Example Input: checkStatusBar()
 		"""
 
-		if (self.statusBar is None):
+		if (not self.statusBar):
 			return
 
 		if (timer):
