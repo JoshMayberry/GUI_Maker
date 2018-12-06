@@ -93,8 +93,10 @@ import Utilities as MyUtilities
 
 if (__name__ == "__main__"):
 	import LICENSE_forSections as Legal
+	import ExceptionHandling
 else:
 	from . import LICENSE_forSections as Legal
+	from . import ExceptionHandling
 
 #Required Modules
 ##py -m pip install
@@ -121,11 +123,6 @@ valueQueue = {} #Used to keep track of values the user wants to have
 dragDropDestination = None #Used to help a source know if a destination is itself
 nestingCatalogue = {} #Used to keep track of what is nested in what
 topicManager = pubsub_pub.getDefaultTopicMgr()
-
-threads_max = 50 #Crashes around 600
-threadCatalogue = {} #Used to keep track of labeled threads
-threadCatalogue_lock = threading.RLock()
-listeningCatalogue_lock = threading.RLock()
 
 NULL = object()
 
@@ -392,258 +389,41 @@ def wrap_showError(makeDialog = True, fileName = "error_log.log"):
 			Example Usage: @GUI_Maker.wrap_showError()
 			"""
 
-			try:
-				answer = function(*args, **kwargs)
-			except SystemExit:
-				sys.exit()
-			except:
-				answer = None
+			answer = function(*args, **kwargs)
 
-				#Get the error text
-				error = traceback.format_exc()
+			# try:
+			# 	answer = function(*args, **kwargs)
+			# except SystemExit:
+			# 	sys.exit()
+			# except:
+			# 	answer = None
 
-				#Show Error on CMD
-				print(error)
+			# 	#Get the error text
+			# 	error = traceback.format_exc()
 
-				#Log the error
-				try:
-					Utilities._logPrint(None, error, fileName = fileName)
-				except:
-					traceback.print_exc()
+			# 	#Show Error on CMD
+			# 	print(error)
 
-				#Display Error on GUI
-				if (makeDialog):
-					try:
-						myDialog = handle_Window.makeDialogMessage(None, text = error, icon = "error", addOk = True)
-						myDialog.show()
-					except:
-						traceback.print_exc()
+			# 	#Log the error
+			# 	try:
+			# 		Utilities._logPrint(None, error, fileName = fileName)
+			# 	except:
+			# 		traceback.print_exc()
+
+			# 	#Display Error on GUI
+			# 	if (makeDialog):
+			# 		try:
+			# 			myDialog = handle_Window.makeDialogMessage(None, text = error, icon = "error", addOk = True)
+			# 			myDialog.show()
+			# 		except:
+			# 			traceback.print_exc()
 
 			return answer
 		return wrapper
 	return decorator
 
-#Background Processes
-class _ThreadQueue():
-	"""Used by passFunction() to move functions from one thread to another.
-	Special thanks to Claudiu for the base code on https://stackoverflow.com/questions/18989446/execute-python-function-in-main-thread-from-call-in-dummy-thread
-	"""
-	def __init__(self):
-		"""Internal variables."""
-	
-		self.callback_queue = queue.Queue()
-
-	def from_dummy_thread(self, myFunction, myFunctionArgs = None, myFunctionKwargs = None):
-		"""A function from a MyThread to be called in the main thread."""
-
-		self.callback_queue.put([myFunction, myFunctionArgs, myFunctionKwargs])
-
-	def from_main_thread(self, blocking = True, printEmpty = False):
-		"""An non-critical function from the sub-thread will run in the main thread.
-
-		blocking (bool) - If True: This is a non-critical function
-		"""
-
-		def setupFunction(myFunctionList, myFunctionArgsList, myFunctionKwargsList):
-			nonlocal self
-
-			#Skip empty functions
-			if (myFunctionList is not None):
-				myFunctionList, myFunctionArgsList, myFunctionKwargsList = Utilities._formatFunctionInputList(self, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
-				
-				#Run each function
-				answerList = []
-				for i, myFunction in enumerate(myFunctionList):
-					#Skip empty functions
-					if (myFunction is not None):
-						myFunctionEvaluated, myFunctionArgs, myFunctionKwargs = Utilities._formatFunctionInput(self, i, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
-						answer = myFunction(*myFunctionArgs, **myFunctionKwargs)
-						answerList.append(answer)
-
-				#Account for just one function
-				if (len(answerList) == 1):
-					answerList = answerList[0]
-			return answerList
-		
-		#########################################################
-
-		if (blocking):
-			myFunction, myFunctionArgs, myFunctionKwargs = self.callback_queue.get() #blocks until an item is available
-			answer = setupFunction(myFunction, myFunctionArgs, myFunctionKwargs)
-			
-		else:       
-			while True:
-				try:
-					myFunction, myFunctionArgs, myFunctionKwargs = self.callback_queue.get(False) #doesn't block
-				
-				except queue.Empty: #raised when queue is empty
-					if (printEmpty):
-						print("--- Thread Queue Empty ---")
-					answer = None
-					break
-
-				answer = setupFunction(myFunction, myFunctionArgs, myFunctionKwargs)
-
-		return answer
-
-class _MyThread(threading.Thread):
-	"""Used to run functions in the background.
-	More information on threads can be found at: https://docs.python.org/3.4/library/threading.html
-	Use: https://wiki.wxpython.org/Non-Blocking%20Gui
-	Use: http://effbot.org/zone/thread-synchronization.htm
-	_________________________________________________________________________
-
-	CREATE AND RUN A NEW THREAD
-	#Create new threads
-	thread1 = myThread(1, "Thread-1", 1)
-	thread2 = myThread(2, "Thread-2", 2)
-
-	#Start new threads
-	thread1.start()
-	thread2.start()
-	_________________________________________________________________________
-
-	RUNNING A FUNCTION ON A THREAD
-	After the thread has been created and started, you can run functions on it like you do on the main thread.
-	The following code shows how to run functions on the new thread:
-
-	runFunction(longFunction, [1, 2], {label: "Lorem"}, self, False)
-	_________________________________________________________________________
-
-	If you exit the main thread, the other threads will still run.
-
-	EXAMPLE CREATING A THREAD THAT EXITS WHEN THE MAIN THREAD EXITS
-	If you want the created thread to exit when the main thread exits, make it a daemon thread.
-		thread1 = myThread(1, "Thread-1", 1, daemon = True)
-
-	You can also make it a daemon using the function:
-		thread1.setDaemon(True)
-	_________________________________________________________________________
-
-	CLOSING A THREAD
-	If any thread is open, the program will not end. To close a thread use return on the function that is running in the thread.
-	The thread will then close itself automatically.
-	"""
-
-	def __init__(self, parent, threadID = None, name = None, daemon = None, label = None, stopFunction = None):
-		"""Setup the thread.
-
-		threadID (int) -
-		name (str)     - The thread name. By default, a unique name is constructed of the form "Thread-N" where N is a small decimal number.
-		daemon (bool)  - Sets whether the thread is daemonic. If None (the default), the daemonic property is inherited from the current thread.
-		label (str) - A name for the thread
-			- If name already exists: Will stop the existing thread and replace it with this one
-		stopFunction (function) - An extra function used to stop the thread
-		
-		Example Input: _MyThread()
-		Example Input: _MyThread(1, "Thread-1", 1)
-		Example Input: _MyThread(daemon = True)
-		"""
-		global threads_max, threadCatalogue, threadCatalogue_lock
-
-		#Initialize the thread
-		threading.Thread.__init__(self, name = name, daemon = daemon)
-		# self.setDaemon(daemon)
-
-		#Setup thread properties
-		if (threadID is not None):
-			self.threadID = threadID
-
-		self.stopEvent = threading.Event() #Used to stop the thread
-
-		#Initialize internal variables
-		self.parent = parent
-		self.label = label
-		self.shown = None
-		self.window = None
-		self.myFunction = None
-		self.myFunctionArgs = None
-		self.myFunctionKwargs = None
-		self.errorFunction = None
-		self.errorFunctionArgs = None
-		self.errorFunctionKwargs = None
-		self.stopFunction = stopFunction
-
-		#Wait for other threads to stop
-		if (threading.active_count() > threads_max):
-			# warnings.warn(f"Too many threads at {printCurrentTrace(printout = False)}", Warning, stacklevel = 2)
-			while (threading.active_count() > threads_max):
-				time.sleep(10 / 1000)
-
-	def runFunction(self, myFunction, myFunctionArgs, myFunctionKwargs, window, shown = False, errorFunction = None, errorFunctionArgs = None, errorFunctionKwargs = None):
-		"""Sets the function to run in the thread object.
-
-		myFunction (function)   - What function will be ran
-		myFunctionArgs (list)   - The arguments for 'myFunction'
-		myFunctionKwargs (dict) - The keyword arguments for 'myFunction'
-		window (wxFrame)        - The window that called this function
-		shown (bool)            - If True: The function will only run if the window is being shown. It will wait for the window to first be shown to run.
-								  If False: The function will run regardless of whether the window is being shown or not
-								  #### THIS IS NOT WORKING YET ####
-
-		Example Input: runFunction(longFunction, [1, 2], {label: "Lorem"}, 5, False)
-		"""
-
-		#Record given values
-		self.shown = shown
-		self.window = window
-		self.myFunction = myFunction
-		self.myFunctionArgs = myFunctionArgs
-		self.myFunctionKwargs = myFunctionKwargs
-		self.errorFunction = errorFunction
-		self.errorFunctionArgs = errorFunctionArgs
-		self.errorFunctionKwargs = errorFunctionKwargs
-
-		self.start()
-
-	def run(self):
-		"""Runs the thread and then closes it."""
-
-		if (self.label is not None):
-			with threadCatalogue_lock:
-				if (self.label in threadCatalogue):
-					thread = threadCatalogue[self.label]
-				else:
-					thread = None
-
-			if (thread is not None):
-				#Replace the running thread
-				thread.stop()
-				try:
-					thread.join()
-				except RuntimeError:
-					pass
-
-			with threadCatalogue_lock:
-				threadCatalogue[self.label] = self
-
-		if (self.shown):
-			#Wait until the window is shown to start
-			while True:
-				#Check if the thread should still run
-				if (self.stopEvent.is_set()):
-					return
-
-				#Check if the window is shown yet
-				if (self.window.showWindowCheck()):
-					break
-
-				#Reduce lag
-				time.sleep(0.01)
-
-		self.parent.runMyFunction(myFunction = self.myFunction, myFunctionArgs = self.myFunctionArgs, myFunctionKwargs = self.myFunctionKwargs, 
-			errorFunction = self.errorFunction, errorFunctionArgs = self.errorFunctionArgs, errorFunctionKwargs = self.errorFunctionKwargs)
-
-	def stop(self):
-		"""Stops the running thread."""
-
-		self.stopEvent.set()
-
-		if (self.stopFunction is not None):
-			self.stopFunction()
-
 #Global Inheritance Classes
-class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFunctions, MyUtilities.wxPython.Converters, MyUtilities.wxPython.AttributeGetters):
+class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFunctions, MyUtilities.wxPython.Converters, MyUtilities.wxPython.CommonFunctions):
 	"""Contains common functions needed for various other functions.
 	This is here for convenience in programming.
 	"""
@@ -654,8 +434,6 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		Example Input: Meant to be inherited by Controller().
 		"""
 
-		self.listeningCatalogue = {}
-		self.oneShotCatalogue = {}
 		self.keyOptions = {
 			"0": 48, "1": 49, "2": 50, "3": 51, "4": 52, "5": 53, "6": 54,  "7": 55, "8": 56, "9": 57,
 			"numpad+0": 324, "numpad+1": 325, "numpad+2": 326, "numpad+3": 327, "numpad+4": 328, 
@@ -1088,108 +866,6 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 
 		return myFunctionEvaluated, myFunctionArgs, myFunctionKwargs
 
-	def _betterBind(self, eventType, thing, myFunctionList, myFunctionArgsList = None, myFunctionKwargsList = None, mode = 1, rebind = False, printError = True):
-		"""Binds wxObjects in a better way.
-		Inspired by: "Florian Bosch" on http://stackoverflow.com/questions/173687/is-it-possible-to-pass-arguments-into-event-bindings
-		Special thanks for help on mult-functions to "Mike Driscoll" on http://stackoverflow.com/questions/11621833/how-to-bind-2-functions-to-a-single-event
-
-		eventType (CommandEvent) - The wxPython event to be bound
-		thing (wxObject)         - What is being bound to
-		myFunctionList (str)     - The function that will be ran when the event occurs
-		myFunctionArgs (list)    - Any input arguments for myFunction. A list of multiple functions can be given
-		myFunctionKwargs (dict)  - Any input keyword arguments for myFunction. A dictionary of variables for each function can be given as a list. The index of the variables must be the same as the index for the functions 
-		mode (int)               - Dictates how things are bound. Used for special cases
-		rebind (bool)            - Will unbind the provided function (if it was already bound) from the 'thing' and then rebind it. Only works for non-argument functions
-			- If True: Will rebind
-			- If False: Will not rebind
-			- If None: Will remove all previously bound functions
-		_________________________________________________________________________
-
-		MULTIPLE FUNCTION ORDER
-		The functions are ran in the order given; from left to right.
-
-		MULTIPLE FUNCTION FAILURE
-		Make it a habbit to end all bound functions with 'event.Skip()'. 
-		If the bound function does not end with 'event.Skip()', then it will overwrite a previously bound function.
-		This will result in the new function being ran in place of both functions.
-		_________________________________________________________________________
-
-		Example Input: _betterBind(wx.EVT_BUTTON, menuItem, "self.onExit", "Extra Information")
-		Example Input: _betterBind(wx.EVT_BUTTON, menuItem, ["self.toggleObjectWithLabel", "self.onQueueValue", ], [["myCheckBox", True], None])
-		"""
-		global MyEvent, myEventCatalogue
-
-		#Create the sub-function that does the binding
-		def bind(myFunctionEvaluated, myFunctionArgs, myFunctionKwargs):
-			"""This sub-function is needed to make the multiple functions work properly."""
-			nonlocal self, eventType, thing, mode, rebind
-
-			#Get the class type in order to bind the object to the correct thing
-			thingClass = thing.GetClassName()
-
-			##Determine how to bind the object
-			if (thingClass == "wxWindow"):
-				if (mode == 2):
-					bindObject = thing
-				else:
-					bindObject = self.parent.thing
-
-			elif (thingClass in ["wxMenuItem", "wxToolBarToolBase"]):
-				bindObject = self.thing
-			else:
-				bindObject = thing
-
-			#Account for rebinding
-			if (rebind is None):
-				bindObject.Unbind(eventType, source = thing)
-			elif (rebind):
-				if (mode == 1):
-					unbound = bindObject.Unbind(eventType, handler = myFunctionEvaluated, source = thing)
-				else:
-					unbound = bindObject.Unbind(eventType, handler = myFunctionEvaluated)
-				if ((not unbound) and printError):
-					#If the lambda style function was used, this will not work
-					warnings.warn(f"Unbinding function {myFunctionEvaluated} for {self.__repr__()} failed", Warning, stacklevel = 3)
-
-			if ((not rebind) and (eventType in self.boundEvents)):
-				self.boundEvents.remove(eventType)
-
-			#Typical binding mode
-			if (mode == 1):
-				if ((len(myFunctionKwargs) == 0) and (len(myFunctionArgs) == 0)):
-					bindObject.Bind(eventType, myFunctionEvaluated, thing)
-				else:
-					bindObject.Bind(eventType, lambda event: myFunctionEvaluated(event, *myFunctionArgs, **myFunctionKwargs), thing)
-
-			#Binding mode for window key bindings
-			elif (mode == 2):
-				if ((len(myFunctionKwargs) == 0) and (len(myFunctionArgs) == 0)):
-					bindObject.Bind(eventType, myFunctionEvaluated)
-				else:
-					bindObject.Bind(eventType, lambda event: myFunctionEvaluated(event, *myFunctionArgs, **myFunctionKwargs))
-
-			else:
-				errorMessage = f"Unknown mode {mode} for _betterBind()"
-				raise TypeError(errorMessage)
-
-			if (eventType not in self.boundEvents):
-				self.boundEvents.append(eventType)
-
-		##############################################################################################################################
-
-		#Skip empty functions
-		if (myFunctionList is not None):
-			if (isinstance(eventType, type) and issubclass(eventType, MyEvent)):
-				eventType = myEventCatalogue[eventType]
-
-			myFunctionList, myFunctionArgsList, myFunctionKwargsList = self._formatFunctionInputList(myFunctionList, myFunctionArgsList, myFunctionKwargsList)
-			#Run each function
-			for i, myFunction in enumerate(myFunctionList):
-				#Skip empty functions
-				if (myFunction is not None):
-					myFunctionEvaluated, myFunctionArgs, myFunctionKwargs = self._formatFunctionInput(i, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
-					bind(myFunctionEvaluated, myFunctionArgs, myFunctionKwargs)
-
 	def keyBind(self, key, myFunction, myFunctionArgs = None, myFunctionKwargs = None, includeEvent = True,
 		keyUp = True, numpad = False, ctrl = False, alt = False, shift = False, event = None, thing = None):
 		"""Binds wxObjects to key events.
@@ -1533,416 +1209,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		return position
 
 	#Background Processes
-	def passFunction(self, myFunction, myFunctionArgs = None, myFunctionKwargs = None, thread = None):
-		"""Passes a function from one thread to another. Used to pass the function
-		If a thread object is not given it will pass from the current thread to the main thread.
-		"""
-
-		#Get current thread
-		myThread = threading.current_thread()
-		mainThread = threading.main_thread()
-
-		#How this function will be passed
-		if (thread is not None):
-			pass
-
-		else:
-			if (myThread != mainThread):
-				self.controller.threadQueue.from_dummy_thread(myFunction, myFunctionArgs, myFunctionKwargs)
-
-			else:
-				warnings.warn(f"Cannot pass from the main thread to the main thread for {self.__repr__()}", Warning, stacklevel = 2)
-
-	def recieveFunction(self, blocking = True, printEmpty = False):
-		"""Passes a function from one thread to another. Used to recieve the function.
-		If a thread object is not given it will pass from the current thread to the main thread.
-		"""
-
-		self.controller.threadQueue.from_main_thread(blocking = blocking, printEmpty = printEmpty)
-
-	def onBackgroundRun(self, event, myFunctionList, myFunctionArgsList = None, myFunctionKwargsList = None, **kwargs):
-		"""Here so the function backgroundRun can be triggered from a bound event."""
-
-		#Run the function correctly
-		self.backgroundRun(myFunctionList, myFunctionArgsList, myFunctionKwargsList, **kwargs)
-
-		event.Skip()
-
-	def backgroundRun(self, myFunction, myFunctionArgs = None, myFunctionKwargs = None, shown = False, makeThread = True,
-		errorFunction = None, errorFunctionArgs = None, errorFunctionKwargs = None, label = None, stopFunction = None):
-		"""Runs a function in the background in a way that it does not lock up the GUI.
-		Meant for functions that take a long time to run.
-		If makeThread is true, the new thread object will be returned to the user.
-
-		myFunction (str)       - The function that will be ran when the event occurs
-		myFunctionArgs (any)   - Any input arguments for myFunction. A list of multiple functions can be given
-		myFunctionKwargs (any) - Any input keyword arguments for myFunction. A list of variables for each function can be given. The index of the variables must be the same as the index for the functions
-		shown (bool)           - Determines when to run the function
-			- If True: The function will only run if the window is being shown. If the window is not shown, it will terminate the function. It will wait for the window to first be shown to run
-			- If False: The function will run regardless of whether the window is being shown or not
-		makeThread (bool)      - Determines if this function runs on a different thread
-			- If True: A new thread will be created to run the function
-			- If False: The function will only run while the GUI is idle. Note: This can cause lag. Use this for operations that must be in the main thread.
-		label (str) - A name for the thread
-			- If name already exists: Will stop the existing thread and replace it with this one
-		stopFunction (function) - An extra function used to stop the thread
-
-		errorFunction (str)       - The function that will be ran when an error occurs
-			- The 'error' must be either the first arg or a kwarg
-			- If None: The error is raised
-		errorFunctionArgs (any)   - Any input arguments for errorFunction. A list of multiple functions can be given
-		errorFunctionKwargs (any) - Any input keyword arguments for errorFunction. A list of variables for each function can be given. The index of the variables must be the same as the index for the functions
-		
-		Example Input: backgroundRun(self.startupFunction)
-		Example Input: backgroundRun(self.startupFunction, shown = True)
-		"""
-
-		#Skip empty functions
-		if (myFunction is not None):
-			myFunctionList, myFunctionArgsList, myFunctionKwargsList = self._formatFunctionInputList(myFunction, myFunctionArgs, myFunctionKwargs)
-
-			#Run each function
-			for i, myFunction in enumerate(myFunctionList):
-				#Skip empty functions
-				if (myFunction is not None):
-					myFunctionEvaluated, myFunctionArgs, myFunctionKwargs = self._formatFunctionInput(i, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
-
-					#Determine how to run the function
-					if (makeThread):
-						#Create parallel thread
-						thread = _MyThread(self, daemon = True, label = label, stopFunction = stopFunction)
-						thread.runFunction(myFunctionEvaluated, myFunctionArgs, myFunctionKwargs, self, shown = shown, 
-							errorFunction = errorFunction, errorFunctionArgs = errorFunctionArgs, errorFunctionKwargs = errorFunctionKwargs)
-						return thread
-					else:
-						#Add to the idling queue
-						if (self.idleQueue is not None):
-							self.idleQueue.append([myFunctionEvaluated, myFunctionArgs, myFunctionKwargs, shown])
-						else:
-							warnings.warn(f"The window {self} was given it's own idle function by the user for {self.__repr__()}", Warning, stacklevel = 2)
-				else:
-					warnings.warn(f"function {i} in myFunctionList is None for backgroundRun() for {self.__repr__()}", Warning, stacklevel = 2)
-		else:
-			warnings.warn(f"myFunction is None for backgroundRun() for {self.__repr__()}", Warning, stacklevel = 2)
-
-		return None
-
-	def autoRun(self, delay, myFunction, myFunctionArgs = None, myFunctionKwargs = None, after = False):
-		"""Automatically runs the provided function.
-
-		delay (int)       - How many milliseconds to wait before the function is executed
-		myFunction (list) - What function will be ran. Can be a string or function object
-		after (bool)      - If True: The function will run after the function that called this function instead of after a timer ends
-
-		Example Input: autoRun(0, self.startupFunction)
-		Example Input: autoRun(5000, myFrame.switchWindow, [0, 1])
-		"""
-
-		#Skip empty functions
-		if (myFunction is not None):
-			myFunctionList, myFunctionArgsList, myFunctionKwargsList = self._formatFunctionInputList(myFunction, myFunctionArgs, myFunctionKwargs)
-			
-			#Run each function
-			for i, myFunction in enumerate(myFunctionList):
-				#Skip empty functions
-				if (myFunction is not None):
-					myFunctionEvaluated, myFunctionArgs, myFunctionKwargs = self._formatFunctionInput(i, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
-				
-					if (after):
-						wx.CallAfter(myFunctionEvaluated, *myFunctionArgs, **myFunctionKwargs)
-					else:
-						wx.CallLater(delay, myFunctionEvaluated, *myFunctionArgs, **myFunctionKwargs)
-		else:
-			warnings.warn(f"myFunctionList is None for autoRun() in {self.__repr__()}", Warning, stacklevel = 2)
-
-	def threadSafe(self, function, *args, **kwargs):
-		if (wx.IsMainThread()):
-			return function(*args, **kwargs)
-		wx.CallAfter(function, *args, **kwargs)
-
-	#Listen Functions
-	def listen(self, myFunction, myFunctionArgs = None, myFunctionKwargs = None,
-		resultFunction = None, resultFunctionArgs = None, resultFunctionKwargs = None, 
-		errorFunction = None, errorFunctionArgs = None, errorFunctionKwargs = None, includeError = True,
-		delay = 1000, shown = False, trigger = None, makeThread = True, 
-		pauseOnDialog = False, notPauseOnDialog = []):
-		"""Triggers the listen routine.
-
-		myFunction (function)     - A function that checks certain conditions
-		resultFunction (function) - A funftion that runs when 'myFunction' returns True
-
-		delay (int) - How long to wait in milliseconds before running 'myFunction'
-			- If 'trigger' is not None: How long to wait before listening for 'trigger'
-		
-		shown (bool) - Determines when to run the function
-			- If True: The function will only run if the window is being shown. If the window is not shown, it will terminate the function. It will wait for the window to first be shown to run
-			- If False: The function will run regardless of whether the window is being shown or not
-		
-		makeThread (bool) - Determines if this function runs on a different thread
-			- If True: A new thread will be created to run the function
-			- If False: The function will only run while the GUI is idle. Note: This can cause lag. Use this for operations that must be in the main thread.
-		
-		trigger (bool) - Determines if trigger_listen() will cause 'myFunction' to run
-			- If True: Will wait for a signal from trigger_listen() before running 'myFunction'
-			- If False: Will run 'myFunction' after 'delay' is over
-			- If None: Will run 'myFunction' after 'delay' is over
-		
-		pauseOnDialog (bool) - Determines if the background function should wait if a dialog box is showing
-			- If True: Will pause for any dialog window
-			- If not bool: Will pause only if the dialog's label matches this
-		not_pauseOnDialog (str) - The label of a dialog window to not pause on (Overrides 'pauseOnDialog'). Can be a list of labels
-
-		Example Input: listen(self.checkCapsLock, shown = True)
-		Example Input: listen(self.checkAutoLogout, resultFunction = self.logout, pauseOnDialog = True)
-		Example Input: listen(self.listenScanner, pauseOnDialog = True, not_pauseOnDialog = "modifyBarcode")
-		Example Input: listen(self.autoSave, trigger = True)
-		"""
-		global listeningCatalogue_lock
-
-		def listenFunction():
-			"""Listens for the myFunction to be true, then runs the resultFunction."""
-			nonlocal self, myFunction, myFunctionArgs, myFunctionKwargs
-			nonlocal resultFunction, resultFunctionArgs, resultFunctionKwargs
-			nonlocal errorFunction, errorFunctionArgs, errorFunctionKwargs, includeError
-
-			catalogue = self.listeningCatalogue[myFunction]
-			#Account for other thread running this
-			while (catalogue["listening"] > 0):
-				with listeningCatalogue_lock:
-					catalogue["stop"] = True
-				time.sleep(100 / 1000)
-
-			with listeningCatalogue_lock:
-				catalogue["stop"] = False
-
-			catalogue["listening"] += 1
-			while True:
-				while (catalogue["pause"]):
-					if (catalogue["stop"]):
-						break
-					if ((catalogue["delay"] != 0) and (catalogue["delay"] is not None)):
-						time.sleep(catalogue["delay"] / 1000)
-
-				if (catalogue["stop"]):
-					with listeningCatalogue_lock:
-						catalogue["stop"] = False
-					break
-
-				if ((catalogue["delay"] != 0) and (catalogue["delay"] is not None)):
-					time.sleep(catalogue["delay"] / 1000)
-
-				if (catalogue["trigger"] is not None):
-					while (not catalogue["trigger"]):
-						if (catalogue["stop"]):
-							break
-						if ((catalogue["delay"] != 0) and (catalogue["delay"] is not None)):
-							time.sleep(catalogue["delay"] / 1000)
-					with listeningCatalogue_lock:
-						catalogue["trigger"] = False
-
-				answer = self.runMyFunction(myFunction, myFunctionArgs, myFunctionKwargs, includeError = includeError,
-					errorFunction = errorFunction, errorFunctionArgs = errorFunctionArgs, errorFunctionKwargs = errorFunctionKwargs)
-				if (answer):
-					self.runMyFunction(resultFunction, resultFunctionArgs, resultFunctionKwargs, includeError = includeError,
-						errorFunction = errorFunction, errorFunctionArgs = errorFunctionArgs, errorFunctionKwargs = errorFunctionKwargs)
-
-			with listeningCatalogue_lock:
-				catalogue["listening"] -= 1
-
-		#########################################################
-
-		with listeningCatalogue_lock:
-			if (myFunction not in self.listeningCatalogue):
-				self.listeningCatalogue[myFunction] = {"listening": 0, "stop": False, "pause": False, "trigger": None, "delay": None}
-			else:
-				self.listeningCatalogue[myFunction]["stop"] = True
-			self.listeningCatalogue[myFunction]["delay"] = delay
-
-			if (trigger):
-				self.listeningCatalogue[myFunction]["trigger"] = False
-
-		if (pauseOnDialog not in (None, False)):
-			if ("listeningCatalogue" not in self.controller.backgroundFunction_pauseOnDialog):
-				self.controller.backgroundFunction_pauseOnDialog["listeningCatalogue"] = {}
-			if (self not in self.controller.backgroundFunction_pauseOnDialog["listeningCatalogue"]):
-				self.controller.backgroundFunction_pauseOnDialog["listeningCatalogue"][self] = {}
-
-			if (notPauseOnDialog is None):
-				notPauseOnDialog = []
-			elif (not isinstance(notPauseOnDialog, (list, tuple, range))):
-				notPauseOnDialog = [notPauseOnDialog]
-
-			self.controller.backgroundFunction_pauseOnDialog["listeningCatalogue"][self][myFunction] = {"state": pauseOnDialog, "exclude": notPauseOnDialog}
-
-		self.backgroundRun(listenFunction, shown = shown, makeThread = makeThread, stopFunction = lambda: self.stop_listen(listenFunction))
-
-	def delay_listen(self, myFunction, delay = None):
-		"""Stops the listen routine.
-
-		myFunction (function) - A function that checks certain conditions
-		delay (int) - How long to wait in milliseconds before running 'myFunction'
-
-		Example Input: delay_listen(self.checkAutoLogout)
-		"""
-		global listeningCatalogue_lock
-
-		with listeningCatalogue_lock:
-			if (myFunction in self.listeningCatalogue):
-				self.listeningCatalogue[myFunction]["delay"] = delay
-
-	def check_listen(self, myFunction, *, includePause = False, includeStop = True):
-		"""Checks if the given function is being listened to.
-
-		myFunction (function) - A function that checks certain conditions
-
-		Example Input: check_listen(self.checkAutoLogout)
-		"""
-		global listeningCatalogue_lock
-
-		with listeningCatalogue_lock:
-			if (myFunction not in self.listeningCatalogue):
-				return
-
-			if (not self.listeningCatalogue[myFunction]["listening"]):
-				return False
-
-			if (includeStop and self.listeningCatalogue[myFunction]["stop"]):
-				return False
-
-			if (includePause and self.listeningCatalogue[myFunction]["pause"]):
-				return False
-
-			return True
-
-	def stop_listen(self, myFunction):
-		"""Stops the listen routine.
-
-		myFunction (function) - A function that checks certain conditions
-
-		Example Input: stop_listen(self.checkAutoLogout)
-		"""
-		global listeningCatalogue_lock
-
-		with listeningCatalogue_lock:
-			if (myFunction in self.listeningCatalogue):
-				self.listeningCatalogue[myFunction]["stop"] = True
-
-	def pause_listen(self, myFunction, state = True):
-		"""Pauses the listen routine.
-
-		myFunction (function) - A function that checks certain conditions
-		state (bool) - Determines if the function should be paused or not
-
-		Example Input: pause_listen(self.checkAutoLogout)
-		Example Input: pause_listen(self.checkAutoLogout, state = False)
-		"""
-		global listeningCatalogue_lock
-
-		with listeningCatalogue_lock:
-			if (myFunction in self.listeningCatalogue):
-				self.listeningCatalogue[myFunction]["pause"] = state
-
-	def trigger_listen(self, myFunction, state = True):
-		"""Turns on/off the trigger for the listen routine.
-
-		myFunction (function) - A function that checks certain conditions
-		state (bool) - Determines if the function should be paused or not
-
-		Example Input: pause_listen(self.checkAutoLogout)
-		Example Input: pause_listen(self.checkAutoLogout, state = False)
-		"""
-		global listeningCatalogue_lock
-
-		with listeningCatalogue_lock:
-			if (myFunction in self.listeningCatalogue):
-				self.listeningCatalogue[myFunction]["trigger"] = state
-
-	def unpause_listen(self, myFunction, state = True):
-		"""Unpauses the listen routine.
-
-		myFunction (function) - A function that checks certain conditions
-		state (bool) - Determines if the function should be paused or not
-
-		Example Input: unpause_listen(self.checkAutoLogout)
-		Example Input: unpause_listen(self.checkAutoLogout, state = False)
-		"""
-
-		self.pause_listen(myFunction, not state)
-
-	#One-shot Functions
-	def oneShot(self, myFunction, myFunctionArgs = None, myFunctionKwargs = None,
-		alternativeFunction = None, alternativeFunctionArgs = None, alternativeFunctionKwargs = None, 
-		delay = 0, delayAfter = True, allowAgain = True, **kwargs):
-		"""Runs this function in the background only once.
-		Returns if 'myFunction' ran or not.
-
-		myFunction (function)     - A function that will run once
-		alternativeFunction (function) - A funftion that runs instead of 'myFunction' if the one-shot is already made
-
-		delay (int)       - How long to wait in milliseconds before allowing 'myFunction' to run again
-		delayAfter (bool) - Determines when the delay is processed
-			- If True: Delays after 'myFunction' runs
-			- If False: Delays before 'myFunction' runs
-		allowAgain (bool) - Determines if the 'myFunction' can run again after it has finished
-			- If True: 'myFunction' can run again after it has finished
-			- If False: 'myFunction' cannot run again after it has finished
-
-		shown (bool)      - Determines when to run the function
-			- If True: The function will only run if the window is being shown. If the window is not shown, it will terminate the function. It will wait for the window to first be shown to run
-			- If False: The function will run regardless of whether the window is being shown or not
-		makeThread (bool) - Determines if this function runs on a different thread
-			- If True: A new thread will be created to run the function
-			- If False: The function will only run while the GUI is idle. Note: This can cause lag. Use this for operations that must be in the main thread.
-
-		Example Input: oneShot()
-		"""
-
-		def runOneShotFunction():
-			nonlocal self, myFunction, myFunctionArgs, myFunctionKwargs, delay, allowAgain
-
-			self.oneShotCatalogue[myFunction]["running"] = True
-
-			if ((not delayAfter) and (delay != 0) and (delay is not None)):
-				time.sleep(delay / 1000)
-
-			self.runMyFunction(myFunction, myFunctionArgs, myFunctionKwargs)
-
-			if ((delayAfter) and (delay != 0) and (delay is not None)):
-				time.sleep(delay / 1000)
-
-			if (not allowAgain):
-				self.oneShotCatalogue[myFunction]["canRun"] = False
-
-			self.oneShotCatalogue[myFunction]["running"] = False
-
-		def runAlternativeFunction():
-			nonlocal self, alternativeFunction, alternativeFunctionArgs, alternativeFunctionKwargs
-
-			self.runMyFunction(alternativeFunction, alternativeFunctionArgs, alternativeFunctionKwargs)
-
-		#########################################################
-
-		if (myFunction in self.oneShotCatalogue):
-			if ((self.oneShotCatalogue[myFunction]["running"]) or (not self.oneShotCatalogue[myFunction]["canRun"])):
-				if (runAlternativeFunction is not None):
-					self.backgroundRun(runAlternativeFunction, **kwargs)
-				return False
-		else:
-			self.oneShotCatalogue[myFunction] = {"running": False, "canRun": True}
 	
-		self.backgroundRun(runOneShotFunction, **kwargs)
-		return True
-
-	def reset_oneShot(self, myFunction):
-		"""Allows the oneShot function to run again.
-
-		myFunction (function) - A function that will run once
-
-		Example Input: stop_oneShot()
-		"""
-
-		if (myFunction in self.oneShotCatalogue):
-			self.oneShotCatalogue[myFunction]["canRun"] = True
 
 	#Nesting Catalogue
 	def _getAddressValue(self, address):
@@ -18805,12 +18072,10 @@ class handle_Dialog(handle_Base):
 				# return
 
 		#Pause background functions
-		for variable, handleDict in self.controller.backgroundFunction_pauseOnDialog.items():
-			for handle, functionDict in handleDict.items():
-				for function, attributes in functionDict.items():
-					if ((attributes["state"]) and ((self.label is None) or ((self.label is not None) and (self.label not in attributes["exclude"])))):
-						catalogue = getattr(handle, variable)
-						catalogue[function]["pause"] = True
+		raise NotImplementedError()
+		for listener in self.controller.threadManager.pauseOnDialog:
+			if ((self.label is None) or (self.label not in listener.pauseOnDialog_exclude)):
+				listener.pause = True
 
 		#Show dialogue
 		if (self.type is Types.message):
@@ -18982,12 +18247,10 @@ class handle_Dialog(handle_Base):
 			warnings.warn(f"Add {self.type.name} to hide() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		#Unpause background functions
-		for variable, handleDict in self.controller.backgroundFunction_pauseOnDialog.items():
-			for handle, functionDict in handleDict.items():
-				for function, attributes in functionDict.items():
-					if ((attributes["state"]) and ((self.label is None) or ((self.label is not None) and (self.label not in attributes["exclude"])))):
-						catalogue = getattr(handle, variable)
-						catalogue[function]["pause"] = False
+		raise NotImplementedError()
+		for listener in self.controller.threadManager.pauseOnDialog:
+			if ((self.label is None) or (self.label not in listener.pauseOnDialog_exclude)):
+				listener.pause = False
 
 	def end(self, ok = None, cancel = None, close = None, yes = None, no = None, apply = None):
 		"""Stops showing the custom window.
@@ -23752,32 +23015,6 @@ class handle_WizardPage(handle_NavigatorBase, handle_Base_NotebookPage):
 # 		if (self.previousPage is not None):
 # 			return self.previousPage.thing
 
-class ExceptionDialog(wx.lib.agw.genericmessagedialog.GenericMessageDialog):
-	"""
-	Modified code from: https://www.blog.pythonlibrary.org/2014/01/31/wxpython-how-to-catch-all-exceptions/
-	"""
- 
-	#----------------------------------------------------------------------
-	def __init__(self, msg):
-		wx.lib.agw.genericmessagedialog.GenericMessageDialog.__init__(self, None, msg, "Objection!", wx.OK|wx.ICON_ERROR)
- 
-def MyExceptionHook(etype, value, trace):
-	"""Handler for all unhandled exceptions.
-	Modified code from: https://www.blog.pythonlibrary.org/2014/01/31/wxpython-how-to-catch-all-exceptions/
- 
-	:param `etype`: the exception type (`SyntaxError`, `ZeroDivisionError`, etc...);
-	:type `etype`: `Exception`
-	:param string `value`: the exception error message;
-	:param string `trace`: the traceback header, if any (otherwise, it prints the
-	 standard Python header: ``Traceback (most recent call last)``.
-	"""
-
-	frame = wx.GetApp().GetTopWindow()
- 
-	dlg = ExceptionDialog("".join(traceback.format_exception(etype, value, trace)))
-	dlg.ShowModal()
-	dlg.Destroy()
-
 class MyApp():
 	"""Needed to make the GUI work.
 	For more functions to override: https://wxpython.org/Phoenix/docs/html/wx.AppConsole.html
@@ -23792,7 +23029,6 @@ class MyApp():
 			self.app = self._App(self, root = parent, **kwargs)
 
 	def MainLoop(self):
-		# sys.excepthook = MyExceptionHook
 		self.app.MainLoop()
 
 	class _App(wx.App):
@@ -23802,7 +23038,12 @@ class MyApp():
 			self.root = root
 			self.parent = parent
 			self.newMainLoop = newMainLoop
+
 			wx.App.__init__(self, redirect = redirect, filename = filename, useBestVisual = useBestVisual, clearSigInt = clearSigInt)
+
+			self.exceptionHandler = ExceptionHandling.ExceptionHandler(self, appName = "Test", 
+				logDir = os.path.join(os.getcwd(), "logs", os.environ.get('username')),
+				logError = False, printError = True)
 
 		def OnInit(self):
 			"""Needed to make the GUI work.
@@ -23861,7 +23102,7 @@ class MyApp():
 		def MainLoop(self):
 			self.building = False
 
-class Controller(Utilities, CommonEventFunctions):
+class Controller(Utilities, CommonEventFunctions, MyUtilities.threadManager.CommonFunctions):
 	"""This module will help to create a simple GUI using wxPython without 
 	having to learn how to use the complicated program.
 	"""
@@ -23903,11 +23144,11 @@ class Controller(Utilities, CommonEventFunctions):
 		Example Input: Controller(oneInstance = True)
 		Example Input: Controller(startInThread = True)
 		"""
-		super(Controller, self).__init__()
 
 		#Initialize Inherited classes
 		Utilities.__init__(self)
 		CommonEventFunctions.__init__(self)
+		MyUtilities.threadManager.CommonFunctions.__init__(self)
 
 		#Setup Internal Variables
 		self.labelCatalogue = {} #A dictionary that contains all the windows made for the gui. {windowLabel: myFrame}
@@ -23937,9 +23178,7 @@ class Controller(Utilities, CommonEventFunctions):
 
 		#Record Address
 		self._setAddressValue([id(self)], {None: self})
-
-		#Used to pass functions from threads
-		self.threadQueue = _ThreadQueue()
+		self.listener_statusText = self.threadManager.listen(self.listenStatusText, delay = 100 / 1000, errorFunction = self.listenStatusText_handleError, autoStart = False)
 
 		#Create the wx app object
 		self.app = MyApp(parent = self, startInThread = startInThread, newMainLoop = newMainLoop)
@@ -24246,13 +23485,12 @@ class Controller(Utilities, CommonEventFunctions):
 	def start_listenStatusText(self):
 		"""Starts listening to listenStatusText()."""
 
-		self.stop_listenStatusText()
-		self.listen(self.listenStatusText, delay = 100 / 1000, errorFunction = self.listenStatusText_handleError)
+		self.listener_statusText.start()
 
 	def stop_listenStatusText(self):
 		"""Stops listening to listenStatusText()."""
 
-		self.stop_listen(self.listenStatusText)
+		self.listener_statusText.stop()
 
 	def listenStatusText_handleError(self, error = None):
 		traceback.print_exception(type(error), error, error.__traceback__)
@@ -24959,389 +24197,9 @@ class Controller(Utilities, CommonEventFunctions):
 # pubsub.core.callables.CallArgsInfo = _mp_CallArgsInfo
 
 #User Things
-class User_Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFunctions, MyUtilities.wxPython.Converters, MyUtilities.wxPython.AttributeGetters):
-	def __init__(self, catalogue_variable = None, label_variable = None, **kwargs):
-		if (catalogue_variable is None):
-			self._dataCatalogue = {}
-
-		if ((catalogue_variable is not None) and (not isinstance(catalogue_variable, (str, Controller)))):
-			errorMessage = f"'catalogue_variable' must be a str, not a {type(catalogue_variable)}"
-			raise ValueError(errorMessage)
-		if ((label_variable is not None) and (not isinstance(label_variable, str))):
-			errorMessage = f"'label_variable' must be a str, not a {type(label_variable)}"
-			raise ValueError(errorMessage)
-
-		self._catalogue_variable = catalogue_variable
-		self._label_variable = label_variable or "label"
-
-	def __repr__(self):
-		representation = f"{type(self).__name__}(id = {id(self)}"
-
-		if (hasattr(self, "label")):
-			representation += f", label = {getattr(self, self._label_variable)})"
-		else:
-			representation += ")"
-
-		return representation
-
-	def __str__(self):
-		output = f"{type(self).__name__}()\n-- id: {id(self)}\n"
-		if (hasattr(self, "label") and (getattr(self, self._label_variable) is not None)):
-			output += f"-- Label: {getattr(self, self._label_variable)}\n"
-		if (hasattr(self, "parent") and (self.parent is not None)):
-			output += f"-- Parent: {self.parent.__repr__()}\n"
-		if (hasattr(self, "root") and (self.root is not None)):
-			output += f"-- Root: {self.root.__repr__()}\n"
-		return output
-
-	def __len__(self):
-		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable is not None)):
-			if (isinstance(self._catalogue_variable, Controller)):
-				return self._catalogue_variable.__len__()
-		return len(self[:])
-
-	def __contains__(self, key):
-		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable is not None)):
-			if (isinstance(self._catalogue_variable, Controller)):
-				return self._catalogue_variable.__contains__(key)
-
-		dataCatalogue = self._getDataCatalogue()
-		return self._get(dataCatalogue, key, returnExists = True)
-
-		# if (key in self[:]):
-		#   return True
-		# else:
-		#   if (hasattr(self, "_catalogue_variable") and (self._label_variable is not None)):
-		#       for item in self[:]:
-		#           if (hasattr(item, self._label_variable)):
-		#               if (key == getattr(item, self._label_variable)):
-		#                   return True
-		# return False
-
-	def __iter__(self):
-		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable is not None)):
-			if (isinstance(self._catalogue_variable, Controller)):
-				return self._catalogue_variable.__iter__()
-
-		dataCatalogue = self._getDataCatalogue()
-		return _Iterator(dataCatalogue)
-
-	def __getitem__(self, key):
-		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable is not None)):
-			if (isinstance(self._catalogue_variable, Controller)):
-				return self._catalogue_variable.__getitem__(key)
-			
-		dataCatalogue = self._getDataCatalogue()
-		return self._get(dataCatalogue, key)
-
-	def __setitem__(self, key, value):
-		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable is not None)):
-			if (isinstance(self._catalogue_variable, Controller)):
-				return self._catalogue_variable.__setitem__(key, value)
-		
-		dataCatalogue = self._getDataCatalogue()
-		dataCatalogue[key] = value
-
-	def __delitem__(self, key):
-		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable is not None)):
-			if (isinstance(self._catalogue_variable, Controller)):
-				return self._catalogue_variable.__delitem__(key)
-		
-		dataCatalogue = self._getDataCatalogue()
-		del dataCatalogue[key]
-
-	def __enter__(self):
-		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable is not None)):
-			if (isinstance(self._catalogue_variable, Controller)):
-				return self._catalogue_variable.__enter__()
-			
-		return self
-
-	def __exit__(self, exc_type, exc_value, traceback):
-		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable is not None)):
-			if (isinstance(self._catalogue_variable, Controller)):
-				return self._catalogue_variable.__exit__(exc_type, exc_value, traceback)
-			
-		if (traceback is not None):
-			return False
-
-	def keys(self, *args, **kwargs):
-		dataCatalogue = self._getDataCatalogue()
-		return dataCatalogue.keys(*args, **kwargs)
-
-	def values(self, *args, **kwargs):
-		dataCatalogue = self._getDataCatalogue()
-		return dataCatalogue.values(*args, **kwargs)
-
-	def items(self, *args, **kwargs):
-		dataCatalogue = self._getDataCatalogue()
-		return dataCatalogue.items(*args, **kwargs)
-
-	def _getDataCatalogue(self):
-		"""Returns the data catalogue used to select items from this thing."""
-
-		if (hasattr(self, "_catalogue_variable") and (self._catalogue_variable is not None)):
-			if (isinstance(self._catalogue_variable, str)):
-				if (not hasattr(self, self._catalogue_variable)):
-					warnings.warn(f"There is no variable {self._catalogue_variable} in {self.__repr__()} to use for the data catalogue", Warning, stacklevel = 2)
-					return {}
-				else:
-					return getattr(self, self._catalogue_variable)
-			else:
-				if (isinstance(self._catalogue_variable, Controller)):
-					return self._catalogue_variable.labelCatalogue #This might be causing some bugs with slices ex: self[:]
-				else:
-					return self._catalogue_variable
-		else:
-			return self._dataCatalogue
-
-	def _get(self, itemCatalogue, itemLabel = None, returnExists = False, exclude = None):
-		"""Searches the label catalogue for the requested object.
-
-		itemLabel (any) - What the object is labled as in the catalogue
-			- If slice: objects will be returned from between the given spots 
-			- If None: Will return all that would be in an unbound slice
-
-		Example Input: _get(self.rowCatalogue)
-		Example Input: _get(self.rowCatalogue, 0)
-		Example Input: _get(self.rowCatalogue, slice(None, None, None))
-		Example Input: _get(self.rowCatalogue, slice(2, 7, None))
-		"""
-
-		if (exclude is None):
-			exclude = []
-		elif (not isinstance(exclude, (list, tuple, set, range, types.GeneratorType))):
-			exclude = [exclude]
-
-		#Account for retrieving all nested
-		if (itemLabel is None):
-			itemLabel = slice(None, None, None)
-
-		#Account for indexing
-		if (isinstance(itemLabel, slice)):
-			if (itemLabel.step is not None):
-				raise FutureWarning(f"Add slice steps to _get() for indexing {self.__repr__()}")
-			
-			elif ((itemLabel.start is not None) and (itemLabel.start not in itemCatalogue)):
-				errorMessage = f"There is no item labled {itemLabel.start} in the row catalogue for {self.__repr__()}"
-				raise KeyError(errorMessage)
-			
-			elif ((itemLabel.stop is not None) and (itemLabel.stop not in itemCatalogue)):
-				errorMessage = f"There is no item labled {itemLabel.stop} in the row catalogue for {self.__repr__()}"
-				raise KeyError(errorMessage)
-
-			handleList = []
-			begin = False
-			for item in sorted(itemCatalogue.keys(), key = lambda item: f"{item}"):
-				#Allow for slicing with non-integers
-				if ((not begin) and ((itemLabel.start is None) or (itemCatalogue[item].label == itemLabel.start))):
-					begin = True
-				elif ((itemLabel.stop is not None) and (itemCatalogue[item].label == itemLabel.stop)):
-					break
-
-				#Slice catalogue via creation date
-				if (begin and (item not in exclude)):
-					handleList.append(itemCatalogue[item])
-			return handleList
-
-		elif (itemLabel not in itemCatalogue):
-			answer = None
-		else:
-			answer = itemCatalogue[itemLabel]
-
-		if (returnExists):
-			return answer is not None
-
-		if (answer is not None):
-			if (isinstance(answer, (list, tuple, range))):
-				if (len(answer) == 1):
-					answer = answer[0]
-			return answer
-
-		# printCurrentTrace()
-		errorMessage = f"There is no item labled {itemLabel} in the data catalogue for {self.__repr__()}"
-		raise KeyError(errorMessage)
-
-	def getValue(self, variable, order = True, includeMissing = True, exclude = [], sortNone = False, reverse = False, getFunction = None):
-		"""Returns a list of all values for the requested variable.
-		Special thanks to Andrew Clark for how to sort None on https://stackoverflow.com/questions/18411560/python-sort-list-with-none-at-the-end
-
-		variable (str) - what variable to retrieve from all rows
-		order (str) - By what variable to order the items
-			- If variable does not exist: Will place the item at the end of the list with sort() amongst themselves
-			- If True: Will use the python list function sort()
-			- If False: Will not sort returned items
-			- If None: Will not sort returned items
-		sortNone (bool) - Determines how None is sorted
-			- If True: Will place None at the beginning of the list
-			- If False: Will place None at the end of the list
-			- If None: Will remove all instances of None from the list
-
-		Example Input: getValue("naed")
-		Example Input: getValue(self.easyPrint_selectBy)
-		Example Input: getValue("naed", "defaultOrder")
-		Example Input: getValue("barcode", sortNone = None)
-		"""
-
-		if (not isinstance(exclude, (list, tuple, range))):
-			exclude = [exclude]
-		if (getFunction is None):
-			getFunction = getattr
-
-		if ((order is not None) and (not isinstance(order, bool))):
-			data = [getFunction(item, variable) for item in self.getOrder(order, includeMissing = includeMissing, 
-				getFunction = getFunction, sortNone = sortNone, exclude = exclude) if (item not in exclude)]
-		else:
-			data = [getFunction(item, variable) for item in self if (item not in exclude)]
-
-			if ((order is not None) and (isinstance(order, bool)) and order):
-				data = sorted(filter(lambda item: True if (sortNone is not None) else (item is not None), data), 
-					key = lambda item: (((item is None)     if (reverse) else (item is not None)) if (sortNone) else
-										((item is not None) if (reverse) else (item is None)), item), 
-					reverse = reverse)
-
-		return data
-
-	def getOrder(self, variable, includeMissing = True, where = None, exclude = [], sortNone = False, reverse = False, 
-		getFunction = None, compareFunction = None):
-		"""Returns a list of children in order according to the variable given.
-		Special thanks to Andrew Dalke for how to sort objects by attributes on https://wiki.python.org/moin/HowTo/Sorting#Key_Functions
-
-		variable (str) - what variable to use for sorting
-			- If None: Will not sort it
-		includeMissing (bool) - Determiens what to do with children who do not have the requested variable
-		getFunction (function) - What function to run to get the value of this variable where the args are [handle, variable]
-			- If None: will use getattr
-		exclude (list) - What handles should not be included
-			- If function: Determine if the handle should be excluded where the args are [handle]
-
-		Example Input: getOrder("order")
-		Example Input: getOrder("order", includeMissing = False, sortNone = None)
-		Example Input: getOrder("order", getFunction = lambda item, variable: getattr(item, variable.name))
-		Example Input: getOrder("order", where = {"inventoryTitle": None}, compareFunction = lambda item, where: all(item.getAttribute(variable) != value for variable, value in where.items()))
-		Example Input: getOrder("order", exclude = lambda handle: not handle.removePending)
-		"""
-
-		if (not callable(exclude)):
-			if (not isinstance(exclude, (list, tuple, range, types.GeneratorType))):
-				exclude = [exclude]
-			excludeFunction = lambda handle: handle in exclude
-		else:
-			excludeFunction = exclude
-		if (getFunction is None):
-			getFunction = getattr
-
-		if (variable is None):
-			handleList = self.getHandle(where = where, exclude = excludeFunction, getFunction = getFunction, compareFunction = compareFunction)
-		else:
-			try:
-				handleList = sorted(filter(lambda item: hasattr(item, variable) and (not excludeFunction(item)) and ((sortNone is not None) or (getFunction(item, variable) is not None)), 
-					self.getHandle(where = where, exclude = excludeFunction, getFunction = getFunction, compareFunction = compareFunction)), 
-					key = lambda item: (((getFunction(item, variable) is None)     if (reverse) else (getFunction(item, variable) is not None)) if (sortNone) else
-										((getFunction(item, variable) is not None) if (reverse) else (getFunction(item, variable) is None)), getFunction(item, variable)), 
-					reverse = reverse)
-			except TypeError as error:
-				for item in filter(lambda item: hasattr(item, variable) and (not excludeFunction(item)) and ((sortNone is not None) or (getFunction(item, variable) is not None)), 
-					self.getHandle(where = where, exclude = excludeFunction, getFunction = getFunction, compareFunction = compareFunction)):
-
-					print(getFunction(item, variable), item)
-				raise error
-
-			if (includeMissing):
-				handleList.extend([item for item in self if (not hasattr(item, variable) and (not excludeFunction(item)))])
-
-		return handleList
-
-	def getHandle(self, where = None, exclude = [], getFunction = None, compareFunction = None, compareAsStrings = False):
-		"""Returns a list of children whose variables are equal to what is given.
-
-		where (dict) - {variable (str): value (any)}
-			- If None, will not check the values given
-		exclude (list) - What handles should not be included
-			- If function: Determine if the handle should be excluded where the args are [handle]
-		getFunction (function) - What function to run to get the value of this variable where the args are [handle, variable]
-			- If None: will use getattr
-		compareFunction (function) - What function to run to evaluate 'where' where the args are [handle, where]
-			- If None: will use getattr
-
-		Example Input: getHandle()
-		Example Input: getHandle({"order": 4})
-		Example Input: getHandle(exclude = ["main"])
-		Example Input: getHandle(exclude = lambda handle: not handle.removePending)
-		"""
-
-		if (not callable(exclude)):
-			if (not isinstance(exclude, (list, tuple, range, set, types.GeneratorType))):
-				exclude = [exclude]
-			excludeFunction = lambda handle: handle in exclude
-		else:
-			excludeFunction = exclude
-		if (getFunction is None):
-			getFunction = getattr
-		if (compareFunction is None):
-			if (compareAsStrings):
-				compareFunction = lambda handle, where: all(hasattr(handle, variable) and (f"{getFunction(handle, variable)}" == f"{value}") for variable, value in where.items())
-			else:
-				compareFunction = lambda handle, where: all(hasattr(handle, variable) and (getFunction(handle, variable) == value) for variable, value in where.items())
-
-		handleList = []
-		for handle in self:
-			if (not excludeFunction(handle)):
-				if ((where is None) or (len(where) == 0)):
-					handleList.append(handle)
-				elif (compareFunction(handle, where)):
-					handleList.append(handle)
-
-		return handleList
-
-	def getUnique(self, base = "{}", increment = 1, start = 1, exclude = []):
-		"""Returns a unique name with the given criteria.
-
-		Example Input: getUnique()
-		Example Input: getUnique("Format_{}")
-		Example Input: getUnique(exclude = [item.database_id for item in self.parent])
-		"""
-		assert increment is not 0
-
-		if (not isinstance(exclude, (list, tuple, range, set, types.GeneratorType))):
-			exclude = [exclude]
-
-		while True:
-			ending = start + increment - 1
-			if ((base.format(ending) in self) or (base.format(ending) in exclude) or (ending in exclude) or (str(ending) in [str(item) for item in exclude])):
-				increment += 1
-			else:
-				break
-		return base.format(ending)
-
-	def getNumber(self, itemList = None, depthMax = None, _currentDepth = 1):
-		"""Returns the number of items in 'itemList'.
-		Special thanks to stonesam92 for how to check nested items on https://stackoverflow.com/questions/27761463/how-can-i-get-the-total-number-of-elements-in-my-arbitrarily-nested-list-of-list
-
-		itemList (any)      - What to check the number of
-			- If None: Will return the number of children in self
-		_currentDepth (int) - How many recursions have been done on this branch
-		depthMax (int)      - The max number of recursions to do
-			- If None: Will not limit the number of recursions
-
-		Example Input:: getNumber()
-		Example Input:: getNumber([1, 2, 3])
-		Example Input:: getNumber({1: 2, 3: {4: 5}})
-		"""
-
-		if ((depthMax is not None) and (_currentDepth > depthMax)):
-			return 0
-		elif (isinstance(itemList, str)):
-			return 1
-		elif (isinstance(itemList, dict)):
-			count = 0
-			for key, value in itemList.items():
-				count += 1 + self.getNumber(value, depthMax = depthMax, _currentDepth = _currentDepth + 1)
-			return count
-		elif (isinstance(itemList, (list, tuple, range)) or hasattr(itemList, '__iter__')):
-			return sum(self.getNumber(item, depthMax = depthMax, _currentDepth = _currentDepth + 1) for item in itemList)
-		else:
-			return 1
+class User_Utilities(MyUtilities.common.Container, MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFunctions, MyUtilities.wxPython.Converters, MyUtilities.wxPython.CommonFunctions):
+	def __init__(self, *args, **kwargs):
+		MyUtilities.common.Container.__init__(self, *args, **kwargs)
 
 	def makeCanvas(self, *args, **kwargs):
 		"""Grants user access to Utilities._makeCanvas().
@@ -25446,3 +24304,49 @@ class User_Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.Ensu
 		"""
 
 		return Utilities.makeDialogCustom(None, *args, **kwargs)
+
+if (__name__ == "__main__"):
+
+	def buildWindow():
+		"""Creates a simple window."""
+
+		#Initialize Frame
+		with gui.addWindow(label = 0, title = "Controlled Layout") as myFrame:
+			# myFrame.setMinimumFrameSize((250, 200))
+
+			#Add Content
+			with myFrame.addSizerGridFlex(rows = 2, columns = 1) as mySizer:
+				mySizer.growFlexRowAll()
+				mySizer.growFlexColumnAll()	
+					
+				with mySizer.addSizerGridFlex(rows = 3, columns = 2) as mySubSizer:
+					mySubSizer.growFlexRow(2)
+					mySubSizer.growFlexColumnAll()	
+					mySubSizer.addText("Lorem")
+					mySubSizer.addText("Ipsum")
+					mySubSizer.addText(text = "Dolor")
+				
+				with mySizer.addSizerGridFlex(rows = 3, columns = 2) as mySubSizer:
+					mySubSizer.growFlexRow(2)
+					mySubSizer.growFlexColumnAll()	
+					mySubSizer.addInputBox(text = "Sit")
+					mySubSizer.addText(text = "Amet")
+					mySubSizer.addInputBox(text = "Consectetur")
+
+			with myFrame.addSizerGridFlex(rows = 3, columns = 2) as mySizer:
+				mySizer.growFlexRowAll()
+				mySizer.growFlexColumnAll()	
+				mySizer.addButton("Adipiscing", myFunction = lambda event: print("Adipiscing"))
+				mySizer.addButton("Elit", tabSkip = True, myFunction = lambda event: print("Elit"))
+				mySizer.addButton("Sed", tabSkip = True, myFunction = lambda event: print("Sed"))
+				mySizer.addButton("Do", myFunction = lambda event: print("Do"))
+
+	gui = build()
+	buildWindow()
+	gui.centerWindowAll()
+
+	myFrame = gui.getWindow(0)
+	myFrame.showWindow()
+
+	gui.finish()
+
