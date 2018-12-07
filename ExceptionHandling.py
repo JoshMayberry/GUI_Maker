@@ -88,10 +88,6 @@ class ExceptionHandler(MyUtilities.logger.LoggingFunctions, MyUtilities.common.E
 			config = self.getLoggerConfig(logDir = logDir), 
 			force_quietRoot = __name__ == "__main__")
 
-		print("@1", self.log_getLogs())
-
-		sys.exit()
-
 		sys.excepthook = self.makeExceptionHook(**kwargs)
 
 	def getLoggerConfig(self, logDir = None):
@@ -134,13 +130,19 @@ class ExceptionHandler(MyUtilities.logger.LoggingFunctions, MyUtilities.common.E
 
 		return logger_config
 
-	def makeExceptionHook(self, logError = True, printError = True, **kwargs):
+	def makeExceptionHook(self, logError = True, printError = True, canReport = True, include_screenshots = True, **kwargs):
 		"""Creates an exception hook.
 
 		kwargs -> sendEmail()
 
 		logError (bool) - Determines if errors should be sent to the error log
 		printError (bool) - Determines if errors should be printed to the cmd window
+		canReport (bool) - Determines if the user can report the error (given that kwargs are provided)
+
+		include_logs - Determines if the log files associated with the logger should be included in the report
+		include_traceback - Determines if the traceback of the error should be included in the report
+		include_systemInfo - Determines if information about this specific computer should be included in the report
+		include_screenshots - Determines if a screenshot of the wxFrame that was active when the error occured should be included in the report
 
 		Example Input: makeExceptionHook()
 		"""
@@ -155,20 +157,30 @@ class ExceptionHandler(MyUtilities.logger.LoggingFunctions, MyUtilities.common.E
 				self.log_error(errorMessage)
 	
 			if (printError):
-				print(errorMessage)
+				print(errorMessage)	
 
-			with ErrorDialog(self, message = errorMessage, canReport = bool(kwargs)) as myDialog:
+			if (include_screenshots):
+				screenshot = MyUtilities.wxPython.getWindowAsBitmap()
+			else:
+				screenshot = None
+
+			with ErrorDialog(self, message = errorMessage, canReport = canReport and bool(kwargs)) as myDialog:
 				if (myDialog.isOk()):
 					try:
-						sendEmail(errorMessage, **kwargs)
+						sendEmail(errorMessage, screenshot = screenshot, **kwargs)
+						wx.MessageBox("Report Successful", "Success", wx.OK | wx.ICON_INFORMATION)
 
 					except Exception as error:
 						traceback.print_exception(type(error), error, error.__traceback__)
 						wx.MessageBox("Report Failed", "Failure", wx.OK | wx.ICON_ERROR)
 
-		def sendEmail(errorMessage, fromAddress = None, fromPassword = None, toAddress = None, *, subject = None, server = None, port = None):
+		def sendEmail(errorMessage, fromAddress = None, fromPassword = None, 
+			toAddress = None, *, subject = None, server = None, port = None, 
+			screenshot = None, extra_information = None, extra_files = None, 
+			include_logs = True, include_systemInfo = True, include_traceback = True):
 			"""Sends an email with some relevant debugging information.
 
+			toAddress (str) - A valid email address to send to
 			fromAddresss (str) - A valid email address to send from
 			fromPassword (str) - The password for 'address'
 
@@ -178,20 +190,23 @@ class ExceptionHandler(MyUtilities.logger.LoggingFunctions, MyUtilities.common.E
 			port (int) - What port to use
 				- If None: 587
 
-			toAddress (str) - A valid email address to send to
+			extra_information (str) - A paragraph of extra information to add
+				- If callable, will use whatever it returns
+
+			extra_files (str) - An extra file to attach
+				- If list: Will attach all files in the list
 
 			Example Input: sendEmail()
 			"""
 
 			def yieldSystemInfo():
-
-				yield f"System: {platform.system()}\n"
-				yield f"Release: {platform.release()}\n"
-				yield f"Version: {platform.version()}\n"
-				yield f"Machine: {platform.machine()}\n"
-				yield f"Other:\n"
-				yield f"Python version: {platform.python_version()}; {platform.python_compiler()}\n"
-				yield f"wxPython version: {wx.version()}\n"
+				yield f"System: {platform.system()}"
+				yield f"OS: {wx.GetOsDescription()}"
+				yield f"Release: {platform.release()}"
+				yield f"Version: {platform.version()}"
+				yield f"Machine: {platform.machine()}"
+				yield f"Python version: {platform.python_version()}; {platform.python_compiler()}"
+				yield f"wxPython version: {wx.version()}"
 
 			#############################################
 
@@ -202,38 +217,30 @@ class ExceptionHandler(MyUtilities.logger.LoggingFunctions, MyUtilities.common.E
 			emailHandle = Communication.getEmail(label = -1)
 			emailHandle.open(fromAddress, fromPassword, server = server, port = port)
 			
-			emailHandle.append(errorMessage, header = "Traceback")
-			emailHandle.append(''.join(yieldSystemInfo()), header = "System Information")
+			if (include_traceback):
+				emailHandle.append(errorMessage, header = "Traceback")
 
-			for filePath in self.log_getLogs(returnExisting = True, returnHistory = True):
-				emailHandle.attach("error_log.log")
+			if (include_systemInfo):
+				emailHandle.append('\n'.join(yieldSystemInfo()), header = "System Information")
+
+			if (extra_information is not None):
+				emailHandle.append('\n'.join(self.ensure_container(message)), header = "Extra Information")
+
+			if (include_logs):
+				for filePath in self.log_getLogs(returnExisting = True, returnHistory = True):
+					emailHandle.attach_file(filePath)
+
+			if (screenshot is not None):
+				emailHandle.attach_wxBitmap(screenshot, name = "screenshot")
+
+			for item in self.ensure_container(extra_files):
+				emailHandle.attach_file(item)
+
 			emailHandle.send(toAddress, subject = self.ensure_default(subject, "Automated Error Report"))
 
-			wx.MessageBox("Report Successful", "Success", wx.OK | wx.ICON_INFORMATION)
-
-
-
-			
-
-			# # db connection might not be available yet
-			# try:
-			# 	# getting license status from database
-			# 	#prefs = wx.GetApp().GetPrefs()
-			# 	#licenseYes = wx.GetApp().GetIt(prefs.owner, prefs.licensekey)
-			# 	licenseYes = True # fake the license status
-			# 	self.message.AppendText(('App version: %s-%s\n') % ("1.1",
-			# 													 licenseYes))
-			# except:
-			# 	self.message.AppendText(('App version: %s-%s\n') % ("1.1",
-			# 														 'unknown'))
-				
-			# self.message.AppendText('\n\n') # some empty lines
+		####################################################################
 
 		return exceptionHook
-		
-		
-
-
 
 if (__name__ == "__main__"):
 	class TestFrame(wx.Frame):
@@ -292,6 +299,14 @@ if (__name__ == "__main__"):
 			# exceptionHandler.logger.log_critical("Sit")
 			event.Skip()
 
+	def yieldExtraInfo():
+		yield "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+
+	def yieldExtraFiles():
+		yield "H:/Python/modules/GUI_Maker/logs/jmayberry/lorem.txt"
+		yield "H:/Python/modules/GUI_Maker/logs/jmayberry/test.bmp"
+		yield "H:/Python/modules/GUI_Maker/logs/jmayberry/test.png"
+
 	##################################
 			
 	app = wx.App(False)
@@ -301,6 +316,7 @@ if (__name__ == "__main__"):
 		logDir = os.path.join(os.getcwd(), "logs", os.environ.get('username')),
 
 		fromAddress = "material.tracker@decaturmold.com", fromPassword = "f@tfr3ddy$c@t", 
-		toAddress = "josh.mayberry@decaturmold.com", port = "587", server = "194.2.1.1")
+		toAddress = "josh.mayberry@decaturmold.com", port = "587", server = "194.2.1.1",
+		extra_information = yieldExtraInfo(), extra_files = yieldExtraFiles())
 	frame.Show()
 	app.MainLoop()
