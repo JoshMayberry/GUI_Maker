@@ -160,7 +160,10 @@ class ExceptionHandler(MyUtilities.logger.LoggingFunctions, MyUtilities.common.E
 				print(errorMessage)	
 
 			if (include_screenshots):
-				screenshot = MyUtilities.wxPython.getWindowAsBitmap()
+				try:
+					screenshot = MyUtilities.wxPython.getWindowAsBitmap()
+				except MyUtilities.wxPython.NoActiveWindowError:
+					screenshot = None
 			else:
 				screenshot = None
 
@@ -224,17 +227,17 @@ class ExceptionHandler(MyUtilities.logger.LoggingFunctions, MyUtilities.common.E
 				emailHandle.append('\n'.join(yieldSystemInfo()), header = "System Information")
 
 			if (extra_information is not None):
-				emailHandle.append('\n'.join(self.ensure_container(message)), header = "Extra Information")
+				emailHandle.append('\n'.join(self.ensure_container(extra_information)), header = "Extra Information")
 
 			if (include_logs):
 				for filePath in self.log_getLogs(returnExisting = True, returnHistory = True):
-					emailHandle.attach_file(filePath)
+					emailHandle.attach(filePath)
 
 			if (screenshot is not None):
-				emailHandle.attach_wxBitmap(screenshot, name = "screenshot")
+				emailHandle.attach(screenshot, name = "screenshot")
 
 			for item in self.ensure_container(extra_files):
-				emailHandle.attach_file(item)
+				emailHandle.attach(item)
 
 			emailHandle.send(toAddress, subject = self.ensure_default(subject, "Automated Error Report"))
 

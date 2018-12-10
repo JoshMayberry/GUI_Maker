@@ -139,44 +139,16 @@ NULL = object()
 # 				if (isinstance(event, wx.PyEventBinder)):
 # 					eventCatalogue[event.typeId] = (name, f"{module_name}.{name}", eval(f"{module_name}.{name}"))
 
-#Debugging Functions
-def printCurrentTrace(printout = True, quitAfter = False):
-	"""Prints out the stack trace for the current place in the program.
-	Modified Code from codeasone on https://stackoverflow.com/questions/1032813/dump-stacktraces-of-all-active-threads
-
-	Example Input: printCurrentTrace()
-	Example Input: printCurrentTrace(quitAfter = True)
-	"""
-
-	code = []
-	for threadId, stack in sys._current_frames().items():
-		code.append("\n# ThreadID: %s" % threadId)
-		for filename, lineno, name, line in traceback.extract_stack(stack):
-			code.append('File: "%s", line %d, in %s' % (filename,
-														lineno, name))
-			if line:
-				code.append("  %s" % (line.strip()))
-
-	try:
-		if (printout):
-			for line in code:
-				print (line)
-		else:
-			return code
-	finally:
-		if (quitAfter):
-			sys.exit()
-
 #Controllers
 def build(*args, **kwargs):
 	"""Starts the GUI making process."""
-	global myEventCatalogue, MyEvent
+	# global myEventCatalogue, MyEvent
 	global Controller
 
-	#Give custom events an event binder
-	myEventCatalogue.clear()
-	for subclass in MyEvent.__subclasses__():
-		subclass.makeBinder()
+	# #Give custom events an event binder
+	# myEventCatalogue.clear()
+	# for subclass in MyEvent.__subclasses__():
+	# 	subclass.makeBinder()
 
 	return Controller(*args, **kwargs)
 
@@ -258,169 +230,11 @@ class Types(enum.IntEnum):
 	poly = enum.auto()
 	double = enum.auto()
 
-#Iterators
-class _Iterator(object):
-	"""Used by handle objects to iterate over their nested objects."""
-
-	def __init__(self, data, filterNone = False):
-		if (not isinstance(data, (list, dict))):
-			data = data[:]
-
-		self.data = data
-
-		if (isinstance(self.data, dict)):
-			self.order = list(self.data.keys())
-
-			if (filterNone):
-				self.order = [key for key in self.data.keys() if key is not None]
-			else:
-				self.order = [key if key is not None else "" for key in self.data.keys()]
-			self.order = sorted(self.order, key = lambda item: f"{item}")
-			self.order = [key if key != "" else None for key in self.order]
-
-	def __iter__(self):
-		return self
-
-	def __next__(self):
-		if (not isinstance(self.data, dict)):
-			if not self.data:
-				raise StopIteration
-
-			return self.data.pop(0)
-		else:
-			if not self.order:
-				raise StopIteration
-
-			key = self.order.pop()
-			return self.data[key]
-
-#Queues
-class PriorityQueue(queue.PriorityQueue):
-	"""A priority queue that keeps item order.
-	Modified code from jcollado on https://stackoverflow.com/questions/9289614/how-to-put-items-into-priority-queues
-	"""
-	
-	def __init__(self, defaultPriority = 100):
-		super().__init__()
-		self.counter = 0
-		self.defaultPriority = defaultPriority
-
-	def put(self, item, priority = None):
-		if (priority is None):
-			priority = self.defaultPriority
-		super().put((priority, self.counter, item))
-		self.counter += 1
-
-	def get(self, *args, **kwargs):
-		return super().get(*args, **kwargs)[2]
-
 #Event System
-myEventCatalogue = {}
-class MyEvent(wx.PyCommandEvent):
-	"""Used to create my own events.
-	Modified code from: ObjectListView.DOLVEvent.py
-
-	Use: https://wiki.wxpython.org/CustomEventClasses
-	Use: https://wxpython.org/Phoenix/docs/html/wx.lib.newevent.html
-
-	Example Use:
-		#Make event handler
-		class EVT_FINISHED(MyEvent):
-			def __init__(self, parent, **kwargs):
-				super().__init__(self, parent, canVeto = True)
-
-				self.page = kwargs.pop("page", None)
-				self.wizard = kwargs.pop("wizard", None)
-
-		#Bind event
-		self._betterBind(self.EVT_FINISHED, self.thing, myFunction, mode = 2)
-
-		#Trigger event manually
-		self.triggerEvent(self.EVT_FINISHED, page = self.currentPage, wizard = self)
-
-		#Trigger event from other event
-		myWidget.setFunction_click(self.onTriggerEvent, myFunctionArgs = (self.EVT_FINISHED,))
-		myWidget.setFunction_click(self.onTriggerEvent, myFunctionKwargs = {"eventType": self.EVT_FINISHED, "okFunction": self.hideWindow, "okFunctionKwargs": {"modalId": wx.ID_OK}})
-	"""
-
-	def __init__(self, source, parent, canVeto = False):
-		global myEventCatalogue
-		
-		wx.PyCommandEvent.__init__(self, myEventCatalogue[source.__class__].typeId, -1)
-
-		self.veto = False
-		self.parent = parent
-		self.canVeto = canVeto
-		self.SetEventObject(parent.thing)
-
-	def Veto(self, state = True):
-		self.veto = state and self.canVeto
-
-	def IsVetoed(self):
-		return self.veto
-
-	@classmethod
-	def makeBinder(cls, *, useId = True, returnEvent = False, returnBinder = False, **kwargs):
-		"""Creates an event binder for this event."""
-
-		if (useId):
-			event, binder = wx.lib.newevent.NewCommandEvent(**kwargs)
-		else:
-			event, binder = wx.lib.newevent.NewEvent(**kwargs)
-
-		myEventCatalogue[cls] = binder
-
-		if (returnEvent):
-			if (returnBinder):
-				return event, binder
-			return event
-		elif (returnBinder):
-			return binder
+MyEvent = MyUtilities.wxPython.MyEvent
 
 #Decorators
 wrap_skipEvent = MyUtilities.wxPython.wrap_skipEvent
-
-def wrap_showError(makeDialog = True, fileName = "error_log.log"):
-	def decorator(function):
-		@functools.wraps(function)
-		def wrapper(*args, **kwargs):
-			"""Shows an error that happens to the user.
-
-			Example Usage: @GUI_Maker.wrap_showError()
-			"""
-
-			answer = function(*args, **kwargs)
-
-			# try:
-			# 	answer = function(*args, **kwargs)
-			# except SystemExit:
-			# 	sys.exit()
-			# except:
-			# 	answer = None
-
-			# 	#Get the error text
-			# 	error = traceback.format_exc()
-
-			# 	#Show Error on CMD
-			# 	print(error)
-
-			# 	#Log the error
-			# 	try:
-			# 		Utilities._logPrint(None, error, fileName = fileName)
-			# 	except:
-			# 		traceback.print_exc()
-
-			# 	#Display Error on GUI
-			# 	if (makeDialog):
-			# 		try:
-			# 			myDialog = handle_Window.makeDialogMessage(None, text = error, icon = "error", addOk = True)
-			# 			myDialog.show()
-			# 		except:
-			# 			traceback.print_exc()
-
-			return answer
-		return wrapper
-	return decorator
 
 #Global Inheritance Classes
 class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFunctions, MyUtilities.wxPython.Converters, MyUtilities.wxPython.CommonFunctions):
@@ -4142,7 +3956,7 @@ class handle_Dummy(MyUtilities.common.ELEMENT):
 		return 1
 
 	def __iter__(self):
-		return _Iterator({})
+		return MyUtilities.common.CommonIterator({})
 
 	def __getitem__(self, key):
 		return None
@@ -4265,7 +4079,7 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 		"""Returns an iterator object that provides the nested objects."""
 
 		nestedList = self._getNested()
-		return _Iterator(nestedList)
+		return MyUtilities.common.CommonIterator(nestedList)
 
 	def __getitem__(self, key):
 		"""Allows the user to index the handle to get nested elements with labels."""
@@ -4350,7 +4164,8 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 		self.label = label
 		self.attributeOverride = {} #Stores variables to override for children {label (str): {variable (str): value (any)}}
 		self.attributeAppend = {} #Stores variables to add to the current variables for children {label (str): {variable (str): value (any)}}
-		self.makeFunction = inspect.stack()[2].function #The function used to create this handle
+		# self.makeFunction = inspect.stack()[2].function #The function used to create this handle
+		self.makeFunction = MyUtilities.common.getCaller()
 
 		if (buildSelf is None):
 			self.parentSizer = None
@@ -9729,6 +9544,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			military, seconds, addInputSpinner = self._getArguments(argument_catalogue, ["military", "seconds", "addInputSpinner"])
 
 			myId = self._getId(argument_catalogue)
+
 			self.thing = wx.lib.masked.TimeCtrl(self.parent.thing, id = myId, fmt24hr = military, displaySeconds = seconds, min = minimum, max = maximum, limited = applyBounds, oob_color = outOfBounds_color)
 
 			if (addInputSpinner):
@@ -17293,6 +17109,7 @@ class handle_SizerProxy(handle_Container_Base):
 
 		#Initialize inherited classes
 		handle_Sizer.__init__(self)
+		handle_Container_Base.__init__(self)
 
 		#Defaults
 		self.mySizer = None
@@ -21990,6 +21807,12 @@ class handle_AuiManager(handle_Container_Base):
 class handle_Base_Notebook(handle_Container_Base):
 	"""A handle for working with notebook-like objects"""
 
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize inherited classes
+		handle_Container_Base.__init__(self)
+
 class handle_Notebook_Simple(handle_Base_Notebook):
 	"""A handle for working with a wxNotebook."""
 
@@ -23032,7 +22855,8 @@ class MyApp():
 		self.app.MainLoop()
 
 	class _App(wx.App):
-		def __init__(self, parent, root = None, redirect = False, filename = None, useBestVisual = False, clearSigInt = True, newMainLoop = None):
+		def __init__(self, parent, root = None, redirect = False, filename = None, 
+			useBestVisual = False, clearSigInt = True, newMainLoop = None, **kwargs):
 			"""Needed to make the GUI work."""
 
 			self.root = root
@@ -23041,9 +22865,7 @@ class MyApp():
 
 			wx.App.__init__(self, redirect = redirect, filename = filename, useBestVisual = useBestVisual, clearSigInt = clearSigInt)
 
-			self.exceptionHandler = ExceptionHandling.ExceptionHandler(self, appName = "Test", 
-				logDir = os.path.join(os.getcwd(), "logs", os.environ.get('username')),
-				logError = False, printError = True)
+			self.exceptionHandler = ExceptionHandling.ExceptionHandler(self, **kwargs)
 
 		def OnInit(self):
 			"""Needed to make the GUI work.
@@ -23102,14 +22924,12 @@ class MyApp():
 		def MainLoop(self):
 			self.building = False
 
-class Controller(Utilities, CommonEventFunctions, MyUtilities.threadManager.CommonFunctions):
-	"""This module will help to create a simple GUI using wxPython without 
-	having to learn how to use the complicated program.
-	"""
+class Controller(Utilities, CommonEventFunctions, MyUtilities.threadManager.CommonFunctions, MyUtilities.common.CATALOGUE):
+	"""This module will help to create a simple GUI using wxPython without having to learn how to use the complicated program."""
 
 	def __init__(self, debugging = False, best = False, oneInstance = False, 
 		allowBuildErrors = None, checkComplexity = True, startInThread = False, 
-		newMainLoop = None, printMakeVariables = False, logCMD = False, splash = None):
+		newMainLoop = None, printMakeVariables = False, logCMD = False, splash = None, **kwargs):
 		"""Defines the internal variables needed to run.
 
 		debugging (bool) - Determiens if debugging information is given to the user
@@ -23165,23 +22985,23 @@ class Controller(Utilities, CommonEventFunctions, MyUtilities.threadManager.Comm
 		self.windowDisabler = None
 		self.controller = self
 		self.splash = splash
-		self.queue_statusText = PriorityQueue(defaultPriority = 100)
+		self.queue_statusText = MyUtilities.common.PriorityQueue(defaultPriority = 100)
 
 		self.exiting = False
 		self.finishing = False
 		self.loggingPrint = False
-		self.old_stdout = sys.stdout.write
-		self.old_stderr = sys.stderr.write
+		# self.old_stdout = sys.stdout.write
+		# self.old_stderr = sys.stderr.write
 
 		if (logCMD):
 			self.logCMD()
 
 		#Record Address
 		self._setAddressValue([id(self)], {None: self})
-		self.listener_statusText = self.threadManager.listen(self.listenStatusText, delay = 100 / 1000, errorFunction = self.listenStatusText_handleError, autoStart = False)
+		self.listener_statusText = self.threadManager.listen(self.listenStatusText, label = "GUI_Maker.statusText", delay = 100, errorFunction = self.listenStatusText_handleError, autoStart = False)
 
 		#Create the wx app object
-		self.app = MyApp(parent = self, startInThread = startInThread, newMainLoop = newMainLoop)
+		self.app = MyApp(parent = self, startInThread = startInThread, newMainLoop = newMainLoop, **kwargs)
 
 	def __str__(self):
 		"""Gives diagnostic information on the GUI when it is printed out."""
@@ -23198,7 +23018,7 @@ class Controller(Utilities, CommonEventFunctions, MyUtilities.threadManager.Comm
 		return output
 
 	def __repr__(self):
-		representation = f"Controller(id = {id(self)}"
+		representation = f"GUIController(id = {id(self)}"
 
 		if (hasattr(self, "label")):
 			representation += f", label = {self.label})"
@@ -23240,7 +23060,7 @@ class Controller(Utilities, CommonEventFunctions, MyUtilities.threadManager.Comm
 		"""Returns an iterator object that provides the nested objects."""
 		
 		nestedList = self._getNested()
-		return _Iterator(nestedList)
+		return MyUtilities.common.CommonIterator(nestedList)
 
 	def __getitem__(self, key):
 		"""Allows the user to index the handle to get nested elements with labels."""
@@ -23701,39 +23521,39 @@ class Controller(Utilities, CommonEventFunctions, MyUtilities.threadManager.Comm
 		Example Input: logCMD()
 		"""
 
-		def new_stdout(*args, fileName = "cmd_log.log", timestamp = True, **kwargs):
-			"""Overrides the print function to also log the information printed.
+		# def new_stdout(*args, fileName = "cmd_log.log", timestamp = True, **kwargs):
+		# 	"""Overrides the print function to also log the information printed.
 
-			fileName (str)   - The filename for the log
-			timestamp (bool) - Determines if the timestamp is added to the log
-			"""
-			nonlocal self
+		# 	fileName (str)   - The filename for the log
+		# 	timestamp (bool) - Determines if the timestamp is added to the log
+		# 	"""
+		# 	nonlocal self
 
-			self._logPrint(*args, fileName = fileName, timestamp = timestamp, **kwargs)
+		# 	self._logPrint(*args, fileName = fileName, timestamp = timestamp, **kwargs)
 
-			#Run the normal print function
-			return self.old_stdout(*args)
+		# 	#Run the normal print function
+		# 	return self.old_stdout(*args)
 
-		def new_stderr(*args, fileName = "error_log.log", timestamp = True, **kwargs):
-			"""Overrides the stderr function to also log the error information.
+		# def new_stderr(*args, fileName = "error_log.log", timestamp = True, **kwargs):
+		# 	"""Overrides the stderr function to also log the error information.
 
-			fileName (str)   - The filename for the log
-			timestamp (bool) - Determines if the timestamp is added to the log
-			"""
-			nonlocal self
+		# 	fileName (str)   - The filename for the log
+		# 	timestamp (bool) - Determines if the timestamp is added to the log
+		# 	"""
+		# 	nonlocal self
 
-			self._logError(*args, fileName = fileName, timestamp = timestamp, **kwargs)
+		# 	self._logError(*args, fileName = fileName, timestamp = timestamp, **kwargs)
 
-			#Run the normal stderr function
-			return self.old_stderr(*args)
+		# 	#Run the normal stderr function
+		# 	return self.old_stderr(*args)
 
-		if (not self.loggingPrint):
-			self.loggingPrint = True
+		# if (not self.loggingPrint):
+		# 	self.loggingPrint = True
 
-			sys.stdout.write = new_stdout
-			sys.stderr.write = new_stderr
-		else:
-			warnings.warn(f"Already logging cmd outputs for {item.__repr__()}", Warning, stacklevel = 2)
+		# 	sys.stdout.write = new_stdout
+		# 	sys.stderr.write = new_stderr
+		# else:
+		# 	warnings.warn(f"Already logging cmd outputs for {item.__repr__()}", Warning, stacklevel = 2)
 
 	def isClosing(self):
 		"""Returns if the GUI is trying to close or not.
