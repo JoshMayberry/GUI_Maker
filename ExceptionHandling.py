@@ -130,7 +130,7 @@ class ExceptionHandler(MyUtilities.logger.LoggingFunctions, MyUtilities.common.E
 
 		return logger_config
 
-	def makeExceptionHook(self, logError = True, printError = True, canReport = True, include_screenshots = True, **kwargs):
+	def makeExceptionHook(self, *args, **kwargs):
 		"""Creates an exception hook.
 
 		kwargs -> sendEmail()
@@ -147,103 +147,204 @@ class ExceptionHandler(MyUtilities.logger.LoggingFunctions, MyUtilities.common.E
 		Example Input: makeExceptionHook()
 		"""
 
-		def exceptionHook(error_cls, error, error_traceback):
-			"""Used by wxPython to display errors."""
-			nonlocal self, logError, printError, kwargs
+		return ExceptionHook(self, *args, **kwargs)
 
-			errorMessage = "".join(traceback.format_exception(error_cls, error, error_traceback))
-			
-			if (logError):
-				self.log_error(errorMessage)
-	
-			if (printError):
-				print(errorMessage)	
+class ExceptionHook(MyUtilities.common.EnsureFunctions):
+	def __init__(self, parent, *, logError = True, printError = True, 
+		canReport = True, subject = None, server = None, port = None, 
+		zip_log = None, zip_screenshot = None, zip_extra = None,
+		fromAddress = None, fromPassword = None, toAddress = None, 
+		screenshot = None, extra_information = None, extra_files = None, 
+		include_logs = True, include_systemInfo = True, include_traceback = True, include_screenshots = True):
+		"""Replaces sys.excepthook.
 
-			if (include_screenshots):
-				try:
-					screenshot = MyUtilities.wxPython.getWindowAsBitmap()
-				except MyUtilities.wxPython.NoActiveWindowError:
-					screenshot = None
-			else:
-				screenshot = None
+		kwargs -> sendEmail()
 
-			with ErrorDialog(self, message = errorMessage, canReport = canReport and bool(kwargs)) as myDialog:
-				if (myDialog.isOk()):
-					try:
-						sendEmail(errorMessage, screenshot = screenshot, **kwargs)
-						wx.MessageBox("Report Successful", "Success", wx.OK | wx.ICON_INFORMATION)
+		logError (bool) - Determines if errors should be sent to the error log
+		printError (bool) - Determines if errors should be printed to the cmd window
+		canReport (bool) - Determines if the user can report the error (given that kwargs are provided)
 
-					except Exception as error:
-						traceback.print_exception(type(error), error, error.__traceback__)
-						wx.MessageBox("Report Failed", "Failure", wx.OK | wx.ICON_ERROR)
+		toAddress (str) - A valid email address to send to
+		fromAddresss (str) - A valid email address to send from
+		fromPassword (str) - The password for 'address'
 
-		def sendEmail(errorMessage, fromAddress = None, fromPassword = None, 
-			toAddress = None, *, subject = None, server = None, port = None, 
-			screenshot = None, extra_information = None, extra_files = None, 
-			include_logs = True, include_systemInfo = True, include_traceback = True):
-			"""Sends an email with some relevant debugging information.
+		server (str) - What email server is being used
+			- If None: Will use gmail
 
-			toAddress (str) - A valid email address to send to
-			fromAddresss (str) - A valid email address to send from
-			fromPassword (str) - The password for 'address'
+		port (int) - What port to use
+			- If None: 587
 
-			server (str) - What email server is being used
-				- If None: Will use gmail
+		extra_information (str) - A paragraph of extra information to add
+			- If callable, will use whatever it returns
 
-			port (int) - What port to use
-				- If None: 587
+		extra_files (str) - An extra file to attach
+			- If list: Will attach all files in the list
+			- If dict: {None: what to attach, **kwargs for attach()}
 
-			extra_information (str) - A paragraph of extra information to add
-				- If callable, will use whatever it returns
+		zip_log (str) - What to call the zip file that the logs are stored in
+			- If None: Will not zip the log files
 
-			extra_files (str) - An extra file to attach
-				- If list: Will attach all files in the list
+		include_logs - Determines if the log files associated with the logger should be included in the report
+		include_traceback - Determines if the traceback of the error should be included in the report
+		include_systemInfo - Determines if information about this specific computer should be included in the report
+		include_screenshots - Determines if a screenshot of the wxFrame that was active when the error occured should be included in the report
 
-			Example Input: sendEmail()
-			"""
+		Example Input: ExceptionHook(self)
+		Example Input: ExceptionHook(self, extra_files = "example.txt")
+		Example Input: ExceptionHook(self, extra_files = ["lorem.txt", "ipsum.txt"])
+		Example Input: ExceptionHook(self, extra_files = [{None: "lorem.txt", "name": "Lorem.txt"}, "ipsum.txt"])
+		"""
 
-			def yieldSystemInfo():
-				yield f"System: {platform.system()}"
-				yield f"OS: {wx.GetOsDescription()}"
-				yield f"Release: {platform.release()}"
-				yield f"Version: {platform.version()}"
-				yield f"Machine: {platform.machine()}"
-				yield f"Python version: {platform.python_version()}; {platform.python_compiler()}"
-				yield f"wxPython version: {wx.version()}"
+		self.parent = parent
+		self.canReport = canReport
 
-			#############################################
+		self.logError = logError
+		self.printError = printError
 
-			assert toAddress is not None
-			assert fromAddress is not None
-			assert fromPassword is not None
+		self.include_logs = include_logs
+		self.include_traceback = include_traceback
+		self.include_systemInfo = include_systemInfo
+		self.include_screenshots = include_screenshots
 
-			emailHandle = Communication.getEmail(label = -1)
-			emailHandle.open(fromAddress, fromPassword, server = server, port = port)
-			
-			if (include_traceback):
-				emailHandle.append(errorMessage, header = "Traceback")
+		self.port = port
+		self.server = server
+		self.subject = subject
+		self.toAddress = toAddress
+		self.fromAddress = fromAddress
+		self.fromPassword = fromPassword
 
-			if (include_systemInfo):
-				emailHandle.append('\n'.join(yieldSystemInfo()), header = "System Information")
+		self.screenshot = screenshot
+		self.extra_files = extra_files
+		self.extra_information = extra_information
 
-			if (extra_information is not None):
-				emailHandle.append('\n'.join(self.ensure_container(extra_information)), header = "Extra Information")
+		self.zip_log = zip_log
+		self.zip_extra = zip_extra
+		self.zip_screenshot = zip_screenshot
 
-			if (include_logs):
-				for filePath in self.log_getLogs(returnExisting = True, returnHistory = True):
-					emailHandle.attach(filePath)
+	def __call__(self, error_cls, error, error_traceback):
+		"""Displays the error and can report information about it."""
 
-			if (screenshot is not None):
-				emailHandle.attach(screenshot, name = "screenshot")
+		screenshot = self.getScreenshots()
 
-			for item in self.ensure_container(extra_files):
-				emailHandle.attach(item)
+		errorMessage = "".join(traceback.format_exception(error_cls, error, error_traceback))
+		
+		if (self.logError):
+			self.parent.log_error(errorMessage)
 
-			emailHandle.send(toAddress, subject = self.ensure_default(subject, "Automated Error Report"))
+		if (self.printError):
+			print(errorMessage)
 
-		####################################################################
+		with ErrorDialog(self, message = errorMessage, canReport = self.canReport) as myDialog:
+			if (myDialog.isOk()):
+				self.sendEmail(errorMessage, screenshot = screenshot)
 
-		return exceptionHook
+	def getScreenshots(self):
+		if (not self.include_screenshots):
+			return
+
+		try:
+			return MyUtilities.wxPython.getWindowAsBitmap()
+		except MyUtilities.wxPython.NoActiveWindowError:
+			pass
+
+	def sendEmail(self, *args, show_resultMessage = True, **kwargs):
+		try:
+			self.emailRoutine(*args, **kwargs)
+			if (show_resultMessage):
+				wx.MessageBox("Report Successful", "Success", wx.OK | wx.ICON_INFORMATION)
+			return True
+
+		except Exception as error:
+			traceback.print_exception(type(error), error, error.__traceback__)
+			if (show_resultMessage):
+				wx.MessageBox("Report Failed", "Failure", wx.OK | wx.ICON_ERROR)
+			return False
+
+	def emailRoutine(self, errorMessage = None, toAddress = None, subject = None, *, 
+		extra_sections = None, screenshot = None, include_screenshots = None, 
+		include_traceback = None, include_systemInfo = None, include_logs = None):
+		"""Sends an email with some relevant debugging information.
+
+		Example Input: emailRoutine()
+		"""
+
+		def yieldSystemInfo():
+			yield f"Release: {platform.release()}"
+			yield f"Machine: {platform.machine()}"
+			yield f"Version: {platform.version()}"
+			yield f"System: {platform.system()}"
+			yield f"OS: {wx.GetOsDescription()}"
+			yield f"Python version: {platform.python_version()}; {platform.python_compiler()}"
+			yield f"wxPython version: {wx.version()}"
+
+		def yieldSection():
+			nonlocal self, errorMessage, include_traceback, include_systemInfo
+
+			if (errorMessage and self.ensure_default(include_traceback, default = self.include_traceback)):
+				yield "Traceback", errorMessage
+
+			if (self.ensure_default(include_systemInfo, default = self.include_systemInfo)):
+				yield "System Information", "\n".join(yieldSystemInfo())
+
+			if (self.extra_information is not None):
+				yield "Extra Information", "\n".join(self.ensure_container(self.extra_information))
+
+			for section, message in self.ensure_container(extra_sections, elementCriteria = (2, (str, None))):
+				yield section, "\n".join(self.ensure_container(message))
+
+		def yieldLogs():
+			if (not self.ensure_default(include_logs, default = self.include_logs)):
+				return
+
+			for item in self.parent.log_getLogs(returnExisting = True, returnHistory = True):
+				yield item
+
+		def yieldScreenshot():
+			nonlocal self, screenshot
+
+			if (not self.ensure_default(include_screenshots, default = self.include_screenshots)):
+				return
+
+			for i, item in enumerate(self.ensure_container(screenshot), start = 1):
+				if (i is 1):
+					yield item, "screenshot"
+				else:
+					yield item, f"screenshot_{i}"
+
+		def yieldExtraFiles():
+			nonlocal self
+
+			if (self.extra_files is None):
+				return
+
+			for item in self.ensure_container(self.extra_files):
+				if (isinstance(item, dict)):
+					catalogue = {**item}
+					yield catalogue.pop(None, None), catalogue
+					continue
+
+				yield item, {}
+
+		#############################################
+
+		assert self.fromAddress is not None
+
+		emailHandle = Communication.getEmail(label = -1)
+		emailHandle.open(self.fromAddress, self.fromPassword, server = self.server, port = self.port)
+		
+		for section, message in yieldSection():
+			emailHandle.append(message, header = section)
+
+		for item in yieldLogs():
+			emailHandle.attach(item, zip_label = self.zip_log)
+
+		for item, name in yieldScreenshot():
+			emailHandle.attach(item, zip_label = self.zip_screenshot, name = name)
+
+		for item, _kwargs in yieldExtraFiles():
+			emailHandle.attach(item, **{"zip_label": self.zip_extra, **_kwargs})
+
+		emailHandle.send(self.ensure_default(toAddress, default = (self.toAddress, self.fromAddress)), subject = self.ensure_default(subject, (self.subject, "Automated Error Report")))
 
 if (__name__ == "__main__"):
 	class TestFrame(wx.Frame):

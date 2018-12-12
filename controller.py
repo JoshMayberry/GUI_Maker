@@ -17889,9 +17889,10 @@ class handle_Dialog(handle_Base):
 				# return
 
 		#Pause background functions
-		raise NotImplementedError()
 		for listener in self.controller.threadManager.pauseOnDialog:
+			print("@show.1", [listener], self.label, listener.pauseOnDialog_exclude)
 			if ((self.label is None) or (self.label not in listener.pauseOnDialog_exclude)):
+				print("@show.2")
 				listener.pause = True
 
 		#Show dialogue
@@ -18064,9 +18065,10 @@ class handle_Dialog(handle_Base):
 			warnings.warn(f"Add {self.type.name} to hide() for {self.__repr__()}", Warning, stacklevel = 2)
 
 		#Unpause background functions
-		raise NotImplementedError()
 		for listener in self.controller.threadManager.pauseOnDialog:
+			print("@hide.1", [listener], self.label, listener.pauseOnDialog_exclude)
 			if ((self.label is None) or (self.label not in listener.pauseOnDialog_exclude)):
+				print("@hide.2")
 				listener.pause = False
 
 	def end(self, ok = None, cancel = None, close = None, yes = None, no = None, apply = None):
