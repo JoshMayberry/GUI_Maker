@@ -12311,6 +12311,8 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		Example Input: drawText("Lorem Ipsum", align = (0, 10, 275, 455), x_align = "center", angle = 90)
 		"""
 
+		font = self.getFont(size = size, bold = bold, italic = italic, family = family)
+
 		if ((wrap is not None) and (not isinstance(wrap, int))):
 			wrap = wx.Rect(wrap)
 		if (wrap):
@@ -12323,7 +12325,6 @@ class handle_WidgetCanvas(handle_Widget_Base):
 		else:
 			_text = text
 
-		font = self.getFont(size = size, bold = bold, italic = italic, family = family)
 		self._queue("dc.SetFont", font)
 
 		pen = self.getPen(color)
@@ -17893,7 +17894,7 @@ class handle_Dialog(handle_Base):
 			print("@show.1", [listener], self.label, listener.pauseOnDialog_exclude)
 			if ((self.label is None) or (self.label not in listener.pauseOnDialog_exclude)):
 				print("@show.2")
-				listener.pause = True
+				listener.pause()
 
 		#Show dialogue
 		if (self.type is Types.message):
@@ -18069,7 +18070,7 @@ class handle_Dialog(handle_Base):
 			print("@hide.1", [listener], self.label, listener.pauseOnDialog_exclude)
 			if ((self.label is None) or (self.label not in listener.pauseOnDialog_exclude)):
 				print("@hide.2")
-				listener.pause = False
+				listener.pause(state = False)
 
 	def end(self, ok = None, cancel = None, close = None, yes = None, no = None, apply = None):
 		"""Stops showing the custom window.

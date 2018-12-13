@@ -88,7 +88,7 @@ class ExceptionHandler(MyUtilities.logger.LoggingFunctions, MyUtilities.common.E
 			config = self.getLoggerConfig(logDir = logDir), 
 			force_quietRoot = __name__ == "__main__")
 
-		sys.excepthook = self.makeExceptionHook(**kwargs)
+		# sys.excepthook = self.makeExceptionHook(**kwargs)
 
 	def getLoggerConfig(self, logDir = None):
 		"""Returns a dictionary to use to configure the logger.
@@ -150,15 +150,13 @@ class ExceptionHandler(MyUtilities.logger.LoggingFunctions, MyUtilities.common.E
 		return ExceptionHook(self, *args, **kwargs)
 
 class ExceptionHook(MyUtilities.common.EnsureFunctions):
-	def __init__(self, parent, *, logError = True, printError = True, 
+	def __init__(self, parent, *, logError = True, printError = True, messageError = True, 
 		canReport = True, subject = None, server = None, port = None, 
-		zip_log = None, zip_screenshot = None, zip_extra = None,
+		zip_log = None, zip_screenshot = None, zip_extra = None, 
 		fromAddress = None, fromPassword = None, toAddress = None, 
-		screenshot = None, extra_information = None, extra_files = None, 
+		screenshot = None, extra_information = None, extra_files = None, printTrace_onError = False, 
 		include_logs = True, include_systemInfo = True, include_traceback = True, include_screenshots = True):
 		"""Replaces sys.excepthook.
-
-		kwargs -> sendEmail()
 
 		logError (bool) - Determines if errors should be sent to the error log
 		printError (bool) - Determines if errors should be printed to the cmd window
@@ -196,10 +194,11 @@ class ExceptionHook(MyUtilities.common.EnsureFunctions):
 		"""
 
 		self.parent = parent
-		self.canReport = canReport
-
 		self.logError = logError
+		self.canReport = canReport
 		self.printError = printError
+		self.messageError = messageError
+		self.printTrace_onError = printTrace_onError
 
 		self.include_logs = include_logs
 		self.include_traceback = include_traceback
@@ -224,6 +223,10 @@ class ExceptionHook(MyUtilities.common.EnsureFunctions):
 	def __call__(self, error_cls, error, error_traceback):
 		"""Displays the error and can report information about it."""
 
+		if (self.printTrace_onError):
+			MyUtilities.debugging.printCurrentTrace()
+			return
+
 		screenshot = self.getScreenshots()
 
 		errorMessage = "".join(traceback.format_exception(error_cls, error, error_traceback))
@@ -234,9 +237,10 @@ class ExceptionHook(MyUtilities.common.EnsureFunctions):
 		if (self.printError):
 			print(errorMessage)
 
-		with ErrorDialog(self, message = errorMessage, canReport = self.canReport) as myDialog:
-			if (myDialog.isOk()):
-				self.sendEmail(errorMessage, screenshot = screenshot)
+		if (self.messageError):
+			with ErrorDialog(self, message = errorMessage, canReport = self.canReport) as myDialog:
+				if (myDialog.isOk()):
+					self.sendEmail(errorMessage, screenshot = screenshot)
 
 	def getScreenshots(self):
 		if (not self.include_screenshots):
