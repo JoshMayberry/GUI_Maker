@@ -506,60 +506,6 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 			errorMessage = f"There is no item labled {itemLabel} in the label catalogue for {self.__repr__()}"
 		raise KeyError(errorMessage)
 
-	def runMyFunction(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, event = None, includeEvent = False,
-		errorFunction = None, errorFunctionArgs = None, errorFunctionKwargs = None, includeError = True):
-		"""Runs a function."""
-
-		answer = None
-
-		try:
-			#Skip empty functions
-			if (myFunction is not None):
-				if (not isinstance(myFunction, (list, tuple))):
-					if (isinstance(myFunction, str)):
-						myFunction = eval(myFunction, {'__builtins__': None}, {})
-					
-					if (myFunctionArgs is None):
-						myFunctionArgs = []
-					elif (not isinstance(myFunctionArgs, (list, tuple))):
-						myFunctionArgs = [myFunctionArgs]
-
-					if (myFunctionKwargs is None):
-						myFunctionKwargs = {}
-
-					answer = myFunction(*myFunctionArgs, **myFunctionKwargs)
-
-				elif (len(myFunction) != 0):
-					myFunctionList, myFunctionArgsList, myFunctionKwargsList = self._formatFunctionInputList(myFunction, myFunctionArgs, myFunctionKwargs)
-					#Run each function
-					answer = []
-					for i, myFunction in enumerate(myFunctionList):
-						#Skip empty functions
-						if (myFunction is not None):
-							myFunctionEvaluated, myFunctionArgs, myFunctionKwargs = self._formatFunctionInput(i, myFunctionList, myFunctionArgsList, myFunctionKwargsList)
-							
-							if (includeEvent):
-								if (myFunctionArgs is None):
-									myFunctionArgs = [event]
-								else:
-									myFunctionArgs = [event] + myFunctionArgs
-
-							answer.append(myFunctionEvaluated(*myFunctionArgs, **myFunctionKwargs))
-
-		except Exception as error:
-			if (errorFunction is None):
-				raise error
-			else:
-				if (includeError):
-					if (errorFunctionArgs is None):
-						errorFunctionArgs = [error]
-					else:
-						errorFunctionArgs = [error] + errorFunctionArgs
-				
-				answer = self.runMyFunction(errorFunction, errorFunctionArgs, errorFunctionKwargs, event = event, includeEvent = includeEvent)
-
-		return answer
-
 	def _removeDuplicates(self, sequence, idFunction=None):
 		"""Removes duplicates from a list while preserving order.
 		Created by Alex Martelli. From https://www.peterbe.com/plog/uniqifiers-benchmark
@@ -582,104 +528,6 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		return result
 
 	#Binding Functions
-	def _formatFunctionInputList(self, myFunctionList, myFunctionArgsList, myFunctionKwargsList):
-		"""Formats the args and kwargs for various internal functions."""
-
-		#Ensure that multiple function capability is given
-		##Functions
-		if (myFunctionList is not None):
-			#Compensate for the user not making it a list
-			if (not isinstance(myFunctionList, list)):
-				if (isinstance(myFunctionList, (tuple, types.GeneratorType))):
-					myFunctionList = list(myFunctionList)
-				else:
-					myFunctionList = [myFunctionList]
-
-			#Fix list order so it is more intuitive
-			if (len(myFunctionList) > 1):
-				myFunctionList.reverse()
-
-		##args
-		if (myFunctionArgsList is not None):
-			#Compensate for the user not making it a list
-			if (not isinstance(myFunctionArgsList, list)):
-				if (isinstance(myFunctionArgsList, (tuple, types.GeneratorType))):
-					myFunctionArgsList = list(myFunctionArgsList)
-				else:
-					myFunctionArgsList = [myFunctionArgsList]
-
-			#Fix list order so it is more intuitive
-			if (len(myFunctionList) > 1):
-				myFunctionArgsList.reverse()
-
-			if ((len(myFunctionList) == 1) and (myFunctionArgsList[0] is not None)):
-				myFunctionArgsList = [myFunctionArgsList]
-
-		##kwargs
-		if (myFunctionKwargsList is not None):
-			#Compensate for the user not making it a list
-			if (not isinstance(myFunctionKwargsList, list)):
-				if (isinstance(myFunctionKwargsList, (tuple, types.GeneratorType))):
-					myFunctionKwargsList = list(myFunctionKwargsList)
-				else:
-					myFunctionKwargsList = [myFunctionKwargsList]
-
-			#Fix list order so it is more intuitive
-			if (len(myFunctionList) > 1):
-				myFunctionKwargsList.reverse()
-
-		return myFunctionList, myFunctionArgsList, myFunctionKwargsList
-
-	def _formatFunctionInput(self, i, myFunctionList, myFunctionArgsList, myFunctionKwargsList):
-		"""Formats the args and kwargs for various internal functions."""
-
-		myFunction = myFunctionList[i]
-
-		#Skip empty functions
-		if (myFunction is not None):
-			#Use the correct args and kwargs
-			if (myFunctionArgsList is not None):
-				myFunctionArgs = myFunctionArgsList[i]
-			else:
-				myFunctionArgs = myFunctionArgsList
-
-			if (myFunctionKwargsList is not None):
-				myFunctionKwargs = myFunctionKwargsList[i]
-				
-			else:
-				myFunctionKwargs = myFunctionKwargsList
-
-			#Check for User-defined function
-			if (not isinstance(myFunction, str)):
-				#The address is already given
-				myFunctionEvaluated = myFunction
-			else:
-				#Get the address of myFunction
-				myFunctionEvaluated = eval(myFunction, {'__builtins__': None}, {})
-
-			#Ensure the *args and **kwargs are formatted correctly 
-			if (myFunctionArgs is not None):
-				#Check for single argument cases
-				if (not isinstance(myFunctionArgs, list)):
-					#The user passed one argument that was not a list
-					myFunctionArgs = [myFunctionArgs]
-				# else:
-				#   if (len(myFunctionArgs) == 1):
-				#       #The user passed one argument that is a list
-				#       myFunctionArgs = [myFunctionArgs]
-
-			#Check for user error
-			if ((not isinstance(myFunctionKwargs, dict)) and (myFunctionKwargs is not None)):
-				errorMessage = f"myFunctionKwargs must be a dictionary for function {myFunctionEvaluated.__repr__()}"
-				raise ValueError(errorMessage)
-
-		if (myFunctionArgs is None):
-			myFunctionArgs = []
-		if (myFunctionKwargs is None):
-			myFunctionKwargs = {}
-
-		return myFunctionEvaluated, myFunctionArgs, myFunctionKwargs
-
 	def keyBind(self, key, myFunction, myFunctionArgs = None, myFunctionKwargs = None, includeEvent = True,
 		keyUp = True, numpad = False, ctrl = False, alt = False, shift = False, event = None, thing = None):
 		"""Binds wxObjects to key events.
@@ -1021,9 +869,6 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 			position = position.Get()
 
 		return position
-
-	#Background Processes
-	
 
 	#Nesting Catalogue
 	def _getAddressValue(self, address):
@@ -4728,10 +4573,10 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 			return newEvent
 
 		if (newEvent.IsVetoed()):
-			self.runMyFunction(vetoFunction, vetoFunctionArgs, vetoFunctionKwargs)
+			self.runMyFunction(myFunction = vetoFunction, myFunctionArgs = vetoFunctionArgs, myFunctionKwargs = vetoFunctionKwargs)
 			return False
 
-		self.runMyFunction(okFunction, okFunctionArgs, okFunctionKwargs)
+		self.runMyFunction(myFunction = okFunction, myFunctionArgs = okFunctionArgs, myFunctionKwargs = okFunctionKwargs)
 		return True
 
 	#Getters
@@ -7962,7 +7807,7 @@ class handle_WidgetList(handle_Widget_Base):
 		self.parent[label] = textToDrag
 
 		#Run pre-functions
-		self.runMyFunction(self.preDragFunction, self.preDragFunctionArgs, self.preDragFunctionKwargs, event = event, includeEvent = True)
+		self.runMyFunction(myFunction = self.preDragFunction, myFunctionArgs = self.preDragFunctionArgs, myFunctionKwargs = self.preDragFunctionKwargs, event = event, includeEvent = True)
 
 		#Begin dragging item
 		originList_object.SetData(textToDrag_object)
@@ -7994,7 +7839,7 @@ class handle_WidgetList(handle_Widget_Base):
 		dragDropDestination = None
 
 		#Run post-functions
-		self.runMyFunction(self.postDragFunction, self.postDragFunctionArgs, self.postDragFunctionKwargs, event = event, includeEvent = True)
+		self.runMyFunction(myFunction = self.postDragFunction, myFunctionArgs = self.postDragFunctionArgs, myFunctionKwargs = self.postDragFunctionKwargs, event = event, includeEvent = True)
 
 		event.Skip()
 
@@ -8097,7 +7942,7 @@ class handle_WidgetList(handle_Widget_Base):
 		def OnDragOver(self, x, y, d):
 			"""Overridden function. Needed to make this work."""
 			
-			self.parent.runMyFunction(self.dragOverFunction, self.dragOverFunctionArgs, self.dragOverFunctionKwargs)
+			self.parent.runMyFunction(myFunction = self.dragOverFunction, myFunctionArgs = self.dragOverFunctionArgs, myFunctionKwargs = self.dragOverFunctionKwargs)
 
 			return wx.DragCopy
 			
@@ -8107,7 +7952,7 @@ class handle_WidgetList(handle_Widget_Base):
 			global dragDropDestination
 
 			#Run pre-functions
-			self.parent.runMyFunction(self.preDropFunction, self.preDropFunctionArgs, self.preDropFunctionKwargs)
+			self.parent.runMyFunction(myFunction = self.preDropFunction, myFunctionArgs = self.preDropFunctionArgs, myFunctionKwargs = self.preDropFunctionKwargs)
 
 			#Determine how to handle recieving the text
 			if (self.classType == "wxListCtrl"):
@@ -8162,7 +8007,7 @@ class handle_WidgetList(handle_Widget_Base):
 				print("Add", classType, "to OnDropText()")
 
 			#Run post functions
-			self.parent.runMyFunction(self.postDropFunction, self.postDropFunctionArgs, self.postDropFunctionKwargs)
+			self.parent.runMyFunction(myFunction = self.postDropFunction, myFunctionArgs = self.postDropFunctionArgs, myFunctionKwargs = self.postDropFunctionKwargs)
 
 			return True
 
@@ -8511,7 +8356,7 @@ class handle_WidgetInput(handle_Widget_Base):
 		self._postBuild(argument_catalogue)
 
 	#Getters
-	def getValue(self, event = None):
+	def getValue(self, event = None, *, convertHex = True):
 		"""Returns what the contextual value is for the object associated with this handle."""
 
 		if (self.type is Types.box):
@@ -8519,6 +8364,8 @@ class handle_WidgetInput(handle_Widget_Base):
 
 		elif (self.type is Types.spinner):
 			value = self.thing.GetValue() #(str) - What is in the spin box
+			if (convertHex and self.subType.endswith("_base16")):
+				value = hex(value)
 
 		elif (self.type is Types.slider):
 			value = self.thing.GetValue() #(str) - What is in the spin box
@@ -8536,7 +8383,7 @@ class handle_WidgetInput(handle_Widget_Base):
 		return self.getValue(*args, **kwargs)
 
 	#Setters
-	def setValue(self, newValue = None, event = None, default = None, triggerPopup = True, **kwargs):
+	def setValue(self, newValue = None, event = None, *, default = None, triggerPopup = True, convertHex = True, **kwargs):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
 		if (self.type is Types.box):
@@ -8549,15 +8396,20 @@ class handle_WidgetInput(handle_Widget_Base):
 				self.thing.SetValue(f"{newValue}") #(str) - What will be shown in the input box
 
 		elif (self.type is Types.spinner):
-			if (isinstance(newValue, str)):
-				if ("_base16" in self.subType):
-					newValue = hex(int(newValue, 16))
+			if (newValue is None):
+				newValue = 0 #Filter None as zero
+			elif (isinstance(newValue, str)):
+				if (convertHex and self.subType.endswith("_base16")):
+					newValue = int(newValue, 16)
 				else:
 					newValue = int(newValue)
 
-			self.thing.SetValue(newValue) #(int / float) - What will be shown in the input box
+			self.thing.SetValue(newValue or 0) #(int / float) - What will be shown in the input box
 
 		elif (self.type is Types.slider):
+			if (newValue is None):
+				newValue = 0 #Filter None as zero
+
 			self.thing.SetValue(newValue) #(int / float) - Where the slider position will be
 
 		elif (self.type is Types.search):
@@ -11481,13 +11333,13 @@ class handle_MenuPopup(handle_Container_Base):
 			self.parent.thing = self.myMenu.thing
 
 			#Run pre function(s)
-			self.parent.runMyFunction(preFunction[0], preFunction[1], preFunction[2])
+			self.parent.runMyFunction(myFunction = preFunction[0], myFunctionArgs = preFunction[1], myFunctionKwargs = preFunction[2])
 
 			#Create Menu
 			self.populateMenu(self.myMenu, self.parent.contents)
 
 			#Run post function(s)
-			self.parent.runMyFunction(postFunction[0], postFunction[1], postFunction[2])
+			self.parent.runMyFunction(myFunction = postFunction[0], myFunctionArgs = postFunction[1], myFunctionKwargs = postFunction[2])
 
 		def addMenu(self, *args, **kwargs):
 			"""Adds a menu to a pre-existing menuBar.
@@ -11873,9 +11725,9 @@ class handle_WidgetCanvas(handle_Widget_Base):
 				myFunctionEvaluated = myFunction
 
 			if (includeDC):
-				self.runMyFunction(myFunctionEvaluated, [dc] + (myFunctionArgs or []), myFunctionKwargs)
+				self.runMyFunction(myFunction = myFunctionEvaluated, myFunctionArgs = [dc] + (myFunctionArgs or []), myFunctionKwargs = myFunctionKwargs)
 			else:
-				self.runMyFunction(myFunctionEvaluated, myFunctionArgs, myFunctionKwargs)
+				self.runMyFunction(myFunction = myFunctionEvaluated, myFunctionArgs = myFunctionArgs, myFunctionKwargs = myFunctionKwargs)
 
 	#Drawing Functions
 	def getPen(self, color, width = 1):
@@ -15691,7 +15543,7 @@ class handle_WidgetTable(handle_Widget_Base):
 					#Run Function
 					if ((self.parent.buttonPressCatalogue[row][column]["press"]) and (not self.parent.buttonPressCatalogue[row][column]["ranFunction"])):
 						self.parent.buttonPressCatalogue[row][column]["ranFunction"] = True
-						self.parent.runMyFunction(self.cellType["myFunction"], self.cellType["myFunctionArgs"], self.cellType["myFunctionKwargs"])
+						self.parent.runMyFunction(myFunction = self.cellType["myFunction"], myFunctionArgs = self.cellType["myFunctionArgs"], myFunctionKwargs = self.cellType["myFunctionKwargs"])
 				else:
 					text = grid.GetCellValue(row, column)
 					self.drawText(text, dc, rectangle, isSelected, align = "left", color = textColor)
@@ -17916,8 +17768,8 @@ class handle_Dialog(handle_Base):
 		elif (self.type is Types.custom):
 			self.myFrame.myDialog = self
 
-			self.myFrame.runMyFunction(self.myFrame.preShowFunction, self.myFrame.preShowFunctionArgs, self.myFrame.preShowFunctionKwargs, includeEvent = True)
-			self.myFrame.runMyFunction(self.myFrame.postShowFunction, self.myFrame.postShowFunctionArgs, self.myFrame.postShowFunctionKwargs, includeEvent = True)
+			self.myFrame.runMyFunction(myFunction = self.myFrame.preShowFunction, myFunctionArgs = self.myFrame.preShowFunctionArgs, myFunctionKwargs = self.myFrame.preShowFunctionKwargs, includeEvent = True)
+			self.myFrame.runMyFunction(myFunction = self.myFrame.postShowFunction, myFunctionArgs = self.myFrame.postShowFunctionArgs, myFunctionKwargs = self.myFrame.postShowFunctionKwargs, includeEvent = True)
 
 			self.myFrame.visible = True
 			self.answer = self.myFrame.thing.ShowModal()
@@ -18028,10 +17880,10 @@ class handle_Dialog(handle_Base):
 
 		elif (self.type is Types.custom):
 			if ((self.answer == wx.ID_CANCEL) and (len(self.myFrame.cancelFunction) != 0)):
-				self.myFrame.runMyFunction(self.myFrame.cancelFunction, self.myFrame.cancelFunctionArgs, self.myFrame.cancelFunctionKwargs, includeEvent = True)
+				self.myFrame.runMyFunction(myFunction = self.myFrame.cancelFunction, myFunctionArgs = self.myFrame.cancelFunctionArgs, myFunctionKwargs = self.myFrame.cancelFunctionKwargs, includeEvent = True)
 
-			self.myFrame.runMyFunction(self.myFrame.preHideFunction, self.myFrame.preHideFunctionArgs, self.myFrame.preHideFunctionKwargs, includeEvent = True)
-			self.myFrame.runMyFunction(self.myFrame.postHideFunction, self.myFrame.postHideFunctionArgs, self.myFrame.postHideFunctionKwargs, includeEvent = True)
+			self.myFrame.runMyFunction(myFunction = self.myFrame.preHideFunction, myFunctionArgs = self.myFrame.preHideFunctionArgs, myFunctionKwargs = self.myFrame.preHideFunctionKwargs, includeEvent = True)
+			self.myFrame.runMyFunction(myFunction = self.myFrame.postHideFunction, myFunctionArgs = self.myFrame.postHideFunctionArgs, myFunctionKwargs = self.myFrame.postHideFunctionKwargs, includeEvent = True)
 
 			# self.myFrame.thing.Destroy() #Don't destroy it so it can appear again without the user calling addDialog() again. Time will tell if this is a bad idea or not
 			self.thing = None
@@ -18423,10 +18275,10 @@ class handle_Dialog(handle_Base):
 			previewFrame.Initialize()
 
 
-			# self.runMyFunction(self.preShowFunction, self.preShowFunctionArgs, self.preShowFunctionKwargs, includeEvent = True)
+			# self.runMyFunction(myFunction = self.preShowFunction, myFunctionArgs = self.preShowFunctionArgs, myFunctionKwargs = self.preShowFunctionKwargs, includeEvent = True)
 			previewFrame.Show()
 
-			# self.runMyFunction(self.postShowFunction, self.postShowFunctionArgs, self.postShowFunctionKwargs, includeEvent = True)
+			# self.runMyFunction(myFunction = self.postShowFunction, myFunctionArgs = self.postShowFunctionArgs, myFunctionKwargs = self.postShowFunctionKwargs, includeEvent = True)
 
 		else:
 			warnings.warn(f"Add {self.type.name} to send() for {self.__repr__()}", Warning, stacklevel = 2)
@@ -19296,7 +19148,7 @@ class handle_Window(handle_Container_Base):
 		Example Input: showWindow(asDialog = True)
 		"""
 
-		self.runMyFunction(self.preShowFunction, self.preShowFunctionArgs, self.preShowFunctionKwargs, includeEvent = True)
+		self.runMyFunction(myFunction = self.preShowFunction, myFunctionArgs = self.preShowFunctionArgs, myFunctionKwargs = self.preShowFunctionKwargs, includeEvent = True)
 
 		self.thing.Show()
 		# self.updateWindow()
@@ -19315,7 +19167,7 @@ class handle_Window(handle_Container_Base):
 		if (ensureVisible and self.showWindowCheck(state = False, onScreen = True)):
 			self.setWindowPosition()
 
-		self.runMyFunction(self.postShowFunction, self.postShowFunctionArgs, self.postShowFunctionKwargs, includeEvent = True)
+		self.runMyFunction(myFunction = self.postShowFunction, myFunctionArgs = self.postShowFunctionArgs, myFunctionKwargs = self.postShowFunctionKwargs, includeEvent = True)
 
 	def showWindowCheck(self, state = True, onScreen = False):
 		"""Checks if a window is currently being shown to the user.
@@ -19354,7 +19206,7 @@ class handle_Window(handle_Container_Base):
 		Example Input: hideWindow()
 		"""
 
-		self.runMyFunction(self.preHideFunction, self.preHideFunctionArgs, self.preHideFunctionKwargs, includeEvent = True)
+		self.runMyFunction(myFunction = self.preHideFunction, myFunctionArgs = self.preHideFunctionArgs, myFunctionKwargs = self.preHideFunctionKwargs, includeEvent = True)
 
 		if (self.controller.windowDisabler is not None):
 			if (self.controller.windowDisabler[0] == self.thing):
@@ -19375,7 +19227,7 @@ class handle_Window(handle_Container_Base):
 		else:
 			warnings.warn(f"Window {self.label} is already hidden", Warning, stacklevel = 2)
 
-		self.runMyFunction(self.postHideFunction, self.postHideFunctionArgs, self.postHideFunctionKwargs, includeEvent = True)
+		self.runMyFunction(myFunction = self.postHideFunction, myFunctionArgs = self.postHideFunctionArgs, myFunctionKwargs = self.postHideFunctionKwargs, includeEvent = True)
 
 	def onHideWindow(self, event, *args, **kwargs):
 		"""Event function for hideWindow()"""
@@ -20143,15 +19995,15 @@ class handle_Window(handle_Container_Base):
 		self.refreshFunctionArgs.append(myFunctionArgs)
 		self.refreshFunctionKwargs.append(myFunctionKwargs)
 
-	def onRefresh(self, event, includeEvent = True):
+	def onRefresh(self, event, includeEvent = True, includeSelf = True):
 		"""A wx event version of refresh()."""
 
-		self.refresh(event = event, includeEvent = includeEvent)
+		self.refresh(event = event, includeEvent = includeEvent, includeSelf = includeSelf)
 
 		if (event is not None):
 			event.Skip()
 
-	def refresh(self, event = None, includeEvent = False):
+	def refresh(self, event = None, includeEvent = False, includeSelf = True):
 		"""Runs the user defined refresh function.
 		This function is intended to make sure all widget values are up to date.
 
@@ -20162,7 +20014,8 @@ class handle_Window(handle_Container_Base):
 			warnings.warn(f"The refresh function for {self.__repr__()} has not been set yet\nUse setRefresh() during window creation first to set the refresh function", Warning, stacklevel = 2)
 			return
 
-		self.runMyFunction(self.refreshFunction, self.refreshFunctionArgs, self.refreshFunctionKwargs, event = event, includeEvent = includeEvent)
+		self.runMyFunction(myFunction = self.refreshFunction, myFunctionArgs = self.refreshFunctionArgs, myFunctionKwargs = self.refreshFunctionKwargs, 
+			event = event, includeEvent = includeEvent, includeSelf = includeSelf)
 
 	def _addFinalFunction(self, myFunction, myFunctionArgs = None, myFunctionKwargs = None, label = None):
 		"""Adds a function to the queue that will run after building, but before launching, the app."""
@@ -23315,7 +23168,7 @@ class Controller(Utilities, CommonEventFunctions, MyUtilities.threadManager.Comm
 
 		self.listener_statusText.stop()
 
-	def listenStatusText_handleError(self, error = None):
+	def listenStatusText_handleError(self, error):
 		traceback.print_exception(type(error), error, error.__traceback__)
 
 	def listenStatusText(self):
@@ -23393,7 +23246,7 @@ class Controller(Utilities, CommonEventFunctions, MyUtilities.threadManager.Comm
 			functionList = myFrame.finalFunctionList[:]
 			functionList.extend(list(myFrame.finalFunctionCatalogue.values()))
 			for myFunction, myFunctionArgs, myFunctionKwargs in functionList:
-				self.runMyFunction(myFunction, myFunctionArgs, myFunctionKwargs)
+				self.runMyFunction(myFunction = myFunction, myFunctionArgs = myFunctionArgs, myFunctionKwargs = myFunctionKwargs)
 
 			#Make sure that the window is up to date
 			myFrame.updateWindow()
