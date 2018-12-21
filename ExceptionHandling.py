@@ -5,14 +5,11 @@ import time
 import wx
 import platform
 import traceback
-import contextlib
 
 import API_Com as Communication
 import Utilities as MyUtilities
 
-@contextlib.contextmanager
-def asCM(function, *args, **kwargs):
-	yield function(*args, **kwargs)
+asCM = MyUtilities.wxPython.asCM
 
 class ErrorDialog(wx.Dialog):
 	"""The error dialog that pops up when there is an error logged."""

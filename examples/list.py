@@ -126,7 +126,7 @@ def buildWindow():
 	#groups
 
 	#Initialize Frame
-	with gui.addWindow(label = 0, title = "List Widget") as myFrame:
+	with gui.addWindow(label = 0, title = "Full List Widget") as myFrame:
 		myFrame.setWindowSize((800, 300))
 
 		#Add Content
@@ -138,20 +138,20 @@ def buildWindow():
 				myWidget.setColor(even = (200, 200, 200), odd = (250, 180, 180))
 				myWidget.enableUserSort(False)
 
-				myWidget.addImage("bullet", "info", internal = True)
-				myWidget.addImage("good", "lightBulb", internal = True)
-				myWidget.addImage("bad", "error", internal = True)
+				# myWidget.addImage("bullet", "info", internal = True)
+				# myWidget.addImage("good", "lightBulb", internal = True)
+				# myWidget.addImage("bad", "error", internal = True)
 
-				myWidget.addColumn(title = "rating", width = 100, label = "stars", align = "right", image = "bullet", formatter = formatText, groupFormatter = formatGroup)
-				myWidget.addColumn(title = "text", width = -1, label = "text", editable = True, image = getStatus, group = True)
-				myWidget.showGroup(1)
-				# myWidget.addColumnCheck()
-				myWidget.addColumnButton(title = "action", width = 100, label = "button", myFunction = onAction)
+				# myWidget.addColumn(title = "rating", width = 100, label = "stars", align = "right", image = "bullet", formatter = formatText, groupFormatter = formatGroup)
+				# myWidget.addColumn(title = "text", width = -1, label = "text", editable = True, image = getStatus, group = True)
+				# myWidget.showGroup(1)
+				# # myWidget.addColumnCheck()
+				# myWidget.addColumnButton(title = "action", width = 100, label = "button", myFunction = onAction)
 
-				myWidget.setValue(makeList(4, 7))
-				myWidget.refresh()
+				# myWidget.setValue(makeList(4, 7))
+				# myWidget.refresh()
 
-				myWidget.setFunction_click(onClick)
+				# myWidget.setFunction_click(onClick)
 
 		with myFrame.addSizerBox(vertical = False, flex = 0) as mySizer:
 			mySizer.addButton("Change", myFunction = onChange)
@@ -163,12 +163,28 @@ def buildWindow():
 			mySizer.addButtonToggle("Allow User Sort", myFunction = onUserSort)
 			mySizer.addButtonList(["Expand All", "Collapse All"], myFunction = onExpandAll)
 
+	with gui.addWindow(label = 1, title = "Drop List Widgets") as myFrame:
+		myFrame.setWindowSize((800, 300))
+
+		#Add Content
+		with myFrame.addSizerGridFlex(rows = 1, columns = 5) as mySizer:
+			mySizer.growFlexColumnAll()
+
+			with mySizer.addListDrop(choices = ["Lorem", "Ipsum", "Dolor"]) as myWidget:
+				pass
+
+			mySizer.addListDrop(choices = ["Lorem", "Ipsum", "Dolor"], check = True, readOnly = True, check_text = "Sit Amet", default = (0, 2))
+
+			with mySizer.addListDrop(check = True, readOnly = True, check_text = "Sit Amet") as myWidget:
+				myWidget.setValue(["Lorem", "Ipsum", "Dolor"])
+				myWidget.setSelection(("Ipsum",))
+
 #Run Program
 if __name__ == '__main__':
 	buildWindow()
 	gui.centerWindowAll()
 
-	myFrame = gui.getWindow(0)
+	myFrame = gui.getWindow(1)
 	myFrame.showWindow()
 
 	gui.finish()

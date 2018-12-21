@@ -90,13 +90,8 @@ import re
 import PIL
 
 import Utilities as MyUtilities
-
-if (__name__ == "__main__"):
-	import LICENSE_forSections as Legal
-	import ExceptionHandling
-else:
-	from . import LICENSE_forSections as Legal
-	from . import ExceptionHandling
+import GUI_Maker.LICENSE_forSections as Legal
+import GUI_Maker.ExceptionHandling as ExceptionHandling
 
 #Required Modules
 ##py -m pip install
@@ -391,9 +386,8 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 
 		#Account for passing in a handle
 		if (isinstance(itemLabel, handle_Base)):
-			itemLabel = itemLabel.label
-			if (itemLabel is None):
-				raise NotImplementedError()
+			if (itemLabel.label is not None):
+				itemLabel = itemLabel.label
 
 		#Account for passing in a wxEvent
 		if (isinstance(itemLabel, wx.Event)):
@@ -1566,7 +1560,8 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		return handle
 
 	def _makeListDrop(self, choices = [], default = None, alphabetic = False, readOnly = False,
-		formatter = None, inputBox = False, autoComplete = False, dropDown = True,
+		formatter = None, inputBox = False, autoComplete = False, dropDown = True, 
+		check = False, check_text = None,
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
@@ -1586,6 +1581,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		alphabetic (bool)      - Determines if the list is automatically sorted alphabetically
 			- If True: The list is sorted alphabetically
 			- If False: The list is presented in the order given
+		check (bool) - Determines if list items have a check box next to them or not
 
 		Example Input: _makeListDrop(choices = ["Lorem", "Ipsum", "Dolor"])
 		Example Input: _makeListDrop(choices = ["Lorem", "Ipsum", "Dolor"], label = "chosen")
@@ -1593,7 +1589,11 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		Example Input: _makeListDrop(choices = [{label: "Lorem", value: 3}, {label: "Ipsum", value: 2}], formatter = lambda catalogue: catalogue["label"])
 		"""
 
-		handle = handle_WidgetList()
+		if (check):
+			handle = handle_WidgetList_Drop_Check()
+		else:
+			handle = handle_WidgetList_Drop()
+	
 		handle.type = Types.drop
 		handle._build(locals())
 
@@ -1736,7 +1736,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		Example Input: _makeListFull(["Lorem", "Ipsum", "Dolor"], drop = True, dropLabel = "text", preDropFunction = self.checkText)
 		"""
 
-		handle = handle_WidgetList()
+		handle = handle_WidgetList_View()
 		handle.type = Types.view
 		handle._build(locals())
 
@@ -1840,7 +1840,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		Example Input: _makeListTree(choices = {"Lorem": [{"Ipsum": "Dolor"}, "Sit"], "Amet": None}, label = "chosen")
 		"""
 
-		handle = handle_WidgetList()
+		handle = handle_WidgetList_Tree()
 		handle.type = Types.tree
 		handle._build(locals())
 
@@ -3740,21 +3740,21 @@ class CommonEventFunctions():
 	#   self.Destroy()
 	#   event.Skip()
 
-	def onExit(self, event):
+	def onExit(self, event, endProgram = True, closeThreads = False):
 		"""Closes all windows. Default of a quit (q) or exit (e) menu item."""
 
 		self.controller.exiting = True
 		
-		# #Make sure sub threads are closed
-		# if (threading.active_count() > 1):
-		#   for thread in threading.enumerate():
-		#       #Close the threads that are not the main thread
-		#       if (thread != threading.main_thread()):
-		#           thread.stop()
+		#Make sure sub threads are closed
+		if (closeThreads and (threading.active_count() > 1)):
+			for thread in threading.enumerate():
+				#Close the threads that are not the main thread
+				if (thread != threading.main_thread()):
+					thread.stop()
 
 		#Exit the main thread
-		sys.exit()
-		event.Skip()
+		if (endProgram):
+			sys.exit()
 
 	def onMinimize(self, event):
 		"""Minimizes the window. Default of a minimize (mi) menu item."""
@@ -3841,7 +3841,7 @@ class handle_Dummy(MyUtilities.common.ELEMENT):
 	def items(self, *args, includeUnnamed = False, **kwargs):
 		return {}.items(*args, **kwargs)
 
-class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
+class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT, MyUtilities.wxPython.EventFunctions):
 	"""The base handler for all GUI handlers.
 	Meant to be inherited.
 	"""
@@ -3852,6 +3852,7 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 		#Initialize Inherited Classes
 		Utilities.__init__(self)
 		CommonEventFunctions.__init__(self)
+		MyUtilities.wxPython.EventFunctions.__init__(self)
 
 		#Defaults
 		self.type = None
@@ -3868,7 +3869,6 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 		self.labelCatalogue = {}
 		self.labelCatalogueOrder = []
 		self.nestingOrder = []
-		self.boundEvents = []
 
 	def __repr__(self):
 		representation = f"{type(self).__name__}(id = {id(self)}"
@@ -4545,39 +4545,6 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT):
 		"""
 
 		return self.nestedParent
-
-	def onTriggerEvent(self, event, *args, **kwargs):
-		"""A wxEvent version of triggerEvent().
-
-		Example Use: myWidget.setFunction_click(self.onTriggerEvent, myFunctionArgs = (self.EVT_FINISHED,))
-		Example Use: myWidget.setFunction_click(self.onTriggerEvent, myFunctionKwargs = {"eventType": self.EVT_FINISHED, "okFunction": self.hideWindow, "okFunctionKwargs": {"modalId": wx.ID_OK}})
-		"""
-
-		self.triggerEvent(*args, **kwargs)
-		event.Skip()
-
-	def triggerEvent(self, eventType = None, *, returnEvent = False,
-		okFunction = None, okFunctionArgs = None, okFunctionKwargs = None,
-		vetoFunction = None, vetoFunctionArgs = None, vetoFunctionKwargs = None, **kwargs):
-		"""Allows the user to easily trigger an event remotely.
-
-		Example Input: triggerEvent(self.EVT_PAGE_CHANGED)
-		Example Input: triggerEvent(self.EVT_PAGE_CHANGING, returnEvent = True, fromNode = self.currentNode, toNode = node)
-		Example Input: triggerEvent(self.EVT_FINISHED, okFunction = self.hideWindow, okFunctionKwargs = {"modalId": wx.ID_OK})
-		"""
-
-		assert eventType
-		newEvent = eventType(self, **kwargs)
-		self.thing.GetEventHandler().ProcessEvent(newEvent)
-		if (returnEvent):
-			return newEvent
-
-		if (newEvent.IsVetoed()):
-			self.runMyFunction(myFunction = vetoFunction, myFunctionArgs = vetoFunctionArgs, myFunctionKwargs = vetoFunctionKwargs)
-			return False
-
-		self.runMyFunction(myFunction = okFunction, myFunctionArgs = okFunctionArgs, myFunctionKwargs = okFunctionKwargs)
-		return True
 
 	#Getters
 	def getLabel(self, event = None):
@@ -6208,14 +6175,577 @@ class handle_WidgetText(handle_Widget_Base):
 		else:
 			warnings.warn(f"Add {self.type.name} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
 
-class handle_WidgetList(handle_Widget_Base):
+class handle_WidgetList_Base(handle_Widget_Base):
 	"""A handle for working with list widgets."""
 
 	def __init__(self):
 		"""Initializes defaults."""
 
 		#Initialize inherited classes
-		handle_Widget_Base.__init__(self)
+		super().__init__()
+
+		#Internal Variables
+		self.formattedChoices = []
+	
+	def setChoices(self, choices = None):
+		self.choices = choices or ()
+		self.update_formatted()
+
+	def update_formatted(self):
+		def yieldFormatted():
+			nonlocal self
+
+			if (self.formatter):
+				for item in self.choices:
+					yield f"{self.formatter(item)}"
+			else:
+				for item in self.choices:
+					yield f"{item}"
+
+		##################################
+
+		self.formattedChoices.clear()
+		self.formattedChoices.extend(yieldFormatted())
+
+	def setText(self, text = None, triggerEvent = True):
+		if (triggerEvent):
+			self.thing.SetValue(text or "")
+		else:
+			self.thing.ChangeValue(text or "")
+
+class handle_WidgetList_Drop(handle_WidgetList_Base):
+	"""A handle for working with list widgets."""
+
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize inherited classes
+		super().__init__()
+
+		#Internal Variables
+		self.subType = None
+		self.ignoreAutoComplete = False
+
+	def __len__(self):
+		"""Returns what the contextual length is for the object associated with this handle."""
+
+		return self.thing.GetCount() #(int) - How many items are in the drop list
+
+	def _build(self, argument_catalogue):
+		"""Builds a wx choice object.
+		Use: https://bitbucket.org/raz/wxautocompletectrl/src/default/autocomplete.py
+		Use: https://wiki.wxpython.org/Combo%20Box%20that%20Suggests%20Options
+		"""
+
+		def yieldStyle():
+			nonlocal alphabetic, inputBox, readOnly, dropDown
+
+			yield 0
+
+			if (alphabetic):
+				yield wx.CB_SORT
+
+			if (not inputBox):
+				return
+
+			if (readOnly):
+				yield wx.CB_READONLY
+			else:
+				yield wx.TE_PROCESS_ENTER
+
+			if (not dropDown):
+				yield wx.CB_SIMPLE
+			else:
+				yield wx.CB_DROPDOWN
+
+		def getThing():
+			nonlocal argument_catalogue, check, self, alphabetic, inputBox, readOnly
+
+			myId = self._getId(argument_catalogue)
+
+			if (check):
+				check_text = self._getArguments(argument_catalogue, ["check_text"])
+
+				self.subType = Types.check
+				return MyUtilities.wxPython.CheckListCtrl(self, self.parent, myId = myId, alphabetic = alphabetic, initial = check_text, readOnly = readOnly)
+
+			if (inputBox):
+				self.subType = types.box
+				return wx.ComboBox(self.parent.thing, id = myId, choices = self.formattedChoices, style = functools.reduce(operator.ior, yieldStyle()))
+
+			return wx.Choice(self.parent.thing, id = myId, choices = self.formattedChoices, style = functools.reduce(operator.ior, yieldStyle()))
+
+		def yieldDefault():
+			nonlocal self, default
+
+			for item in self.ensure_container(self._Munge(default, extraArgs = (self,), returnMunger_onFail = True)):
+				if ((item is None) or (isinstance(item, int))):
+					yield item
+					continue
+
+				if (item in self.choices):
+					yield self.choices.index(item)
+				
+				elif (item in self.formattedChoices):
+					yield self.formattedChoices.index(item)
+				
+				else:
+					errorMessage = f"the default {item} was not in the provided list of choices"
+					raise KeyError(errorMessage)
+
+		def getDefault():
+			nonlocal check
+
+			if (check):
+				return tuple(yieldDefault())
+			
+			return next(yieldDefault(), None) or 0
+
+		#########################################
+
+		with self.bookend_build(argument_catalogue):
+	
+			choices, alphabetic, default, readOnly, check = self._getArguments(argument_catalogue, ["choices", "alphabetic", "default", "readOnly", "check"])
+			formatter, inputBox, dropDown, autoComplete = self._getArguments(argument_catalogue, ["formatter", "inputBox", "dropDown", "autoComplete"])
+
+			self.formatter = formatter
+			self.choices = self.ensure_container(self._Munge(choices, extraArgs = (self,), returnMunger_onFail = True), convertNone = False)
+			self.update_formatted()
+
+			self.thing = getThing()
+			self.thing.SetSelection(getDefault())
+
+			myFunction, myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunction", "myFunctionArgs", "myFunctionKwargs"])
+			self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
+
+			if (inputBox and autoComplete):
+				self.update_autoComplete()
+
+	#Getters
+	def getValue(self, index = None, event = None):
+		"""Returns what the contextual value is for the object associated with this handle.
+
+		index (int) - Which index to get the value from
+			- If None: Will use the selected row's index
+		"""
+
+		if (index is None):
+			index = self.thing.GetSelection()
+
+		return self.choices[index] #(any) - What was selected in the drop list
+
+	def getIndex(self, event = None):
+		"""Returns what the contextual index is for the object associated with this handle."""
+
+		return self.thing.GetSelection() #(int) - The index number of what is selected in the drop list  
+
+	def yieldAll(self, event = None):
+		for index in range(self.thing.GetCount()):
+			yield self.getValue(index)
+
+	def getAll(self, event = None):
+		"""Returns all the contextual values for the object associated with this handle."""
+
+		return tuple(self.yieldAll())
+
+	def setValue(self, newValue = None, filterNone = False, event = None):
+		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
+
+		newValue = self.ensure_container(newValue, convertNone = False)
+
+		if (filterNone is not None):
+			if (filterNone):
+				if (None in newValue):
+					newValue = tuple(str(value) for value in newValue if value is not None) #Filter out None
+			else:
+				newValue = tuple(str(value) if (value is not None) else "" for value in newValue) #Replace None with blank space
+
+		self.thing.Clear()
+		self.thing.AppendItems(newValue) #(list) - What the choice options will now be now
+		self.setChoices(newValue)
+
+	def setSelection(self, newValue = None, event = None):
+		"""Sets the contextual value for the object associated with this handle to what the user supplies.
+		None will deselect all items.
+		"""
+
+		if (newValue is not None):
+			if (isinstance(newValue, str)):
+				newValue = self.thing.FindString(newValue)
+
+			if (newValue is None):
+				errorMessage = f"Invalid drop list selection in setSelection() for {self.__repr__()}"
+				raise ValueError(errorMessage)
+		else:
+			newValue = 0
+
+		self.thing.SetSelection(newValue) #(int) - What the choice options will now be
+
+	def update_autoComplete(self, choices = None, event = None):
+		"""Updates the auto completer."""
+		
+		if (choices):
+			self.setChoices(choices)
+
+		self.thing.AutoComplete(self.choices or ())
+
+	#Change Settings
+	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(wx.EVT_CHOICE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			
+	def setReadOnly(self, state = True):
+		"""Sets the contextual readOnly for the object associated with this handle to what the user supplies."""
+
+		self.setDisable(state)
+
+class handle_WidgetList_Drop_Check(handle_WidgetList_Drop):
+	"""A handle for working with list widgets."""
+
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize inherited classes
+		super().__init__()
+
+	# #Getters
+	# def getValue(self, index = None, event = None):
+	# 	"""Returns what the contextual value is for the object associated with this handle.
+
+	# 	index (int) - Which index to get the value from
+	# 		- If None: Will use the selected row's index
+	# 	"""
+
+	# 	if (index is None):
+	# 		index = self.thing.GetSelection()
+
+	# 	return self.choices[index] #(any) - What was selected in the drop list
+
+	# def getIndex(self, event = None):
+	# 	"""Returns what the contextual index is for the object associated with this handle."""
+
+	# 	return self.thing.GetSelection() #(int) - The index number of what is selected in the drop list  
+
+	# def yieldAll(self, event = None):
+	# 	for index in range(self.thing.GetCount()):
+	# 		yield self.getValue(index)
+
+	# def getAll(self, event = None):
+	# 	"""Returns all the contextual values for the object associated with this handle."""
+
+	# 	return tuple(self.yieldAll())
+
+	def setValue(self, newValue = None, filterNone = False, event = None):
+		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
+
+		self.setChoices(self.ensure_container(newValue))
+
+		self.thing.Clear()
+		for item in self.formattedChoices:
+			self.thing.Append(item)
+
+	def setSelection(self, newValue = None, event = None, triggerEvent = True):
+		"""Sets the contextual value for the object associated with this handle to what the user supplies.
+		None will deselect all items.
+		"""
+
+		def yieldValue():
+			nonlocal self, newValue
+
+			for item in self.ensure_container(self._Munge(newValue, extraArgs = (self,), returnMunger_onFail = True)):
+				if ((item is None) or (isinstance(item, int))):
+					yield item
+					continue
+
+				if (item in self.choices):
+					yield self.choices.index(item)
+				
+				elif (item in self.formattedChoices):
+					yield self.formattedChoices.index(item)
+				
+				else:
+					errorMessage = f"the value {item} was not in the provided list of choices"
+					raise KeyError(errorMessage)
+
+		###########################
+
+		self.thing.SetSelection(tuple(yieldValue()), triggerEvent = triggerEvent)
+
+	#Change Settings
+	def setFunction_check(self, *args, **kwargs):
+		self.thing.setFunction_check(*args, **kwargs)
+
+class handle_WidgetList_Tree(handle_WidgetList_Base):
+	"""A handle for working with list widgets."""
+
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize inherited classes
+		super().__init__()
+
+	def _build(self, argument_catalogue):
+		"""Builds a wx choice object."""
+			
+		with self.bookend_build(argument_catalogue):
+			
+			choices, drag, drop = self._getArguments(argument_catalogue, ["choices", "drag", "drop"])
+			addButton, editable, rowHighlight, root = self._getArguments(argument_catalogue, ["addButton", "editable", "rowHighlight", "root"])
+			rowLines, rootLines, variableHeight, selectMultiple = self._getArguments(argument_catalogue, ["rowLines", "rootLines", "variableHeight", "selectMultiple"])
+
+			#Apply Settings
+			if (addButton is None):
+				style = "wx.TR_NO_BUTTONS"
+			else:
+				if (addButton):
+					style = "wx.TR_HAS_BUTTONS"
+				else:
+					style = "wx.TR_TWIST_BUTTONS"
+
+			if (editable):
+				style += "|wx.TR_EDIT_LABELS"
+
+			if (rowHighlight):
+				style += "|wx.TR_FULL_ROW_HIGHLIGHT"
+
+			if (root is None):
+				style += "|wx.TR_HIDE_ROOT"
+
+			if (rowLines or rootLines):
+				if (rowLines):
+					style += "|wx.TR_ROW_LINES"
+
+				if (rootLines and (root is not None)):
+					style += "|wx.TR_LINES_AT_ROOT"
+			else:
+				style += "|wx.TR_NO_LINES"
+
+			if (variableHeight):
+				style += "|wx.TR_HAS_VARIABLE_ROW_HEIGHT"
+
+			if (selectMultiple):
+				self.subType = "multiple"
+				style += "|wx.TR_MULTIPLE"
+			else:
+				self.subType = "single"
+				style += "|wx.TR_SINGLE"
+
+			myId = self._getId(argument_catalogue)
+
+			#Create the thing to put in the grid
+			self.thing = wx.TreeCtrl(self.parent.thing, id = myId, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+			
+			self.setValue({root: choices})
+
+			#Bind the function(s)
+			myFunction, preEditFunction, postEditFunction = self._getArguments(argument_catalogue, ["myFunction", "preEditFunction", "postEditFunction"])
+			preCollapseFunction, preExpandFunction = self._getArguments(argument_catalogue, ["preCollapseFunction", "preExpandFunction"])
+			postCollapseFunction, postExpandFunction = self._getArguments(argument_catalogue, ["postCollapseFunction", "postExpandFunction"])
+			rightClickFunction, middleClickFunction, doubleClickFunction = self._getArguments(argument_catalogue, ["rightClickFunction", "middleClickFunction", "doubleClickFunction"])
+			keyDownFunction, toolTipFunction, itemMenuFunction = self._getArguments(argument_catalogue, ["keyDownFunction", "toolTipFunction", "itemMenuFunction"])
+
+			if (myFunction is not None):
+				myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
+				self.setFunction_postClick(myFunction, myFunctionArgs, myFunctionKwargs)
+
+			if (preEditFunction is not None):
+				preEditFunctionArgs, preEditFunctionKwargs = self._getArguments(argument_catalogue, ["preEditFunctionArgs", "preEditFunctionKwargs"])
+				self.setFunction_preEdit(preEditFunction, preEditFunctionArgs, preEditFunctionKwargs)
+
+			if (postEditFunction is not None):
+				postEditFunctionArgs, postEditFunctionKwargs = self._getArguments(argument_catalogue, ["postEditFunctionArgs", "postEditFunctionKwargs"])
+				self.setFunction_postEdit(postEditFunction, postEditFunctionArgs, postEditFunctionKwargs)
+
+			if (preCollapseFunction is not None):
+				preCollapseFunctionArgs, preCollapseFunctionKwargs = self._getArguments(argument_catalogue, ["preCollapseFunctionArgs", "preCollapseFunctionKwargs"])
+				self.setFunction_collapse(preCollapseFunction, preCollapseFunctionArgs, preCollapseFunctionKwargs)
+
+			if (postCollapseFunction is not None):
+				postCollapseFunctionArgs, postCollapseFunctionKwargs = self._getArguments(argument_catalogue, ["postCollapseFunctionArgs", "postCollapseFunctionKwargs"])
+				self.setFunction_collapse(postCollapseFunction, postCollapseFunctionArgs, postCollapseFunctionKwargs)
+
+			if (preExpandFunction is not None):
+				preExpandFunctionArgs, preExpandFunctionKwargs = self._getArguments(argument_catalogue, ["preExpandFunctionArgs", "preExpandFunctionKwargs"])
+				self.setFunction_expand(preExpandFunction, preExpandFunctionArgs, preExpandFunctionKwargs)
+
+			if (postExpandFunction is not None):
+				postExpandFunctionArgs, postExpandFunctionKwargs = self._getArguments(argument_catalogue, ["postExpandFunctionArgs", "postExpandFunctionKwargs"])
+				self.setFunction_expand(postExpandFunction, postExpandFunctionArgs, postExpandFunctionKwargs)
+
+			if (rightClickFunction is not None):
+				rightClickFunctionArgs, rightClickFunctionKwargs = self._getArguments(argument_catalogue, ["rightClickFunctionArgs", "rightClickFunctionKwargs"])
+				self.setFunction_rightClick(rightClickFunction, rightClickFunctionArgs, rightClickFunctionKwargs)
+
+			if (middleClickFunction is not None):
+				middleClickFunctionArgs, middleClickFunctionKwargs = self._getArguments(argument_catalogue, ["middleClickFunctionArgs", "middleClickFunctionKwargs"])
+				self.setFunction_middleClick(middleClickFunction, middleClickFunctionArgs, middleClickFunctionKwargs)
+			
+			if (doubleClickFunction is not None):
+				doubleClickFunctionArgs, doubleClickFunctionKwargs = self._getArguments(argument_catalogue, ["doubleClickFunctionArgs", "doubleClickFunctionKwargs"])
+				self.setFunction_doubleClick(doubleClickFunction, doubleClickFunctionArgs, doubleClickFunctionKwargs)
+
+			if (keyDownFunction is not None):
+				keyDownFunctionArgs, keyDownFunctionKwargs = self._getArguments(argument_catalogue, ["keyDownFunctionArgs", "keyDownFunctionKwargs"])
+				self.setFunction_keyDown(keyDownFunction, keyDownFunctionArgs, keyDownFunctionKwargs)
+
+			if (toolTipFunction is not None):
+				toolTipFunctionArgs, toolTipFunctionKwargs = self._getArguments(argument_catalogue, ["toolTipFunctionArgs", "toolTipFunctionKwargs"])
+				self.setFunction_toolTip(toolTipFunction, toolTipFunctionArgs, toolTipFunctionKwargs)
+			
+			if (itemMenuFunction is not None):
+				itemMenuFunctionArgs, itemMenuFunctionKwargs = self._getArguments(argument_catalogue, ["itemMenuFunctionArgs", "itemMenuFunctionKwargs"])
+				self.setFunction_itemMenu(itemMenuFunction, itemMenuFunctionArgs, itemMenuFunctionKwargs)
+
+	#Getters
+	def getValue(self, event = None, fallback_lastSelection = False, group = False):
+		"""Returns what the contextual value is for the object associated with this handle.
+
+		group (bool) - Determines what is returned
+			- If True: A list of strings for each selected group is returned
+			- If False: A list of objects for each selected item is returned
+			- If None: A dictionary containing both groups and items selected is returned
+		"""
+
+		if (self.subType.lower() == "single"):
+			selection = self.thing.GetSelection()
+			if (selection.IsOk()):
+				value = self.thing.GetItemText(selection)
+			else:
+				value = None
+		else:
+			value = []
+			for selection in self.thing.GetSelections():
+				if (selection.IsOk()):
+					value.append(self.thing.GetItemText(selection))
+
+		return value
+
+	
+
+	def getAll(self, event = None, group = False):
+		"""Returns all the contextual values for the object associated with this handle."""
+
+		value = {}
+		root = self.thing.GetRootItem()
+
+		if (self.subType.lower() == "hiddenroot"):
+			rootText = None
+		else:
+			rootText = self.thing.GetItemText(root)
+
+		if (self.thing.ItemHasChildren(root)):
+			first, cookie = self.thing.GetFirstChild(root)
+			text = self.thing.GetItemText(first)
+			value[rootText] = {text: None}
+
+		if (self.subType.lower() == "hiddenroot"):
+			value = value[rootText]
+
+		return value
+
+	def setValue(self, newValue = None, filterNone = False, event = None):
+		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
+
+		if (not isinstance(newValue, dict)):
+			errorMessage = f"'newValue' must be a dict, not a {type(newValue)} in setValue() for {self.__repr__()}"
+			raise KeyError(errorMessage)
+
+		if (len(newValue) != 1):
+			errorMessage = f"There must be only one root for 'newValue' not {len(newValue)} in setValue() for {self.__repr__()}"
+			raise ValueError(errorMessage)
+
+		rootThing = self.thing.AddRoot(str(list(newValue.keys())[0]))
+		self.thing.SetItemData(rootThing, ("key", "value"))
+
+		for root, branches in newValue.items():
+			self.appendValue(branches, rootThing)
+
+	def setChoices(self, choices = None):
+		raise NotImplementedError()
+
+	def setText(self, text = None, triggerEvent = True):
+		raise NotImplementedError()
+
+	def appendValue(self, newValue, where = -1, filterNone = None):
+		"""Appends the given value to the current contextual value for this handle."""
+
+		if (not isinstance(where, wx.TreeCtrl)):
+			#Find the root
+			pass
+
+		#Account for multiple items on the same level
+		if (isinstance(newValue, (list, tuple, range))):
+			for item in newValue:
+				self.appendValue(item, where)
+		else:
+			#Account for new branches
+			if (isinstance(newValue, dict)):
+				for key, value in newValue.items():
+					if (key is not None):
+						branch = self.thing.AppendItem(where, str(key))
+
+					if (value is not None):
+						self.appendValue(value, branch)
+			else:
+				if (newValue is not None):
+					branch = self.thing.AppendItem(where, str(newValue))
+
+	#Change Settings
+	def setFunction_preClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(wx.EVT_TREE_SEL_CHANGING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			
+	def setFunction_postClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(wx.EVT_TREE_SEL_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			
+	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self.setFunction_postClick(myFunction = myFunction, myFunctionArgs = myFunctionArgs, myFunctionKwargs = myFunctionKwargs)
+			
+	def setFunction_preEdit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(wx.EVT_TREE_BEGIN_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			
+	def setFunction_postEdit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(wx.EVT_TREE_END_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+			
+	def setFunction_edit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self.setFunction_postEdit(myFunction = myFunction, myFunctionArgs = myFunctionArgs, myFunctionKwargs = myFunctionKwargs)
+
+	def setFunction_preCollapse(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(wx.EVT_TREE_ITEM_COLLAPSING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	def setFunction_postCollapse(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(wx.EVT_TREE_ITEM_COLLAPSED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	def setFunction_preExpand(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(wx.EVT_TREE_ITEM_EXPANDING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	def setFunction_postExpand(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(wx.EVT_TREE_ITEM_EXPANDED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	def setFunction_rightClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(wx.EVT_TREE_ITEM_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	def setFunction_middleClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(wx.EVT_TREE_ITEM_MIDDLE_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	def setFunction_doubleClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(wx.EVT_TREE_ITEM_ACTIVATED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	def setFunction_keyDown(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(wx.EVT_TREE_KEY_DOWN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	def setFunction_toolTip(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(wx.EVT_TREE_ITEM_GETTOOLTIP, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+	def setFunction_itemMenu(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
+		self._betterBind(wx.EVT_TREE_ITEM_MENU, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
+
+class handle_WidgetList_View(handle_WidgetList_Base):
+	"""A handle for working with list widgets."""
+
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize inherited classes
+		handle_WidgetList_Base.__init__(self)
 
 		#Internal Variables
 		self.dragable = False
@@ -6244,125 +6774,34 @@ class handle_WidgetList(handle_Widget_Base):
 			- If False: Returns how many columns the object has
 		"""
 
-		if (self.type is Types.drop):
-			value = self.thing.GetCount() #(int) - How many items are in the drop list
-
-		elif (self.type is Types.view):
-			if (returnRows):
-				value = self.thing.GetItemCount()
-			else:
-				value = len(self.columnCatalogue)
-
-		else:
-			warnings.warn(f"Add {self.type.name} to __len__() for {self.__repr__()}", Warning, stacklevel = 2)
-			value = 0
-
-		return value
+		if (returnRows):
+			return self.thing.GetItemCount()
+		return len(self.columnCatalogue)
 
 	def _build(self, argument_catalogue):
-		"""Determiens which build system to use for this handle."""
+		"""Builds a wx choice object.
+		Use: https://pypi.org/project/ObjectListView/1.3.1/
+		Use: http://objectlistview-python-edition.readthedocs.io/en/latest/
+		Use: http://www.blog.pythonlibrary.org/index.php?s=medialocker&submit=Search
+		Use: https://www.codeproject.com/KB/list/objectlistview.aspx
+		Use: https://www.codeproject.com/Articles/16009/A-Much-Easier-to-Use-ListView
+		Use: http://code.activestate.com/recipes/577543-objectlistview-getcolumnclickedevent-handler/
+		Use: http://www.blog.pythonlibrary.org/2013/12/12/wxpython-adding-tooltips-objectlistview/
+		Use: http://www.blog.pythonlibrary.org/2017/11/16/wxpython-moving-items-in-objectlistview/
+		"""
 
-		def _build_listDrop():
-			"""Builds a wx choice object.
-			Use: https://bitbucket.org/raz/wxautocompletectrl/src/default/autocomplete.py
-			Use: https://wiki.wxpython.org/Combo%20Box%20that%20Suggests%20Options
-			"""
-			nonlocal self, argument_catalogue
+		def formatCatalogue(columns, catalogue, default):
+			"""Ensures the provided catalogue is in the correct format."""
 
-			def yieldValue():
-				nonlocal choices
+			if (isinstance(catalogue, (list, tuple, range))):
+				return {i: catalogue[i] if (len(catalogue) > i) else default for i in range(columns)}
+			elif (isinstance(catalogue, dict)):
+				return {i: catalogue[i] if (i in catalogue) else default for i in range(columns)}
+			return {i: catalogue for i in range(columns)}
 
-				for item in self.ensure_container(self._Munge(choices, extraArgs = (self,), returnMunger_onFail = True), convertNone = False):
-					yield f"{item}"
-
-			#########################################
-
-			choices, alphabetic, default, readOnly = self._getArguments(argument_catalogue, ["choices", "alphabetic", "default", "readOnly"])
-			formatter, inputBox, dropDown, autoComplete = self._getArguments(argument_catalogue, ["formatter", "inputBox", "dropDown", "autoComplete"])
-
-			#Ensure that the choices are all strings
-			self.choices = self.ensure_container(self._Munge(choices, extraArgs = (self,), returnMunger_onFail = True), convertNone = False)
-
-			#Format choices to display
-			if (formatter):
-				self.formattedChoices = [f"{formatter(item)}" for item in self.choices]
-			else:
-				self.formattedChoices = [f"{item}" for item in self.choices]
-
-			#Apply Settings
-			style = []
-			if (alphabetic):
-				style.append(wx.CB_SORT)
-
-			myId = self._getId(argument_catalogue)
-
-			#Create the thing to put in the grid
-			if (inputBox):
-				if (readOnly):
-					style.append(wx.CB_READONLY)
-				else:
-					style.append(wx.TE_PROCESS_ENTER)
-
-				if (not dropDown):
-					style.append(wx.CB_SIMPLE)
-				else:
-					style.append(wx.CB_DROPDOWN)
-
-				self.thing = wx.ComboBox(self.parent.thing, id = myId, choices = self.formattedChoices, style = functools.reduce(operator.ior, style or (0,)))
-			else:
-				self.thing = wx.Choice(self.parent.thing, id = myId, choices = self.formattedChoices, style = functools.reduce(operator.ior, style or (0,)))
-			
-			#Set default position
-			default = self._Munge(default, extraArgs = (self,), returnMunger_onFail = True)
-			if (isinstance(default, (list, tuple, range, set))):
-				if (not default):
-					default = None
-				else:
-					default = default[0]
-
-			if ((default is not None) and (not isinstance(default, int))):
-				if (default in self.choices):
-					default = self.choices.index(default)
-				
-				elif (default in self.formattedChoices):
-					default = self.formattedChoices.index(default)
-				
-				else:
-					warnings.warn(f"the default {default} was not in the provided list of choices for a {self.type} in {self.__repr__()}", Warning, stacklevel = 4)
-					default = None
-
-			self.thing.SetSelection(default or 0)
-
-			#Bind the function(s)
-			myFunction, myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunction", "myFunctionArgs", "myFunctionKwargs"])
-			self.setFunction_click(myFunction, myFunctionArgs, myFunctionKwargs)
-
-			if (autoComplete):
-				self.update_autoComplete()
-
-		def _build_listFull():
-			"""Builds a wx choice object.
-			Use: https://pypi.org/project/ObjectListView/1.3.1/
-			Use: http://objectlistview-python-edition.readthedocs.io/en/latest/
-			Use: http://www.blog.pythonlibrary.org/index.php?s=medialocker&submit=Search
-			Use: https://www.codeproject.com/KB/list/objectlistview.aspx
-			Use: https://www.codeproject.com/Articles/16009/A-Much-Easier-to-Use-ListView
-			Use: http://code.activestate.com/recipes/577543-objectlistview-getcolumnclickedevent-handler/
-			Use: http://www.blog.pythonlibrary.org/2013/12/12/wxpython-adding-tooltips-objectlistview/
-			Use: http://www.blog.pythonlibrary.org/2017/11/16/wxpython-moving-items-in-objectlistview/
-			"""
-			nonlocal self, argument_catalogue
-
-			def formatCatalogue(columns, catalogue, default):
-				"""Ensures the provided catalogue is in the correct format."""
-
-				if (isinstance(catalogue, (list, tuple, range))):
-					return {i: catalogue[i] if (len(catalogue) > i) else default for i in range(columns)}
-				elif (isinstance(catalogue, dict)):
-					return {i: catalogue[i] if (i in catalogue) else default for i in range(columns)}
-				return {i: catalogue for i in range(columns)}
-
-			####################################################################
+		####################################################################
+		
+		with self.bookend_build(argument_catalogue):
 
 			columnTitles, columnWidth, groupIndent, hideFirstIndent = self._getArguments(argument_catalogue, ["columnTitles", "columnWidth", "groupIndent", "hideFirstIndent"])
 			report, single, editable, editOnClick, columnLabels = self._getArguments(argument_catalogue, ["report", "single", "editable", "editOnClick", "columnLabels"])
@@ -6478,167 +6917,6 @@ class handle_WidgetList(handle_Widget_Base):
 			# if (editOnClick):
 			#   pass
 
-		def _build_listTree():
-			"""Builds a wx choice object."""
-			nonlocal self, argument_catalogue
-
-			
-			choices, drag, drop = self._getArguments(argument_catalogue, ["choices", "drag", "drop"])
-			addButton, editable, rowHighlight, root = self._getArguments(argument_catalogue, ["addButton", "editable", "rowHighlight", "root"])
-			rowLines, rootLines, variableHeight, selectMultiple = self._getArguments(argument_catalogue, ["rowLines", "rootLines", "variableHeight", "selectMultiple"])
-
-			#Apply Settings
-			if (addButton is None):
-				style = "wx.TR_NO_BUTTONS"
-			else:
-				if (addButton):
-					style = "wx.TR_HAS_BUTTONS"
-				else:
-					style = "wx.TR_TWIST_BUTTONS"
-
-			if (editable):
-				style += "|wx.TR_EDIT_LABELS"
-
-			if (rowHighlight):
-				style += "|wx.TR_FULL_ROW_HIGHLIGHT"
-
-			if (root is None):
-				style += "|wx.TR_HIDE_ROOT"
-
-			if (rowLines or rootLines):
-				if (rowLines):
-					style += "|wx.TR_ROW_LINES"
-
-				if (rootLines and (root is not None)):
-					style += "|wx.TR_LINES_AT_ROOT"
-			else:
-				style += "|wx.TR_NO_LINES"
-
-			if (variableHeight):
-				style += "|wx.TR_HAS_VARIABLE_ROW_HEIGHT"
-
-			if (selectMultiple):
-				self.subType = "multiple"
-				style += "|wx.TR_MULTIPLE"
-			else:
-				self.subType = "single"
-				style += "|wx.TR_SINGLE"
-
-			myId = self._getId(argument_catalogue)
-
-			#Create the thing to put in the grid
-			self.thing = wx.TreeCtrl(self.parent.thing, id = myId, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
-			
-			self.setValue({root: choices})
-
-			preRightDragFunction, postRightDragFunction = self._getArguments(argument_catalogue, ["preRightDragFunction", "postRightDragFunction"])
-			preDropFunction, postDropFunction, dragOverFunction = self._getArguments(argument_catalogue, ["preDropFunction", "postDropFunction", "dragOverFunction"])
-
-			# #Determine if it's contents are dragable
-			# if (drag):
-			#   dragLabel, dragDelete, dragCopyOverride, allowExternalAppDelete = self._getArguments(argument_catalogue, ["dragLabel", "dragDelete", "dragCopyOverride", "allowExternalAppDelete"])
-			#   preDragFunction, preDragFunctionArgs, preDragFunctionKwargs = self._getArguments(argument_catalogue, ["preDragFunction", "preDragFunctionArgs", "preDragFunctionKwargs"])
-			#   postDragFunction, postDragFunctionArgs, postDragFunctionKwargs = self._getArguments(argument_catalogue, ["postDragFunction", "postDragFunctionArgs", "postDragFunctionKwargs"])
-				
-			#   self.dragable = True
-			#   self._betterBind(wx.EVT_TREE_BEGIN_DRAG, self.thing, self._onDragList_beginDragAway, None, 
-			#       {"label": dragLabel, "deleteOnDrop": dragDelete, "overrideCopy": dragCopyOverride, "allowExternalAppDelete": allowExternalAppDelete})
-				
-			#   self.preDragFunction = preDragFunction
-			#   self.preDragFunctionArgs = preDragFunctionArgs
-			#   self.preDragFunctionKwargs = preDragFunctionKwargs
-
-			#   self.postDragFunction = postDragFunction
-			#   self.postDragFunctionArgs = postDragFunctionArgs
-			#   self.postDragFunctionKwargs = postDragFunctionKwargs
-
-			# #Determine if it accepts dropped items
-			# if (drop):
-			#   dropIndex = self._getArguments(argument_catalogue, ["dropIndex"])
-			#   preDropFunction, preDropFunctionArgs, preDropFunctionKwargs = self._getArguments(argument_catalogue, ["preDropFunction", "preDropFunctionArgs", "preDropFunctionKwargs"])
-			#   postDropFunction, postDropFunctionArgs, postDropFunctionKwargs = self._getArguments(argument_catalogue, ["postDropFunction", "postDropFunctionArgs", "postDropFunctionKwargs"])
-			#   dragOverFunction, dragOverFunctionArgs, postDropFunctionKwargs = self._getArguments(argument_catalogue, ["dragOverFunction", "dragOverFunctionArgs", "postDropFunctionKwargs"])
-				
-			#   self.myDropTarget = self._DragTextDropTarget(self.thing, dropIndex,
-			#       preDropFunction = preDropFunction, preDropFunctionArgs = preDropFunctionArgs, preDropFunctionKwargs = preDropFunctionKwargs, 
-			#       postDropFunction = postDropFunction, postDropFunctionArgs = postDropFunctionArgs, postDropFunctionKwargs = postDropFunctionKwargs,
-			#       dragOverFunction = dragOverFunction, dragOverFunctionArgs = dragOverFunctionArgs, dragOverFunctionKwargs = postDropFunctionKwargs)
-			#   self.thing.SetDropTarget(self.myDropTarget)
-
-			#Bind the function(s)
-			myFunction, preEditFunction, postEditFunction = self._getArguments(argument_catalogue, ["myFunction", "preEditFunction", "postEditFunction"])
-			preCollapseFunction, preExpandFunction = self._getArguments(argument_catalogue, ["preCollapseFunction", "preExpandFunction"])
-			postCollapseFunction, postExpandFunction = self._getArguments(argument_catalogue, ["postCollapseFunction", "postExpandFunction"])
-			rightClickFunction, middleClickFunction, doubleClickFunction = self._getArguments(argument_catalogue, ["rightClickFunction", "middleClickFunction", "doubleClickFunction"])
-			keyDownFunction, toolTipFunction, itemMenuFunction = self._getArguments(argument_catalogue, ["keyDownFunction", "toolTipFunction", "itemMenuFunction"])
-
-			if (myFunction is not None):
-				myFunctionArgs, myFunctionKwargs = self._getArguments(argument_catalogue, ["myFunctionArgs", "myFunctionKwargs"])
-				self.setFunction_postClick(myFunction, myFunctionArgs, myFunctionKwargs)
-
-			if (preEditFunction is not None):
-				preEditFunctionArgs, preEditFunctionKwargs = self._getArguments(argument_catalogue, ["preEditFunctionArgs", "preEditFunctionKwargs"])
-				self.setFunction_preEdit(preEditFunction, preEditFunctionArgs, preEditFunctionKwargs)
-
-			if (postEditFunction is not None):
-				postEditFunctionArgs, postEditFunctionKwargs = self._getArguments(argument_catalogue, ["postEditFunctionArgs", "postEditFunctionKwargs"])
-				self.setFunction_postEdit(postEditFunction, postEditFunctionArgs, postEditFunctionKwargs)
-
-			if (preCollapseFunction is not None):
-				preCollapseFunctionArgs, preCollapseFunctionKwargs = self._getArguments(argument_catalogue, ["preCollapseFunctionArgs", "preCollapseFunctionKwargs"])
-				self.setFunction_collapse(preCollapseFunction, preCollapseFunctionArgs, preCollapseFunctionKwargs)
-
-			if (postCollapseFunction is not None):
-				postCollapseFunctionArgs, postCollapseFunctionKwargs = self._getArguments(argument_catalogue, ["postCollapseFunctionArgs", "postCollapseFunctionKwargs"])
-				self.setFunction_collapse(postCollapseFunction, postCollapseFunctionArgs, postCollapseFunctionKwargs)
-
-			if (preExpandFunction is not None):
-				preExpandFunctionArgs, preExpandFunctionKwargs = self._getArguments(argument_catalogue, ["preExpandFunctionArgs", "preExpandFunctionKwargs"])
-				self.setFunction_expand(preExpandFunction, preExpandFunctionArgs, preExpandFunctionKwargs)
-
-			if (postExpandFunction is not None):
-				postExpandFunctionArgs, postExpandFunctionKwargs = self._getArguments(argument_catalogue, ["postExpandFunctionArgs", "postExpandFunctionKwargs"])
-				self.setFunction_expand(postExpandFunction, postExpandFunctionArgs, postExpandFunctionKwargs)
-
-			if (rightClickFunction is not None):
-				rightClickFunctionArgs, rightClickFunctionKwargs = self._getArguments(argument_catalogue, ["rightClickFunctionArgs", "rightClickFunctionKwargs"])
-				self.setFunction_rightClick(rightClickFunction, rightClickFunctionArgs, rightClickFunctionKwargs)
-
-			if (middleClickFunction is not None):
-				middleClickFunctionArgs, middleClickFunctionKwargs = self._getArguments(argument_catalogue, ["middleClickFunctionArgs", "middleClickFunctionKwargs"])
-				self.setFunction_middleClick(middleClickFunction, middleClickFunctionArgs, middleClickFunctionKwargs)
-			
-			if (doubleClickFunction is not None):
-				doubleClickFunctionArgs, doubleClickFunctionKwargs = self._getArguments(argument_catalogue, ["doubleClickFunctionArgs", "doubleClickFunctionKwargs"])
-				self.setFunction_doubleClick(doubleClickFunction, doubleClickFunctionArgs, doubleClickFunctionKwargs)
-
-			if (keyDownFunction is not None):
-				keyDownFunctionArgs, keyDownFunctionKwargs = self._getArguments(argument_catalogue, ["keyDownFunctionArgs", "keyDownFunctionKwargs"])
-				self.setFunction_keyDown(keyDownFunction, keyDownFunctionArgs, keyDownFunctionKwargs)
-
-			if (toolTipFunction is not None):
-				toolTipFunctionArgs, toolTipFunctionKwargs = self._getArguments(argument_catalogue, ["toolTipFunctionArgs", "toolTipFunctionKwargs"])
-				self.setFunction_toolTip(toolTipFunction, toolTipFunctionArgs, toolTipFunctionKwargs)
-			
-			if (itemMenuFunction is not None):
-				itemMenuFunctionArgs, itemMenuFunctionKwargs = self._getArguments(argument_catalogue, ["itemMenuFunctionArgs", "itemMenuFunctionKwargs"])
-				self.setFunction_itemMenu(itemMenuFunction, itemMenuFunctionArgs, itemMenuFunctionKwargs)
-
-		#########################################################
-
-		self._preBuild(argument_catalogue)
-
-		if (self.type is Types.drop):
-			_build_listDrop()
-		elif (self.type is Types.view):
-			_build_listFull()
-		elif (self.type is Types.tree):
-			_build_listTree()
-		else:
-			warnings.warn(f"Add {self.type.name} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
-
-		self._postBuild(argument_catalogue)
-
 	#Getters
 	def getValue(self, event = None, fallback_lastSelection = False, group = False):
 		"""Returns what the contextual value is for the object associated with this handle.
@@ -6648,124 +6926,71 @@ class handle_WidgetList(handle_Widget_Base):
 			- If False: A list of objects for each selected item is returned
 			- If None: A dictionary containing both groups and items selected is returned
 		"""
-
-		if (self.type is Types.drop):
-			index = self.thing.GetSelection()
-			value = self.choices[index] #(any) - What was selected in the drop list
-
-		elif (self.type is Types.view):
-			if (group is None):
-				value = {"group": [item.key for item in self.thing.GetSelectedGroups()], "row": self.thing.GetSelectedObjects(), "latest": None}
-			elif (group):
-				value = [item.key for item in self.thing.GetSelectedGroups()]
-			else:
-				value = self.thing.GetSelectedObjects()
-
-			if (fallback_lastSelection and ((not value) or (isinstance(value, dict) and (not value["group"]) and (not value["row"])))):
-				value = self.getLastSelected(group = group)
-
-		elif (self.type is Types.tree):
-			if (self.subType.lower() == "single"):
-				selection = self.thing.GetSelection()
-				if (selection.IsOk()):
-					value = self.thing.GetItemText(selection)
-				else:
-					value = None
-			else:
-				value = []
-				for selection in self.thing.GetSelections():
-					if (selection.IsOk()):
-						value.append(self.thing.GetItemText(selection))
-
+	
+		if (group is None):
+			value = {"group": [item.key for item in self.thing.GetSelectedGroups()], "row": self.thing.GetSelectedObjects(), "latest": None}
+		elif (group):
+			value = [item.key for item in self.thing.GetSelectedGroups()]
 		else:
-			warnings.warn(f"Add {self.type.name} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
-			value = None
+			value = self.thing.GetSelectedObjects()
+
+		if (fallback_lastSelection and ((not value) or (isinstance(value, dict) and (not value["group"]) and (not value["row"])))):
+			value = self.getLastSelected(group = group)
 
 		return value
 
 	def getText(self, event = None, fallback_lastSelection = False, group = False):
-		# return self.thing.GetValue()
 		return self.getValue(event = event, fallback_lastSelection = fallback_lastSelection, group = group)
 
 	def getChecked(self, event = None):
-		value = []
-		for item in self.thing.GetObjects():
-			if (self.thing.IsChecked(item)):
-				value.append(item)
-		return value
+		def yieldValue():
+			nonlocal self
+
+			for item in self.thing.GetObjects():
+				if (self.thing.IsChecked(item)):
+					yield item
+
+		#################################
+
+		return tuple(yieldValue())
 
 	def getIndex(self, event = None):
 		"""Returns what the contextual index is for the object associated with this handle."""
 
-		if (self.type is Types.drop):
-			value = self.thing.GetSelection() #(int) - The index number of what is selected in the drop list    
+		def yieldSubValue(row):
+			nonlocal columnCount
 
-		elif (self.type is Types.view):
-			value = []
-			columnCount = self.columns
-
+			for column in range(columnCount):
+				yield row
+		
+		def yieldValue():
+			nonlocal self
+		
 			row = -1
 			while True:
 				row = self.thing.GetNextSelected(row)
-				if row == -1:
-					break
-				else:
-					subValue = []
-					for column in range(columnCount):
-							subValue.append(row) #(list) - The index number of the row of what is selected in the full list as integers
-					value.append(subValue)
+				if (row is -1):
+					return
 
-		else:
-			warnings.warn(f"Add {self.type.name} to getIndex() for {self.__repr__()}", Warning, stacklevel = 2)
-			value = None
+				yield tuple(yieldSubValue(row))
 
-		return value
+		#################################
+
+		columnCount = self.columns
+		return tuple(yieldValue()) #(list) - The index number of the row of what is selected in the full list as integers
 
 	def getAll(self, event = None, group = False):
 		"""Returns all the contextual values for the object associated with this handle."""
 
-		if (self.type is Types.drop):
-			value = []
-			n = self.thing.GetCount()
-			for i in range(n):
-				value.append(self.thing.GetString(i)) #(list) - What is in the drop list as strings
-
-		elif (self.type is Types.view):
-			if (group is None):
-				value = {"group": [item.key for item in self.thing.GetGroups()], "row": self.thing.GetObjects()}
-			elif (group):
-				value = [item.key for item in self.thing.GetGroups()]
-			else:
-				value = self.thing.GetObjects()
-
-		elif (self.type is Types.tree):
-			value = {}
-			root = self.thing.GetRootItem()
-
-			if (self.subType.lower() == "hiddenroot"):
-				rootText = None
-			else:
-				rootText = self.thing.GetItemText(root)
-
-			if (self.thing.ItemHasChildren(root)):
-				first, cookie = self.thing.GetFirstChild(root)
-				text = self.thing.GetItemText(first)
-				value[rootText] = {text: None}
-
-			if (self.subType.lower() == "hiddenroot"):
-				value = value[rootText]
-
-		else:
-			warnings.warn(f"Add {self.type.name} to getAll() for {self.__repr__()}", Warning, stacklevel = 2)
-			value = None
-
-		return value
+		if (group is None):
+			return {"group": [item.key for item in self.thing.GetGroups()], "row": self.thing.GetObjects()}
+		
+		elif (group):
+			return [item.key for item in self.thing.GetGroups()]
+		
+		return self.thing.GetObjects()
 
 	def yieldAll(self, event = None, group = False):
-		if (self.type is not Types.view):
-			warnings.warn(f"Add {self.type.name} to yieldAll() for {self.__repr__()}", Warning, stacklevel = 2)
-			return
-
 		for item in self.thing.modelObjects:
 			yield item
 
@@ -6773,27 +6998,6 @@ class handle_WidgetList(handle_Widget_Base):
 		for index, column in self.thing.GetColumns().items():
 			if (column.valueGetter == label):
 				return column
-
-	# def getColumn(self, event = None):
-	# 	"""Returns what the contextual column is for the object associated with this handle.
-	# 	Column algorithm from: wx.lib.mixins.listctrl.TextEditMixin
-	# 	"""
-
-	# 	if (self.type is Types.view):
-	# 		x, y = self.getMousePosition()
-	# 		x_offset = self.thing.GetScrollPos(wx.HORIZONTAL)
-	# 		row, flags = self.thing.HitTest((x,y))
-
-	# 		widthList = [0]
-	# 		for i in range(self.thing.GetColumnCount()):
-	# 			widthList.append(widthList[i] + self.thing.GetColumnWidth(i))
-	# 		column = bisect.bisect(widthList, x + x_offset) - 1
-
-	# 	else:
-	# 		warnings.warn(f"Add {self.type.name} to getColumn() for {self.__repr__()}", Warning, stacklevel = 2)
-	# 		column = None
-
-	# 	return column
 
 	def getLatestSelected(self, event = None):
 		#Return copy, not origonal
@@ -6844,11 +7048,7 @@ class handle_WidgetList(handle_Widget_Base):
 				self.lastSelection["latest"] = "row"
 
 	def _formatList(self, newValue, filterNone = False):
-		if (isinstance(newValue, (range, types.GeneratorType))):
-			newValue = list(newValue)
-		elif (not isinstance(newValue, (list, tuple, set))):
-			newValue = [newValue]
-
+		newValue = self.ensure_container(newValue)
 		if (any((not hasattr(item, '__dict__') for item in newValue))):
 			objectList = []
 			for catalogue in newValue:
@@ -6867,145 +7067,78 @@ class handle_WidgetList(handle_Widget_Base):
 
 	def setValue(self, newValue = None, filterNone = False, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
-
-		if (self.type is Types.drop):
-			newValue = self.ensure_container(newValue, convertNone = False)
-
-			if (filterNone is not None):
-				if (filterNone):
-					if (None in newValue):
-						newValue = tuple(str(value) for value in newValue if value is not None) #Filter out None
-				else:
-					newValue = tuple(str(value) if (value is not None) else "" for value in newValue) #Replace None with blank space
-
-			self.thing.Clear()
-			self.thing.AppendItems(newValue) #(list) - What the choice options will now be now
-			self.setChoices(newValue)
-
-		elif (self.type is Types.view):
-			objectList = self._formatList(newValue, filterNone = filterNone)
-			self.thing.SetObjects(objectList)
-			self.setChoices(objectList)
-
-		elif (self.type is Types.tree):
-			if (not isinstance(newValue, dict)):
-				errorMessage = f"'newValue' must be a dict, not a {type(newValue)} in setValue() for {self.__repr__()}"
-				raise KeyError(errorMessage)
-
-			if (len(newValue) != 1):
-				errorMessage = f"There must be only one root for 'newValue' not {len(newValue)} in setValue() for {self.__repr__()}"
-				raise ValueError(errorMessage)
-
-			rootThing = self.thing.AddRoot(str(list(newValue.keys())[0]))
-			self.thing.SetItemData(rootThing, ("key", "value"))
-
-			for root, branches in newValue.items():
-				self.appendValue(branches, rootThing)
-
-		else:
-			warnings.warn(f"Add {self.type.name} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+		
+		objectList = self._formatList(newValue, filterNone = filterNone)
+		self.thing.SetObjects(objectList)
+		self.setChoices(objectList)
 
 	def setSelection(self, newValue = None, event = None, deselectOthers = True, ensureVisible = True, group = False, triggerEvent = True):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies.
 		None will deselect all items.
 		"""
 
-		if (self.type is Types.drop):
-			if (newValue is not None):
-				if (isinstance(newValue, str)):
-					newValue = self.thing.FindString(newValue)
+		if (newValue is None):
+			self.thing.UnselectAll()
+			return
 
-				if (newValue is None):
-					errorMessage = f"Invalid drop list selection in setSelection() for {self.__repr__()}"
-					raise ValueError(errorMessage)
-			else:
-				newValue = 0
-			self.thing.SetSelection(newValue) #(int) - What the choice options will now be
+		newValue = self.ensure_container(newValue)
 
-		elif (self.type is Types.view):
-			if (newValue is None):
-				self.thing.UnselectAll()
-				return
-
-			newValue = self.ensure_container(newValue)
-
-			if (any((not hasattr(item, '__dict__') for item in newValue))):
-				### TO DO ### Make this check each item indiviually instead of assuming all are the same type
-				if (group and True): #Check to see if there is a group labled that
-					objectList = newValue
-				else:
-					print(newValue)
-					ikiklk
-			else:
+		if (any((not hasattr(item, '__dict__') for item in newValue))):
+			### TO DO ### Make this check each item indiviually instead of assuming all are the same type
+			if (group and True): #Check to see if there is a group labled that
 				objectList = newValue
-
-			existingList = self.thing.GetObjects()
-			for item in objectList:
-				if ((item not in existingList) and (item not in self.groups_ensured)):
-					errorMessage = f"{item.__repr__()} is not in {self.__repr__()}"
-					print("--", existingList)
-					raise KeyError(errorMessage)
-					print(errorMessage)
-					return
-
-			if (group):
-				self.thing.SelectGroups(objectList, deselectOthers = deselectOthers)
-				if (ensureVisible and objectList):
-					self.thing.SelectGroup(objectList[0], deselectOthers = False, ensureVisible = ensureVisible)
 			else:
-				self.thing.SelectObjects(objectList, deselectOthers = deselectOthers)
-				if (ensureVisible and objectList):
-					self.thing.SelectObject(objectList[0], deselectOthers = False, ensureVisible = ensureVisible)
-
-			if (objectList):
-				if (triggerEvent):
-					if (group):
-						self.thing.TriggerEvent(ObjectListView.GroupSelectedEvent, row = objectList[0])
-					else:
-						self.thing.TriggerEvent(ObjectListView.SelectionChangedEvent, row = objectList[0])
-				else:
-					if (group):
-						self._onSelectGroup()
-					else:
-						self._onSelectRow()
+				print(newValue)
+				raise NotImplementedError(type(newValue))
 		else:
-			warnings.warn(f"Add {self.type.name} to setSelection() for {self.__repr__()}", Warning, stacklevel = 2)
+			objectList = newValue
+
+		existingList = self.thing.GetObjects()
+		for item in objectList:
+			if ((item not in existingList) and (item not in self.groups_ensured)):
+				errorMessage = f"{item.__repr__()} is not in {self.__repr__()}"
+				print("--", existingList)
+				raise KeyError(errorMessage)
+
+		if (group):
+			self.thing.SelectGroups(objectList, deselectOthers = deselectOthers)
+			if (ensureVisible and objectList):
+				self.thing.SelectGroup(objectList[0], deselectOthers = False, ensureVisible = ensureVisible)
+		else:
+			self.thing.SelectObjects(objectList, deselectOthers = deselectOthers)
+			if (ensureVisible and objectList):
+				self.thing.SelectObject(objectList[0], deselectOthers = False, ensureVisible = ensureVisible)
+
+		if (objectList):
+			if (triggerEvent):
+				if (group):
+					self.thing.TriggerEvent(ObjectListView.GroupSelectedEvent, row = objectList[0])
+				else:
+					self.thing.TriggerEvent(ObjectListView.SelectionChangedEvent, row = objectList[0])
+			else:
+				if (group):
+					self._onSelectGroup()
+				else:
+					self._onSelectRow()
 
 	def setChoices(self, choices = None):
 		self.choices = choices or ()
 
 	def setText(self, text = None, triggerEvent = True):
-
-		if ((self.type is Types.drop) and (self.subtype.lower != "autocomplete")):
-			return self.setSelection(text, triggerEvent = triggerEvent)
-
 		if (triggerEvent):
 			self.thing.SetValue(text or "")
 		else:
 			self.thing.ChangeValue(text or "")
 
-	def update_autoComplete(self, choices = None, event = None):
-		"""Updates the auto completer."""
-
-		if (choices):
-			self.setChoices(choices)
-
-		self.thing.AutoComplete(self.choices or ())
-
 	def reveal(self, row, event = None):
 		"""Ensures that the given item's group is expanded and visible."""
 
-		if (isinstance(row, (range, types.GeneratorType))):
-			row = list(row)
-		elif (not isinstance(row, (list, tuple, dict))):
-			row = [row]
+		row = self.ensure_container(row)
 
 		if (any((not hasattr(item, '__dict__') for item in row))):
-			ikiklk
-		else:
-			objectList = row
+			raise NotImplementedError()
 
-		for item in objectList:
+		for item in row:
 			self.thing.Reveal(item)
 			
 	def addColumn(self, *args, **kwargs):
@@ -7017,121 +7150,114 @@ class handle_WidgetList(handle_Widget_Base):
 		renderer = None, rendererArgs = None, rendererKwargs = None, setter = None):
 		"""Sets the contextual column for this handle."""
 
-		#Create columns
-		if (self.type is Types.view):
-			if (column is None):
-				column = len(self.columnCatalogue)
+		if (column is None):
+			column = len(self.columnCatalogue)
 
-			if (column not in self.columnCatalogue):
-				self.columnCatalogue[column] = {}
+		if (column not in self.columnCatalogue):
+			self.columnCatalogue[column] = {}
 
-			self.columnCatalogue[column].setdefault("title", "")
-			self.columnCatalogue[column].setdefault("width", -1)
-			self.columnCatalogue[column].setdefault("align", "left")
-			self.columnCatalogue[column].setdefault("minimumWidth", 5)
-			self.columnCatalogue[column].setdefault("sortGetter", None)
-			self.columnCatalogue[column].setdefault("valueGetter", None)
-			self.columnCatalogue[column].setdefault("valueSetter", None)
-			self.columnCatalogue[column].setdefault("imageGetter", None)
-			self.columnCatalogue[column].setdefault("groupSortGetter", None)
-			self.columnCatalogue[column].setdefault("stringConverter", None)
+		self.columnCatalogue[column].setdefault("title", "")
+		self.columnCatalogue[column].setdefault("width", -1)
+		self.columnCatalogue[column].setdefault("align", "left")
+		self.columnCatalogue[column].setdefault("minimumWidth", 5)
+		self.columnCatalogue[column].setdefault("sortGetter", None)
+		self.columnCatalogue[column].setdefault("valueGetter", None)
+		self.columnCatalogue[column].setdefault("valueSetter", None)
+		self.columnCatalogue[column].setdefault("imageGetter", None)
+		self.columnCatalogue[column].setdefault("groupSortGetter", None)
+		self.columnCatalogue[column].setdefault("stringConverter", None)
 
-			self.columnCatalogue[column].setdefault("isHidden", False)
-			self.columnCatalogue[column].setdefault("isEditable", True)
-			self.columnCatalogue[column].setdefault("isSortable", True)
-			self.columnCatalogue[column].setdefault("isResizeable", True)
-			self.columnCatalogue[column].setdefault("isSearchable", True)
-			self.columnCatalogue[column].setdefault("isReorderable", True)
-			self.columnCatalogue[column].setdefault("isSpaceFilling", False)
+		self.columnCatalogue[column].setdefault("isHidden", False)
+		self.columnCatalogue[column].setdefault("isEditable", True)
+		self.columnCatalogue[column].setdefault("isSortable", True)
+		self.columnCatalogue[column].setdefault("isResizeable", True)
+		self.columnCatalogue[column].setdefault("isSearchable", True)
+		self.columnCatalogue[column].setdefault("isReorderable", True)
+		self.columnCatalogue[column].setdefault("isSpaceFilling", False)
 
-			self.columnCatalogue[column].setdefault("renderer", None)
-			self.columnCatalogue[column].setdefault("rendererArgs", [])
-			self.columnCatalogue[column].setdefault("rendererKwargs", {})
-			
-			self.columnCatalogue[column].setdefault("groupKeyGetter", None)
-			self.columnCatalogue[column].setdefault("groupKeyConverter", None)
-			self.columnCatalogue[column].setdefault("useInitialLetterForGroupKey", False)
-			self.columnCatalogue[column].setdefault("groupTitleSingleItem", None)
-			self.columnCatalogue[column].setdefault("groupTitlePluralItems", None)
+		self.columnCatalogue[column].setdefault("renderer", None)
+		self.columnCatalogue[column].setdefault("rendererArgs", [])
+		self.columnCatalogue[column].setdefault("rendererKwargs", {})
+		
+		self.columnCatalogue[column].setdefault("groupKeyGetter", None)
+		self.columnCatalogue[column].setdefault("groupKeyConverter", None)
+		self.columnCatalogue[column].setdefault("useInitialLetterForGroupKey", False)
+		self.columnCatalogue[column].setdefault("groupTitleSingleItem", None)
+		self.columnCatalogue[column].setdefault("groupTitlePluralItems", None)
 
-			if (title is not None):
-				self.columnCatalogue[column]["title"] = title
-			if (align is not None):
-				self.columnCatalogue[column]["align"] = align
-			if (label is not None):
-				self.columnCatalogue[column]["valueGetter"] = label
-			if (setter is not None):
-				self.columnCatalogue[column]["valueSetter"] = setter
-			if (sortLabel is not None):
-				self.columnCatalogue[column]["sortGetter"] = sortLabel
-			if (groupSortLabel is not None):
-				self.columnCatalogue[column]["groupSortGetter"] = groupSortLabel
-			if (image is not None):
-				self.columnCatalogue[column]["imageGetter"] = image
-			if (hidden is not None):
-				self.columnCatalogue[column]["isHidden"] = hidden
-			if (editable is not None):
-				self.columnCatalogue[column]["isEditable"] = editable
-			if (sortable is not None):
-				self.columnCatalogue[column]["isSortable"] = sortable
-			if (resizeable is not None):
-				self.columnCatalogue[column]["isResizeable"] = resizeable
-			if (searchable is not None):
-				self.columnCatalogue[column]["isSearchable"] = searchable
-			if (reorderable is not None):
-				self.columnCatalogue[column]["isReorderable"] = reorderable
-			if (minWidth is not None):
-				self.columnCatalogue[column]["minimumWidth"] = minWidth
-			if (formatter is not None):
-				self.columnCatalogue[column]["stringConverter"] = formatter
-			if (renderer is not None):
-				self.columnCatalogue[column]["renderer"] = renderer
-			if (rendererArgs is not None):
-				self.columnCatalogue[column]["rendererArgs"] = rendererArgs
-			if (rendererKwargs is not None):
-				self.columnCatalogue[column]["rendererKwargs"] = rendererKwargs
-			if (group is not None):
-				if (isinstance(group, bool)):
-					if (group):
-						self.columnCatalogue[column]["useInitialLetterForGroupKey"] = True
-				else:
-					self.columnCatalogue[column]["useInitialLetterForGroupKey"] = False
-					self.columnCatalogue[column]["groupKeyGetter"] = group
-			if (groupFormatter is not None):
-				self.columnCatalogue[column]["groupKeyConverter"] = groupFormatter
-
-			if (width is not None):
-				self.columnCatalogue[column]["width"] = width
+		if (title is not None):
+			self.columnCatalogue[column]["title"] = title
+		if (align is not None):
+			self.columnCatalogue[column]["align"] = align
+		if (label is not None):
+			self.columnCatalogue[column]["valueGetter"] = label
+		if (setter is not None):
+			self.columnCatalogue[column]["valueSetter"] = setter
+		if (sortLabel is not None):
+			self.columnCatalogue[column]["sortGetter"] = sortLabel
+		if (groupSortLabel is not None):
+			self.columnCatalogue[column]["groupSortGetter"] = groupSortLabel
+		if (image is not None):
+			self.columnCatalogue[column]["imageGetter"] = image
+		if (hidden is not None):
+			self.columnCatalogue[column]["isHidden"] = hidden
+		if (editable is not None):
+			self.columnCatalogue[column]["isEditable"] = editable
+		if (sortable is not None):
+			self.columnCatalogue[column]["isSortable"] = sortable
+		if (resizeable is not None):
+			self.columnCatalogue[column]["isResizeable"] = resizeable
+		if (searchable is not None):
+			self.columnCatalogue[column]["isSearchable"] = searchable
+		if (reorderable is not None):
+			self.columnCatalogue[column]["isReorderable"] = reorderable
+		if (minWidth is not None):
+			self.columnCatalogue[column]["minimumWidth"] = minWidth
+		if (formatter is not None):
+			self.columnCatalogue[column]["stringConverter"] = formatter
+		if (renderer is not None):
+			self.columnCatalogue[column]["renderer"] = renderer
+		if (rendererArgs is not None):
+			self.columnCatalogue[column]["rendererArgs"] = rendererArgs
+		if (rendererKwargs is not None):
+			self.columnCatalogue[column]["rendererKwargs"] = rendererKwargs
+		if (group is not None):
+			if (isinstance(group, bool)):
+				if (group):
+					self.columnCatalogue[column]["useInitialLetterForGroupKey"] = True
 			else:
-				self.columnCatalogue[column]["width"] = self.getStringPixels(self.columnCatalogue[column]["title"])[0] + 40
+				self.columnCatalogue[column]["useInitialLetterForGroupKey"] = False
+				self.columnCatalogue[column]["groupKeyGetter"] = group
+		if (groupFormatter is not None):
+			self.columnCatalogue[column]["groupKeyConverter"] = groupFormatter
 
-			if (self.columnCatalogue[column]["width"] == -1):
-				self.columnCatalogue[column]["isSpaceFilling"] = True
-			else:
-				self.columnCatalogue[column]["isSpaceFilling"] = False
-
-			#Everything must have a label
-			if (not self.thing.InReportView()):
-				self.columnCatalogue[column]["valueGetter"] = f"value" 
-			elif (self.columnCatalogue[column]["valueGetter"] is None):
-				self.columnCatalogue[column]["valueGetter"] = f"unnamed_{column}" 
-
-			#All images must be callable
-			if ((self.columnCatalogue[column]["imageGetter"] is not None) and (not callable(self.columnCatalogue[column]["imageGetter"]))):
-				value = self.columnCatalogue[column]["imageGetter"]
-				self.columnCatalogue[column]["imageGetter"] = lambda item: value
-
-			if (refresh):
-				self.refreshColumns()
-				self.refresh()
+		if (width is not None):
+			self.columnCatalogue[column]["width"] = width
 		else:
-			warnings.warn(f"Add {self.type.name} to setColumns() for {self.__repr__()}", Warning, stacklevel = 2)
+			self.columnCatalogue[column]["width"] = self.getStringPixels(self.columnCatalogue[column]["title"])[0] + 40
+
+		if (self.columnCatalogue[column]["width"] == -1):
+			self.columnCatalogue[column]["isSpaceFilling"] = True
+		else:
+			self.columnCatalogue[column]["isSpaceFilling"] = False
+
+		#Everything must have a label
+		if (not self.thing.InReportView()):
+			self.columnCatalogue[column]["valueGetter"] = f"value" 
+		elif (self.columnCatalogue[column]["valueGetter"] is None):
+			self.columnCatalogue[column]["valueGetter"] = f"unnamed_{column}" 
+
+		#All images must be callable
+		if ((self.columnCatalogue[column]["imageGetter"] is not None) and (not callable(self.columnCatalogue[column]["imageGetter"]))):
+			value = self.columnCatalogue[column]["imageGetter"]
+			self.columnCatalogue[column]["imageGetter"] = lambda item: value
+
+		if (refresh):
+			self.refreshColumns()
+			self.refresh()
 
 	def refreshColumns(self):
-		if (self.type is Types.view):
-			self.thing.SetColumns([ObjectListView.DataColumnDefn(**kwargs) for column, kwargs in sorted(self.columnCatalogue.items())])
-		else:
-			warnings.warn(f"Add {self.type.name} to setColumns() for {self.__repr__()}", Warning, stacklevel = 2)
+		self.thing.SetColumns([ObjectListView.DataColumnDefn(**kwargs) for column, kwargs in sorted(self.columnCatalogue.items())])
 
 	def refresh(self):
 		self.thing.RepopulateList()
@@ -7355,34 +7481,8 @@ class handle_WidgetList(handle_Widget_Base):
 	def appendValue(self, newValue, where = -1, filterNone = None):
 		"""Appends the given value to the current contextual value for this handle."""
 
-		if (self.type is Types.tree):
-			if (not isinstance(where, wx.TreeCtrl)):
-				#Find the root
-				pass
-
-			#Account for multiple items on the same level
-			if (isinstance(newValue, (list, tuple, range))):
-				for item in newValue:
-					self.appendValue(item, where)
-			else:
-				#Account for new branches
-				if (isinstance(newValue, dict)):
-					for key, value in newValue.items():
-						if (key is not None):
-							branch = self.thing.AppendItem(where, str(key))
-
-						if (value is not None):
-							self.appendValue(value, branch)
-				else:
-					if (newValue is not None):
-						branch = self.thing.AppendItem(where, str(newValue))
-
-		elif (self.type is Types.view):
-			objectList = self._formatList(newValue, filterNone = filterNone)
-			self.thing.AddObjects(objectList)
-
-		else:
-			warnings.warn(f"Add {self.type.name} to appendValue() for {self.__repr__()}", Warning, stacklevel = 2)
+		objectList = self._formatList(newValue, filterNone = filterNone)
+		self.thing.AddObjects(objectList)
 
 	def removeValue(self, value):
 		objectList = self._formatList(value)
@@ -7446,308 +7546,141 @@ class handle_WidgetList(handle_Widget_Base):
 		self.thing.CopyObjectsToClipboard(row, column, *args, **kwargs)
 
 	#Change Settings
-	def setFunction_preClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.tree):
-			self._betterBind(wx.EVT_TREE_SEL_CHANGING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_preClick() for {self.__repr__()}", Warning, stacklevel = 2)
-			
-	def setFunction_postClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.drop):
-			self._betterBind(wx.EVT_CHOICE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		elif (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_SELECTION_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-			self._betterBind(ObjectListView.EVT_DATA_SELECTION_CHANGED, self.thing, self._onSelectRow, rebind = True, mode = 2)
-
-		elif (self.type is Types.tree):
-			self._betterBind(wx.EVT_TREE_SEL_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_postClick() for {self.__repr__()}", Warning, stacklevel = 2)
-			
 	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		self.setFunction_postClick(myFunction = myFunction, myFunctionArgs = myFunctionArgs, myFunctionKwargs = myFunctionKwargs)
+		self._betterBind(ObjectListView.EVT_DATA_SELECTION_CHANGED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+		self._betterBind(ObjectListView.EVT_DATA_SELECTION_CHANGED, self.thing, self._onSelectRow, rebind = True, mode = 2)
 			
 	def setFunction_groupClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_GROUP_SELECTED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-			self._betterBind(ObjectListView.EVT_DATA_GROUP_SELECTED, self.thing, self._onSelectGroup, rebind = True, mode = 2)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_groupClick() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_GROUP_SELECTED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+		self._betterBind(ObjectListView.EVT_DATA_GROUP_SELECTED, self.thing, self._onSelectGroup, rebind = True, mode = 2)
 
 	def setFunction_preEdit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_CELL_EDIT_STARTING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		elif (self.type is Types.tree):
-			self._betterBind(wx.EVT_TREE_BEGIN_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_preEdit() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_CELL_EDIT_STARTING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 			
 	def setFunction_postEdit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_CELL_EDIT_FINISHING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-			# self._betterBind(ObjectListView.EVT_DATA_CELL_EDIT_FINISHED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		elif (self.type is Types.tree):
-			self._betterBind(wx.EVT_TREE_END_LABEL_EDIT, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_postEdit() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_CELL_EDIT_FINISHING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
+		# self._betterBind(ObjectListView.EVT_DATA_CELL_EDIT_FINISHED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 			
 	def setFunction_edit(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		self.setFunction_postEdit(myFunction = myFunction, myFunctionArgs = myFunctionArgs, myFunctionKwargs = myFunctionKwargs)
 
 	def setFunction_preDrag(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			if (not self.dragable):
-				warnings.warn(f"'drag' was not enabled for {self.__repr__()} upon creation", Warning, stacklevel = 2)
-			else:
-				self.preDragFunction = myFunction
-				self.preDragFunctionArgs = myFunctionArgs
-				self.preDragFunctionKwargs = myFunctionKwargs
+		if (not self.dragable):
+			warnings.warn(f"'drag' was not enabled for {self.__repr__()} upon creation", Warning, stacklevel = 2)
 		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_preDrag() for {self.__repr__()}", Warning, stacklevel = 2)
+			self.preDragFunction = myFunction
+			self.preDragFunctionArgs = myFunctionArgs
+			self.preDragFunctionKwargs = myFunctionKwargs
 			
 	def setFunction_postDrag(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			if (not self.dragable):
-				warnings.warn(f"'drag' was not enabled for {self.__repr__()} upon creation", Warning, stacklevel = 2)
-			else:
-				#wx.dataview.EVT_DATAVIEW_ITEM_BEGIN_DRAG
-				self.postDragFunction = myFunction
-				self.postDragFunctionArgs = myFunctionArgs
-				self.postDragFunctionKwargs = myFunctionKwargs
+		if (not self.dragable):
+			warnings.warn(f"'drag' was not enabled for {self.__repr__()} upon creation", Warning, stacklevel = 2)
 		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_postDrag() for {self.__repr__()}", Warning, stacklevel = 2)
+			#wx.dataview.EVT_DATAVIEW_ITEM_BEGIN_DRAG
+			self.postDragFunction = myFunction
+			self.postDragFunctionArgs = myFunctionArgs
+			self.postDragFunctionKwargs = myFunctionKwargs
 			
 	def setFunction_preDrop(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			if (self.myDropTarget is None):
-				warnings.warn(f"'drop' was not enabled for {self.__repr__()} upon creation", Warning, stacklevel = 2)
-			else:
-				self.myDropTarget.preDropFunction = myFunction
-				self.myDropTarget.preDropFunctionArgs = myFunctionArgs
-				self.myDropTarget.preDropFunctionKwargs = myFunctionKwargs
+		if (self.myDropTarget is None):
+			warnings.warn(f"'drop' was not enabled for {self.__repr__()} upon creation", Warning, stacklevel = 2)
 		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_preDrop() for {self.__repr__()}", Warning, stacklevel = 2)
+			self.myDropTarget.preDropFunction = myFunction
+			self.myDropTarget.preDropFunctionArgs = myFunctionArgs
+			self.myDropTarget.preDropFunctionKwargs = myFunctionKwargs
 			
 	def setFunction_postDrop(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			if (self.myDropTarget is None):
-				warnings.warn(f"'drop' was not enabled for {self.__repr__()} upon creation", Warning, stacklevel = 2)
-			else:
-				#wx.dataview.EVT_DATAVIEW_ITEM_DROP
-				self.myDropTarget.postDropFunction = myFunction
-				self.myDropTarget.postDropFunctionArgs = myFunctionArgs
-				self.myDropTarget.postDropFunctionKwargs = myFunctionKwargs
+		if (self.myDropTarget is None):
+			warnings.warn(f"'drop' was not enabled for {self.__repr__()} upon creation", Warning, stacklevel = 2)
 		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_postDrop() for {self.__repr__()}", Warning, stacklevel = 2)
+			#wx.dataview.EVT_DATAVIEW_ITEM_DROP
+			self.myDropTarget.postDropFunction = myFunction
+			self.myDropTarget.postDropFunctionArgs = myFunctionArgs
+			self.myDropTarget.postDropFunctionKwargs = myFunctionKwargs
 			
 	def setFunction_dragOver(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			if (self.myDropTarget is None):
-				warnings.warn(f"'drop' was not enabled for {self.__repr__()} upon creation", Warning, stacklevel = 2)
-			else:
-				#wx.dataview.EVT_DATAVIEW_ITEM_DROP_POSSIBLE
-				self.myDropTarget.dragOverFunction = myFunction
-				self.myDropTarget.dragOverFunctionArgs = myFunctionArgs
-				self.myDropTarget.dragOverFunctionKwargs = myFunctionKwargs
+		if (self.myDropTarget is None):
+			warnings.warn(f"'drop' was not enabled for {self.__repr__()} upon creation", Warning, stacklevel = 2)
 		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_dragOver() for {self.__repr__()}", Warning, stacklevel = 2)
+			#wx.dataview.EVT_DATAVIEW_ITEM_DROP_POSSIBLE
+			self.myDropTarget.dragOverFunction = myFunction
+			self.myDropTarget.dragOverFunctionArgs = myFunctionArgs
+			self.myDropTarget.dragOverFunctionKwargs = myFunctionKwargs
 
 	def setFunction_preCollapse(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_COLLAPSING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		elif (self.type is Types.tree):
-			self._betterBind(wx.EVT_TREE_ITEM_COLLAPSING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_preCollapse() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_COLLAPSING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
 	def setFunction_postCollapse(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_COLLAPSED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		elif (self.type is Types.tree):
-			self._betterBind(wx.EVT_TREE_ITEM_COLLAPSED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_postCollapse() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_COLLAPSED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
 	def setFunction_preExpand(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_EXPANDING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		elif (self.type is Types.tree):
-			self._betterBind(wx.EVT_TREE_ITEM_EXPANDING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_preExpand() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_EXPANDING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
 	def setFunction_postExpand(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_EXPANDED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		elif (self.type is Types.tree):
-			self._betterBind(wx.EVT_TREE_ITEM_EXPANDED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_postExpand() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_EXPANDED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
 	def setFunction_rightClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.tree):
-			self._betterBind(wx.EVT_TREE_ITEM_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		elif (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_CELL_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_rightClick() for {self.__repr__()}", Warning, stacklevel = 2)
-
-	def setFunction_middleClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.tree):
-			self._betterBind(wx.EVT_TREE_ITEM_MIDDLE_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_middleClick() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_CELL_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
 	def setFunction_doubleClick(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.tree):
-			self._betterBind(wx.EVT_TREE_ITEM_ACTIVATED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		elif (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_CELL_ACTIVATED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_middleClick() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_CELL_ACTIVATED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
 	def setFunction_clickLabel(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_COLUMN_HEADER_LEFT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_labelClick() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_COLUMN_HEADER_LEFT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
 	def setFunction_rightClickLabel(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_COLUMN_HEADER_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_rightClickLabel() for {self.__repr__()}", Warning, stacklevel = 2)
-
-	def setFunction_keyDown(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.tree):
-			self._betterBind(wx.EVT_TREE_KEY_DOWN, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_keyDown() for {self.__repr__()}", Warning, stacklevel = 2)
-
-	def setFunction_copy(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_COPY, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_postEdit() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_COLUMN_HEADER_RIGHT_CLICK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
 	def setFunction_preCopy(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_COPYING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_preCopy() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_COPYING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
 	def setFunction_postCopy(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_COPIED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_postCopy() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_COPIED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
 	def setFunction_paste(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_PASTE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_paste() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_PASTE, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
 	def setFunction_prePaste(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_PASTING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_prePaste() for {self.__repr__()}", Warning, stacklevel = 2)
-
-	def setFunction_toolTip(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.tree):
-			self._betterBind(wx.EVT_TREE_ITEM_GETTOOLTIP, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_toolTip() for {self.__repr__()}", Warning, stacklevel = 2)
-
-	def setFunction_itemMenu(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.tree):
-			self._betterBind(wx.EVT_TREE_ITEM_MENU, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_itemMenu() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_PASTING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
 	def setFunction_sort(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_COLUMN_SORTED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_sort() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_COLUMN_SORTED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
 	def setFunction_reorder(self, *args, **kwargs):
 		return self.setFunction_postReorder(*args, **kwargs)
 
 	def setFunction_preReorder(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_REORDERING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_preReorder() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_REORDERING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
 	def setFunction_postReorder(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_REORDERED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_postReorder() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_REORDERED, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
 	def setFunction_reorderCancel(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_REORDER_CANCEL, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_reorderCancel() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_REORDER_CANCEL, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
 	def setFunction_groupCreate(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_GROUP_CREATING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_groupCreate() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_GROUP_CREATING, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
 	def setFunction_undo(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_UNDO, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_undo() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_UNDO, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
 	def setFunction_undoTrack(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_UNDO_TRACK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_undoTrack() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_UNDO_TRACK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
 	def setFunction_canUndo(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_UNDO_FIRST, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_canUndo() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_UNDO_FIRST, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
 	def setFunction_cantUndo(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_UNDO_EMPTY, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_cantUndo() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_UNDO_EMPTY, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
 	def setFunction_redo(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_REDO, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_redo() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_REDO, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
 	def setFunction_canRedo(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_REDO_FIRST, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_canRedo() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_REDO_FIRST, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
 	def setFunction_cantRedo(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
-		if (self.type is Types.view):
-			self._betterBind(ObjectListView.EVT_DATA_REDO_EMPTY, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
-		else:
-			warnings.warn(f"Add {self.type.name} to setFunction_cantRedo() for {self.__repr__()}", Warning, stacklevel = 2)
-
-	def setReadOnly(self, state = True):
-		"""Sets the contextual readOnly for the object associated with this handle to what the user supplies."""
-
-		if (self.type is Types.drop):
-			self.setDisable(state)
-		else:
-			warnings.warn(f"Add {self.type.name} to setReadOnly() for {self.__repr__()}", Warning, stacklevel = 2)
+		self._betterBind(ObjectListView.EVT_DATA_REDO_EMPTY, self.thing, myFunction, myFunctionArgs, myFunctionKwargs, mode = 2)
 
 	def setItemColor(self, row = None, column = None, color = "white"):
 		"""Sets the contextual row color for the object associated with this handle to what the user supplies.
@@ -7767,24 +7700,21 @@ class handle_WidgetList(handle_Widget_Base):
 		Example Input: setItemColor(slice(None, None, 2))
 		"""
 
-		if (self.type is Types.view):
-			if (color is None):
-				colorHandle = None
-			else:
-				colorHandle = self.getColor(color)
-
-			if (row is not None):
-				if (column is not None):
-					self.thing.SetCellColour(row, column, colorHandle)
-				else:
-					self.thing.SetRowColour(row, colorHandle)
-			else:
-				if (column is not None):
-					self.thing.SetColumnColour(column, colorHandle)
-				else:
-					self.thing.SetBackgroundColour(colorHandle)
+		if (color is None):
+			colorHandle = None
 		else:
-			warnings.warn(f"Add {self.type.name} to setItemColor() for {self.__repr__()}", Warning, stacklevel = 2)
+			colorHandle = self.getColor(color)
+
+		if (row is not None):
+			if (column is not None):
+				self.thing.SetCellColour(row, column, colorHandle)
+			else:
+				self.thing.SetRowColour(row, colorHandle)
+		else:
+			if (column is not None):
+				self.thing.SetColumnColour(column, colorHandle)
+			else:
+				self.thing.SetBackgroundColour(colorHandle)
 
 	#Event functions
 	def _onDragList_beginDragAway(self, event, label = None,
@@ -8010,6 +7940,70 @@ class handle_WidgetList(handle_Widget_Base):
 			self.parent.runMyFunction(myFunction = self.postDropFunction, myFunctionArgs = self.postDropFunctionArgs, myFunctionKwargs = self.postDropFunctionKwargs)
 
 			return True
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class handle_WidgetInput(handle_Widget_Base):
 	"""A handle for working with input widgets."""
@@ -8307,15 +8301,15 @@ class handle_WidgetInput(handle_Widget_Base):
 					self.subType = "normal"
 					self.thing = wx.SpinCtrl(self.parent.thing, id = myId, value = wx.EmptyString, size = size, style = eval(style, {'__builtins__': None, "wx": wx}, {}), min = myMin, max = myMax, initial = myInitial)
 
+					if (useHex):
+						self.subType += "_base16"
+						self.thing.SetBase(16)
+					else:
+						self.subType += "_base10"
+						self.thing.SetBase(10)
+
 				if (readOnly):
 					self.thing.SetReadOnly()
-
-			if (useHex):
-				self.subType += "_base16"
-				self.thing.SetBase(16)
-			else:
-				self.subType += "_base10"
-				self.thing.SetBase(10)
 
 			#Remember values
 			self.previousValue = self.thing.GetValue()
@@ -10993,6 +10987,14 @@ class handle_MenuItem(handle_Widget_Base):
 			self.subHandle.setFunction_menuSelect(*args, **kwargs)
 		else:
 			warnings.warn(f"Add {self.type.name} to setFunction_menuSelect() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def setFunction_check(self, *args, **kwargs):
+		"""Override function for subHandle."""
+
+		if ((self.type is Types.toolbaritem) and (self.subHandle is not None)):
+			self.subHandle.setFunction_check(*args, **kwargs)
+		else:
+			warnings.warn(f"Add {self.type.name} to setFunction_check() for {self.__repr__()}", Warning, stacklevel = 2)
 
 	def setEnable(self, state = True):
 		"""Enables or disables an item based on the given input.
@@ -22854,7 +22856,7 @@ class Controller(Utilities, CommonEventFunctions, MyUtilities.threadManager.Comm
 
 		#Record Address
 		self._setAddressValue([id(self)], {None: self})
-		self.listener_statusText = self.threadManager.listen(self.listenStatusText, label = "GUI_Maker.statusText", delay = 100, errorFunction = self.listenStatusText_handleError, autoStart = False)
+		self.listener_statusText = self.threadManager.listen(self.listenStatusText, label = "GUI_Maker.statusText", canReplace = True, allowMultiple = True, delay = 100, errorFunction = self.listenStatusText_handleError, autoStart = False)
 
 		#Create the wx app object
 		self.app = MyApp(parent = self, startInThread = startInThread, newMainLoop = newMainLoop, **kwargs)
@@ -23261,13 +23263,22 @@ class Controller(Utilities, CommonEventFunctions, MyUtilities.threadManager.Comm
 		#Start the GUI
 		self.app.MainLoop()
 
-	def exit(self):
+	def close(self):
+		"""Exits without ending the program.
+
+		Example Input: close()
+		"""
+
+		self.exit(endProgram = False)
+
+	def exit(self, *args, **kwargs):
 		"""Close the GUI and clean up allocated resources.
 
 		Example Input: exit()
 		"""
 
-		self.onExit(None)
+		self.stop_listenStatusText()
+		self.onExit(None, *args, **kwargs)
 
 	#Logistic
 	def switchWindow(self, whichFrom, whichTo, hideFrom = True):
