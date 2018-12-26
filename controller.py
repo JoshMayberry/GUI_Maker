@@ -6267,7 +6267,12 @@ class handle_WidgetList_Drop(handle_WidgetList_Base):
 				check_text = self._getArguments(argument_catalogue, ["check_text"])
 
 				self.subType = Types.check
-				return MyUtilities.wxPython.CheckListCtrl(self, self.parent, myId = myId, alphabetic = alphabetic, initial = check_text, readOnly = readOnly)
+				thing = MyUtilities.wxPython.CheckListCtrl(self, self.parent, myId = myId, alphabetic = alphabetic, initial = check_text, readOnly = readOnly)
+				
+				for item in self.formattedChoices:
+					thing.Append(item)
+
+				return thing
 
 			if (inputBox):
 				self.subType = types.box
@@ -6309,8 +6314,7 @@ class handle_WidgetList_Drop(handle_WidgetList_Base):
 			formatter, inputBox, dropDown, autoComplete = self._getArguments(argument_catalogue, ["formatter", "inputBox", "dropDown", "autoComplete"])
 
 			self.formatter = formatter
-			self.choices = self.ensure_container(self._Munge(choices, extraArgs = (self,), returnMunger_onFail = True), convertNone = False)
-			self.update_formatted()
+			self.setChoices(self.ensure_container(self._Munge(choices, extraArgs = (self,), returnMunger_onFail = True), convertNone = False))
 
 			self.thing = getThing()
 			self.thing.SetSelection(getDefault())

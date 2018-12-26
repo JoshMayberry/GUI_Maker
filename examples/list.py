@@ -170,14 +170,15 @@ def buildWindow():
 		with myFrame.addSizerGridFlex(rows = 1, columns = 5) as mySizer:
 			mySizer.growFlexColumnAll()
 
-			with mySizer.addListDrop(choices = ["Lorem", "Ipsum", "Dolor"]) as myWidget:
-				pass
+			# with mySizer.addListDrop(choices = ["Lorem", "Ipsum", "Dolor"]) as myWidget:
+			# 	pass
 
 			mySizer.addListDrop(choices = ["Lorem", "Ipsum", "Dolor"], check = True, readOnly = True, check_text = "Sit Amet", default = (0, 2))
+			mySizer.addListDrop(choices = ["Lorem", "Ipsum", "Dolor"], check = True, readOnly = True, check_text = "Sit Amet", default = (1, ))
 
-			with mySizer.addListDrop(check = True, readOnly = True, check_text = "Sit Amet") as myWidget:
-				myWidget.setValue(["Lorem", "Ipsum", "Dolor"])
-				myWidget.setSelection(("Ipsum",))
+			# with mySizer.addListDrop(check = True, readOnly = True, check_text = "Sit Amet") as myWidget:
+			# 	myWidget.setValue(["Lorem", "Ipsum", "Dolor"])
+			# 	myWidget.setSelection(("Ipsum",))
 
 #Run Program
 if __name__ == '__main__':
