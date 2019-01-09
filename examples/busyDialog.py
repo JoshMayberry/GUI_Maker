@@ -52,6 +52,31 @@ def onAdvanced(event):
 
 	event.Skip()
 
+def onRecycle(event):
+	myDialog = gui[0].makeDialogBusy(text = "Test...", simple = False, maximum = 10, can_abort = True)
+	for i in range(1, 3):
+		with myDialog:
+			for j in range(1, 11):
+				print((i, j))
+				time.sleep(0.25)
+				myDialog.setValue(j)
+
+				if (myDialog.isAbort()):
+					print("Abort")
+					break
+		myDialog.rebuild()
+
+	event.Skip()
+
+def onEarly(event):
+	with gui[0].makeDialogBusy(text = "Test...", simple = False, maximum = 3) as myDialog:
+		for i in range(1, 11):
+			print(i)
+			time.sleep(0.25)
+			myDialog.setValue(i)
+
+	event.Skip()
+
 #Construction Functions
 def buildWindow():
 	"""Creates a simple window."""
@@ -63,6 +88,8 @@ def buildWindow():
 		with myFrame.addSizerBox() as mySizer:
 			mySizer.addButton(text = "Simple", myFunction = onSimple)
 			mySizer.addButton(text = "Advanced", myFunction = onAdvanced)
+			mySizer.addButton(text = "Recycle", myFunction = onRecycle)
+			mySizer.addButton(text = "Early", myFunction = onEarly)
 
 #Run Program
 if __name__ == '__main__':

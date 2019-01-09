@@ -32,10 +32,11 @@ class ErrorDialog(wx.Dialog):
 						with asCM(wx.Button, myPanel, id = wx.ID_CANCEL, label = "Close") as myWidget:
 							mySubSizer.Add(myWidget, 0, wx.ALL, 5)
 
-						with asCM(wx.Button, myPanel, id = wx.ID_OK, label = "Report") as myWidget:
-							mySubSizer.Add(myWidget, 0, wx.ALL, 5)
-							if (not canReport):
-								myWidget.Enable(False)
+						if (canReport is not None):
+							with asCM(wx.Button, myPanel, id = wx.ID_OK, label = "Report") as myWidget:
+								mySubSizer.Add(myWidget, 0, wx.ALL, 5)
+								if (not canReport):
+									myWidget.Enable(False)
 
 						mySizer.Add(mySubSizer, 0, wx.ALL, 5)
 					myPanel.SetSizer(mySizer)
@@ -85,7 +86,7 @@ class ExceptionHandler(MyUtilities.logger.LoggingFunctions, MyUtilities.common.E
 			config = self.getLoggerConfig(logDir = logDir), 
 			force_quietRoot = __name__ == "__main__")
 
-		# sys.excepthook = self.makeExceptionHook(**kwargs)
+		sys.excepthook = self.makeExceptionHook(**kwargs)
 
 	def getLoggerConfig(self, logDir = None):
 		"""Returns a dictionary to use to configure the logger.
@@ -135,6 +136,9 @@ class ExceptionHandler(MyUtilities.logger.LoggingFunctions, MyUtilities.common.E
 		logError (bool) - Determines if errors should be sent to the error log
 		printError (bool) - Determines if errors should be printed to the cmd window
 		canReport (bool) - Determines if the user can report the error (given that kwargs are provided)
+			- If True: The report button will be enabled
+			- If False: The report button will be disabled
+			- If None: The report button will not be created
 
 		include_logs - Determines if the log files associated with the logger should be included in the report
 		include_traceback - Determines if the traceback of the error should be included in the report

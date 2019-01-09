@@ -3303,7 +3303,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		Example Input: makeDialogMessage("Lorem Ipsum", addOk = True, addCancel = True)
 		"""
 
-		handle = handle_Dialog()
+		handle = handle_Dialog_Message()
 		handle.type = Types.message
 		handle._build(locals())
 		return handle
@@ -3357,7 +3357,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		Example Input: makeDialogScroll(text = "Lorem Ipsum")
 		"""
 
-		handle = handle_Dialog()
+		handle = handle_Dialog_Scroll()
 		handle.type = Types.scroll
 		handle._build(locals())
 		return handle
@@ -3400,7 +3400,11 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		Example Input: makeDialogBusy(text = "Calculating...")
 		"""
 
-		handle = handle_Dialog()
+		if (simple):
+			handle = handle_Dialog_Busy()
+		else:
+			handle = handle_Dialog_Busy_Progress()
+
 		handle.type = Types.busy
 		handle._build(locals())
 		return handle
@@ -3435,7 +3439,11 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		Example Input: makeDialogChoice([{label: "Lorem", value: 3}, {label: "Ipsum", value: 2}], formatter = lambda catalogue: catalogue["label"])
 		"""
 
-		handle = handle_Dialog()
+		if (single):
+			handle = handle_Dialog_Choice_Single()
+		else:
+			handle = handle_Dialog_Choice_Multi()
+
 		handle.type = Types.choice
 		handle._build(locals())
 		return handle
@@ -3472,7 +3480,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		Example Input: makeDialogInput()
 		"""
 
-		handle = handle_Dialog()
+		handle = handle_Dialog_Input()
 		handle.type = Types.box
 		handle._build(locals())
 		return handle
@@ -3510,7 +3518,11 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		Example Input: makeDialogFile()
 		"""
 
-		handle = handle_Dialog()
+		if (single):
+			handle = handle_Dialog_File_Single()
+		else:
+			handle = handle_Dialog_File_Multi()
+
 		handle.type = Types.file
 		handle._build(locals())
 		return handle
@@ -3543,7 +3555,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		Example Input: makeDialogColor(simple = None)
 		"""
 
-		handle = handle_Dialog()
+		handle = handle_Dialog_Color()
 		handle.type = Types.color
 		handle._build(locals())
 		return handle
@@ -3588,7 +3600,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		Example Input: makeDialogPrintSetup()
 		"""
 
-		handle = handle_Dialog()
+		handle = handle_Dialog_PrintSetup()
 		handle.type = Types.printsetup
 		handle._build(locals())
 		return handle
@@ -3633,7 +3645,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		Example Input: makeDialogPrint()
 		"""
 
-		handle = handle_Dialog()
+		handle = handle_Dialog_Print()
 		handle.type = Types.print
 		handle._build(locals())
 		return handle
@@ -3655,7 +3667,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		Example Input: makeDialogPrintPreview()
 		"""
 
-		handle = handle_Dialog()
+		handle = handle_Dialog_PrintPreview()
 		handle.type = Types.printpreview
 		handle._build(locals())
 		return handle
@@ -3686,7 +3698,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		if (myFrame is None):
 			myFrame = self
 
-		handle = handle_Dialog()
+		handle = handle_Dialog_Custom()
 		handle.type = Types.custom
 		handle._build(locals())
 		return handle
@@ -4046,7 +4058,7 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT, M
 			self.controller = buildSelf.controller
 
 		#Add object to internal catalogue
-		if (not isinstance(self, handle_Dialog)):
+		if (not isinstance(self, handle_Dialog_Base)):
 			if (label is not None):
 				if (label in buildSelf.labelCatalogue):
 					warnings.warn(f"Overwriting label association for {label} in {buildSelf.__repr__()}", Warning, stacklevel = 4)
@@ -4061,7 +4073,7 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT, M
 			self.parent = parent
 		else:
 			if (not isinstance(buildSelf, Controller)):
-				if (isinstance(buildSelf, (handle_Menu, handle_Dialog))):
+				if (isinstance(buildSelf, (handle_Menu, handle_Dialog_Base))):
 					self.parent = buildSelf
 				else:
 					if (buildSelf.parent is not None):
@@ -4075,7 +4087,7 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT, M
 			warnings.warn(f"There is no parent for {self.__repr__()} in {buildSelf.__repr__()}", Warning, stacklevel = 2)
 
 		#Determine Nesting Address
-		if (not isinstance(self, handle_Dialog)):
+		if (not isinstance(self, handle_Dialog_Base)):
 			self.nestingAddress = buildSelf.nestingAddress + [id(buildSelf)]
 			buildSelf._setAddressValue(self.nestingAddress + [id(self)], {None: self})
 
@@ -9613,7 +9625,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			####################################################
 
 		if ((self.type is Types.file) or (self.type is Types.filewindow)):
-			self.thing.SetPath(newValue) #(str) - What will be shown in the input box
+			self.thing.SetPath(newValue or "") #(str) - What will be shown in the input box
 		
 		elif ((self.type is Types.date) or (self.type is Types.datewindow)):
 			self.thing.SetValue(formatValue()) #(str) - What date will be selected as 'mm/dd/yyyy'
@@ -15772,9 +15784,7 @@ class handle_Sizer(handle_Container_Base):
 			#Allow nested while loops to nest their objects
 			self.myWindow.sizersIterating[self] = [True, len(self.myWindow.sizersIterating)]
 
-		handle = handle_Container_Base.__enter__(self)
-
-		return handle
+		return handle_Container_Base.__enter__(self)
 
 	def __exit__(self, exc_type, exc_value, traceback):
 		"""Allows the user to use a with statement to build the GUI."""
@@ -17180,7 +17190,7 @@ class handle_SizerProxy(handle_Container_Base):
 	def addSizerWrap(self, *args, **kwargs):
 		return self.mySizer.addSizerWrap(*args, **kwargs)
 
-class handle_Dialog(handle_Base):
+class handle_Dialog_Base(handle_Base):
 	"""A handle for working with a wxDialog widget.
 
 	Modified code from: https://www.blog.pythonlibrary.org/2010/06/26/the-dialogs-of-wxpython-part-1-of-2/
@@ -17194,153 +17204,673 @@ class handle_Dialog(handle_Base):
 		#Initialize inherited classes
 		handle_Base.__init__(self)
 
-		#Defaults
-		self.data = None
+		#Internal Variables
 		self.answer = None
-		self.subType = None
-		self.timeEntered = None
-		self.inMainThread = True
-		self.childrenDialogs = set()
+		self.rebuildKwargs = {}
 
 	def __enter__(self):
 		"""Allows the user to use a with statement to build the GUI."""
 
-		handle = handle_Base.__enter__(self)
+		self.show()
+		return super().__enter__()
 
-		handle_Dialog.show(self)
+	@contextlib.contextmanager
+	def _bookend_build(self, argument_catalogue):
+		argument_catalogue["hidden"] = False
+		argument_catalogue["enabled"] = True
+
+		with self.bookend_build(argument_catalogue):
+			yield
+
+		self.rebuildKwargs = argument_catalogue
+
+	def rebuild(self, **kwargs):
+		if (kwargs):
+			self._build({**self.rebuildKwargs, **kwargs})
+		else:
+			self._build(self.rebuildKwargs)
+
+	def threadSafe(self, function, *args, **kwargs):
+		if (wx.IsMainThread()):
+			return function(*args, **kwargs)
+		wx.CallAfter(function, *args, **kwargs)
+
+	def show(self):
+		with self._show():
+			pass
+
+	def hide(self):
+		with self._hide():
+			pass
+
+	@contextlib.contextmanager
+	def _show(self):
+		"""Shows the dialog box for this handle."""
+
+		#Error Check
+		if (self.thing is None):
+			errorMessage = f"The {self.type} dialogue box {self.__repr__()} has already been shown"
+			raise SyntaxError(errorMessage)
+
+		if (not wx.IsMainThread()):
+			errorMessage = f"The {self.type} dialogue box {self.__repr__()} must be shown in the main thread, not a background thread"
+			raise SyntaxError(errorMessage)
+
+		self.threads_pause()
+
+		yield
+
+	@contextlib.contextmanager
+	def _hide(self):
+		"""Hides the dialog box for this handle."""
+
+		yield
+
+		self.threads_unpause()
+
+	def threads_pause(self, state = True):
+		for listener in self.controller.threadManager.pauseOnDialog:
+			if ((self.label is None) or (self.label not in listener.pauseOnDialog_exclude)):
+				listener.pause(state = state)
+
+	def threads_unpause(self, state = True):
+		return self.threads_pause(state = not state)
+
+class handle_Dialog_Message(handle_Dialog_Base):
+	"""A handle for working with a wxMessageDialog object."""
+
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize inherited classes
+		super().__init__()
+
+	def _build(self, argument_catalogue):
+		"""Determiens which build system to use for this handle."""
+
+		def yieldStyle():
+			nonlocal argument_catalogue
+
+			stayOnTop, default, icon = self._getArguments(argument_catalogue, ["stayOnTop", "default", "icon"])
+			addYes, addOk, addCancel, addHelp = self._getArguments(argument_catalogue, ["addYes", "addOk", "addCancel", "addHelp"])
+
+			if (addCancel and not (addYes or addOk)):
+				errorMessage = f"'Cancel' must be acompanied with either a [Yes]/[No] and/or [Ok] for {self.__repr__()}"
+				raise ValueError(errorMessage)
+
+			yield wx.CENTRE
+
+			if (stayOnTop):
+				yield wx.STAY_ON_TOP
+
+			#Buttons
+			if (addYes):
+				yield wx.YES_NO
+			if (addOk):
+				yield wx.OK
+			if (addCancel):
+				yield wx.CANCEL
+			if (addHelp):
+				yield wx.HELP
+
+			#Defaults
+			if (addYes):
+				if (default):
+					yield wx.YES_DEFAULT
+				else:
+					yield wx.NO_DEFAULT
+
+			elif (addOk):
+				if (default):
+					yield wx.OK_DEFAULT
+				else:
+					if (addCancel):
+						yield wx.CANCEL_DEFAULT
+
+			#Icons
+			if (icon is not None):
+				key = icon[0].lower()
+				if (key == "h"):
+					yield wx.ICON_HAND
+					
+				elif (key == "q"):
+					yield wx.ICON_QUESTION
+					
+				elif (key == "i"):
+					yield wx.ICON_INFORMATION
+					
+				elif (key == "a"):
+					yield wx.ICON_AUTH_NEEDED
+					
+				elif (key == "e"):
+					if (len(icon) is 1): 
+						yield wx.ICON_ERROR
+
+					elif (icon[1].lower() == "r"):
+						yield wx.ICON_ERROR
+
+					else:
+						yield wx.ICON_EXCLAMATION
+				else:
+					errorMessage = f"Unknown Icon type '{icon}' for {self.__repr__()}"
+					raise KeyError(errorMessage)
+			else:
+				yield wx.ICON_NONE
+
+		#############################################
+
+		with self._bookend_build(argument_catalogue):
+			text, title = self._getArguments(argument_catalogue, ["text", "title"])
+			self.thing = wx.MessageDialog(parent = None, message = text, caption = title, style = functools.reduce(operator.ior, yieldStyle()))
+
+	def show(self):
+		"""Shows the dialog box for this handle."""
+
+		with self._show():
+			self.answer = self.thing.ShowModal()
+			self.hide()
+
+	def hide(self):
+		"""Hides the dialog box for this handle."""
+
+		with self._hide():
+			self.thing.Destroy()
+			self.thing = None
+
+class handle_Dialog_Scroll(handle_Dialog_Base):
+	"""A handle for working with a wxScrolledMessageDialog object."""
+
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize inherited classes
+		super().__init__()
+
+	def _build(self, argument_catalogue):
+		"""Determiens which build system to use for this handle."""
+
+		with self._bookend_build():
+			text, title = self._getArguments(argument_catalogue, ["text", "title"])
+			self.thing = wx.lib.dialogs.ScrolledMessageDialog(None, text, title)
+
+	def show(self):
+		"""Shows the dialog box for this handle."""
+
+		with self._show():
+			self.answer = self.thing.ShowModal()
+			self.hide()
+
+	def hide(self):
+		"""Hides the dialog box for this handle."""
+
+		with self._hide():
+			self.thing.Destroy()
+			self.thing = None
+
+class handle_Dialog_Input(handle_Dialog_Base):
+	"""A handle for working with a wxTextEntryDialog object."""
+
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize inherited classes
+		super().__init__()
+
+		#Internal Variables
+		self.data = None
+
+	def _build(self, argument_catalogue):
+		def yieldStyle():
+			nonlocal argument_catalogue
+
+			addYes, addOk, addCancel, addHelp = self._getArguments(argument_catalogue, ["addYes", "addOk", "addCancel", "addHelp"])
+			password, readOnly, tab, wrap = self._getArguments(argument_catalogue, ["password", "readOnly", "tab", "wrap"])
+
+			yield wx.CENTRE
+
+			##Buttons
+			if (addYes):
+				wx.YES_NO
+			if (addOk):
+				wx.OK
+			if (addCancel):
+				wx.CANCEL
+			if (addHelp):
+				wx.HELP
+
+			if (password):
+				wx.TE_PASSWORD
+			if (readOnly):
+				wx.TE_READONLY
+			if (tab):
+				wx.TE_PROCESS_TAB
+			
+			if (wrap is not None):
+				if (wrap > 0):
+					wx.TE_MULTILINE|wx.TE_WORDWRAP
+				else:
+					wx.TE_CHARWRAP|wx.TE_MULTILINE
+
+		##############################################
+		
+		with self._bookend_build(argument_catalogue):
+
+			text, title, default, maximum = self._getArguments(argument_catalogue, ("text", "title", "default", "maximum"))
+			self.thing = wx.TextEntryDialog(None, text, caption = title, value = default, style = functools.reduce(operator.ior, yieldStyle()))
+
+			if (maximum is not None):
+				self.thing.SetMaxLength(maximum)
+
+	def show(self):
+		"""Shows the dialog box for this handle."""
+
+		with self._show():
+			self.answer = self.thing.ShowModal()
+			self.hide()
+
+	def hide(self):
+		"""Hides the dialog box for this handle."""
+
+		with self._hide():
+			self.data = self.thing.GetValue()
+
+			self.thing.Destroy()
+			self.thing = None
+
+	def getValue(self, event = None):
+		"""Returns what the contextual value is for the object associated with this handle."""
+
+		return self.data
+
+class handle_Dialog_Color(handle_Dialog_Base):
+	"""A handle for working with a wxColourDialog object."""
+
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize inherited classes
+		super().__init__()
+
+		#Internal Variables
+		self.data = None
+
+	def _build(self, argument_catalogue):
+		simple = self._getArguments(argument_catalogue, ["simple"])
+		if (simple is not None):
+			self.thing = wx.ColourDialog(None)
+			self.thing.GetColourData().SetChooseFull(not simple)
+		else:
+			self.thing = wx.lib.agw.cubecolourdialog.CubeColourDialog(None)
+
+	def show(self):
+		"""Shows the dialog box for this handle."""
+
+		with self._show():
+			self.answer = self.thing.ShowModal()
+			self.hide()
+
+	def hide(self):
+		"""Hides the dialog box for this handle."""
+
+		with self._hide():
+			self.data = self.thing.GetColourData()
+
+			self.thing.Destroy()
+			self.thing = None
+
+	def getValue(self, event = None):
+		"""Returns what the contextual value is for the object associated with this handle."""
+
+		color = self.data.GetColour().Get()
+		return (color.Red(), color.Green(), color.Blue(), color.Alpha())
+
+class handle_Dialog_File_Base(handle_Dialog_Base):
+	"""A handle for working with a wx file dialog object."""
+
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize inherited classes
+		super().__init__()
+
+		#Internal Variables
+		self.data = None
+
+	def yieldStyle(self, argument_catalogue):
+		directoryOnly, changeCurrentDirectory, fileMustExist = self._getArguments(argument_catalogue, ("directoryOnly", "changeCurrentDirectory", "fileMustExist"))
+
+		if (directoryOnly):
+			yield wx.RESIZE_BORDER #Always select the newer directory dialog if there are more than one choices
+			
+			if (changeCurrentDirectory):
+				yield wx.DD_CHANGE_DIR
+			if (fileMustExist):
+				yield wx.DD_DIR_MUST_EXIST
+			return
+
+		openFile, saveConfirmation, saveFile, preview = self._getArguments(argument_catalogue, ("openFile", "saveConfirmation", "saveFile", "preview"))
+		if ((openFile or fileMustExist) and (saveFile or saveConfirmation)):
+			errorMessage = "Open config and save config cannot be added to the same file picker"
+			raise SyntaxError(errorMessage)
+
+		if (changeCurrentDirectory and ((openFile or fileMustExist or saveFile or saveConfirmation))):
+			errorMessage = "Open config and save config cannot be used in combination with a directory change"
+			raise SyntaxError(errorMessage)
+
+		yield 0
+		if (changeCurrentDirectory):
+			yield wx.FD_CHANGE_DIR
+		if (fileMustExist):
+			yield wx.FD_FILE_MUST_EXIST
+		if (openFile):
+			yield wx.FD_OPEN
+		if (saveConfirmation):
+			yield wx.FD_OVERWRITE_PROMPT
+		if (saveFile):
+			yield wx.FD_SAVE
+		if (preview):
+			yield wx.FD_PREVIEW
+
+	def _bookend_build(self, argument_catalogue):
+		with super()._bookend_build(argument_catalogue):
+
+			directoryOnly = self._getArguments(argument_catalogue, ("directoryOnly",))
+			if (directoryOnly):
+				yield
+				return
+
+			text, initialDir, initialFile, wildcard = self._getArguments(argument_catalogue, ["text", "initialDir", "initialFile", "wildcard"])
+			self.thing = wx.FileDialog(None, message = text, 
+				defaultDir = initialDir or "", 
+				defaultFile = initialFile or "", 
+				wildcard = self.getWildcard(wildcard), 
+				style = functools.reduce(operator.ior, self.yieldStyle(argument_catalogue)) or wx.FD_DEFAULT_STYLE, 
+			)
+
+			yield True
+
+	def show(self):
+		"""Shows the dialog box for this handle."""
+
+		with self._show():
+			self.answer = self.thing.ShowModal()
+			self.hide()
+
+	@contextlib.contextmanager
+	def _hide(self):
+		"""Hides the dialog box for this handle."""
+
+		with super()._hide():
+			yield
+
+			self.thing.Destroy()
+			self.thing = None
+
+	def getValue(self, event = None):
+		"""Returns what the contextual value is for the object associated with this handle."""
+
+		return self.data
+
+class handle_Dialog_File_Single(handle_Dialog_File_Base):
+	"""A handle for working with a wxFileDialog object that can select only one option."""
+
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize inherited classes
+		super().__init__()
+
+		#Internal Variables
+		self.data = None
+
+	def _build(self, argument_catalogue):
+		with self._bookend_build(argument_catalogue) as skip:
+			if (skip):
+				return
+
+			title, initialDir = self._getArguments(argument_catalogue, ("title", "initialDir"))
+			self.thing = wx.DirDialog(None, message = text, defaultPath = initialDir or "", 
+				style = functools.reduce(operator.ior, self.yieldStyle(argument_catalogue)) or wx.DD_DEFAULT_STYLE)
+		
+	def hide(self):
+		"""Hides the dialog box for this handle."""
+
+		with self._hide():
+			self.data = self.thing.GetPath()
+
+class handle_Dialog_File_Multi(handle_Dialog_File_Base):
+	"""A handle for working with a wxFileDialog object that can select multiple options."""
+
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize inherited classes
+		super().__init__()
+
+		#Internal Variables
+		self.data = None
+
+	def yieldAgwStyle(self, argument_catalogue):
+		newDirButton = self._getArguments(argument_catalogue, ("newDirButton", "fileMustExist"))
+
+		yield wx.lib.agw.multidirdialog.DD_MULTIPLE
+
+		if (newDirButton):
+			yield wx.lib.agw.multidirdialog.DD_NEW_DIR_BUTTON
+		if (fileMustExist):
+			yield wx.lib.agw.multidirdialog.DD_DIR_MUST_EXIST
+
+	def yieldStyle(self, argument_catalogue):
+		for item in super().yieldStyle(argument_catalogue):
+			yield item
+
+		yield wx.FD_MULTIPLE
+
+	def _build(self, argument_catalogue):
+		with self._bookend_build(argument_catalogue) as skip:
+			if (skip):
+				return
+
+			title, text, preview, initialDir = self._getArguments(argument_catalogue, ("title", "text", "preview", "initialDir"))
+			self.thing = wx.lib.agw.multidirdialog.MultiDirDialog(None, message = text, title = title, defaultPath = initialDir or "", 
+				style = functools.reduce(operator.ior, self.yieldStyle(argument_catalogue)) or wx.DD_DEFAULT_STYLE, 
+				agwStyle =  functools.reduce(operator.ior, self.yieldAgwStyle(argument_catalogue)),
+			)
+
+	def hide(self):
+		"""Hides the dialog box for this handle."""
+
+		with self._hide():
+			self.data = self.thing.GetPaths()
+
+class handle_Dialog_Choice_Base(handle_Dialog_Base):
+	"""A handle for working with a wxChoice dialog object."""
+
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize inherited classes
+		super().__init__()
+
+		#Internal Variables
+		self.data = None
+
+	def _bookend_build(self, argument_catalogue):
+		"""Builds a wxChoice dialog object."""
+
+		with super()._bookend_build(argument_catalogue):
+			choices, formatter = self._getArguments(argument_catalogue, ("choices", "formatter"))
+			
+			self.choices = self.ensure_container(choices)
+
+			#Format choices to display
+			if (formatter):
+				self.formattedChoices = [f"{formatter(item)}" for item in self.choices]
+			else:
+				self.formattedChoices = [f"{item}" for item in self.choices]
+
+			yield
+
+	def show(self):
+		"""Shows the dialog box for this handle."""
+
+		with self._show():
+			self.answer = self.thing.ShowModal()
+			self.hide()
+
+	@contextlib.contextmanager
+	def _hide(self):
+
+		with super()._hide():
+			yield
+
+			self.thing.Destroy()
+			self.thing = None
+
+	def getIndex(self, event = None):
+		"""Returns what the contextual value is for the object associated with this handle."""
+
+		return self.data
+
+class handle_Dialog_Choice_Single(handle_Dialog_Choice_Base):
+	"""A handle for working with a wxSingleChoiceDialog dialog object."""
+
+	def _build(self, argument_catalogue):
+
+		with self._bookend_build(argument_catalogue):
+			title, text, default = self._getArguments(argument_catalogue, ("title", "text", "default"))
+			self.thing = wx.SingleChoiceDialog(None, title, text, self.formattedChoices, wx.CHOICEDLG_STYLE)
+
+			if (default is not None):
+				if (isinstance(default, (list, tuple, range, set))):
+					if (len(default) == 0):
+						default = 0
+					else:
+						default = default[0]
+
+				if (isinstance(default, str)):
+					if (default in choices):
+						default = choices.index(default)
+					
+					elif (default in formattedChoices):
+						default = formattedChoices.index(default)
+					
+					else:
+						warnings.warn(f"{default} not in 'choices' {choices} for {self.__repr__()}", Warning, stacklevel = 2)
+						default = 0
+
+				self.thing.SetSelection(default)
+
+	def hide(self):
+		"""Hides the dialog box for this handle."""
+
+		with self._hide():
+			self.data = self.thing.GetSelection()
+
+	def getValue(self, event = None):
+		"""Returns what the contextual value is for the object associated with this handle."""
+
+		if (self.data is not None):
+			return self.choices[self.data]
+
+class handle_Dialog_Choice_Multi(handle_Dialog_Choice_Base):
+	"""A handle for working with a wxMultiChoiceDialog dialog object."""
+
+	def _build(self, argument_catalogue):
+
+		with self._bookend_build(argument_catalogue):
+			title, text, default = self._getArguments(argument_catalogue, ("title", "text", "default"))
+			self.thing = wx.MultiChoiceDialog(None, text, title, formattedChoices, wx.CHOICEDLG_STYLE)
+
+			if (default is not None):
+				default = self.ensure_container(default)
+
+				for i in range(len(default)):
+					if (not isinstance(default[i], int)):
+						if (default[i] in choices):
+							default[i] = choices.index(default[i])
+
+						elif (default[i] in formattedChoices):
+							default[i] = formattedChoices.index(default[i])
+
+						else:
+							warnings.warn(f"{default[i]} not in 'choices' {choices} for {self.__repr__()}", Warning, stacklevel = 2)
+							default[i] = 0
+
+				self.thing.SetSelections(default)
+
+	def hide(self):
+		"""Hides the dialog box for this handle."""
+		
+		with self._hide():
+			self.data = self.thing.GetSelections()
+
+	def getValue(self, event = None):
+		"""Returns what the contextual value is for the object associated with this handle."""
+
+		if (self.data is not None):
+			return tuple(self.choices[i] for i in self.data)
+
+class handle_Dialog_Busy_Base(handle_Dialog_Base):
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize inherited classes
+		super().__init__()
+
+		#Defaults
+		self.freeze = None
+		self.cursor = None
+		self.timeEntered = None
+
+	def __enter__(self):
+		"""Allows the user to use a with statement to build the GUI."""
+
+		handle = super().__enter__()
 
 		#Hiding a sub-busy window too quickly can cause the parent busy window to go behind everything
-		if (self.type is Types.busy):
-			self.timeEntered = time.perf_counter()
+		self.timeEntered = time.perf_counter()
 
-			if (self.freeze):
-				if (self.parent.thing.IsFrozen()):
-					#Do not thaw the parent if it is already frozen
-					self.freeze = None
-				else:
-					self.parent.thing.Freeze()
+		if (self.freeze):
+			if (self.parent.thing.IsFrozen()):
+				#Do not thaw the parent if it is already frozen
+				self.freeze = None
+			else:
+				self.parent.thing.Freeze()
 
-			if (self.cursor):
-				if (wx.IsBusy()):
-					#Do not stop the busy cursor if it was already going
-					self.cursor = None
-				else:
-					wx.BeginBusyCursor()
+		if (self.cursor):
+			if (wx.IsBusy()):
+				#Do not stop the busy cursor if it was already going
+				self.cursor = None
+			else:
+				wx.BeginBusyCursor()
 
 		return handle
 
 	def __exit__(self, exc_type, exc_value, traceback):
 		"""Allows the user to use a with statement to build the GUI."""
 
-		state = handle_Base.__exit__(self, exc_type, exc_value, traceback)
+		state = super().__exit__(exc_type, exc_value, traceback)
 
-		if (self.type is Types.busy):
-			difference = time.perf_counter() - self.timeEntered
-			if (difference < 0.05):
-				#Wait for a maximum of 0.05 seconds
-				time.sleep(0.05 - difference)
-			
-			self.hide()
+		difference = time.perf_counter() - self.timeEntered
+		if (difference < 0.05):
+			#Wait for a maximum of 0.05 seconds
+			time.sleep(0.05 - difference)
+		
+		self.hide()
 
-			if (self.cursor):
-				wx.EndBusyCursor()
+		if (self.cursor):
+			wx.EndBusyCursor()
 
-			if (self.freeze):
-				self.parent.thing.Thaw()
+		if (self.freeze):
+			self.parent.thing.Thaw()
 
 		return state
-
-	def _build(self, argument_catalogue):
-		"""Determiens which build system to use for this handle."""
-
-		def _build_message():
-			"""Builds a wx message dialog object."""
-			nonlocal self, argument_catalogue
-
-			#Gather variables
-			text, title = self._getArguments(argument_catalogue, ["text", "title"])
-			stayOnTop, default, icon = self._getArguments(argument_catalogue, ["stayOnTop", "default", "icon"])
-			addYes, addOk, addCancel, addHelp = self._getArguments(argument_catalogue, ["addYes", "addOk", "addCancel", "addHelp"])
-
-			#Error Checking
-			if (addCancel and not (addYes or addOk)):
-				errorMessage = f"'Cancel' must be acompanied with either a [Yes]/[No] and/or [Ok] for {self.__repr__()}"
-				raise ValueError(errorMessage)
-
-			#Prepare styles
-			style = "wx.CENTRE"
-
-			if (stayOnTop):
-				style += "|wx.STAY_ON_TOP"
-
-			##Buttons
-			if (addYes):
-				style += "|wx.YES_NO"
-			if (addOk):
-				style += "|wx.OK"
-			if (addCancel):
-				style += "|wx.CANCEL"
-			if (addHelp):
-				style += "|wx.HELP"
-
-			##Defaults
-			if (addYes):
-				if (default):
-					style += "|wx.YES_DEFAULT"
-				else:
-					style += "|wx.NO_DEFAULT"
-
-			elif (addOk):
-				if (default):
-					style += "|wx.OK_DEFAULT"
-				else:
-					if (addCancel):
-						style += "|wx.CANCEL_DEFAULT"
-
-			##Icons
-			if (icon is not None):
-				if (icon[0].lower() == "h"):
-					style += "|wx.ICON_HAND"
-					
-				elif (icon[0].lower() == "q"):
-					style += "|wx.ICON_QUESTION"
-					
-				elif (icon[0].lower() == "i"):
-					style += "|wx.ICON_INFORMATION"
-					
-				elif (icon[0].lower() == "a"):
-					style += "|wx.ICON_AUTH_NEEDED"
-					
-				elif (icon[0].lower() == "e"):
-					if (len(icon) == 1): 
-						style += "|wx.ICON_ERROR"
-
-					elif (icon[1].lower() == "r"):
-						style += "|wx.ICON_ERROR"
-
-					else:
-						style += "|wx.ICON_EXCLAMATION"
-				else:
-					errorMessage = f"Unknown Icon type '{icon}' for {self.__repr__()}"
-					raise KeyError(errorMessage)
-			else:
-				style += "|wx.ICON_NONE"
-
-			#Create object
-			self.thing = wx.MessageDialog(parent = None, message = text, caption = title, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
-
-		def _build_scroll():
-			"""Builds a wx scroll dialog object."""
-			nonlocal self, argument_catalogue
-
-			text, title = self._getArguments(argument_catalogue, ["text", "title"])
-			self.thing = wx.lib.dialogs.ScrolledMessageDialog(None, text, title)
-
-		def _build_busy():
-			"""Builds a wx busy info dialog object."""
-			nonlocal self, argument_catalogue
-
-			text, simple, blockAll, cursor, freeze = self._getArguments(argument_catalogue, ["text", "simple", "blockAll", "cursor", "freeze"])
+	
+	@contextlib.contextmanager
+	def _bookend_build(self, argument_catalogue):
+		with super()._bookend_build(argument_catalogue):
+			blockAll, cursor, freeze = self._getArguments(argument_catalogue, ("blockAll", "cursor", "freeze"))
 
 			self.thing = -1
 			self.cursor = cursor
@@ -17348,333 +17878,288 @@ class handle_Dialog(handle_Base):
 			self.blockAll = blockAll
 
 			if (self.parent is None):
-				parent = None
+				self.buildKwargs = {"parent": None}
 			else:
-				parent = self.parent.thing
+				self.buildKwargs = {"parent": self.parent.thing}
 
-			if (simple):
-				self.subType = "simple"
-				self.buildArgs = [text]
-				self.buildKwargs = {"parent": parent}
+			yield
 
-				self.progress = None
+	@contextlib.contextmanager
+	def _show(self):
+		"""Shows the dialog box for this handle."""
+
+		#Error Check
+		if (self.thing is None):
+			errorMessage = f"The {self.type} dialogue box {self.__repr__()} has already been shown"
+			raise SyntaxError(errorMessage)
+
+		self.threads_pause()
+
+		if (wx.IsMainThread() or (not isinstance(self.parent, handle_Dialog_Base))):
+			yield
+			return
+
+		#Hiding a sub-busy window in a thread can cause the parent busy window to go behind everything if the top window is not the parent during creation
+		oldTopLevel = wx.GetApp().GetTopWindow()
+		wx.GetApp().SetTopWindow(self.parent.thing)
+
+		yield
+
+		#Put the top window back after creation
+		if (oldTopLevel is not None):
+			wx.GetApp().SetTopWindow(oldTopLevel)
+
+	@contextlib.contextmanager
+	def _hide(self):
+		"""Hides the dialog box for this handle."""
+
+		yield
+
+		self.thing = None
+		# if (self.blockAll):
+		# 	self.windowDisabler = None
+
+		self.threads_unpause()
+
+	def threadSafe(self, function, *args, **kwargs):
+		wx.CallAfter(function, *args, **kwargs)
+
+class handle_Dialog_Busy(handle_Dialog_Busy_Base):
+	"""A handle for working with a wxBusyInfo dialog object."""
+	
+	def _build(self, argument_catalogue):
+		with self._bookend_build(argument_catalogue):
+			text = self._getArguments(argument_catalogue, ("text",))
+
+			self.buildArgs = (text,)
+
+	def show(self):
+		"""Shows the dialog box for this handle."""
+
+		with self._show():
+			self.thing = wx.BusyInfo(*self.buildArgs, **self.buildKwargs)
+
+	def hide(self):
+		"""Hides the dialog box for this handle."""
+
+		with self._hide():
+			del self.thing
+
+class handle_Dialog_Busy_Progress(handle_Dialog_Busy_Base):
+	"""A handle for working with a wxProgressDialog widget."""
+
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize inherited classes
+		super().__init__()
+
+	def _build(self, argument_catalogue):
+		def yieldStyle():
+			nonlocal argument_catalogue
+
+			autoHide, smooth, can_abort, can_skip = self._getArguments(argument_catalogue, ["autoHide", "smooth", "can_abort", "can_skip"])
+			elapsedTime, estimatedTime, remainingTime, stayOnTop = self._getArguments(argument_catalogue, ["elapsedTime", "estimatedTime", "remainingTime", "stayOnTop"])
+
+			yield 0
+
+			if (self.blockAll):
+				yield wx.PD_APP_MODAL
+
+			if (autoHide):
+				yield wx.PD_AUTO_HIDE
+
+			if (smooth):
+				yield wx.PD_SMOOTH
+
+			if (can_abort):
+				yield wx.PD_CAN_ABORT
+
+			if (can_skip):
+				yield wx.PD_CAN_SKIP
+
+			if (elapsedTime):
+				yield wx.PD_ELAPSED_TIME
+
+			if (estimatedTime):
+				yield wx.PD_ESTIMATED_TIME
+
+			if (remainingTime):
+				yield wx.PD_REMAINING_TIME
+
+			# if (stayOnTop):
+			# 	yield wx.STAY_ON_TOP
+
+		##########################################
+
+		with self._bookend_build(argument_catalogue):
+			text, title, initial, maximum = self._getArguments(argument_catalogue, ("text", "title", "initial", "maximum"))
+			
+			title = title or text or "Busy"
+
+			self.text = text
+			self.oneShot = None
+			self.progress = initial
+
+			if (maximum is None):
+				self.startPulse = True
+				maximum = 100
 			else:
-				maximum, title, autoHide, can_abort, can_skip, stayOnTop = self._getArguments(argument_catalogue, ["maximum", "title", "autoHide", "can_abort", "can_skip", "stayOnTop"])
-				smooth, elapsedTime, estimatedTime, remainingTime, initial = self._getArguments(argument_catalogue, ["smooth", "elapsedTime", "estimatedTime", "remainingTime", "initial"])
-				
-				title = title or text or "Busy"
+				self.startPulse = False
 
-				self.text = text
+			self.buildArgs = (title, text)
+			self.buildKwargs["maximum"] = maximum
+			self.buildKwargs["style"] = functools.reduce(operator.ior, yieldStyle())
+
+	def show(self):
+		"""Shows the dialog box for this handle."""
+		
+		with self._show():
+			self.thing = wx.ProgressDialog(*self.buildArgs, **self.buildKwargs)
+
+			if (self.startPulse):
+				self.setValue()
+
+	def hide(self):
+		"""Hides the dialog box for this handle."""
+
+		with self._hide():
+			#The dialog will not close until this condition is met
+			maximum = self.thing.GetRange()
+			if (self.thing.GetValue() < maximum):
+				self.setValue(maximum)
+
+			self.threadSafe(self.thing.Destroy)
+
+	#Getters
+	def getValue(self, event = None):
+		"""Returns what the contextual value is for the object associated with this handle."""
+
+		value = self.thing.GetValue()
+		if (value == wx.NOT_FOUND):
+			return
+		return value
+
+	def getText(self, event = None):
+		"""Returns what the contextual text is for the object associated with this handle."""
+
+		return self.thing.GetMessage()
+
+	def getDefaultText(self, event = None):
+		"""Returns what the contextual default text is for the object associated with this handle."""
+
+		return self.text
+
+	def getMax(self, event = None):
+		"""Returns what the contextual maximum is for the object associated with this handle."""
+
+		value = self.thing.GetRange()
+		if (value == wx.NOT_FOUND):
+			return
+		return value
+
+	#Setters
+	def _formatText(self, text):
+		if (text is None):
+			return self.text
+
+		current = self.thing.GetMessage()
+		if (self.oneShot is not None):
+			if (current == self.oneShot):
 				self.oneShot = None
-				self.progress = initial
-
-				if (maximum is None):
-					self.startPulse = True
-					maximum = 100
-				else:
-					self.startPulse = False
-
-				self.subType = "progress"
-				self.buildArgs = [title, text]
-				self.buildKwargs = {"maximum": maximum, "parent": parent}
-
-				self.buildStyle = []
-				if (blockAll):
-					self.buildStyle.append("wx.PD_APP_MODAL")
-				if (autoHide):
-					self.buildStyle.append("wx.PD_AUTO_HIDE")
-				if (smooth):
-					self.buildStyle.append("wx.PD_SMOOTH")
-				if (can_abort):
-					self.buildStyle.append("wx.PD_CAN_ABORT")
-				if (can_skip):
-					self.buildStyle.append("wx.PD_CAN_SKIP")
-				if (elapsedTime):
-					self.buildStyle.append("wx.PD_ELAPSED_TIME")
-				if (estimatedTime):
-					self.buildStyle.append("wx.PD_ESTIMATED_TIME")
-				if (remainingTime):
-					self.buildStyle.append("wx.PD_REMAINING_TIME")
-				# if (stayOnTop):
-				# 	self.buildStyle.append("wx.STAY_ON_TOP")
-
-				if (not self.buildStyle):
-					self.buildStyle.append("0")
-
-		def _build_inputBox():
-			"""Builds a wx text entry dialog object."""
-			nonlocal self, argument_catalogue
-
-			text, title, default = self._getArguments(argument_catalogue, ["text", "title", "default"])
-			addYes, addOk, addCancel, addHelp = self._getArguments(argument_catalogue, ["addYes", "addOk", "addCancel", "addHelp"])
-			password, readOnly, tab, wrap, maximum = self._getArguments(argument_catalogue, ["password", "readOnly", "tab", "wrap", "maximum"])
-
-			#Prepare styles
-			style = "wx.CENTRE"
-
-			##Buttons
-			if (addYes):
-				style += "|wx.YES_NO"
-			if (addOk):
-				style += "|wx.OK"
-			if (addCancel):
-				style += "|wx.CANCEL"
-			if (addHelp):
-				style += "|wx.HELP"
-
-			if (password):
-				style += "|wx.TE_PASSWORD"
-			if (readOnly):
-				style += "|wx.TE_READONLY"
-			if (tab):
-				style += "|wx.TE_PROCESS_TAB"
-			
-			if (wrap is not None):
-				if (wrap > 0):
-					style += "|wx.TE_MULTILINE|wx.TE_WORDWRAP"
-				else:
-					style += "|wx.TE_CHARWRAP|wx.TE_MULTILINE"
-
-			self.thing = wx.TextEntryDialog(None, text, caption = title, value = default, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
-
-			if (maximum is not None):
-				self.thing.SetMaxLength(maximum)
-
-		def _build_choice():
-			"""Builds a wx choice dialog object."""
-			nonlocal self, argument_catalogue
-
-			choices, title, text, default = self._getArguments(argument_catalogue, ["choices", "title", "text", "default"])
-			single, formatter = self._getArguments(argument_catalogue, ["single", "formatter"])
-			
-			#Ensure that the choices given are a list or tuple
-			if (not isinstance(choices, (list, tuple, range))):
-				choices = [choices]
-
-			self.choices = choices
-
-			#Format choices to display
-			if (formatter):
-				formattedChoices = [str(formatter(item)) for item in choices]
+				return self.text
 			else:
-				formattedChoices = [str(item) for item in choices]
+				return self.oneShot
 
+		if (str(text) == current):
+			return ""
+		return str(text)
+
+	def _formatValue(self, value):
+		if (value is None):
+			return
 			
-			if (single):
-				self.subType = "single"
-				self.thing = wx.SingleChoiceDialog(None, title, text, formattedChoices, wx.CHOICEDLG_STYLE)
-			else:
-				self.thing = wx.MultiChoiceDialog(None, text, title, formattedChoices, wx.CHOICEDLG_STYLE)
+		maximum = self.thing.GetRange()
+		if (value > maximum):
+			return maximum
+		if (value > 0):
+			return value
 
-			if (default is not None):
-				if (single):
-					if (isinstance(default, (list, tuple, range, set))):
-						if (len(default) == 0):
-							default = 0
-						else:
-							default = default[0]
+	def setValue(self, value = None, text = "", oneShot = False, event = None):
+		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
-					if (isinstance(default, str)):
-						if (default in choices):
-							default = choices.index(default)
-						
-						elif (default in formattedChoices):
-							default = formattedChoices.index(default)
-						
-						else:
-							warnings.warn(f"{default} not in 'choices' {choices} for {self.__repr__()}", Warning, stacklevel = 2)
-							default = 0
+		text = self._formatText(text)
+		value = self._formatValue(value)
+		self.progress = value
 
-					self.thing.SetSelection(default)
-				else:
-					if (not isinstance(default, (list, tuple, range, set))):
-						default = [default]
+		if (value is None):
+			self.threadSafe(self.thing.Pulse, text)
+		else:
+			self.threadSafe(self.thing.Update, value, text)
 
-					defaultList = []
-					for i in range(len(default)):
-						if (not isinstance(default[i], int)):
-							if (default[i] in choices):
-								default[i] = choices.index(default[i])
+		if (oneShot):
+			self.oneShot = text
+	
+	def setText(self, text = "", oneShot = False, event = None):
+		"""Sets the contextual text for the object associated with this handle to what the user supplies."""
 
-							elif (default[i] in formattedChoices):
-								default[i] = formattedChoices.index(default[i])
+		text = self._formatText(text)
 
-							else:
-								warnings.warn(f"{default[i]} not in 'choices' {choices} for {self.__repr__()}", Warning, stacklevel = 2)
-								default[i] = 0
+		#Setting the value to zero causes the window to disappear
+		if (self.progress is None):
+			self.threadSafe(self.thing.Pulse, text)
+		else:
+			self.threadSafe(self.thing.Update, self.thing.GetValue() or 1, text)
 
-					self.thing.SetSelections(default)
+		if (oneShot):
+			self.oneShot = text
 
-		def _build_file():
-			"""Builds a wx color dialog object."""
-			nonlocal self, argument_catalogue
+	def setDefaultText(self, text = "", apply = True, event = None):
+		"""Sets the contextual default text for the object associated with this handle to what the user supplies."""
 
-			title, text, preview, initialFile, wildcard = self._getArguments(argument_catalogue, ["title", "text", "preview", "initialFile", "wildcard"])
-			initialDir, directoryOnly, changeCurrentDirectory = self._getArguments(argument_catalogue, ["initialDir", "directoryOnly", "changeCurrentDirectory"])
-			fileMustExist, openFile, saveConfirmation, saveFile = self._getArguments(argument_catalogue, ["fileMustExist", "openFile", "saveConfirmation", "saveFile"])
-			single, newDirButton = self._getArguments(argument_catalogue, ["single", "newDirButton"])
+		self.text = text
 
-			#Picker configurations
-			if (directoryOnly):
-				##Determine which configurations to add
-				style = "wx.RESIZE_BORDER|" #Always select the newer directory dialog if there are more than one choices
-				if (changeCurrentDirectory):
-					style += "wx.DD_CHANGE_DIR|"
-				if (fileMustExist):
-					style += "wx.DD_DIR_MUST_EXIST|"
-				
-				if (not single):
-					agwStyle = "wx.lib.agw.multidirdialog.DD_MULTIPLE|"
-					if (newDirButton):
-						agwStyle += "wx.lib.agw.multidirdialog.DD_NEW_DIR_BUTTON|"
-					if (fileMustExist):
-						agwStyle += "wx.lib.agw.multidirdialog.DD_DIR_MUST_EXIST|"
+		if (apply):
+			self.setText(event = event)
+	
+	def setMax(self, value, event = None):
+		"""Sets the contextual max for the object associated with this handle to what the user supplies."""
 
-					if (agwStyle != ""):
-						agwStyle = agwStyle[:-1]
-			else:
-				style = ""
-				##Make sure conflicting configurations are not given
-				if ((openFile or fileMustExist) and (saveFile or saveConfirmation)):
-					errorMessage = "Open config and save config cannot be added to the same file picker"
-					raise SyntaxError(errorMessage)
+		self.threadSafe(self.thing.SetRange, value)
 
-				if (changeCurrentDirectory and ((openFile or fileMustExist or saveFile or saveConfirmation))):
-					errorMessage = "Open config and save config cannot be used in combination with a directory change"
-					raise SyntaxError(errorMessage)
+	def resume(self, size = None, event = None):
+		"""Undoes an abort."""
 
-				##Determine which configurations to add
-				if (changeCurrentDirectory):
-					style += "wx.FD_CHANGE_DIR|"
-				if (fileMustExist):
-					style += "wx.FD_FILE_MUST_EXIST|"
-				if (openFile):
-					style += "wx.FD_OPEN|"
-				if (saveConfirmation):
-					style += "wx.FD_OVERWRITE_PROMPT|"
-				if (saveFile):
-					style += "wx.FD_SAVE|"
-				if (preview):
-					style += "wx.FD_PREVIEW|"
-				if (not single):
-					style += "wx.FD_MULTIPLE|"
+		self.threadSafe(self.thing.Resume)
 
-			if (style != ""):
-				style = style[:-1]
-			else:
-				if (directoryOnly):
-					style = "wx.DD_DEFAULT_STYLE"
-				else:
-					style = "wx.FD_DEFAULT_STYLE"
+	def isCancel(self):
+		"""Returns if the closed dialog box answer was 'cancel'."""
 
-			if (initialDir is None):
-				initialDir = ""
+		return self.thing.WasCancelled()
 
-			if (initialFile is None):
-				initialFile = ""
+	def isSkip(self):
+		"""Returns if the closed dialog box answer was 'skip'."""
 
-			wildcard = self.getWildcard(wildcard)
+		return self.thing.WasSkipped()
 
-			#Create the thing to put in the grid
-			if (directoryOnly):
-				if (single):
-					self.subType = "directory_single"
-					self.thing = wx.DirDialog(None, message = text, defaultPath = initialDir, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
-				else:
-					self.subType = "directory"
-					self.thing = wx.lib.agw.multidirdialog.MultiDirDialog(None, message = text, title = title, defaultPath = initialDir, style = eval(style, {'__builtins__': None, "wx": wx}, {}), agwStyle  = eval(agwStyle, {'__builtins__': None, "wx": wx}, {}))
-			else:
-				if (single):
-					self.subType = "file_single"
-				else:
-					self.subType = "file"
-				self.thing = wx.FileDialog(None, message = text, defaultDir = initialDir, defaultFile = initialFile, wildcard = wildcard, style = eval(style, {'__builtins__': None, "wx": wx}, {}))
+	def isAbort(self):
+		"""Returns if the closed dialog box answer was 'abort'."""
 
-		def _build_color():
-			"""Builds a wx color dialog object."""
-			nonlocal self, argument_catalogue
+		return self.thing.WasCancelled()
 
-			simple = self._getArguments(argument_catalogue, ["simple"])
+class handle_Dialog_Custom(handle_Dialog_Base):
+	"""A handle for working with a custom wxDialog."""
 
-			if (simple is not None):
-				self.subType = "simple"
-				self.thing = wx.ColourDialog(None)
-				self.thing.GetColourData().SetChooseFull(not simple)
-			else:
-				self.thing = wx.lib.agw.cubecolourdialog.CubeColourDialog(None)
+	def __init__(self):
+		"""Initializes defaults."""
 
-		def _build_pageSetup():
-			"""Builds a wx page setup dialog object."""
-			nonlocal self, argument_catalogue
+		#Initialize inherited classes
+		super().__init__()
 
-			marginMinimum = self._getArguments(argument_catalogue, ["marginMinimum"])
-			printData, helpButton, printOverride = self._getArguments(argument_catalogue, ["printData", "helpButton", "printOverride"])
-			marginLeft, marginTop, marginRight, marginBottom = self._getArguments(argument_catalogue, ["marginLeft", "marginTop", "marginRight", "marginBottom"])
-			editMargins, editOrientation, editPaper, editPrinter = self._getArguments(argument_catalogue, ["editMargins", "editOrientation", "editPaper", "editPrinter"])
-			marginLeftMinimum, marginTopMinimum, marginRightMinimum, marginBottomMinimum = self._getArguments(argument_catalogue, ["marginLeftMinimum", "marginTopMinimum", "marginRightMinimum", "marginBottomMinimum"])
+	def _build(self, argument_catalogue):
+		"""Uses a frame to mimic a wx dialog object."""
 
-			overrideData = {"marginMinimum": marginMinimum, "marginLeft": marginLeft, 
-				"marginTop": marginTop, "marginRight": marginRight, "marginBottom": marginBottom, "marginLeftMinimum": marginLeftMinimum, 
-				"marginTopMinimum": marginTopMinimum, "marginRightMinimum": marginRightMinimum, "marginBottomMinimum": marginBottomMinimum} 
-			combinedOverride = {key: value for catalogue in (printOverride, overrideData) for key, value in catalogue.items() if (value is not None)}
-
-			if (printData is None):
-				printData = combinedOverride
-			dialogData = self._encodePrintSettings(printData, setupData = True, override = combinedOverride)
-
-			dialogData.EnableHelp(helpButton)
-			dialogData.EnableMargins(editMargins)
-			dialogData.EnableOrientation(editOrientation)
-			dialogData.EnablePaper(editPaper)
-			dialogData.EnablePrinter(editPrinter)
-
-			self.thing = wx.PageSetupDialog(None, dialogData)
-
-		def _build_print():
-			"""Builds a wx print dialog object."""
-			nonlocal self, argument_catalogue
-
-			pageFrom, pageTo, pageMin, pageMax = self._getArguments(argument_catalogue, ["pageFrom", "pageTo", "pageMin", "pageMax"])
-			printToFile, selection, collate, copies = self._getArguments(argument_catalogue, ["printToFile", "selection", "collate", "copies"])
-			printData, pageNumbers, helpButton, printOverride = self._getArguments(argument_catalogue, ["printData", "pageNumbers", "helpButton", "printOverride"])
-			
-			overrideData = {"collate": collate, "copies": copies, "from": pageFrom, "to": pageTo, 
-				"min": pageMin, "max": pageMax, "printToFile": printToFile, "selected": selection}
-			combinedOverride = {key: value for catalogue in (printOverride, overrideData) for key, value in catalogue.items() if (value is not None)}
-			
-			if (printData is None):
-				printData = combinedOverride
-			dialogData = self._encodePrintSettings(printData, override = combinedOverride)
-			
-			dialogData.EnableHelp(helpButton)
-			dialogData.EnablePageNumbers(pageNumbers)
-			dialogData.EnableSelection(dialogData.GetSelection())
-			dialogData.EnablePrintToFile(dialogData.GetPrintToFile())
-				
-			self.thing = wx.PrintDialog(None, dialogData)
-
-			self.title = "GUI_Maker Page"
-			self.content = None
-
-		def _build_printPreview():
-			"""Builds a wx print preview dialog object."""
-			nonlocal self, argument_catalogue
-
-			self.thing = -1
-			printData, printerSetup, printOverride, size, position, content = self._getArguments(argument_catalogue, ["printData", "printerSetup", "printOverride", "size", "position", "content"])
-
-			#Set Defaults
-			self.size = size
-			self.content = content
-			self.position = position
-			self.printData = printData
-			self.title = "GUI_Maker Page"
-			self.printerSetup = printerSetup
-			self.printOverride = printOverride
-
-		def _build_custom():
-			"""Uses a frame to mimic a wx dialog object."""
-			nonlocal self, argument_catalogue
+		with self._bookend_build(argument_catalogue):
 
 			myFrame, valueLabel = self._getArguments(argument_catalogue, ["myFrame", "valueLabel"])
 			self.thing = -1
@@ -17684,94 +18169,10 @@ class handle_Dialog(handle_Base):
 				valueLabel = myFrame.getValueLabel()
 			self.valueLabel = valueLabel
 		
-		#########################################################
-
-		argument_catalogue["hidden"] = False
-		argument_catalogue["enabled"] = True
-		self._preBuild(argument_catalogue)
-
-		if (self.type is Types.message):
-			_build_message()
-		elif (self.type is Types.process):
-			_build_process()
-		elif (self.type is Types.scroll):
-			_build_scroll()
-		elif (self.type is Types.box):
-			_build_inputBox()
-		elif (self.type is Types.custom):
-			_build_custom()
-		elif (self.type is Types.busy):
-			_build_busy()
-		elif (self.type is Types.color):
-			_build_color()
-		elif (self.type is Types.file):
-			_build_file()
-		elif (self.type is Types.font):
-			_build_font()
-		elif (self.type is Types.image):
-			_build_image()
-		elif (self.type is Types.list):
-			_build_list()
-		elif (self.type is Types.choice):
-			_build_choice()
-		elif (self.type is Types.print):
-			_build_print()
-		elif (self.type is Types.printsetup):
-			_build_pageSetup()
-		elif (self.type is Types.printpreview):
-			_build_printPreview()
-		else:
-			warnings.warn(f"Add {self.type.name} to _build() for {self.__repr__()}", Warning, stacklevel = 2)
-
-		self._postBuild(argument_catalogue)
-
-	def threadSafe(self, function, *args, **kwargs):
-		if (self.inMainThread):
-			return function(*args, **kwargs)
-		wx.CallAfter(function, *args, **kwargs)
-
 	def show(self):
 		"""Shows the dialog box for this handle."""
 
-		#Error Check
-		if (self.thing is None):
-			warnings.warn(f"The {self.type} dialogue box {self.__repr__()} has already been shown", Warning, stacklevel = 2)
-			return
-
-		if (not wx.IsMainThread()):
-			if (self.type is Types.busy):
-				self.inMainThread = False
-			else:
-				errorMessage = f"The {self.type} dialogue box {self.__repr__()} must be shown in the main thread, not a background thread"
-				raise SyntaxError(errorMessage)
-				# warnings.warn(errorMessage, Warning, stacklevel = 2)
-				# return
-
-		#Pause background functions
-		for listener in self.controller.threadManager.pauseOnDialog:
-			print("@show.1", [listener], self.label, listener.pauseOnDialog_exclude)
-			if ((self.label is None) or (self.label not in listener.pauseOnDialog_exclude)):
-				print("@show.2")
-				listener.pause()
-
-		#Show dialogue
-		if (self.type is Types.message):
-			self.answer = self.thing.ShowModal()
-			self.hide()
-
-		elif (self.type is Types.box):
-			self.answer = self.thing.ShowModal()
-			self.hide()
-
-		elif (self.type is Types.choice):
-			self.answer = self.thing.ShowModal()
-			self.hide()
-
-		elif (self.type is Types.scroll):
-			self.answer = self.thing.ShowModal()
-			self.hide()
-
-		elif (self.type is Types.custom):
+		with self._show():
 			self.myFrame.myDialog = self
 
 			self.myFrame.runMyFunction(myFunction = self.myFrame.preShowFunction, myFunctionArgs = self.myFrame.preShowFunctionArgs, myFunctionKwargs = self.myFrame.preShowFunctionKwargs, includeEvent = True)
@@ -17781,111 +18182,11 @@ class handle_Dialog(handle_Base):
 			self.answer = self.myFrame.thing.ShowModal()
 			self.hide()
 
-		elif (self.type is Types.busy):
-			#Hiding a sub-busy window in a thread can cause the parent busy window to go behind everything 
-			#if the top window is not the parent during creation
-			oldTopLevel = None
-			if (isinstance(self.parent, handle_Dialog)):
-				self.parent.childrenDialogs.add(self)
-
-				if (not self.inMainThread):
-					oldTopLevel = wx.GetApp().GetTopWindow()
-					wx.GetApp().SetTopWindow(self.parent.thing)
-
-			#Create the dialog now
-			if (self.subType.lower() == "simple"):
-				self.thing = wx.BusyInfo(*self.buildArgs, **self.buildKwargs)
-			else:
-				self.thing = wx.ProgressDialog(*self.buildArgs, **self.buildKwargs, style = eval("|".join(self.buildStyle), {'__builtins__': None, "wx": wx}, {}))
-
-				#Account for nested children
-				# self.thing.Bind(wx.EVT_CLOSE, self._onCloseChildren)
-
-				# for myId in [self.thing.GetAffirmativeId()]:
-				# 	child = self.thing.FindWindowById(myId)
-				# 	print("@1", child)
-				# 	if (child is None):
-				# 		continue
-				# 	child.Bind(wx.EVT_BUTTON, self._onCloseChildren)
-
-				if (self.startPulse):
-					self.setValue()
-
-			#Put the top window back after creation
-			if (oldTopLevel is not None):
-				wx.GetApp().SetTopWindow(oldTopLevel)
-
-		elif (self.type is Types.file):
-			self.answer = self.thing.ShowModal()
-			self.hide()
-
-		elif (self.type is Types.color):
-			self.answer = self.thing.ShowModal()
-			self.hide()
-
-		elif (self.type is Types.print):
-			self.answer = self.thing.ShowModal()
-			self.hide()
-
-		elif (self.type is Types.printsetup):
-			self.answer = self.thing.ShowModal()
-			self.hide()
-
-		elif (self.type is Types.printpreview):
-			pass
-
-		else:
-			warnings.warn(f"Add {self.type.name} to show() for {self.__repr__()}", Warning, stacklevel = 2)
-
 	def hide(self):
 		"""Hides the dialog box for this handle."""
 
-		if (self.type is Types.busy):
-			if (self.subType.lower() == "simple"):
-				del self.thing
-			else:
-				if (isinstance(self.parent, handle_Dialog)):
-					self.parent.childrenDialogs.discard(self)
-
-				#The dialog will not close until this condition is met
-				maximum = self.thing.GetRange()
-				if (self.thing.GetValue() < maximum):
-					self.setValue(maximum)
-
-				self.threadSafe(self.thing.Destroy)
-
-			self.thing = None
-			# if (self.blockAll):
-			# 	self.windowDisabler = None
-
-		elif (self.type is Types.printpreview):
-			self.thing = None
-
-		elif (self.type is Types.message):
-			self.thing.Destroy()
-			self.thing = None
-
-		elif (self.type is Types.box):
-			self.data = self.thing.GetValue()
-
-			self.thing.Destroy()
-			self.thing = None
-
-		elif (self.type is Types.choice):
-			if ((self.subType is not None) and (self.subType.lower() == "single")):
-				self.data = self.thing.GetSelection()
-			else:
-				self.data = self.thing.GetSelections()
-
-			self.thing.Destroy()
-			self.thing = None
-
-		elif (self.type is Types.scroll):
-			self.thing.Destroy()
-			self.thing = None
-
-		elif (self.type is Types.custom):
-			if ((self.answer == wx.ID_CANCEL) and (len(self.myFrame.cancelFunction) != 0)):
+		with self._hide():
+			if ((self.answer == wx.ID_CANCEL) and (len(self.myFrame.cancelFunction) is not 0)):
 				self.myFrame.runMyFunction(myFunction = self.myFrame.cancelFunction, myFunctionArgs = self.myFrame.cancelFunctionArgs, myFunctionKwargs = self.myFrame.cancelFunctionKwargs, includeEvent = True)
 
 			self.myFrame.runMyFunction(myFunction = self.myFrame.preHideFunction, myFunctionArgs = self.myFrame.preHideFunctionArgs, myFunctionKwargs = self.myFrame.preHideFunctionKwargs, includeEvent = True)
@@ -17895,42 +18196,22 @@ class handle_Dialog(handle_Base):
 			self.thing = None
 			self.myFrame.myDialog = None
 
-		elif (self.type is Types.file):
-			if ((self.subType is not None) and ("single" in self.subType.lower())):
-				self.data = self.thing.GetPath()
-			else:
-				self.data = self.thing.GetPaths()
+	def _getReturnCode(self, ok = None, cancel = None, close = None, yes = None, no = None, apply = None):
+		if (ok):
+			return wx.ID_OK
+		if (cancel):
+			return wx.ID_CANCEL
+		if (close):
+			return wx.ID_CLOSE
+		if (yes):
+			return wx.ID_YES
+		if (no):
+			return wx.ID_NO
+		if (apply):
+			return wx.ID_APPLY
+		return wx.ID_CANCEL
 
-			self.thing.Destroy()
-			self.thing = None
-
-		elif (self.type is Types.color):
-			self.data = self.thing.GetColourData()
-
-			self.thing.Destroy()
-			self.thing = None
-
-		elif (self.type is Types.print):
-			self.data = self._decodePrintSettings(self.thing.GetPrintDialogData())
-			self.thing.Destroy()
-			self.thing = None
-
-		elif (self.type is Types.printsetup):
-			self.data = self._decodePrintSettings(self.thing.GetPageSetupData())
-			self.thing.Destroy()
-			self.thing = None
-
-		else:
-			warnings.warn(f"Add {self.type.name} to hide() for {self.__repr__()}", Warning, stacklevel = 2)
-
-		#Unpause background functions
-		for listener in self.controller.threadManager.pauseOnDialog:
-			print("@hide.1", [listener], self.label, listener.pauseOnDialog_exclude)
-			if ((self.label is None) or (self.label not in listener.pauseOnDialog_exclude)):
-				print("@hide.2")
-				listener.pause(state = False)
-
-	def end(self, ok = None, cancel = None, close = None, yes = None, no = None, apply = None):
+	def end(self, *args, **kwargs):
 		"""Stops showing the custom window.
 		This is meant to be used by a function other than the one that created the dialog.
 
@@ -17938,136 +18219,20 @@ class handle_Dialog(handle_Base):
 		Example Input: end(ok = True)
 		"""
 
-		if (ok):
-			returnCode = wx.ID_OK
-		elif (cancel):
-			returnCode = wx.ID_CANCEL
-		elif (close):
-			returnCode = wx.ID_CLOSE
-		elif (yes):
-			returnCode = wx.ID_YES
-		elif (no):
-			returnCode = wx.ID_NO
-		elif (apply):
-			returnCode = wx.ID_APPLY
-		else:
-			returnCode = wx.ID_CANCEL
+		self.myFrame.thing.EndModal(self._getReturnCode(*args, **kwargs))
 
-		self.myFrame.thing.EndModal(returnCode)
-
-	#Getters
 	def getValue(self, event = None):
 		"""Returns what the contextual value is for the object associated with this handle."""
 
-		if (self.type is Types.choice):
-			if (self.data is None):
-				value = None
-			elif ((self.subType is not None) and (self.subType.lower() == "single")):
-				value = self.choices[self.data]
-			else:
-				value = [self.choices[i] for i in self.data]
+		if (self.valueLabel is None):
+			errorMessage = f"In order to use getValue() for {self.__repr__()} 'valueLabel' cannot be None\nEither provide it in makeDialogCustom() for {self.__repr__()} or use setValueLabel() for {self.myFrame.__repr__()}"
+			raise KeyError(errorMessage)
 
-		elif (self.type is Types.box):
-			value = self.data
+		elif (self.valueLabel not in self.myFrame):
+			errorMessage = f"There is no widget with the label {self.valueLabel} in {self.myFrame.__repr__()} for {self.__repr__()}"
+			raise ValueError(errorMessage)
 
-		elif (self.type is Types.custom):
-			if (self.valueLabel is None):
-				if (self.valueLabel is None):
-					errorMessage = f"In order to use getValue() for {self.__repr__()} 'valueLabel' cannot be None\nEither provide it in makeDialogCustom() for {self.__repr__()} or use setValueLabel() for {self.myFrame.__repr__()}"
-					raise KeyError(errorMessage)
-			else:
-				if (self.valueLabel not in self.myFrame):
-					errorMessage = f"There is no widget with the label {self.valueLabel} in {self.myFrame.__repr__()} for {self.__repr__()}"
-					raise ValueError(errorMessage)
-
-			value = self.myFrame.getValue(self.valueLabel)
-
-		elif (self.type is Types.file):
-			value = self.data
-
-		elif (self.type is Types.busy):
-			if (self.subType.lower() == "progress"):
-				value = self.thing.GetValue()
-				if (value == wx.NOT_FOUND):
-					value = None
-			else:
-				value = None
-
-		elif (self.type is Types.color):
-			color = self.data.GetColour().Get()
-			value = (color.Red(), color.Green(), color.Blue(), color.Alpha())
-
-		elif (self.type is Types.print):
-			value = {"content": self.content, **self.data} 
-
-		elif (self.type is Types.printsetup):
-			value = {**self.data} 
-
-		elif (self.type is Types.printPreview):
-			value = self.content
-
-		else:
-			warnings.warn(f"Add {self.type.name} to getValue() for {self.__repr__()}", Warning, stacklevel = 2)
-			value = None
-
-		return value
-
-	def getIndex(self, event = None):
-		"""Returns what the contextual value is for the object associated with this handle."""
-
-		if (self.type is Types.choice):
-			value = self.data
-
-		else:
-			warnings.warn(f"Add {self.type.name} to getIndex() for {self.__repr__()}", Warning, stacklevel = 2)
-			value = None
-
-		return value
-
-	def getText(self, event = None):
-		"""Returns what the contextual text is for the object associated with this handle."""
-
-		if (self.type is Types.busy):
-			if (self.subType.lower() == "progress"):
-				value = self.thing.GetMessage()
-			else:
-				value = None
-		else:
-			warnings.warn(f"Add {self.type.name} to getText() for {self.__repr__()}", Warning, stacklevel = 2)
-			value = None
-
-		return value
-
-	def getDefaultText(self, event = None):
-		"""Returns what the contextual default text is for the object associated with this handle."""
-
-		if (self.type is Types.busy):
-			if (self.subType.lower() == "progress"):
-				value = self.text
-			else:
-				value = None
-		else:
-			warnings.warn(f"Add {self.type.name} to getText() for {self.__repr__()}", Warning, stacklevel = 2)
-			value = None
-
-		return value
-
-	def getMax(self, event = None):
-		"""Returns what the contextual maximum is for the object associated with this handle."""
-
-		if (self.type is Types.busy):
-			if (self.subType.lower() == "progress"):
-				value = self.thing.GetRange()
-				if (value == wx.NOT_FOUND):
-					value = None
-			else:
-				value = None
-
-		else:
-			warnings.warn(f"Add {self.type.name} to getMax() for {self.__repr__()}", Warning, stacklevel = 2)
-			value = None
-
-		return value
+		return self.myFrame.getValue(self.valueLabel)
 
 	def isOk(self):
 		"""Returns if the closed dialog box answer was 'ok'."""
@@ -18078,9 +18243,6 @@ class handle_Dialog(handle_Base):
 
 	def isCancel(self):
 		"""Returns if the closed dialog box answer was 'cancel'."""
-
-		if ((self.type is Types.busy) and (self.subType.lower() == "progress")):
-			return self.thing.WasCancelled()
 
 		if (self.answer == wx.ID_CANCEL):
 			return True
@@ -18114,132 +18276,119 @@ class handle_Dialog(handle_Base):
 			return True
 		return False
 
-	def isSkip(self):
-		"""Returns if the closed dialog box answer was 'skip'."""
+class handle_Dialog_PrintSetup(handle_Dialog_Base):
+	"""A handle for working with a wxPageSetupDialog object."""
 
-		if ((self.type is Types.busy) and (self.subType.lower() == "progress")):
-			return self.thing.WasSkipped()
-		return False
+	def __init__(self):
+		"""Initializes defaults."""
 
-	def isAbort(self):
-		"""Returns if the closed dialog box answer was 'abort'."""
+		#Initialize inherited classes
+		super().__init__()
 
-		if ((self.type is Types.busy) and (self.subType.lower() == "progress")):
-			return self.thing.WasCancelled()
-		return False
+		#Internal Variables
+		self.data = None
+		self.subType = None
 
-	def _onCloseChildren(self):
-		"""Closes all children."""
+	def _build(self, argument_catalogue):
+		def yieldOverrideData():
+			nonlocal argument_catalogue
+			marginLeft, marginTop, marginRight, marginBottom, marginMinimum = self._getArguments(argument_catalogue, ["marginLeft", "marginTop", "marginRight", "marginBottom", "marginMinimum"])
+			marginLeftMinimum, marginTopMinimum, marginRightMinimum, marginBottomMinimum = self._getArguments(argument_catalogue, ["marginLeftMinimum", "marginTopMinimum", "marginRightMinimum", "marginBottomMinimum"])
 
-		print("@2", self.childrenDialogs)
+			yield "marginTop", marginTop
+			yield "marginLeft", marginLeft
+			yield "marginRight", marginRight
+			yield "marginBottom", marginBottom
+			yield "marginMinimum", marginMinimum
+			yield "marginTopMinimum", marginTopMinimum
+			yield "marginLeftMinimum", marginLeftMinimum
+			yield "marginRightMinimum", marginRightMinimum
+			yield "marginBottomMinimum", marginBottomMinimum
 
-		for child in self.childrenDialogs:
-			child.end(cancel = True)
+		##################################
 
-	#Setters
-	def _formatText(self, text):
-		if (text is None):
-			return self.text
+		with self._bookend_build(argument_catalogue):
+			printData, helpButton, printOverride = self._getArguments(argument_catalogue, ["printData", "helpButton", "printOverride"])
+			editMargins, editOrientation, editPaper, editPrinter = self._getArguments(argument_catalogue, ["editMargins", "editOrientation", "editPaper", "editPrinter"])
 
-		current = self.thing.GetMessage()
-		if (self.oneShot is not None):
-			if (current == self.oneShot):
-				self.oneShot = None
-				return self.text
-			else:
-				return self.oneShot
+			combinedOverride = {key: value for catalogue in (printOverride, dict(yieldOverrideData())) for key, value in catalogue.items() if (value is not None)}
 
-		if (str(text) == current):
-			return ""
-		return str(text)
+			if (printData is None):
+				printData = combinedOverride
+			dialogData = self._encodePrintSettings(printData, setupData = True, override = combinedOverride)
 
-	def setValue(self, value = None, text = "", oneShot = False, event = None):
+			dialogData.EnableHelp(helpButton)
+			dialogData.EnableMargins(editMargins)
+			dialogData.EnableOrientation(editOrientation)
+			dialogData.EnablePaper(editPaper)
+			dialogData.EnablePrinter(editPrinter)
+
+			self.thing = wx.PageSetupDialog(None, dialogData)
+
+	def show(self):
+		"""Shows the dialog box for this handle."""
+
+		with self._show():
+			self.answer = self.thing.ShowModal()
+			self.hide()
+
+	def hide(self):
+		"""Hides the dialog box for this handle."""
+
+		with self._hide():
+			self.data = self._decodePrintSettings(self.thing.GetPageSetupData())
+			self.thing.Destroy()
+			self.thing = None
+
+	#Getters
+	def getValue(self, event = None):
+		"""Returns what the contextual value is for the object associated with this handle."""
+
+		return {**self.data}
+
+class handle_Dialog_PrintPreview(handle_Dialog_Base):
+	"""A handle for working with a wxPrintPreview object."""
+
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize inherited classes
+		super().__init__()
+
+		#Internal Variables
+		self.data = None
+
+	def _build(self, argument_catalogue):
+		with self._bookend_build(argument_catalogue):
+			self.thing = -1
+			printData, printerSetup, printOverride, size, position, content = self._getArguments(argument_catalogue, ["printData", "printerSetup", "printOverride", "size", "position", "content"])
+
+			#Set Defaults
+			self.size = size
+			self.content = content
+			self.position = position
+			self.printData = printData
+			self.title = "GUI_Maker Page"
+			self.printerSetup = printerSetup
+			self.printOverride = printOverride
+
+	def hide(self):
+		"""Hides the dialog box for this handle."""
+
+		with self._hide():
+			self.thing = None
+
+	def getValue(self, event = None):
+		"""Returns what the contextual value is for the object associated with this handle."""
+
+		return self.content
+
+	def setValue(self, value = None, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
-		if (self.type is Types.print):
-			self.content = value
-		
-		elif (self.type is Types.printpreview):
-			self.content = value
-		
-		elif (self.type is Types.busy):
-			if (self.subType.lower() == "progress"):
-				text = self._formatText(text)
-				self.progress = value
-
-				if (value is None):
-					self.answer = self.threadSafe(self.thing.Pulse, text)
-				else:
-					self.answer = self.threadSafe(self.thing.Update, value, text)
-
-				if (oneShot):
-					self.oneShot = text
-		else:
-			warnings.warn(f"Add {self.type.name} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
+		self.content = value
 	
-	def setText(self, text = "", oneShot = False, event = None):
-		"""Sets the contextual text for the object associated with this handle to what the user supplies."""
-
-		if (self.type is Types.busy):
-			if (self.subType.lower() == "progress"):
-				text = self._formatText(text)
-
-				#Setting the value to zero causes the window to disappear
-				if (self.progress is None):
-					self.answer = self.threadSafe(self.thing.Pulse, text)
-				else:
-					self.answer = self.threadSafe(self.thing.Update, self.thing.GetValue() or 1, text)
-
-				if (oneShot):
-					self.oneShot = text
-		else:
-			warnings.warn(f"Add {self.type.name} to setText() for {self.__repr__()}", Warning, stacklevel = 2)
-
-	def setDefaultText(self, text = "", apply = True, event = None):
-		"""Sets the contextual default text for the object associated with this handle to what the user supplies."""
-
-		self.text = text
-
-		if (apply):
-			self.setText(event = event)
-	
-	def setMax(self, value, event = None):
-		"""Sets the contextual max for the object associated with this handle to what the user supplies."""
-
-		if (self.type is Types.busy):
-			if (self.subType.lower() == "progress"):
-				self.threadSafe(self.thing.SetRange, value)
-		else:
-			warnings.warn(f"Add {self.type.name} to setMax() for {self.__repr__()}", Warning, stacklevel = 2)
-
-	def setTitle(self, text = None, event = None):
-		"""Sets the title."""
-
-		if (self.type is Types.print):
-			if (text is None):
-				text = "GUI_Maker Page"
-			self.title = text
-		else:
-			warnings.warn(f"Add {self.type.name} to setTitle() for {self.__repr__()}", Warning, stacklevel = 2)
-
-	def setSize(self, size = None, event = None):
-		"""Sets the size."""
-
-		if (self.type is Types.print):
-			self.size = size
-		else:
-			warnings.warn(f"Add {self.type.name} to setSize() for {self.__repr__()}", Warning, stacklevel = 2)
-
-	#Etc
-	def resume(self, size = None, event = None):
-		"""Undoes the abort."""
-
-		if (self.type is Types.busy):
-			self.threadSafe(self.thing.Resume)
-		else:
-			warnings.warn(f"Add {self.type.name} to resume() for {self.__repr__()}", Warning, stacklevel = 2)
-
-	def send(self, raw = False, printOverride = {}, event = None):
+	def send(self, raw = False, printOverride = None, enablePrint = True, event = None):
 		"""Returns what the contextual valueDoes the contextual send command for the object associated with this handle.
 		Modified code from: https://wiki.wxpython.org/Printing
 
@@ -18251,43 +18400,136 @@ class handle_Dialog(handle_Base):
 		Example Input: send(raw = True)
 		"""
 
-		if (self.type is Types.print):
-			self.print(self.content, printData = self.data[None], title = self.title, raw = raw, printOverride = printOverride, popup = False)
+		printout = _MyPrintout(self, document = self.content, title = self.title, raw = raw)
 
-		elif (self.type is Types.printpreview):
-			printout = _MyPrintout(self, document = self.content, title = self.title, raw = raw)
-
-			enablePrint = True
-			if (enablePrint):
-				preview = _MyPrintPreview(self, printout, printout.clone(), printData = self.printData, printerSetup = self.printerSetup, printOverride = {**printOverride, **self.printOverride})
-			else:
-				preview = _MyPrintPreview(self, printout, printData = self.printData, printerSetup = self.printerSetup, printOverride = {**printOverride, **self.printOverride})
-
-			if ("__WXMAC__" in wx.PlatformInfo):
-				preview.SetZoom(50)
-			else:
-				preview.SetZoom(35)
-
-			if (not preview.IsOk()):
-				warnings.warn(f"'printout' {printout.__repr__()} was not created correctly for {self.__repr__()}", Warning, stacklevel = 2)
-				self.thing = None
-				return
-
-			previewFrame = _MyPreviewFrame(self, preview, None, title = "Print Preview", 
-				pos = self.position or wx.DefaultPosition, size = self.size or wx.DefaultSize)
-
-			image = self.getImage("print", internal = True, returnIcon = True)
-			previewFrame.SetIcon(image)
-			previewFrame.Initialize()
-
-
-			# self.runMyFunction(myFunction = self.preShowFunction, myFunctionArgs = self.preShowFunctionArgs, myFunctionKwargs = self.preShowFunctionKwargs, includeEvent = True)
-			previewFrame.Show()
-
-			# self.runMyFunction(myFunction = self.postShowFunction, myFunctionArgs = self.postShowFunctionArgs, myFunctionKwargs = self.postShowFunctionKwargs, includeEvent = True)
-
+		if (enablePrint):
+			preview = _MyPrintPreview(self, printout, printout.clone(), printData = self.printData, printerSetup = self.printerSetup, printOverride = {**(printOverride or {}), **self.printOverride})
 		else:
-			warnings.warn(f"Add {self.type.name} to send() for {self.__repr__()}", Warning, stacklevel = 2)
+			preview = _MyPrintPreview(self, printout, printData = self.printData, printerSetup = self.printerSetup, printOverride = {**(printOverride or {}), **self.printOverride})
+
+		if ("__WXMAC__" in wx.PlatformInfo):
+			preview.SetZoom(50)
+		else:
+			preview.SetZoom(35)
+
+		if (not preview.IsOk()):
+			warnings.warn(f"'printout' {printout.__repr__()} was not created correctly for {self.__repr__()}", Warning, stacklevel = 2)
+			self.thing = None
+			return
+
+		previewFrame = _MyPreviewFrame(self, preview, None, title = "Print Preview", 
+			pos = self.position or wx.DefaultPosition, size = self.size or wx.DefaultSize)
+
+		image = self.getImage("print", internal = True, returnIcon = True)
+		previewFrame.SetIcon(image)
+		previewFrame.Initialize()
+
+		# self.runMyFunction(myFunction = self.preShowFunction, myFunctionArgs = self.preShowFunctionArgs, myFunctionKwargs = self.preShowFunctionKwargs, includeEvent = True)
+		previewFrame.Show()
+		# self.runMyFunction(myFunction = self.postShowFunction, myFunctionArgs = self.postShowFunctionArgs, myFunctionKwargs = self.postShowFunctionKwargs, includeEvent = True)
+
+class handle_Dialog_Print(handle_Dialog_Base):
+	"""A handle for working with a wxPrintDialog object."""
+
+	def __init__(self):
+		"""Initializes defaults."""
+
+		#Initialize inherited classes
+		super().__init__()
+
+		#Internal Variables
+		self.data = None
+
+	def _build(self, argument_catalogue):
+		def yieldOverrideData():
+			nonlocal argument_catalogue
+			
+			pageFrom, pageTo, pageMin, pageMax = self._getArguments(argument_catalogue, ["pageFrom", "pageTo", "pageMin", "pageMax"])
+			printToFile, selection, collate, copies = self._getArguments(argument_catalogue, ["printToFile", "selection", "collate", "copies"])
+
+			yield "pageTo", pageTo
+			yield "pageFrom", pageFrom
+
+			yield "pageMin", pageMin
+			yield "pageMax", pageMax
+
+			yield "copies", copies
+			yield "collate", collate
+			yield "selection", selection
+			yield "printToFile", printToFile
+
+		##################################
+
+		with self._bookend_build(argument_catalogue):
+			printData, pageNumbers, helpButton, printOverride = self._getArguments(argument_catalogue, ["printData", "pageNumbers", "helpButton", "printOverride"])
+			
+			combinedOverride = {key: value for catalogue in (printOverride, dict(yieldOverrideData())) for key, value in catalogue.items() if (value is not None)}
+			
+			if (printData is None):
+				printData = combinedOverride
+			dialogData = self._encodePrintSettings(printData, override = combinedOverride)
+			
+			dialogData.EnableHelp(helpButton)
+			dialogData.EnablePageNumbers(pageNumbers)
+			dialogData.EnableSelection(dialogData.GetSelection())
+			dialogData.EnablePrintToFile(dialogData.GetPrintToFile())
+				
+			self.thing = wx.PrintDialog(None, dialogData)
+
+			self.title = "GUI_Maker Page"
+			self.content = None
+
+	def show(self):
+		"""Shows the dialog box for this handle."""
+
+		with self._show():
+			self.answer = self.thing.ShowModal()
+			self.hide()
+
+	def hide(self):
+		"""Hides the dialog box for this handle."""
+
+		with self.hide():
+			self.data = self._decodePrintSettings(self.thing.GetPrintDialogData())
+			self.thing.Destroy()
+			self.thing = None
+
+	#Getters
+	def getValue(self, event = None):
+		"""Returns what the contextual value is for the object associated with this handle."""
+
+		return {"content": self.content, **self.data} 
+
+	def setValue(self, value = None, event = None):
+		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
+
+		self.content = value
+		
+	def setTitle(self, text = None, event = None):
+		"""Sets the title."""
+
+		if (text is None):
+			text = "GUI_Maker Page"
+		self.title = text
+
+	def setSize(self, size = None, event = None):
+		"""Sets the size."""
+
+		self.size = size
+
+	def send(self, raw = False, printOverride = None, event = None):
+		"""Returns what the contextual valueDoes the contextual send command for the object associated with this handle.
+		Modified code from: https://wiki.wxpython.org/Printing
+
+		raw (bool) - Determines how the data is sent to the printer
+			- If True: Sends the data as RAW
+			- If False: Sends the data normally
+
+		Example Input: send()
+		Example Input: send(raw = True)
+		"""
+
+		self.print(self.content, printData = self.data[None], title = self.title, raw = raw, printOverride = printOverride or {}, popup = False)
 
 class _MyPrinter(wx.Printer):
 	catalogue_printBin = {wx.PRINTBIN_DEFAULT: "default", wx.PRINTBIN_ONLYONE: "one", wx.PRINTBIN_LOWER: "lower",
@@ -22790,7 +23032,7 @@ class Controller(Utilities, CommonEventFunctions, MyUtilities.threadManager.Comm
 	"""This module will help to create a simple GUI using wxPython without having to learn how to use the complicated program."""
 
 	def __init__(self, debugging = False, best = False, oneInstance = False, 
-		allowBuildErrors = None, checkComplexity = True, startInThread = False, 
+		allowBuildErrors = None, checkComplexity = True, startInThread = False, statusText_delay = 100, 
 		newMainLoop = None, printMakeVariables = False, logCMD = False, splash = None, **kwargs):
 		"""Defines the internal variables needed to run.
 
@@ -22860,7 +23102,7 @@ class Controller(Utilities, CommonEventFunctions, MyUtilities.threadManager.Comm
 
 		#Record Address
 		self._setAddressValue([id(self)], {None: self})
-		self.listener_statusText = self.threadManager.listen(self.listenStatusText, label = "GUI_Maker.statusText", canReplace = True, allowMultiple = True, delay = 100, errorFunction = self.listenStatusText_handleError, autoStart = False)
+		self.listener_statusText = self.threadManager.listen(self.listenStatusText, label = "GUI_Maker.statusText", canReplace = True, allowMultiple = True, delay = statusText_delay, errorFunction = self.listenStatusText_handleError, autoStart = False)
 
 		#Create the wx app object
 		self.app = MyApp(parent = self, startInThread = startInThread, newMainLoop = newMainLoop, **kwargs)
