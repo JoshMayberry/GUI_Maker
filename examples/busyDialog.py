@@ -21,7 +21,6 @@ def onSimple(event):
 def onAdvanced(event):
 	with gui[0].makeDialogBusy(text = "Test...", simple = False, maximum = 10, can_abort = True) as myDialog:
 		for i in range(1, 11):
-			print(i)
 			time.sleep(1)
 			if (i == 5):
 				myDialog.setValue(i, text = "Half Way There")
@@ -33,10 +32,10 @@ def onAdvanced(event):
 				# myDialog.resume()
 				break
 
-			with myDialog.makeDialogBusy(text = "Sub Test...", simple = False, maximum = 1000, can_abort = True, can_skip = True) as subTest:
+			with myDialog.makeDialogBusy(text = "Sub Test...", simple = False, maximum = 110, can_abort = True, can_skip = True) as subTest:
 				# continue
-				for j in range(1, 110):
-					print(j)
+				for j in range(1, 111):
+					print((i, j), subTest.isSkip())
 					time.sleep(0.25)
 					subTest.setValue(j)
 
@@ -69,7 +68,7 @@ def onRecycle(event):
 	event.Skip()
 
 def onEarly(event):
-	with gui[0].makeDialogBusy(text = "Test...", simple = False, maximum = 3) as myDialog:
+	with gui[0].makeDialogBusy(text = "Test...", simple = False, maximum = 3, autoHide = False) as myDialog:
 		for i in range(1, 11):
 			print(i)
 			time.sleep(0.25)

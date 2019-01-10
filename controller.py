@@ -2229,7 +2229,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		enabled (bool)          - If True: The user can interact with this
 		maximum (int)           - The maximum number of rows or columns (defined by 'vertical') the box can have
 
-		Example Input: _makeButtonRadioBox(["Button 1", "Button 2", "Button 3"], "self.onQueueValue", 0)
+		Example Input: _makeButtonRadioBox(choices = ["Button 1", "Button 2", "Button 3"], myFunction = "self.onQueueValue")
 		"""
 
 		handle = handle_WidgetButton()
@@ -6173,19 +6173,34 @@ class handle_WidgetText(handle_Widget_Base):
 	def wrapText(self, wrap = 1):
 		"""Wraps the text to a specific point.
 
-		wrap (int)      - How many pixels wide the line will be before it wraps. If negative: no wrapping is done
+		wrap (int) - How many pixels wide the line will be before it wraps. If negative: no wrapping is done
 
 		Example Text: wrapText(250)
 		"""
 
-		if (wrap is not None):
-			self.thing.Wrap(wrap)
+		if (wrap is None):
+			return
+
+		if (wrap is True):
+			self._betterBind(wx.EVT_SIZE, self.thing, self._onApplyWrap, mode = 2)
+			return
+
+		self.thing.Wrap(wrap)
 
 	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
 		if (self.type is Types.hyperlink):
 			self._betterBind(wx.adv.EVT_HYPERLINK, self.thing, myFunction, myFunctionArgs, myFunctionKwargs)
 		else:
 			warnings.warn(f"Add {self.type.name} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
+
+	def _onApplyWrap(self, event):
+		"""Wraps the text to the current size of the item.
+		Modified code from TPDMarchHare on https://stackoverflow.com/questions/4599688/wxpython-problems-with-wrapping-statictext/34830188#34830188
+		"""
+
+		raise NotImplementedError()
+		self.thing.Wrap(event.GetSize()[0])
+		event.Skip()
 
 class handle_WidgetList_Base(handle_Widget_Base):
 	"""A handle for working with list widgets."""
@@ -17230,11 +17245,6 @@ class handle_Dialog_Base(handle_Base):
 		else:
 			self._build(self.rebuildKwargs)
 
-	def threadSafe(self, function, *args, **kwargs):
-		if (wx.IsMainThread()):
-			return function(*args, **kwargs)
-		wx.CallAfter(function, *args, **kwargs)
-
 	def show(self):
 		with self._show():
 			pass
@@ -17822,6 +17832,7 @@ class handle_Dialog_Busy_Base(handle_Dialog_Base):
 		self.freeze = None
 		self.cursor = None
 		self.timeEntered = None
+		self.inMainThread = True
 
 	def __enter__(self):
 		"""Allows the user to use a with statement to build the GUI."""
@@ -17893,9 +17904,10 @@ class handle_Dialog_Busy_Base(handle_Dialog_Base):
 			errorMessage = f"The {self.type} dialogue box {self.__repr__()} has already been shown"
 			raise SyntaxError(errorMessage)
 
+		self.inMainThread = wx.IsMainThread()
 		self.threads_pause()
 
-		if (wx.IsMainThread() or (not isinstance(self.parent, handle_Dialog_Base))):
+		if (self.inMainThread or (not isinstance(self.parent, handle_Dialog_Base))):
 			yield
 			return
 
@@ -17922,6 +17934,8 @@ class handle_Dialog_Busy_Base(handle_Dialog_Base):
 		self.threads_unpause()
 
 	def threadSafe(self, function, *args, **kwargs):
+		if (self.inMainThread):
+			return function(*args, **kwargs)
 		wx.CallAfter(function, *args, **kwargs)
 
 class handle_Dialog_Busy(handle_Dialog_Busy_Base):
