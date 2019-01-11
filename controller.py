@@ -84,12 +84,14 @@ import subprocess
 # import pubsub.pub
 from forks.pypubsub.src.pubsub import pub as pubsub_pub #Use my own fork
 
+import MyUtilities.common
+import MyUtilities.wxPython
+import MyUtilities.threadManager
 
 #Import needed support modules
 import re
 import PIL
 
-import Utilities as MyUtilities
 import GUI_Maker.LICENSE_forSections as Legal
 import GUI_Maker.ExceptionHandling as ExceptionHandling
 
@@ -2490,7 +2492,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 
 		return handle
 	
-	def _makePickerFile(self, text = "Select a File", default = "", initialDir = "", wildcard = "*.*", 
+	def _makePickerFile(self, text = "Select a File", default = "", initialDir = "", wildcard = None, 
 		directoryOnly = False, changeCurrentDirectory = False, fileMustExist = False, openFile = False, 
 		saveConfirmation = False, saveFile = False, smallButton = False, addInputBox = False, 
 
@@ -3365,7 +3367,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 	def makeDialogBusy(self, text = "", simple = True, title = None, initial = 0, stayOnTop = True,
 		maximum = 100, blockAll = True, autoHide = True, can_abort = False, can_skip = False, 
 		smooth = False, elapsedTime = True, estimatedTime = True, remainingTime = True,
-		cursor = False, freeze = False,
+		cursor = False, freeze = False, forceWindow_tillEnd = True, 
 
 		hidden = False, enabled = True, maxSize = None, minSize = None, toolTip = None, 
 		label = None, parent = None, handle = None, myId = None, tabSkip = False):
@@ -3378,6 +3380,9 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 
 		cursor (bool) - If True: Will have a busy cursor while the dialog is showing
 		freeze (bool) - If True: Will freeze and thaw it's parent
+		forceWindow_tillEnd (bool) - Determines what happens if 'progress' is larger than 'maximum' inside the context manager
+			- If True: The dialog will not close or pause until the context manager has exited
+			- If False: The dialog will close (or pause until the usert closes it if 'autoHide' is False), but the rest of the GUI will stay frozen
 
 		To protect the GUI better, implement: https://wxpython.org/Phoenix/docs/html/wx.WindowDisabler.html
 		_________________________________________________________________________
@@ -3485,7 +3490,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		handle._build(locals())
 		return handle
 
-	def makeDialogFile(self, title = "Select a File", text = "", initialFile = "", initialDir = "", wildcard = "*.*", 
+	def makeDialogFile(self, title = "Select a File", text = "", initialFile = "", initialDir = "", wildcard = None, 
 		directoryOnly = False, changeCurrentDirectory = False, fileMustExist = False, openFile = False, 
 		saveConfirmation = False, saveFile = False, preview = True, single = True, newDirButton = False,
 
@@ -9651,6 +9656,12 @@ class handle_WidgetPicker(handle_Widget_Base):
 		else:
 			warnings.warn(f"Add {self.type.name} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
+	def setInitialDir(self, filePath):
+		if (self.type is not Types.file):
+			warnings.warn(f"Add {self.type.name} to setFunction_click() for {self.__repr__()}", Warning, stacklevel = 2)
+			return
+
+		self.thing.SetInitialDirectory(filePath)
 
 	#Change Settings
 	def setFunction_click(self, myFunction = None, myFunctionArgs = None, myFunctionKwargs = None):
@@ -17968,6 +17979,10 @@ class handle_Dialog_Busy_Progress(handle_Dialog_Busy_Base):
 		#Initialize inherited classes
 		super().__init__()
 
+		#Internal Variables
+		self.valueMod = 1
+		self.maximum = None
+
 	def _build(self, argument_catalogue):
 		def yieldStyle():
 			nonlocal argument_catalogue
@@ -18007,13 +18022,14 @@ class handle_Dialog_Busy_Progress(handle_Dialog_Busy_Base):
 		##########################################
 
 		with self._bookend_build(argument_catalogue):
-			text, title, initial, maximum = self._getArguments(argument_catalogue, ("text", "title", "initial", "maximum"))
+			text, title, initial, maximum, forceWindow_tillEnd = self._getArguments(argument_catalogue, ("text", "title", "initial", "maximum", "forceWindow_tillEnd"))
 			
 			title = title or text or "Busy"
 
 			self.text = text
 			self.oneShot = None
 			self.progress = initial
+			self.forceWindow_tillEnd = forceWindow_tillEnd
 
 			if (maximum is None):
 				self.startPulse = True
@@ -18021,8 +18037,8 @@ class handle_Dialog_Busy_Progress(handle_Dialog_Busy_Base):
 			else:
 				self.startPulse = False
 
+			self.maximum = maximum
 			self.buildArgs = (title, text)
-			self.buildKwargs["maximum"] = maximum
 			self.buildKwargs["style"] = functools.reduce(operator.ior, yieldStyle())
 
 	def show(self):
@@ -18030,6 +18046,9 @@ class handle_Dialog_Busy_Progress(handle_Dialog_Busy_Base):
 		
 		with self._show():
 			self.thing = wx.ProgressDialog(*self.buildArgs, **self.buildKwargs)
+
+			if (self.maximum is not None):
+				self.setMax(self.maximum)
 
 			if (self.startPulse):
 				self.setValue()
@@ -18046,30 +18065,30 @@ class handle_Dialog_Busy_Progress(handle_Dialog_Busy_Base):
 			self.threadSafe(self.thing.Destroy)
 
 	#Getters
-	def getValue(self, event = None):
+	def getValue(self, *, event = None, applyMod = True):
 		"""Returns what the contextual value is for the object associated with this handle."""
 
 		value = self.thing.GetValue()
-		if (value == wx.NOT_FOUND):
-			return
+		if (applyMod):
+			return value / self.valueMod
 		return value
 
-	def getText(self, event = None):
+	def getText(self, *, event = None):
 		"""Returns what the contextual text is for the object associated with this handle."""
 
 		return self.thing.GetMessage()
 
-	def getDefaultText(self, event = None):
+	def getDefaultText(self, *, event = None):
 		"""Returns what the contextual default text is for the object associated with this handle."""
 
 		return self.text
 
-	def getMax(self, event = None):
+	def getMax(self, *, event = None, applyMod = True):
 		"""Returns what the contextual maximum is for the object associated with this handle."""
 
 		value = self.thing.GetRange()
-		if (value == wx.NOT_FOUND):
-			return
+		if (applyMod):
+			return value / self.valueMod
 		return value
 
 	#Setters
@@ -18089,21 +18108,33 @@ class handle_Dialog_Busy_Progress(handle_Dialog_Busy_Base):
 			return ""
 		return str(text)
 
-	def _formatValue(self, value):
+	def _formatValue(self, value, *, applyMod = True):
 		if (value is None):
 			return
+
+		if (applyMod):
+			value = int(value * self.valueMod)
 			
 		maximum = self.thing.GetRange()
-		if (value > maximum):
+		if (value >= maximum):
+			if (self.forceWindow_tillEnd):
+				return maximum - 1
 			return maximum
+
 		if (value > 0):
 			return value
 
-	def setValue(self, value = None, text = "", oneShot = False, event = None):
+	def appendValue(self, value, *args, applyMod = True, **kwargs):
+		"""Adds the given value to the current progress."""
+
+		current = self.getValue(applyMod = applyMod)
+		self.setValue(value + current, *args, applyMod = applyMod, **kwargs)
+
+	def setValue(self, value = None, text = "", *, oneShot = False, event = None, applyMod = True):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
 		text = self._formatText(text)
-		value = self._formatValue(value)
+		value = self._formatValue(value, applyMod = applyMod)
 		self.progress = value
 
 		if (value is None):
@@ -18114,7 +18145,7 @@ class handle_Dialog_Busy_Progress(handle_Dialog_Busy_Base):
 		if (oneShot):
 			self.oneShot = text
 	
-	def setText(self, text = "", oneShot = False, event = None):
+	def setText(self, text = "", *, oneShot = False, event = None):
 		"""Sets the contextual text for the object associated with this handle to what the user supplies."""
 
 		text = self._formatText(text)
@@ -18128,7 +18159,7 @@ class handle_Dialog_Busy_Progress(handle_Dialog_Busy_Base):
 		if (oneShot):
 			self.oneShot = text
 
-	def setDefaultText(self, text = "", apply = True, event = None):
+	def setDefaultText(self, text = "", *, apply = True, event = None):
 		"""Sets the contextual default text for the object associated with this handle to what the user supplies."""
 
 		self.text = text
@@ -18138,6 +18169,11 @@ class handle_Dialog_Busy_Progress(handle_Dialog_Busy_Base):
 	
 	def setMax(self, value, event = None):
 		"""Sets the contextual max for the object associated with this handle to what the user supplies."""
+
+		if (value > 1000):
+			#The progress bar glitches if the range gets too high, so we will cap it at 1000, and modify values the user gives us with multiplication
+			self.valueMod = 1000 / value
+			value = 1000
 
 		self.threadSafe(self.thing.SetRange, value)
 
@@ -19776,7 +19812,8 @@ class handle_Window(handle_Container_Base):
 			self.statusBar.SetFieldsCount(current + 1)
 
 		number = self.statusBar.GetFieldsCount() - 1
-		self.setStatusTextDefault(number = number)
+		if (number not in self.statusTextDefault):
+			self.setStatusTextDefault(number = number)
 		self.setStatusWidth(width = width, number = number, autoWidth = autoWidth)
 		self.setStatusText(number = number)
 
@@ -19993,6 +20030,7 @@ class handle_Window(handle_Container_Base):
 		"""Sets the default status message for the status bar.
 
 		message (str) - What the status bar will say on default
+			- If callable: Will use what the function returns when given no parameters
 
 		Example Input: setStatusTextDefault("Ready")
 		"""

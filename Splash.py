@@ -2,14 +2,20 @@ __version__ = "2.0.0"
 
 import time
 import atexit
+import multiprocessing
 
 import operator
 import functools
 
 import wx
-import Utilities as MyUtilities
+import MyUtilities.common
+import MyUtilities.wxPython
+import MyUtilities.multiProcess
 
 splashList = set()
+
+def freeze_support():
+	multiprocessing.freeze_support()
 
 def makeSplash(*args, **kwargs):
 	"""Creates a splash screen, then shows it."""

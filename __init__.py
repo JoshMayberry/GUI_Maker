@@ -1,24 +1,24 @@
-import lazyLoad
-# lazyLoad.load("wx", includeKey = False)
-lazyLoad.load(
-	"ast", 
-	"copy", 
-	"string", 
+# import lazyLoad
+# # lazyLoad.load("wx", includeKey = False)
+# lazyLoad.load(
+# 	"ast", 
+# 	"copy", 
+# 	"string", 
 
-	"atexit", 
-	"bisect", 
-	"anytree", 
+# 	"atexit", 
+# 	"bisect", 
+# 	"anytree", 
 
-	"wx",
-	"forks.objectlistview.ObjectListView", 
+# 	"wx",
+# 	"forks.objectlistview.ObjectListView", 
 	
-	# "win32print", 
-	# "pubsub.pub", 
-	"forks.pypubsub.src.pubsub.pub", 
+# 	# "win32print", 
+# 	# "pubsub.pub", 
+# 	"forks.pypubsub.src.pubsub.pub", 
 
-	"PIL", 
-	# "LICENSE_forSections", 
-)
+# 	"PIL", 
+# 	# "LICENSE_forSections", 
+# )
 
 from . import version
 __version__ = version.VERSION_STRING

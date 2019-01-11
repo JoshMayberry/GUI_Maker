@@ -76,19 +76,30 @@ def onEarly(event):
 
 	event.Skip()
 
+def onLargeMax(event):
+	maximum = 1_000_000_000
+	with gui[0].makeDialogBusy(text = "Test...", simple = False, maximum = maximum, autoHide = False) as myDialog:
+		for i in range(1, 21):
+			print(i)
+			time.sleep(0.25)
+			myDialog.setValue(int(i * maximum / 20))
+
+	event.Skip()
+
 #Construction Functions
 def buildWindow():
 	"""Creates a simple window."""
 
 	#Initialize Frame
 	with gui.addWindow(label = 0, title = "Busy Dialog Example") as myFrame:
-		myFrame.setWindowSize((450, 200))
+		myFrame.setWindowSize((450, 300))
 		
 		with myFrame.addSizerBox() as mySizer:
 			mySizer.addButton(text = "Simple", myFunction = onSimple)
 			mySizer.addButton(text = "Advanced", myFunction = onAdvanced)
 			mySizer.addButton(text = "Recycle", myFunction = onRecycle)
 			mySizer.addButton(text = "Early", myFunction = onEarly)
+			mySizer.addButton(text = "Large Max", myFunction = onLargeMax)
 
 #Run Program
 if __name__ == '__main__':

@@ -6,8 +6,9 @@ import wx
 import platform
 import traceback
 
-import API_Com as Communication
-import Utilities as MyUtilities
+# import API_Com as Communication
+import MyUtilities.logger
+import MyUtilities.wxPython
 
 asCM = MyUtilities.wxPython.asCM
 
