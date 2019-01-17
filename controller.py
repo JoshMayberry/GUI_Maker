@@ -1875,7 +1875,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		return handle
 	
 	def _makeInputBox(self, text = None, maxLength = None, wrap = None, 
-		autoComplete = None, caseSensitive = False, alwaysShow = False, 
+		autoComplete = None, caseSensitive = False, alwaysShow = False, multiLine = False,
 		password = False, readOnly = False, tab = False, ipAddress = False, formatter = None, 
 		onSelect_hide = False, onSelect_update = False, onKey_update = False, verifier = None, 
 		
@@ -8141,7 +8141,7 @@ class handle_WidgetInput(handle_Widget_Base):
 			text, ipAddress, maxLength, verifier = self._getArguments(argument_catalogue, ["text", "ipAddress", "maxLength", "verifier"])
 			password, readOnly, tab, wrap, formatter = self._getArguments(argument_catalogue, ["password", "readOnly", "tab", "wrap", "formatter"])
 			autoComplete, caseSensitive, alwaysShow = self._getArguments(argument_catalogue, ["autoComplete", "caseSensitive", "alwaysShow"])
-			onSelect_hide, onSelect_update, onKey_update = self._getArguments(argument_catalogue, ["onSelect_hide", "onSelect_update", "onKey_update"])
+			onSelect_hide, onSelect_update, onKey_update, multiLine = self._getArguments(argument_catalogue, ["onSelect_hide", "onSelect_update", "onKey_update", "multiLine"])
 
 			#Prepare style attributes
 			style = [wx.TE_RICH]
@@ -8159,6 +8159,9 @@ class handle_WidgetInput(handle_Widget_Base):
 					style.extend((wx.TE_MULTILINE, wx.TE_WORDWRAP))
 				else:
 					style.extend((wx.TE_CHARWRAP, wx.TE_MULTILINE))
+
+			if (multiLine):
+				style.append(wx.TE_MULTILINE)
 
 			# if (enterFunction is not None):
 				#Interpret 'Enter' as \n
