@@ -6370,6 +6370,9 @@ class handle_WidgetList_Drop(handle_WidgetList_Base):
 
 		return self.choices[index] #(any) - What was selected in the drop list
 
+	def getText(self, *args, **kwargs):
+		return self.getValue(*args, **kwargs)
+
 	def getIndex(self, event = None):
 		"""Returns what the contextual index is for the object associated with this handle."""
 
@@ -18542,7 +18545,7 @@ class handle_Dialog_Print(handle_Dialog_Base):
 	def hide(self):
 		"""Hides the dialog box for this handle."""
 
-		with self.hide():
+		with self._hide():
 			self.data = self._decodePrintSettings(self.thing.GetPrintDialogData())
 			self.thing.Destroy()
 			self.thing = None
@@ -18583,6 +18586,13 @@ class handle_Dialog_Print(handle_Dialog_Base):
 		"""
 
 		self.print(self.content, printData = self.data[None], title = self.title, raw = raw, printOverride = printOverride or {}, popup = False)
+
+	def isCancel(self):
+		"""Returns if the closed dialog box answer was 'cancel'."""
+
+		if (self.answer == wx.ID_CANCEL):
+			return True
+		return False
 
 class _MyPrinter(wx.Printer):
 	catalogue_printBin = {wx.PRINTBIN_DEFAULT: "default", wx.PRINTBIN_ONLYONE: "one", wx.PRINTBIN_LOWER: "lower",
