@@ -9659,6 +9659,9 @@ class handle_WidgetPicker(handle_Widget_Base):
 		elif (self.type is Types.time):
 			self.thing.SetValue(formatValue()) #(str) - What time will be selected as 'hour:minute:second'
 
+		elif (self.type is Types.color):
+			self.thing.SetColour(self.getColor(newValue)) #(str) - What color to use
+
 		else:
 			warnings.warn(f"Add {self.type.name} to setValue() for {self.__repr__()}", Warning, stacklevel = 2)
 
