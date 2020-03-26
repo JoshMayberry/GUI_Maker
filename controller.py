@@ -102,6 +102,8 @@ import GUI_Maker.ExceptionHandling as ExceptionHandling
 	# pypubsub
 	# objectlistview
 	# anytree
+	#
+	# pywin32 (to print RAW)
 
 #Maybe Required Modules?
 	# numpy
@@ -232,6 +234,13 @@ MyEvent = MyUtilities.wxPython.MyEvent
 
 #Decorators
 wrap_skipEvent = MyUtilities.wxPython.wrap_skipEvent
+
+#Class Indicators
+class guiWidget():
+	pass
+
+class guiWindow():
+	pass
 
 #Global Inheritance Classes
 class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFunctions, MyUtilities.wxPython.Converters, MyUtilities.wxPython.CommonFunctions):
@@ -5384,7 +5393,7 @@ class handle_Container_Base(handle_Base):
 
 		self._overloadHelp("setToolTipReappearDelay", label, args, kwargs, window = window)
 
-class handle_Widget_Base(handle_Base):
+class handle_Widget_Base(handle_Base, guiWidget):
 	"""A handle for working with a wxWidget."""
 
 	def __init__(self):
@@ -5392,6 +5401,7 @@ class handle_Widget_Base(handle_Base):
 
 		#Initialize inherited classes
 		handle_Base.__init__(self)
+		guiWidget.__init__(self)
 
 	def __len__(self):
 		"""Returns what the contextual length is for the object associated with this handle."""
@@ -6367,6 +6377,9 @@ class handle_WidgetList_Drop(handle_WidgetList_Base):
 
 		if (index is None):
 			index = self.thing.GetSelection()
+
+			if (index == -1):
+				return None
 
 		return self.choices[index] #(any) - What was selected in the drop list
 
@@ -18747,6 +18760,7 @@ class _MyPrinter(wx.Printer):
 		"""
 
 		if ((not hasattr(printout, "raw")) or (not printout.raw)):
+			#Do not RAW print
 			answer = super().Print(window, printout, prompt = prompt)
 			if (not answer):
 				wx.MessageBox(("There was a problem printing.\nPerhaps your current printer is \nnot set correctly ?"), ("Printing"), wx.OK)
@@ -18755,6 +18769,7 @@ class _MyPrinter(wx.Printer):
 			if (not self.PrintDialog(window)):
 				return False
 
+		#Do RAW print
 		printerName = self.GetPrintDialogData().GetPrintData().GetPrinterName()
 		printout.hPrinter = win32print.OpenPrinter(printerName)
 		super().Print(window, printout, prompt = False)
@@ -18897,7 +18912,7 @@ class _MyPrintout(wx.Printout):
 
 		return _MyPrintout(self.parent, document = self.document, title = self.title, pageTo = self.pageTo, pageFrom = self.pageFrom, raw = self.raw)
 
-class handle_Window(handle_Container_Base):
+class handle_Window(handle_Container_Base, guiWindow):
 	"""A handle for working with a wxWindow."""
 
 	def __init__(self, controller):
@@ -18905,6 +18920,7 @@ class handle_Window(handle_Container_Base):
 
 		#Initialize inherited classes
 		handle_Container_Base.__init__(self)
+		guiWindow.__init__(self)
 
 		#Defaults
 		self.myDialog = None
