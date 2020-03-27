@@ -32,6 +32,7 @@ import bisect
 import ctypes
 import string
 import operator
+import datetime
 # import builtins
 
 import typing #NoReturn, Union
@@ -2580,6 +2581,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 	def _makePickerTime(self, time = None, *, military = False, seconds = True, 
 		minimum = None, maximum = None, applyBounds = None, outOfBounds_color = "Yellow", 
 		addInputSpinner = True, wrap = True, arrowKeys = True, 
+		timeFormat = "%H:%M:%S",
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
@@ -2609,6 +2611,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		return handle
 	
 	def _makePickerDate(self, date = None, dropDown = False, 
+		dateFormat = "%m/%d/%Y",
 
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 
@@ -2638,6 +2641,7 @@ class Utilities(MyUtilities.common.CommonFunctions, MyUtilities.common.EnsureFun
 		return handle
 	
 	def _makePickerDateWindow(self, date = None, showHolidays = False, showOther = False,
+		dateFormat = "%m/%d/%Y",
 		
 		myFunction = None, myFunctionArgs = None, myFunctionKwargs = None, 
 		dayFunction = None, dayFunctionArgs = None, dayFunctionKwargs = None, 
@@ -6416,20 +6420,24 @@ class handle_WidgetList_Drop(handle_WidgetList_Base):
 		self.thing.AppendItems(newValue) #(list) - What the choice options will now be now
 		self.setChoices(newValue)
 
-	def setSelection(self, newValue = None, event = None):
+	def setSelection(self, newValue = NULL, event = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies.
 		None will deselect all items.
 		"""
 
-		if (newValue is not None):
+		if (newValue is NULL):
+			newValue = 0
+
+		elif (newValue is None):
+			newValue = -1
+
+		else:
 			if (isinstance(newValue, str)):
 				newValue = self.thing.FindString(newValue)
 
 			if (newValue is None):
 				errorMessage = f"Invalid drop list selection in setSelection() for {self.__repr__()}"
 				raise ValueError(errorMessage)
-		else:
-			newValue = 0
 
 		self.thing.SetSelection(newValue) #(int) - What the choice options will now be
 
@@ -9340,19 +9348,8 @@ class handle_WidgetPicker(handle_Widget_Base):
 			"""Builds a wx  object."""
 			nonlocal self, argument_catalogue
 
-			date, dropDown, myFunction = self._getArguments(argument_catalogue, ["date", "dropDown", "myFunction"])
-
-			#Set the currently selected date
-			if (date is not None):
-				try:
-					month, day, year = re.split("[\\\\/]", date) #Format: mm/dd/yyyy
-					month, day, year = int(month), int(day), int(year)
-					date = wx.DateTime(day, month, year)
-				except:
-					errorMessage = "Calandar dates must be formatted 'mm/dd/yy'"
-					raise SyntaxError(errorMessage)
-			else:
-				date = wx.DateTime().SetToCurrent()
+			date, dropDown, myFunction, dateFormat = self._getArguments(argument_catalogue, ["date", "dropDown", "myFunction", "dateFormat"])
+			self.dateFormat = dateFormat
 
 			#Apply Settings
 			# wx.adv.DP_SPIN: Creates a control without a month calendar drop down but with spin-control-like arrows to change individual date components. This style is not supported by the generic version.
@@ -9369,7 +9366,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			myId = self._getId(argument_catalogue)
 
 			#Create the thing to put in the grid
-			self.thing = wx.adv.DatePickerCtrl(self.parent.thing, id = myId, dt = date, style = style)
+			self.thing = wx.adv.DatePickerCtrl(self.parent.thing, id = myId, dt = self._getDateFromString(date, dateFormat), style = style)
 
 			#Bind the function(s)
 			if (myFunction is not None):
@@ -9380,19 +9377,9 @@ class handle_WidgetPicker(handle_Widget_Base):
 			"""Builds a wx  object."""
 			nonlocal self, argument_catalogue
 
-			date, showHolidays, showOther = self._getArguments(argument_catalogue, ["date", "showHolidays", "showOther"])
+			date, showHolidays, showOther, dateFormat = self._getArguments(argument_catalogue, ["date", "showHolidays", "showOther", "dateFormat"])
 			myFunction, dayFunction, monthFunction, yearFunction = self._getArguments(argument_catalogue, ["myFunction", "dayFunction", "monthFunction", "yearFunction"])
-
-			#Set the currently selected date
-			if (date is not None):
-				try:
-					month, day, year = re.split("[\\\\/]", date) #Format: mm/dd/yyyy
-					date = wx.DateTime(day, month, year)
-				except:
-					errorMessage = "Calandar dates must be formatted 'mm/dd/yy'"
-					raise SyntaxError(errorMessage)
-			else:
-				date = wx.DateTime().SetToCurrent()
+			self.dateFormat = dateFormat
 
 			#Apply settings
 			style = ""
@@ -9418,7 +9405,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 			myId = self._getId(argument_catalogue)
 		
 			#Create the thing to put in the grid
-			self.thing = wx.adv.CalendarCtrl(self.parent.thing, id = myId, date = date, style = eval(style, {'__builtins__': None, "wx.adv": wx.adv}, {}))
+			self.thing = wx.adv.CalendarCtrl(self.parent.thing, id = myId, date = self._getDateFromString(date, dateFormat), style = eval(style, {'__builtins__': None, "wx.adv": wx.adv}, {}))
 
 			#Bind the function(s)
 			if (myFunction is not None):
@@ -9475,8 +9462,9 @@ class handle_WidgetPicker(handle_Widget_Base):
 				self.spinner = None
 				self.mySizer = None
 
-			time, myFunction = self._getArguments(argument_catalogue, ["time", "myFunction"])
-			self.setValue(time)
+			time, myFunction, timeFormat = self._getArguments(argument_catalogue, ["time", "myFunction", "timeFormat"])
+			self.timeFormat = timeFormat
+			self.setValue(time, timeFormat = timeFormat)
 
 			#Bind the function(s)
 			if (myFunction is not None):
@@ -9577,7 +9565,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 		self._postBuild(argument_catalogue)
 
 	#Getters
-	def getValue(self, event = None, *, asString = False):
+	def getValue(self, event = None, *, asString = False, dateFormat = None):
 		"""Returns what the contextual value is for the object associated with this handle."""
 
 		if (self.type is Types.file):
@@ -9590,17 +9578,18 @@ class handle_WidgetPicker(handle_Widget_Base):
 			value = self.thing.GetValue() #(str) - What date is selected in the date picker
 			if (value is not None):
 				if (asString):
-					value = f"{value.GetMonth()}/{value.GetDay()}/{value.GetYear()}"
+					# See: https://wxpython.org/Phoenix/docs/html/wx.DateTime.html#wx.DateTime.Format
+					value = value.Format(self._getDateFormat(dateFormat))
 				else:
-					value = (value.GetYear(), value.GetMonth(), value.GetDay())
+					value = (value.GetYear(), value.GetMonth() + 1, value.GetDay())
 
 		elif (self.type is Types.datewindow):
 			value = self.thing.GetDate() #(str) - What date is selected in the date picker
 			if (value is not None):
 				if (asString):
-					value = f"{value.GetMonth()}/{value.GetDay()}/{value.GetYear()}"
+					value = value.Format(self._getDateFormat(dateFormat))
 				else:
-					value = (value.GetYear(), value.GetMonth(), value.GetDay())
+					value = (value.GetYear(), value.GetMonth() + 1, value.GetDay())
 
 		elif (self.type is Types.time):
 			value = self.thing.GetValue(as_wxDateTime = not asString) #(str) - What date is selected in the date picker
@@ -9619,8 +9608,49 @@ class handle_WidgetPicker(handle_Widget_Base):
 
 		return value
 
+	def _getDateFormat(self, dateFormat = None):
+		if (dateFormat is not None):
+			return dateFormat
+
+		if (self.dateFormat is None):
+			errorMessage = f"'dateFormat' must be given either during the build phase or the request phase"
+			raise ValueError(errorMessage)
+
+		return self.dateFormat
+
+	def _getDateFromString(self, text = None, dateFormat = None):
+		"""Returns the date in a wxDateTime format.
+		Use: https://wxpython.org/Phoenix/docs/html/wx.DateTime.html#wx.DateTime.ParseFormat
+		See: https://stackoverflow.com/questions/52563761/wxforms-datetime-to-python-datetime/52566700#52566700
+
+		text (str) - The raw date string
+			- If None: Will return the current date
+
+		dateFormat (str) - How the date is formatted
+			- If None: Will use the date format given at build time
+
+		Example Input: _getDateFromString()
+		Example Input: _getDateFromString(text)
+		Example Input: _getDateFromString(text, format = "(%Y, %m, %d)")
+		"""
+
+		if (text is None):
+			return wx.DateTime().SetToCurrent()
+
+		if (isinstance(text, (datetime.datetime, datetime.date))):
+			raise NotImplementedError
+
+		else:
+			_dateFormat = self._getDateFormat(dateFormat)
+			date = wx.DateTime()
+			if (date.ParseFormat(text, _dateFormat) == -1):
+				errorMessage = f"Dates must be formatted '{_dateFormat}', but got '{text}'"
+				raise SyntaxError(errorMessage)
+
+		return date
+
 	#Setters
-	def setValue(self, newValue, event = None):
+	def setValue(self, newValue, event = None, dateFormat = None, timeFormat = None):
 		"""Sets the contextual value for the object associated with this handle to what the user supplies."""
 
 		if ((self.type is Types.date) or (self.type is Types.datewindow)):
@@ -9631,13 +9661,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 					return wx.DateTime().SetToCurrent()
 
 				if (isinstance(newValue, str)):
-					try:
-						month, day, year = re.split("[\\\\/]", newValue) #Format: mm/dd/yyyy
-						month, day, year = int(month), int(day), int(year)
-						return wx.DateTime(day, month, year)
-					except:
-						errorMessage = f"Calandar dates must be formatted 'mm/dd/yy' for setValue() for {self.__repr__()}"
-						raise SyntaxError(errorMessage)
+					return self._getDateFromString(newValue, dateFormat = dateFormat)
 
 				if (len(newValue) is not 3):
 					errorMessage = f"Calandar dates must be formatted (month (int), day (int), year (int)) for setValue() for {self.__repr__()}"
@@ -9653,7 +9677,7 @@ class handle_WidgetPicker(handle_Widget_Base):
 					return wx.DateTime().SetToCurrent()
 
 				if (isinstance(newValue, str)):
-					return newValue
+					return self._getDateFromString(newValue, dateFormat = timeFormat)
 
 				if (len(newValue) not in (2, 3)):
 					errorMessage = f"Calandar dates must be formatted (hour (int), minute (int), second (int)) or (hour (int), minute (int)) for setValue() for {self.__repr__()}"
