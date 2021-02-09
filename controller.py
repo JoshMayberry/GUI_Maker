@@ -3932,6 +3932,12 @@ class handle_Base(Utilities, CommonEventFunctions, MyUtilities.common.ELEMENT, M
 			output += f"-- Sizer id: {id(self.parentSizer)}\n"
 		if (self.nested):
 			output += "-- nested: True\n"
+			if (hasattr(self, "nestedSizer")):
+				output += f"-- nestedSizer type: {self.nestedSizer.type}\n"
+			if (hasattr(self, "nestedList")):
+				output += f"-- nestedList type: {self.nestedList.type}\n"
+			if (hasattr(self, "nestedParent")):
+				output += f"-- nestedParent type: {self.nestedParent.type}\n"
 		if ((self.unnamedList is not None) and (len(self.unnamedList) != 0)):
 			output += f"-- unnamed items: {len(self.unnamedList)}\n"
 		if ((self.labelCatalogue is not None) and (len(self.labelCatalogue) != 0)):
@@ -5661,7 +5667,7 @@ class handle_Widget_Base(handle_Base, guiWidget):
 		else:
 			self.hide()
 
-	def setShow(self, state = True):
+	def setShow(self, state = True, textSizer_forceState = False):
 		"""Shows or hides an item based on the given input.
 
 		state (bool) - If it is shown or not
@@ -5672,48 +5678,80 @@ class handle_Widget_Base(handle_Base, guiWidget):
 
 		self.thing.Show(state)
 
-		if (hasattr(self, "nestedSizer") and (self.nestedSizer.type is Types.flex)):
-			with self.nestedSizer as mySizer:
-				index = self.getSizerIndex()
-				row, column = self.getSizerCoordinates()
-				updateNeeded = False
+		updateNeeded = False
+		if (hasattr(self, "nestedSizer")):
+			if (self.nestedSizer.type is Types.flex):
+				with self.nestedSizer as mySizer:
+					index = self.getSizerIndex()
+					row, column = self.getSizerCoordinates()
 
-				if ((row in mySizer.growFlexRow_notEmpty) and (state == (not mySizer.thing.IsRowGrowable(row)))):
-					leftBound = (row + 1) * mySizer.columns - mySizer.columns
-					rightBound = (row + 1) * mySizer.columns
-					updateNeeded = True
+					if ((row in mySizer.growFlexRow_notEmpty) and (state == (not mySizer.thing.IsRowGrowable(row)))):
+						leftBound = (row + 1) * mySizer.columns - mySizer.columns
+						rightBound = (row + 1) * mySizer.columns
+						updateNeeded = True
 
-					if (any(mySizer.thing.GetItem(i).IsShown() for i in range(leftBound, rightBound))):
-						mySizer.growFlexRow(row, proportion = mySizer.growFlexRow_notEmpty[row])
-					else:
-						mySizer.thing.RemoveGrowableRow(row)
+						if (any(mySizer.thing.GetItem(i).IsShown() for i in range(leftBound, rightBound))):
+							mySizer.growFlexRow(row, proportion = mySizer.growFlexRow_notEmpty[row])
+						else:
+							mySizer.thing.RemoveGrowableRow(row)
 
-				if ((column in mySizer.growFlexColumn_notEmpty) and (state == (not mySizer.thing.IsColGrowable(column)))):
-					leftBound = column
-					rightBound = mySizer.rows * mySizer.columns
-					step = mySizer.columns
-					updateNeeded = True
-					
-					if (any(mySizer.thing.GetItem(i).IsShown() for i in range(leftBound, rightBound, step))):
-						mySizer.growFlexColumn(column, proportion = mySizer.growFlexColumn_notEmpty[column])
-					else:
-						mySizer.thing.RemoveGrowableCol(column)
+					if ((column in mySizer.growFlexColumn_notEmpty) and (state == (not mySizer.thing.IsColGrowable(column)))):
+						leftBound = column
+						rightBound = mySizer.rows * mySizer.columns
+						step = mySizer.columns
+						updateNeeded = True
+						
+						if (any(mySizer.thing.GetItem(i).IsShown() for i in range(leftBound, rightBound, step))):
+							mySizer.growFlexColumn(column, proportion = mySizer.growFlexColumn_notEmpty[column])
+						else:
+							mySizer.thing.RemoveGrowableCol(column)
 
-				#Account for textbox sizers
-				if ((mySizer.substitute is not None) and (mySizer.substitute.type is Types.text)):
-					text = mySizer.substitute.thing.GetStaticBox()
-					if (not any(item.IsShown() for item in mySizer.thing.GetChildren())):
-						if (text.IsShown()):
-							text.Hide()
+					#Account for textbox sizers
+					if ((mySizer.substitute is not None) and (mySizer.substitute.type is Types.text)):
+						text = mySizer.substitute.thing.GetStaticBox()
+						if (textSizer_forceState):
+							if (state):
+								text.Show()
+							else:
+								text.Hide()
+
 							updateNeeded = True
-					else:
-						if (not text.IsShown()):
-							text.Show()
-							updateNeeded = True
-						text.SendSizeEventToParent()
+							text.SendSizeEventToParent()
+						else:
+							if (not any(item.IsShown() for item in mySizer.thing.GetChildren())):
+								if (text.IsShown()):
+									text.Hide()
+									updateNeeded = True
+							else:
+								if (not text.IsShown()):
+									text.Show()
+									updateNeeded = True
+								text.SendSizeEventToParent()
 
-				if (updateNeeded):
-					self.myWindow.updateWindow()#updateNested = True)
+		#Account for textbox sizers
+		if (hasattr(self, "substitute") and (self.substitute is not None) and (self.substitute.type is Types.text)):
+			text = self.substitute.thing.GetStaticBox()
+			if (textSizer_forceState):
+				if (state):
+					text.Show()
+				else:
+					text.Hide()
+
+				updateNeeded = True
+				text.SendSizeEventToParent()
+			else:
+				if (not any(item.IsShown() for item in self.thing.GetChildren())):
+					if (text.IsShown()):
+						text.Hide()
+						updateNeeded = True
+				else:
+					if (not text.IsShown()):
+						text.Show()
+						updateNeeded = True
+					text.SendSizeEventToParent()
+
+		if (updateNeeded):
+			self.myWindow.updateWindow()#updateNested = True)
 
 	def setHide(self, state = True):
 		"""Shows or hides an item based on the given input.
